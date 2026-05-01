@@ -33,13 +33,14 @@ The schema is the primary contract. It should include:
 - async, polling, streaming, pagination, truncation, artifact, and version-negotiation behavior
 - schema version and stable fingerprint
 
-Expose a compact fingerprint endpoint so agents can cache the schema cheaply.
+Expose a compact fingerprint endpoint so agents can cache the schema cheaply. The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly.
 
 ## Stdin Contract
 
 For every command, declare:
 
 - whether stdin is read
+- whether stdin is auto-detected when piped or requires an explicit flag
 - accepted formats
 - maximum input size
 - whether stdin can block
@@ -63,9 +64,10 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
+- If JSON includes a `message` field, it must not duplicate structured data that is already present elsewhere in the payload.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
-- Pagination includes `has_more`; include `next_cursor`, `limit`, and `estimated_total` when available.
+- Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`. Include `limit` and `estimated_total` when available.
 - Truncation, omitted fields, and size caps are explicit.
 - `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
 - Default sort is deterministic.
@@ -148,6 +150,7 @@ Ship tests for:
 - schema snapshots
 - canonical success payloads
 - representative failure payloads and exit codes
+- runtime verification that declared exit codes map to observed exits
 - TTY vs non-TTY behavior
 - machine mode suppression of prompts, color, progress, and prose
 - stdin behavior, including empty stdin

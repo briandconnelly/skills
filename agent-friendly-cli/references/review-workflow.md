@@ -22,6 +22,8 @@ If the CLI is runnable, collect:
 - a mutating command in `--dry-run` mode if available
 - a large-output command if available
 
+For auth failure simulation, prefer isolated modes or obviously invalid placeholder credentials over real-looking incorrect credentials.
+
 If source is available, inspect:
 
 - command definitions and parser setup
@@ -91,6 +93,7 @@ Check:
 - rate limits include `retry_after_ms`
 - stack traces and raw dumps are opt-in and redact secrets
 - partial failure has deterministic aggregate semantics
+- declared exit codes match observed runtime behavior
 
 ## 5. Review Tests And Release Criteria
 
@@ -129,6 +132,7 @@ Use this structure:
 Each finding should include:
 
 - severity: `P0`, `P1`, `P2`, or `P3` (defined below)
+- type: `impl-bug`, `schema-gap`, or `design-issue`
 - location: file/line, command output, or doc section
 - impact: how this fails for agents
 - fix direction: concrete guidance, not generic preference

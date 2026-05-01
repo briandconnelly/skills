@@ -9,6 +9,7 @@ The complete minimal schema output for `widgetctl schema` is below.
 {
   "schema_version": "1.0",
   "fingerprint": "wgt-a1b2c3d4",
+  "fingerprint_scope": "schema-contract",
   "canonical_machine_profile": ["--json", "--machine", "--no-config", "--no-progress"],
   "command_tree": {
     "widget": {
@@ -38,7 +39,7 @@ The complete minimal schema output for `widgetctl schema` is below.
         {"name": "--select", "type": "enum", "enum": ["id", "name", "status"], "cardinality": "many", "default": ["id", "name", "status"]},
         {"name": "--timeout", "type": "integer", "default": 3000}
       ],
-      "stdin_contract": {"reads": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
+      "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "active|inactive|deleted"}, "size_mode": "small"},
       "side_effects": {"external_mutation": false, "writes": []},
       "latency_class": "network",
@@ -65,7 +66,7 @@ The complete minimal schema output for `widgetctl schema` is below.
         {"name": "--if-exists", "type": "boolean", "default": false},
         {"name": "--timeout", "type": "integer", "default": 5000}
       ],
-      "stdin_contract": {"reads": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
+      "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "deleted"}, "size_mode": "small"},
       "side_effects": {"external_mutation": "deletes widget unless --dry-run is true", "dry_run": "no externally visible mutations"},
       "latency_class": "network",
@@ -91,7 +92,8 @@ The stable cache-key payload for `widgetctl schema --fingerprint` is below.
 ```json
 {
   "schema_version": "1.0",
-  "fingerprint": "wgt-a1b2c3d4"
+  "fingerprint": "wgt-a1b2c3d4",
+  "fingerprint_scope": "schema-contract"
 }
 ```
 
@@ -184,6 +186,7 @@ Rate-limited error for exit `6`, with JSON on stderr and empty stdout in machine
 ## 5. Review-finding example
 Example finding for `gadgetctl`.
 - severity: `P1`.
+- type: `impl-bug`.
 - location: command output from `gadgetctl gadget list --json`.
 - impact: stdout includes progress before the JSON payload, so agents cannot parse the success payload deterministically.
 - fix direction: keep stdout as success payload only and move progress or diagnostics to stderr.

@@ -51,7 +51,7 @@ Treat the schema as the authoritative design artifact. The schema should declare
 Expose:
 
 - `tool schema`: the authoritative full contract
-- `tool schema --fingerprint`: a small stable cache key
+- `tool schema --fingerprint`: a small stable cache key that changes when the schema contract changes; if version-only releases also change it, declare that explicitly
 - optionally `tool schema --summary` or `tool schema <command>` for compact partial loading
 
 ## 4. Choose Agent-Safe Defaults
@@ -82,11 +82,14 @@ Standardize on a small number of output classes:
 - `bulk-result`: per-item results plus aggregate exit-code semantics
 - `artifact`: large result written to disk with structured pointer
 
+Custom output classes are acceptable when the built-in set does not fit cleanly, but they must be explicitly named in the schema and have a stable shape, paging behavior, and examples.
+
 Output rules:
 
 - stdout contains only the success payload.
 - stderr contains diagnostics, warnings, progress, debug detail, and structured failures.
 - JSON should be shallow, stable, deterministic, and free of human summaries.
+- In machine mode, avoid prose `message` fields that duplicate structured payload data; if a `message` field exists, it should add non-duplicative context only.
 - Pagination, truncation, omitted fields, partial failure, retries exhausted, and version mismatch must be structured.
 - NDJSON is for streams and large result sets; arrays are for small finite lists.
 - `--output <file>` should be restricted to explicit export commands and return path, byte size, and content hash.
@@ -119,6 +122,7 @@ Ship contract tests:
 - Snapshot the machine schema.
 - Snapshot canonical success payloads for each output class.
 - Snapshot representative failure payloads and exit codes.
+- Verify that each declared exit code can be triggered at runtime by at least one scenario.
 - Test TTY vs non-TTY behavior.
 - Test machine mode suppression of prompts, color, progress, and prose.
 - Test truncation, pagination, artifact output, and streaming.

@@ -33,7 +33,7 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 - **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode (e.g., `--json --machine --no-config --no-progress`). Declared in the schema.
 - **Machine mode**: the runtime state the machine profile produces — no prompts, no color, no progress, no pager, no browser, structured output only.
 - **Non-TTY mode**: any invocation where stdout or stderr is not a terminal; conservatively suppresses color, spinners, pagers, and prompts even without the explicit machine profile.
-- **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`. Each command declares one.
+- **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`, or another explicitly declared class with a stable contract. Each command declares one.
 - **Ambient state**: config files, environment variables, credentials, and caches the CLI reads implicitly.
 
 ## Workflow
