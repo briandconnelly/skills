@@ -8,6 +8,7 @@ hooks = [
   { id = "mixed-line-ending" },
   { id = "check-merge-conflict" },
   { id = "check-added-large-files" },
+  { id = "check-yaml" },
   { id = "check-toml" },
 ]
 
