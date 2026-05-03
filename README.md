@@ -42,11 +42,3 @@ npx skills add briandconnelly/skills --skill agent-friendly-mcp
 npx skills add briandconnelly/skills --skill agent-friendly-mcp -a claude-code -a opencode
 ```
 
-### Manual
-
-```bash
-git clone https://github.com/briandconnelly/skills.git
-cp -r skills/agent-friendly-mcp ~/.claude/skills/
-```
-
-In Claude Code, run `/reload-plugins` after a manual install to pick up the new skill without restarting.
