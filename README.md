@@ -41,4 +41,3 @@ npx skills add briandconnelly/skills --skill agent-friendly-mcp
 # target multiple agents at once
 npx skills add briandconnelly/skills --skill agent-friendly-mcp -a claude-code -a opencode
 ```
-

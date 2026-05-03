@@ -1,0 +1,25 @@
+minimum_prek_version = "0.3.0"
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "mixed-line-ending" },
+  { id = "check-merge-conflict" },
+  { id = "check-added-large-files" },
+  { id = "check-toml" },
+]
+
+[[repos]]
+repo = "meta"
+hooks = [
+  { id = "check-hooks-apply" },
+  { id = "check-useless-excludes" },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "check-skill-frontmatter", name = "Validate SKILL.md frontmatter against agentskills.io spec", language = "python", language_version = "python3", additional_dependencies = ["pyyaml>=6"], entry = "python scripts/check-skill-frontmatter.py", files = "(?:^|/)SKILL\\.md$", pass_filenames = true },
+]
