@@ -7,3 +7,6 @@
 .idea/
 .vscode/
 *.bak
+
+# Local planning artifacts (specs, plans) — kept on disk, not tracked
+docs/superpowers/
