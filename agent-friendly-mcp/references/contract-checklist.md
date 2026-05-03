@@ -190,7 +190,7 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 - **Provide filters that meaningfully reduce response size.** `since=`, `query=`, `category=`, `field=`. Filters that don't change wire size are noise.
 
-- **Truncate explicitly with a repair hint.** `"truncated": true, "hint": "hit cap of 200; narrow with since= or query="`. Silent truncation breaks agent planning.
+- **Truncate explicitly with a repair hint.** `"truncated": true, "truncation_hint": "hit cap of 200; narrow with since= or query="`. Silent truncation breaks agent planning.
 
 - **Prefer semantic identifiers over opaque UUIDs.** Raw IDs are allowed when needed for follow-up calls; surface a stable, readable label alongside.
 

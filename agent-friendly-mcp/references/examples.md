@@ -97,7 +97,7 @@ Detail (`detail: "full"`):
       "author_id": "U07ALICE",
       "author": "alice",
       "text": "Deploy started for api@v2.4.1",
-      "blocks": [{"type": "rich_text", "elements": [/* … */]}],
+      "blocks": [{"type": "rich_text", "elements": []}],
       "reactions": [],
       "thread_ts": null,
       "edited": null,
