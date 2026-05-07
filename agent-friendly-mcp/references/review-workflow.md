@@ -13,7 +13,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 ## Audit Procedure
 
-1. **Read or generate the server capability summary.** If the server publishes one, start there. If it does not, that absence is itself a Critical finding against §2 (and §1, since §1 treats server metadata as contract) — record it and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said. Note auth model, ambient state, transport choice, and stated negative scope.
+1. **Read or generate the server capability summary.** If the server publishes one, start there. If it does not, that absence is itself a Critical finding against §2 (and §1, since §1 treats server metadata as contract) — record it and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said. Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
 2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** For each section (§1 through §8), record exactly one of:
    - a **finding** with severity and evidence,
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),
@@ -28,7 +28,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 Five questions to ask while reading code and transcripts. Each should be answerable from concrete evidence — schema text, response payloads, or transcript excerpts — not intuition.
 
-- **Cold start.** What does an agent see when it first connects? Can it learn what the server does, what it does NOT do, and what it needs (auth, ambient state, transport) in one read? Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
+- **Cold start.** What does an agent see when it first connects? Can it learn what the server does, what it does NOT do, and what prerequisites affect use in one read? Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
 - **Tool selection.** Given two adjacent tools (same verb, overlapping nouns, or similar surface), can an agent pick the right one without invoking both? Are descriptions narrow enough that the schema alone disambiguates? Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
 - **First repair.** When the agent makes an invalid call, does the error response tell it specifically how to retry — which field, which allowed values, which tool to call instead? Force one invalid call per error code documented for the tool and read the payload, not just the message. *(maps to §6; see `examples.md` §6 for the target payload shape)*
 - **Discovery cost.** How many tokens does the agent spend learning the server's surface before its first useful call? Does discovery paginate, filter, and offer summaries before full definitions? Count, do not estimate — a 50-tool server with no progressive disclosure typically costs an order of magnitude more than one with `search_tools` / `describe_tool`. *(maps to §2, §7; see `examples.md` §8 for one valid progressive-disclosure shape)*

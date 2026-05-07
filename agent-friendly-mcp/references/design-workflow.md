@@ -11,7 +11,7 @@ List the real tasks an agent should be able to complete with this server.
 - Write tasks, not endpoints. "Send a message to a Slack channel" is a task; `POST /chat.postMessage` is not.
 - Pull tasks from real workflows — what a user or agent already does end-to-end without this server.
 - Group near-duplicates; collapse 60 endpoint variations into the 6–10 tasks they actually serve.
-- Note prerequisites per task (auth scope, ambient state, prior calls) — these surface again in Step 5.
+- Note prerequisites per task (auth scope, workspace/project context, prior calls, implicit state that affects behavior) — these surface again in Step 5.
 
 Output: a written task list, each task expressed as a verb phrase with the user/agent goal.
 Checkpoint: §1, §3 granularity rule.
@@ -56,7 +56,7 @@ Checkpoint: §3, §4. See `examples.md` §1 for a worked tool schema and §5 for
 
 Decide how an agent finds the right primitive without loading every definition.
 
-- Write the server capability summary: what it does, what it does NOT do, auth model, ambient state.
+- Write the server capability summary: what it does, what it does NOT do, and any prerequisites that affect whether or how an agent should use it.
 - Pick a progressive-disclosure mechanism: `search_tools` / `describe_tool`, resource catalog, namespaced filters — at least one.
 - Make discovery selective: filter by name, namespace, or topic. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.
