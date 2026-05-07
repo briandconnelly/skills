@@ -84,7 +84,7 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Failure paths are part of the contract.** Repair signals belong in tool result errors (see §6), not in description prose.
 
-- **Declare every parameter the tool reads.** Hidden parameters (env, config, session) belong in the ambient-state declaration (see §1), not implicit in tool behavior.
+- **Declare every parameter the tool reads.** Hidden parameters that affect behavior belong in the agent-actionable implicit state declaration (see §1), not implicit in tool behavior.
 
 ### Anti-patterns
 

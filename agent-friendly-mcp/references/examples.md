@@ -182,10 +182,12 @@ A prompt that orchestrates posting a release announcement across multiple channe
   "description": "Compose and post a release announcement to one or more channels, with optional thread for follow-up Q&A.",
   "when_to_use": "The user has shipped a release (version, summary, optional changelog link) and wants to announce it. Skip if the user only wants to draft text without sending.",
   "prerequisites": {
-    "auth": "Slack bot token with `chat:write` and `chat:write.public` scopes.",
+    "permissions": ["chat:write", "chat:write.public"],
     "tools": ["slack_lookup_channel", "slack_send_message", "slack_pin_message"],
     "resources": ["slack://channels"],
-    "ambient_state": "SLACK_DEFAULT_ANNOUNCE_CHANNEL env var, if set, is the default channel."
+    "context_assumptions": {
+      "default_channel": "Optional default announcement channel used when `channels` is omitted."
+    }
   },
   "arguments": [
     {"name": "version", "type": "string", "required": true},
