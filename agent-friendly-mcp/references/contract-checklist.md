@@ -14,17 +14,17 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 - **`stdio` servers MUST NOT log to stdout.** Stdout is the JSON-RPC channel; mixing log output corrupts the protocol stream. Send logs to stderr or a file.
 
-- **Declare the auth model.** State which credential is required, how it is supplied, and what scope of access a successful credential grants. The capability summary is the right place.
+- **Declare the auth model when it affects agent behavior.** State required scopes and permission boundaries that change capability availability, result shape, or repair. Keep credential setup mechanics out of the first-read summary unless the agent can act on them.
 
 - **Distinguish credential failure modes.** "Missing credential," "wrong credential," and "insufficient scope" are three different repair paths. Collapsing them forces the agent to guess.
 
-- **Declare ambient state visible to agents.** List which environment variables, configs, caches, and session data the server reads implicitly. If the agent can't see them from outside, it can't reason about why a call failed.
+- **Declare agent-actionable implicit state.** List workspace/project context, default resources, caches, session data, or configuration only when it affects tool choice, results, permissions, or repair. Hidden deployment details belong in operator docs, not the first-read surface.
 
 - **Surface observability in responses, not dashboards.** Rate limits, timeouts, retry hints, deprecation notices, and the capability fingerprint belong in the response payload an agent reads. Operator dashboards are out of scope here.
 
-- **Treat server metadata as contract.** Name, version, fingerprint, and summary are part of the discovery surface. Changes to them are discoverable changes (see §8). See `examples.md` §7 for a capability summary that carries server identity, auth model, negative scope, and ambient state.
+- **Treat server metadata as contract.** Name, version, fingerprint, and summary are part of the discovery surface. Changes to them are discoverable changes (see §8). See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
 
-Audit prompt: Can an agent learn what this server does, what it doesn't, and what it needs, in a single read?
+Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
 ---
 
@@ -32,7 +32,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and wha
 
 *Worked shapes: `examples.md` §7 (server capability summary), §8 (`search_tools` response shape).*
 
-- **Provide a server capability summary.** A one-shot overview of what the server does, what it does not do, and what auth and ambient state it needs. This is the first thing an agent reads.
+- **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it. This is the first thing an agent reads.
 
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
@@ -130,7 +130,7 @@ Audit prompt: Can an agent decide whether to fetch a resource — and which chun
 
 - **State when to use the prompt explicitly.** The agent needs to recognize the matching task, not infer it from the title.
 
-- **List prerequisites.** Which tools, which resources, and which auth or ambient state the prompt assumes. Missing prerequisites surface as confusing failures partway through execution.
+- **List prerequisites.** Which tools, which resources, and which permission or context assumptions the prompt relies on. Missing prerequisites surface as confusing failures partway through execution.
 
 - **Reference expected follow-on tools and resources by name.** A prompt that doesn't tell the agent what to invoke next is half a scaffold.
 

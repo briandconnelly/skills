@@ -12,7 +12,7 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Tool and resource schemas are the operational contract; prompts are advisory scaffolding for orchestration. Do not hide essential behavior in prompts.
 - Optimize for the first successful tool call **and** the first successful repair from a cold start.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
-- Make ambient state, side effects, idempotency, rate limits, and auth visible.
+- Make side effects, idempotency, rate limits, and agent-actionable prerequisites visible.
 - Default to compact, deterministic, structured output; markdown is opt-in, not a parallel contract on every tool.
 - Provide explicit discovery primitives so agents can load capabilities selectively.
 
@@ -37,7 +37,7 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - **Resource index**: a lightweight catalog of available resources with metadata sufficient to decide whether to read the body, distinct from the bodies themselves.
 - **Prompt scaffold**: a reusable task starter that points at tools and resources, with explicit prerequisites and expected follow-on actions.
 - **Composable primitive vs workflow tool**: granularity decision: one tool that completes a user task vs. several tools the agent must chain.
-- **Ambient state**: auth tokens, env vars, configs, caches, and session data the server reads implicitly.
+- **Operational prerequisites**: auth scopes, workspace/project context, prior setup, or implicit state that affects capability availability, result shape, permissions, or repair.
 - **Capability fingerprint**: a versioned identity for the server's surface, so clients can detect breaking changes.
 - **Code-execution client**: an agent that writes code against the MCP server's surface (per "Code Execution with MCP") rather than calling tools directly.
 - **Repair signal**: error fields that tell the agent specifically how to retry: stable code, offending field, allowed values, retryability, suggested next call.

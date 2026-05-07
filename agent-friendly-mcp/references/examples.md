@@ -202,7 +202,7 @@ A prompt that orchestrates posting a release announcement across multiple channe
 }
 ```
 
-What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the auth scope, tool names, resource URIs, and ambient state in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
+What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the required permissions, tool names, resource URIs, and context assumptions in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
 
 ## 6. Actionable error payload
 
@@ -258,25 +258,22 @@ The one-shot capability summary returned at server initialization. *Demonstrates
     "File uploads larger than 5MB (use Slack's web client).",
     "Real-time event subscriptions (this is a request/response server)."
   ],
-  "auth": {
-    "model": "slack_bot_token",
-    "credential_env": "SLACK_BOT_TOKEN",
+  "prerequisites": {
+    "workspace_scope": "One Slack workspace per server instance.",
     "required_scopes": ["chat:write", "channels:read", "users:read"],
+    "default_context": {
+      "announce_channel": "Optional default channel used only when a tool omits `channel_id`."
+    },
     "failure_codes": {
-      "missing_credential": "SLACK_BOT_TOKEN not set",
-      "invalid_credential": "token rejected by Slack auth.test",
-      "insufficient_scope": "token missing one or more required scopes; see `details.required_scopes`"
+      "missing_credential": "server is not connected to Slack",
+      "invalid_credential": "Slack rejected the configured credential",
+      "insufficient_scope": "configured credential lacks one or more required scopes; see `details.required_scopes`"
     }
-  },
-  "ambient_state": {
-    "env": ["SLACK_BOT_TOKEN", "SLACK_DEFAULT_ANNOUNCE_CHANNEL"],
-    "config_files": [],
-    "session_cache": "user-id and channel-id lookups cached in-process for 5 minutes"
   }
 }
 ```
 
-What to notice: an agent reads this once and knows the server's name, scope, negative scope, auth model with three distinct failure paths, and what ambient state matters. The transport choice (`stdio`) is declared. The fingerprint appears here too so agents can short-circuit re-discovery (see §8).
+What to notice: an agent reads this once and knows the server's name, scope, negative scope, permission boundaries, and the small amount of implicit context that can change behavior. The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses. The transport choice (`stdio`) is declared. The fingerprint appears here too so agents can short-circuit re-discovery (see §8).
 
 ## 8. `search_tools` response shape
 
