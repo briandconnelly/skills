@@ -11,6 +11,7 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
   "name": "slack_send_message",
   "description": "Post a message to a Slack channel or DM.\n\nWhen to use: any time the agent has composed a message and a destination (channel id, user id, or thread ts) and wants to deliver it. Prefer this over `slack_create_channel` + post when the channel already exists.\n\nUsage notes:\n- DMs to users require a `user_id`, not a channel name; resolve via `slack_lookup_user` first.\n- Threaded replies require both `channel_id` and `thread_ts`; omitting `thread_ts` posts a new top-level message.\n\nFor the failure modes this tool can return (channel archived, not found, rate limited, etc.), see the `errors` field below — do not infer error semantics from this description.\n\nExample: {\"channel_id\": \"C0123ABCD\", \"text\": \"Deploy finished.\"}",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "required": ["channel_id", "text"],
     "properties": {
@@ -57,7 +58,7 @@ What to notice: the description orients the agent (when-to-use, usage notes, exa
 
 ## 2. Structured tool response
 
-Two responses from `slack_list_messages` showing the concise vs detailed result pattern: a structured concise default with an opt-in detail mode. *Demonstrates §3 output rules and §7 token efficiency together.*
+Two responses from `slack_list_messages` showing the concise vs detailed result pattern: a structured concise default with an opt-in detail mode. *Demonstrates §3 output rules and §8 token efficiency together.*
 
 Concise (default, `detail: "summary"`):
 
@@ -113,7 +114,11 @@ Detail (`detail: "full"`):
 }
 ```
 
-What to notice: concise mode uses semantic identifiers (`alice`, `#deploys`) and a `preview` string; detail mode adds the raw IDs (`channel_id`, `author_id`, `client_msg_id`), the full `text` and `blocks`, plus null-valued fields. The truncation signal carries explicit repair guidance (`since=` or `query=`) — the agent doesn't have to guess what to do next. Pagination is cursor-based with `has_more` and `estimated_total`.
+What to notice: concise mode uses readable domain identifiers (`alice`, `#deploys`) and a `preview` string; detail mode adds the raw domain IDs (`channel_id`, `author_id`, `client_msg_id`), the full `text` and `blocks`, plus null-valued fields.
+The truncation signal carries explicit repair guidance (`since=` or `query=`) — the agent doesn't have to guess what to do next.
+Pagination is cursor-based with `has_more` and `estimated_total`.
+State handles such as jobs, cursors, and sessions would be opaque IDs with readable labels or summaries, while security-sensitive references would never leak structure.
+On clients that support it, deliver this payload as `structuredContent` paired with a published `outputSchema`; the same JSON shape goes in `content` as a textual fallback for clients that do not.
 
 ## 3. Resource index entry
 
@@ -170,7 +175,9 @@ Body fragment for chunk `thread:1714600000.001200#replies-1-6`:
 }
 ```
 
-What to notice: chunk ids are semantic and human-readable (`#replies-1-6`), not opaque offsets; `version` matches the index's `last_modified` so the agent can detect stale chunk references; `next_chunk_id` lets the agent paginate without re-fetching the index. The agent can quote `chunk_id` back to a tool that asks "where did you read that?"
+What to notice: chunk ids are domain-readable (`#replies-1-6`) because they name stable positions inside a Slack thread, not server-side state handles.
+`version` matches the index's `last_modified` so the agent can detect stale chunk references; `next_chunk_id` lets the agent paginate without re-fetching the index.
+The agent can quote `chunk_id` back to a tool that asks "where did you read that?"
 
 ## 5. Prompt scaffold
 
@@ -233,11 +240,36 @@ A failure response from `slack_send_message` when the channel is archived. *Demo
 }
 ```
 
-What to notice: the `code` is a stable symbolic string the agent can branch on; `details` names the offending field and its value; `temporary: false` with `retry_after_ms: null` tells the agent not to back off and try again — this isn't transient, so don't retry; `repair` points at a real tool name and argument shape — the agent's first repair attempt has everything it needs. `request_id` and `fingerprint` give the agent correlation context. Note that fields beyond `isError` — `code`, `temporary`, `retry_after_ms`, `repair`, `request_id`, `fingerprint` — are a convention extension on top of MCP's error shape; an MCP client that does not share this convention will see `isError: true` plus whatever you put in `content`. Mirror the pattern, but document the envelope your server emits.
+What to notice: the `code` is a stable symbolic string the agent can branch on; `details` names the offending field and its value; `temporary: false` with `retry_after_ms: null` tells the agent not to back off and try again — this isn't transient, so don't retry; `repair` points at a real tool name and argument shape — the agent's first repair attempt has everything it needs.
+`request_id` and `fingerprint` give the agent correlation context.
+Note that fields beyond `isError` — `code`, `temporary`, `retry_after_ms`, `repair`, `request_id`, `fingerprint` — are a convention extension on top of MCP's error shape; an MCP client that does not share this convention will see `isError: true` plus whatever you put in `content`.
+Mirror the pattern, but document the envelope your server emits.
+
+A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, with the same repair signal carried in `error.data`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_01HXYZ7K3M9ABCDEG",
+  "error": {
+    "code": -32004,
+    "message": "Resource not found.",
+    "data": {
+      "human_message": "Message thread was deleted or is no longer visible.",
+      "machine_code": "resource_gone",
+      "recoverable": false,
+      "repair_hints": [
+        {"tool": "slack_search_messages", "arguments": {"query": "Deploy started for api@v2.4.1"}}
+      ],
+      "resource_uri": "slack://channels/C0123ABCD/messages/1714600000.001200"
+    }
+  }
+}
+```
 
 ## 7. Server capability summary
 
-The one-shot capability summary returned at server initialization. *Demonstrates §1 server-level identity and §2 discovery primitives.*
+The capability summary exposed via a resource, discovery tool, or instructions field, whichever the client honors. *Demonstrates §1 server-level identity and §2 discovery primitives.*
 
 ```json
 {
@@ -275,7 +307,10 @@ The one-shot capability summary returned at server initialization. *Demonstrates
 }
 ```
 
-What to notice: an agent reads this once and knows the server's name, scope, negative scope, permission boundaries, and the small amount of implicit context that can change behavior. The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses. The transport choice (`stdio`) is declared. The fingerprint appears here too so agents can short-circuit re-discovery (see §8).
+What to notice: an agent reads this once, through whatever summary surface the client exposes, and knows the server's name, scope, negative scope, permission boundaries, and the small amount of implicit context that can change behavior.
+The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses.
+The transport choice (`stdio`) is declared.
+The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
 
 ## 8. `search_tools` response shape
 
@@ -316,7 +351,7 @@ What to notice: only summaries come back, not full schemas; the agent calls `des
 
 ## 9. Capability fingerprint with deprecation
 
-A fingerprint snapshot showing one tool transitioning from `stable` through `deprecated` to removal. *Demonstrates §8 versioning and compatibility.*
+A fingerprint snapshot showing one tool transitioning from `stable` through `deprecated` to removal. *Demonstrates §9 versioning and compatibility.*
 
 Fingerprint at `slack-mcp@1.3.0`:
 
@@ -371,7 +406,10 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 }
 ```
 
-What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break. The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened. Every fingerprint string changes when any covered surface changes.
+What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
+The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened.
+Every fingerprint string changes when any covered surface changes.
+When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
 
 ## 10. Worked task: API mirroring vs. task completion
 
@@ -397,7 +435,7 @@ Agent transcript probe:
 
 ```
 agent: I need to find a 30-min slot. Calling calendar_find_availability for alice@…, bob@…, Tue afternoon.
-tool:  {"slots": [{"start": "2026-05-05T13:00Z", "end": "2026-05-05T13:30Z"}, ...]}
+tool:  {"slots": [{"start": "2026-05-05T13:00:00Z", "end": "2026-05-05T13:30:00Z"}, ...]}
 
 agent: Picking 13:00. Now I'll call calendar_create_event.
 tool:  {"event_id": "evt_88f1", "attendees": ["alice@…", "bob@…"], "invites_sent": false}
@@ -423,6 +461,7 @@ Available tool:
   "name": "calendar_schedule_meeting",
   "summary": "Find a slot, create the event, and send invites in one call.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "required": ["attendees", "duration_minutes", "time_window", "subject"],
     "properties": {
@@ -434,12 +473,14 @@ Available tool:
         "properties": {
           "earliest": {"type": "string", "format": "date-time"},
           "latest": {"type": "string", "format": "date-time"}
-        }
+        },
+        "additionalProperties": false
       },
       "subject": {"type": "string"},
       "description": {"type": "string"},
       "send_invites": {"type": "boolean", "default": true}
-    }
+    },
+    "additionalProperties": false
   }
 }
 ```
@@ -450,7 +491,7 @@ Agent transcript probe:
 agent: Calling calendar_schedule_meeting.
 tool:  {
   "event_id": "evt_88f1",
-  "scheduled_at": "2026-05-05T13:00Z",
+  "scheduled_at": "2026-05-05T13:00:00Z",
   "duration_minutes": 30,
   "attendees": ["alice@…", "bob@…"],
   "invites_sent": true,
@@ -461,3 +502,69 @@ tool:  {
 One tool call. The agent never sees a near-name collision because the task is the unit, not the endpoint. Internal steps (find availability, create event, send invites) are hidden behind the task contract.
 
 What to notice: (a) costs five round-trips and two failed attempts because endpoint-mirroring tools force the agent to re-invent the workflow on every task and to disambiguate near-name overlaps from summary text; (b) costs one. The same Slack server with 60 endpoint-mirror tools typically expresses 6–10 actual user tasks (see §3 anti-patterns).
+
+## 11. Long-running operation
+
+Exporting a wide date range can take minutes, so `slack_export_history` uses task support rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
+
+```json
+{
+  "tool": {
+    "name": "slack_export_history",
+    "description": "Export Slack history for channels and a date range; wide exports run as recoverable tasks.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": ["channel_ids", "started_after", "ended_before"],
+      "properties": {
+        "channel_ids": {"type": "array", "items": {"type": "string", "pattern": "^C[A-Z0-9]{8,}$"}},
+        "started_after": {"type": "string", "format": "date-time"},
+        "ended_before": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "taskSupport": "optional",
+      "expected_duration_seconds": {"typical": 45, "wide_range": 180},
+      "timeout_behavior": "returns task_id before server timeout; result is retrievable for 24h"
+    }
+  },
+  "progress_notification": {
+    "method": "notifications/progress",
+    "params": {
+      "progressToken": "pt_01J9EXPORT",
+      "progress": 0.62,
+      "message": "Exported 31 of 50 channel-days.",
+      "phase": "collecting_messages"
+    }
+  },
+  "status_running": {
+    "tool": "slack_get_export_status",
+    "task_id": "task_01J9EXPORT",
+    "state": "running",
+    "terminal": false,
+    "poll_after_ms": 5000,
+    "progress": 0.62
+  },
+  "status_terminal": {
+    "tool": "slack_get_export_status",
+    "task_id": "task_01J9EXPORT",
+    "state": "succeeded",
+    "terminal": true,
+    "terminal_states": ["succeeded", "failed", "cancelled", "expired"],
+    "result_resource_uri": "slack://exports/task_01J9EXPORT/result.json",
+    "expires_at": "2026-05-02T18:14:32Z",
+    "poll_after_ms": null
+  },
+  "cancel": {
+    "method": "notifications/cancelled",
+    "params": {"requestId": "req_01HXYZ", "reason": "user_cancelled"},
+    "task_alternative": {"tool": "slack_cancel_export", "arguments": {"task_id": "task_01J9EXPORT"}}
+  }
+}
+```
+
+What to notice: `task_id` is an opaque state handle with a readable surrounding status response, while the result is exposed as a resource URI with a declared TTL.
+The progress notification is rate-limitable and keyed by `progressToken`, so a client can monitor without polling every phase.
+The nonterminal `status_running` shape carries `poll_after_ms` so the client knows when to check again, and the terminal shape enumerates the full state set so the agent can branch deterministically.
+Cancellation is dual-pathed: `notifications/cancelled` for the request-bound call, and a task-level cancel tool for work that has already detached behind a `task_id`.

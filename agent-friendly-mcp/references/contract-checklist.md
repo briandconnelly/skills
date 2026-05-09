@@ -18,11 +18,16 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 - **Distinguish credential failure modes.** "Missing credential," "wrong credential," and "insufficient scope" are three different repair paths. Collapsing them forces the agent to guess.
 
-- **Declare agent-actionable implicit state.** List workspace/project context, default resources, caches, session data, or configuration only when it affects tool choice, results, permissions, or repair. Hidden deployment details belong in operator docs, not the first-read surface.
+- **Declare agent-actionable implicit state.** List workspace/project context, default resources, caches, session data, or configuration only when it affects tool choice, results, permissions, or repair.
+Hidden deployment details belong in operator docs, not the first-read surface.
+
+- **Declare state-handle discipline.** Handles for jobs, cursors, sessions, or server-side state are opaque IDs with readable labels where useful, declared lifetime, expiry behavior, auth checked on every use, and bounded retention.
 
 - **Surface observability in responses, not dashboards.** Rate limits, timeouts, retry hints, deprecation notices, and the capability fingerprint belong in the response payload an agent reads. Operator dashboards are out of scope here.
 
-- **Treat server metadata as contract.** Name, version, fingerprint, and summary are part of the discovery surface. Changes to them are discoverable changes (see §8). See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
+- **Treat server metadata as contract.** Name, version, fingerprint, and summary are part of the discovery surface.
+Changes to them are discoverable changes (see §9).
+See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
 
 Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
@@ -32,7 +37,8 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 *Worked shapes: `examples.md` §7 (server capability summary), §8 (`search_tools` response shape).*
 
-- **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it. This is the first thing an agent reads.
+- **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it.
+Expose it via a resource, discovery tool, or instructions field, whichever the client honors.
 
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
@@ -40,15 +46,17 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **Make discovery selective.** Clients can filter by name, namespace, or topic. A server with 80 tools and no filter is functionally undiscoverable.
 
-- **Discovery obeys token-efficiency rules.** Definitions paginate, support filtering, and return concise summaries by default with an opt-in detailed mode (see §7).
+- **Discovery obeys token-efficiency rules.** Definitions paginate, support filtering, and return concise summaries by default with an opt-in detailed mode (see §8).
+
+- **Design for client variance.** Some clients preload tools, paginate discovery, ignore annotations, or expose resources poorly; keep discovery usable for the least-capable realistic client.
 
 - **Index resources; do not inline bodies.** Catalog entries carry metadata sufficient to triage; bodies are fetched on demand (see §4).
 
-- **The discovery surface itself is contract.** Renaming a tool, changing its namespace, or removing it from a catalog is a discoverable change to clients; treat it as a versioned event (see §8).
+- **The discovery surface itself is contract.** Renaming a tool, changing its namespace, or removing it from a catalog is a discoverable change to clients; treat it as a versioned event (see §9).
 
 - **Resource catalogs are part of discovery.** A catalog that omits new resources or returns inconsistent metadata silently breaks agent planning. Treat the catalog as authoritative.
 
-- **Include the capability fingerprint in discovery responses.** Clients can short-circuit a re-walk if nothing has changed (see §8).
+- **Include the capability fingerprint in discovery responses.** Clients can short-circuit a re-walk if nothing has changed (see §9).
 
 Audit prompt: Can an agent find the right tool or resource for a task without loading every definition the server exposes?
 
@@ -70,15 +78,27 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Use strict types.** Enums where the value set is fixed; formats (`date-time`, `uri`, `email`) where the shape is conventional; `integer` vs `number` chosen deliberately.
 
-- **Default to structured output.** Markdown is opt-in via an explicit detail mode, not a parallel contract on every tool. Token-efficiency rules for responses live in §7.
+- **Declare schema dialect where supported.** A schema without a dialect forces clients and validators to infer semantics.
+
+- **Close object schemas.** Use `additionalProperties: false` on all object schemas unless unknown extension fields are an intentional, documented contract.
+
+- **Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.**
+Output schema support varies across MCP versions, so keep the fallback parser-compatible.
+
+- **Default to structured output.** Structured data is authoritative; text or markdown is supplemental rendering for human-facing clients.
+Token-efficiency rules for responses live in §8.
 
 - **Declare side effects, idempotency, and rate limits as first-class contract.** Use tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and structured response fields.
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
-- **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control. Enforcement lives in the implementation.
+- **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
+Enforcement lives in the implementation.
+
+- **Do not rely on annotation visibility.** Some clients do not surface annotations to the model, so annotations are advisory and cannot be the only safety prompt.
 
 - **Prefer task-completing tools over endpoint mirrors.** Tool granularity follows user/agent tasks, not the underlying API's resource map.
+Valid split exceptions are recorded in `design-workflow.md` Step 3.
 
 - **Hide internal step granularity.** When a task requires multiple steps internally, expose the task — not the steps — unless the steps are themselves separately useful tasks.
 
@@ -91,6 +111,22 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 - **Wrapping every API endpoint as a tool.** More tools dilute discovery, increase token cost on every definition load, and make selection harder. A 60-tool server where every tool maps to a REST endpoint typically expresses 6–10 actual user tasks. Collapse endpoint chains into the task they serve.
 
 - **Burying side effects, idempotency, or rate limits in description prose.** Agents do not reliably read prose for safety-relevant signals. If a tool mutates state, say so via `destructiveHint`; if it can be retried safely, say so via `idempotentHint`; if it has a per-minute call limit, surface that in the response, not the description.
+
+### Security
+
+- **Treat external content as untrusted.** Tool output must not smuggle instructions that override the user's task or the server contract.
+
+- **Sanitize output before returning it.** Strip or escape credentials, control sequences, and content that would corrupt the client's rendering or parser.
+
+- **Minimize data exfiltration paths.** Open-world tools need explicit data-flow review because they can send local or retrieved data to external services.
+
+- **Use least-privilege scopes.** Request only the scopes needed for the exposed tasks, and surface insufficient-scope repair separately from missing credentials.
+
+- **Define confirmation boundaries.** Destructive, paid, external-send, or broad-read operations need clear preconditions before execution.
+
+- **Keep state handles opaque.** Handles must not embed credentials or internal record IDs; they are references to server-side state, not encoded payloads.
+
+- **Keep this subsection bounded.** Use a future dedicated security skill for threat modeling beyond these agent-facing contract rules.
 
 Audit prompt: For each tool, can an agent decide to use it, call it correctly, and recover from a failure — using only the schema and structured response, never the prose?
 
@@ -118,7 +154,11 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 - **Resources share the failure-recovery contract.** Missing-credential, not-found, gone, and rate-limit signals must be machine-readable (see §6).
 
-- **Pagination, filtering, and truncation rules live in §7.** Reference them; do not duplicate.
+- **Resource failures use JSON-RPC errors.** Put the repair contract in structured `error.data` fields such as `human_message`, `machine_code`, `repair_hints`, and `recoverable`.
+
+- **Some clients do not expose resources well.** If discoverability matters for a read-oriented capability, provide a tool fallback that reaches the same indexed content.
+
+- **Pagination, filtering, and truncation rules live in §8.** Reference them; do not duplicate.
 
 - **A write-surface "resource" is a tool.** Resources are read-oriented; if mutation is the point, model it as a tool with the appropriate annotations (see §3).
 
@@ -156,7 +196,8 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Document every error code per tool.** An undocumented code is an undiscoverable code; agents cannot branch on it reliably. List the codes a tool can return in its schema.
 
-- **Code semantic changes are breaking.** Introducing a new additive code is safe; changing or renaming an existing code's meaning is a breaking change. Both are recorded in the fingerprint (see §8).
+- **Code semantic changes are breaking.** Introducing a new additive code is safe; changing or renaming an existing code's meaning is a breaking change.
+Both are recorded in the fingerprint (see §9).
 
 - **Provide field-level validation feedback.** Which field, why it's invalid, and which values are allowed. "Invalid input" without a field name forces the agent to guess.
 
@@ -168,7 +209,11 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Repair hints reference real, callable surfaces.** Tool names, parameter names, valid enum values — not free-form prose.
 
-- **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result. Protocol-level JSON-RPC errors are reserved for transport and protocol failures; conflating them strips the structured-response contract from the failure path. See `examples.md` §6 for an actionable tool-result error payload.
+- **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result.
+Protocol-level JSON-RPC errors are reserved for transport and protocol failures; conflating them strips the structured-response contract from the failure path.
+See `examples.md` §6 for an actionable tool-result error payload.
+
+- **Resource semantic errors return as JSON-RPC errors.** Use structured `error.data` with the same repair fields agents need for tool errors: `human_message`, `machine_code`, `repair_hints`, and `recoverable`.
 
 - **Errors include correlation context.** A `request_id`, the offending parameter, and (where applicable) the resource URI. Agents need to correlate failures with the requests that caused them.
 
@@ -176,7 +221,29 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 ---
 
-## 7. Token Efficiency
+## 7. Long-Running Operations
+
+*(Cross-cutting; rules apply when an operation may outlive a normal request/response turn.)*
+
+- **Choose the execution mode deliberately.** Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later status or result recovery.
+
+- **Declare long-running behavior in the tool contract.** Tool descriptions or schemas include expected duration, timeout behavior, and whether partial progress is observable.
+
+- **Support `progressToken` where progress exists.** Send rate-limited `notifications/progress` updates that identify current phase, completed work, and remaining work when knowable.
+
+- **Support cancellation where work can continue after the call starts.** Honor `notifications/cancelled` for request-bound work and `tasks/cancel` for task-capable tools.
+
+- **Declare task support explicitly.** For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+
+- **Define status and result retrieval.** Task responses include polling interval, result TTL, terminal states, and the tool or resource used to fetch the final result.
+
+- **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
+
+Audit prompt: Can an agent monitor, cancel, and recover a long-running operation without guessing at server state?
+
+---
+
+## 8. Token Efficiency
 
 *(Cross-cutting; rules apply to both tools and resources.)*
 
@@ -192,23 +259,35 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 - **Truncate explicitly with a repair hint.** `"truncated": true, "truncation_hint": "hit cap of 200; narrow with since= or query="`. Silent truncation breaks agent planning.
 
-- **Prefer semantic identifiers over opaque UUIDs.** Raw IDs are allowed when needed for follow-up calls; surface a stable, readable label alongside.
+- **Choose identifiers by role.** Domain IDs with natural meaning can stay readable; state handles use opaque stable IDs with labels or summaries; security-sensitive references are opaque and never leak structure.
 
 - **Support per-capability detail levels.** Progressive disclosure applies to both definitions (in discovery, see §2) and responses. The agent should be able to ask for "summary" before "full" at every level.
 
 - **Strip null and default-valued fields from concise responses.** Where they add no information, they cost tokens and clutter parsing. Detail mode may include them for completeness.
 
+- **Use locale-independent wire values.** Timestamps are RFC3339 UTC, currency uses ISO-4217 plus minor units, sort keys are stable, and display localization stays out of machine fields.
+
 ### Anti-patterns
 
-- **Free `response_format` toggles** (markdown vs. json vs. xml as parallel contracts on the same tool). Format proliferation creates ambiguous contracts: which format is authoritative? Which one carries error signals? Which gets versioned when the schema changes? Prefer one structured default with an opt-in detail toggle.
+- **Free `response_format` toggles** (markdown vs. json vs. xml as parallel contracts on the same tool).
+Format proliferation creates ambiguous contracts: which format is authoritative?
+Which one carries error signals?
+Which gets versioned when the schema changes?
+Prefer one structured default with optional supplemental text or markdown rendering.
 
 Audit prompt: Could an agent complete a typical task on this server in a single context window, including discovery, calls, and one round of repair?
 
 ---
 
-## 8. Versioning and Compatibility
+## 9. Versioning and Compatibility
 
 - **Publish a capability fingerprint.** A versioned identity for the server's surface. Clients use it to detect breaking changes cheaply, without re-walking the discovery surface. See `examples.md` §9 for fingerprint evolution across deprecation and removal.
+
+- **Advertise and emit protocol-native list-changed notifications.** Declare the `listChanged` capability where supported, and emit `notifications/tools/list_changed`, `notifications/resources/list_changed`, and `notifications/prompts/list_changed` when the corresponding list changes.
+
+- **Keep list ordering deterministic.** `tools/list` and resource catalogs use stable ordering so clients can diff and cache predictably.
+
+- **Treat fingerprints as additive signals.** A capability fingerprint helps clients short-circuit discovery, but it does not replace native change notifications or stable list ordering.
 
 - **The fingerprint covers the full agent-visible surface.** Tool definitions, resource catalogs, prompt scaffolds, error codes, and the server capability summary. Anything an agent can plan against is part of the fingerprint input.
 
