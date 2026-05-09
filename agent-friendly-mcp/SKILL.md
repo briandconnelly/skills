@@ -13,8 +13,9 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Optimize for the first successful tool call **and** the first successful repair from a cold start.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
 - Make side effects, idempotency, rate limits, and agent-actionable prerequisites visible.
-- Default to compact, deterministic, structured output; markdown is opt-in, not a parallel contract on every tool.
+- Default to compact, deterministic, structured output; structured data is authoritative and text or markdown is supplemental rendering for human-facing clients.
 - Provide explicit discovery primitives so agents can load capabilities selectively.
+- Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
 
 ## When To Use
 
@@ -22,13 +23,14 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Defining or hardening tool, resource, or prompt schemas for an existing server.
 - Auditing an existing MCP server for agent-friendliness.
 - Diagnosing concrete agent failures: wrong-tool selection from many candidates, repeated invalid tool calls, token waste from upfront definition loading, endpoint-mirroring tools that force long chains, broken cross-server upgrades.
+- Designing long-running work: progress notifications, cancellation, task-augmented requests, and long-running operation patterns (see [contract-checklist.md](references/contract-checklist.md) §7 and [examples.md](references/examples.md) §11).
 
 ## When Not To Use
 
 - General code review of MCP server internals that does not face agents — use the standard code-review skill.
 - Library or SDK design that is not exposed via MCP — this skill is MCP-specific.
 - Trivial schema additions to an already agent-friendly server; just follow the existing contract.
-- Out of scope: elicitation, sampling, notifications/logging streams, server-operator dashboards, packaging/deployment, and skills-over-MCP (experimental at https://github.com/modelcontextprotocol/experimental-ext-skills — revisit when stable).
+- Out of scope: elicitation, sampling, server logging streams, server-operator dashboards, packaging/deployment, and skills-over-MCP (experimental at https://github.com/modelcontextprotocol/experimental-ext-skills — revisit when stable).
 
 ## Vocabulary
 
@@ -41,6 +43,27 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - **Capability fingerprint**: a versioned identity for the server's surface, so clients can detect breaking changes.
 - **Code-execution client**: an agent that writes code against the MCP server's surface (per "Code Execution with MCP") rather than calling tools directly.
 - **Repair signal**: error fields that tell the agent specifically how to retry: stable code, offending field, allowed values, retryability, suggested next call.
+- **State handle**: an opaque reference to server-side state, such as a job, cursor, or session, with declared lifetime and expiry behavior.
+- **Long-running operation**: work that may need progress, cancellation, status polling, or result retrieval after the original request.
+- **Task-capable tool**: a tool that supports the task-augmented request pattern, declared via `execution.taskSupport: "optional" | "required" | "forbidden"`, so clients can recover status and results after the original call returns.
+
+## State Handles
+
+- Domain IDs with natural meaning, such as message timestamps, channel names, or usernames, may stay readable.
+- State handles, such as job IDs, cursor tokens, and session refs, are opaque IDs with readable labels or summaries where useful.
+- Security-sensitive references, such as auth tokens or internal record IDs, are opaque and never leak structure.
+- Declare handle lifetime, expiry behavior, and bounded retention policy in the tool or resource contract.
+- Check authorization on every handle use, not only when the handle is created.
+- Return structured expiry errors with a repair path when a handle can no longer be used.
+
+## Long-Running Operations
+
+- Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later recovery.
+- Declare expected duration, timeout behavior, and whether partial progress is observable.
+- Support `progressToken` and rate-limited `notifications/progress` when progress exists.
+- Support cancellation through `notifications/cancelled` or `tasks/cancel` where work can continue after the call starts.
+- For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- Define status/result retrieval, polling interval, TTL, and terminal states.
 
 ## Workflow
 

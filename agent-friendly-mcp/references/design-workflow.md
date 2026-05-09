@@ -2,7 +2,9 @@
 
 Use this workflow when designing a new MCP server or redesigning an existing one. The output is a server whose tools, resources, and prompts pass `contract-checklist.md` end to end — that is, a contract an agent can plan against from the schema and structured responses alone, never undocumented prose outside the schema.
 
-The steps are deliberately re-entrant: a later step often surfaces a flaw in an earlier decision (a granularity choice that breaks the schema, a discovery design that breaks under eval, an error taxonomy that exposes a missing primitive). Re-entering Step N from Step N+3 is normal — treat earlier outputs as drafts until the eval at Step 7 holds. The checkpoint links at each step point at the relevant `contract-checklist.md` sections; consult them as you work, not only at the end.
+The steps are deliberately re-entrant: a later step often surfaces a flaw in an earlier decision (a granularity choice that breaks the schema, a discovery design that breaks under eval, an error taxonomy that exposes a missing primitive).
+Re-entering Step N from Step N+3 is normal — treat earlier outputs as drafts until the eval at Step 8 holds.
+The checkpoint links at each step point at the relevant `contract-checklist.md` sections; consult them as you work, not only at the end.
 
 ## Step 1: Enumerate user/agent tasks
 
@@ -11,7 +13,7 @@ List the real tasks an agent should be able to complete with this server.
 - Write tasks, not endpoints. "Send a message to a Slack channel" is a task; `POST /chat.postMessage` is not.
 - Pull tasks from real workflows — what a user or agent already does end-to-end without this server.
 - Group near-duplicates; collapse 60 endpoint variations into the 6–10 tasks they actually serve.
-- Note prerequisites per task (auth scope, workspace/project context, prior calls, implicit state that affects behavior) — these surface again in Step 5.
+- Note prerequisites per task (auth scope, workspace/project context, prior calls, implicit state, handles, cursors, jobs, or sessions that affect behavior) — these surface again in Step 5.
 
 Output: a written task list, each task expressed as a verb phrase with the user/agent goal.
 Checkpoint: §1, §3 granularity rule.
@@ -33,7 +35,8 @@ Checkpoint: §3, §4, §5.
 For each tool, choose task-completing vs composable primitive, and record the reason.
 
 - Default to task-completing. Hide internal step granularity unless the steps are themselves separately useful tasks.
-- Only split into composable primitives when an eval (Step 7) shows the split helps a code-execution client — not on speculation.
+- Split into composable primitives only when a named exception applies or an eval (Step 8) shows the split helps a code-execution client — not on speculation.
+- Named split exceptions: intermediate state inspection, branching on intermediate results, streaming large results, step reuse across workflows, and human-approval boundaries.
 - Endpoint-shaped tools are an anti-pattern: collapse endpoint chains into the task they serve.
 - If two tools' descriptions need long prose to disambiguate, the granularity is wrong.
 
@@ -46,6 +49,8 @@ Treat the schema as the authoritative contract. Write it before behavior.
 
 - Required vs optional discipline: required parameters are necessary; optional ones have meaningful defaults declared in schema.
 - Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
+- Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
+- Outputs: Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.
 - Disambiguating names: `user_id` not `user`, `started_after` not `since`, `channel_id` not `channel`.
 - Descriptions cover when to use, edge cases, and an example invocation.
 
@@ -57,9 +62,11 @@ Checkpoint: §3, §4. See `examples.md` §1 for a worked tool schema and §5 for
 Decide how an agent finds the right primitive without loading every definition.
 
 - Write the server capability summary: what it does, what it does NOT do, and any prerequisites that affect whether or how an agent should use it.
+- Expose the summary through a resource, discovery tool, or instructions field, whichever the client honors.
 - Pick a progressive-disclosure mechanism: `search_tools` / `describe_tool`, resource catalog, namespaced filters — at least one.
 - Make discovery selective: filter by name, namespace, or topic. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.
+- If resource discoverability matters, provide a tool fallback for clients that do not expose resources well.
 
 Output: server capability summary, discovery primitives implemented, resource catalog shape.
 Checkpoint: §1, §2, §4. See `examples.md` §7 for a server capability summary and §8 for a `search_tools` response.
@@ -71,13 +78,27 @@ Design the error surface as deliberately as the success surface.
 - Define stable, symbolic error codes (`not_found`, `rate_limited`, `invalid_field`) and document per-tool which codes can occur.
 - Field-level validation feedback: which field, why invalid, allowed values; include the offending value when safe.
 - Retryability and rate-limit signals: `retry_after_ms`, `temporary`, `rate_limit_remaining` where applicable.
+- Tool semantic errors return as tool result errors with `isError: true`.
+- Resource failures return JSON-RPC errors with structured `error.data` repair fields.
 - Repair hints reference real callable surfaces — tool names, parameter names, valid enum values — not free-form prose.
 - Draft a worked JSON payload for each top failure mode — not just a field inventory. Concrete payloads expose contradictions a field list hides.
 
 Output: error taxonomy with example payloads for the top failure modes per tool, including correlation context (`request_id`, offending parameter).
 Checkpoint: §6. See `examples.md` §6 for an actionable error payload.
 
-## Step 7: Build evaluations grounded in real tasks
+## Step 7: Design long-running behavior
+
+For each operation that may outlive a normal request/response turn, decide how the agent monitors and recovers it.
+
+- Choose blocking `tools/call`, progress notifications, or task-augmented requests.
+- Declare expected duration, timeout behavior, and whether partial progress is observable.
+- Support `progressToken`, cancellation, status/result retrieval, polling interval, TTL, and terminal states where applicable.
+- Document `execution.taskSupport` as `optional`, `required`, or `forbidden` for task-capable tools.
+
+Output: long-running behavior contract for each affected tool, including progress, cancellation, retrieval, and terminal-state semantics.
+Checkpoint: §7.
+
+## Step 8: Build evaluations grounded in real tasks
 
 Build an eval suite from the Step 1 task list before iterating further.
 
@@ -85,11 +106,12 @@ Build an eval suite from the Step 1 task list before iterating further.
 - Measure first-call correctness: did the agent pick and call the right primitive on the first attempt?
 - Measure first-repair correctness: given a structured error, did the agent's next call succeed?
 - Measure token consumption and tool-call count per completed task — both are first-class quality signals.
+- Include fixture types for cold-start/tool discovery, wrong-tool selection, invalid-argument, auth-failure, pagination, upgrade/version-change, and long-running progress plus cancel/recover.
 
 Output: at least one eval task suite covering the high-value tasks from Step 1, with metrics for first-call correctness, first-repair correctness, token consumption, and tool-call count.
-Checkpoint: §2, §3, §6, §7 — the eval should exercise discovery, tool selection, error repair, and token consumption.
+Checkpoint: §2, §3, §6, §7, §8, §9 — the eval should exercise discovery, tool selection, error repair, long-running behavior, token consumption, and upgrade behavior.
 
-## Step 8: Iterate against the eval, including transcript review
+## Step 9: Iterate against the eval, including transcript review
 
 Run the eval with an agent and read the transcripts; do not trust aggregate scores alone.
 
@@ -99,4 +121,4 @@ Run the eval with an agent and read the transcripts; do not trust aggregate scor
 - Each iteration should produce a measurable improvement in first-call correctness, first-repair correctness, or token consumption — if it doesn't, the change wasn't grounded.
 
 Output: revised schemas, descriptions, and discovery surface, with eval-measured improvement against the prior baseline.
-Checkpoint: §1–§8 — walk the full checklist; iteration is the moment to catch contradictions any earlier checkpoint missed.
+Checkpoint: §1–§9 — walk the full checklist; iteration is the moment to catch contradictions any earlier checkpoint missed.
