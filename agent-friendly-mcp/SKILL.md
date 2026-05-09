@@ -23,7 +23,7 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Defining or hardening tool, resource, or prompt schemas for an existing server.
 - Auditing an existing MCP server for agent-friendliness.
 - Diagnosing concrete agent failures: wrong-tool selection from many candidates, repeated invalid tool calls, token waste from upfront definition loading, endpoint-mirroring tools that force long chains, broken cross-server upgrades.
-- Designing long-running work: progress notifications, cancellation, task-augmented requests, and long-running operation patterns (see §7).
+- Designing long-running work: progress notifications, cancellation, task-augmented requests, and long-running operation patterns (see [contract-checklist.md](references/contract-checklist.md) §7 and [examples.md](references/examples.md) §11).
 
 ## When Not To Use
 
@@ -45,6 +45,7 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - **Repair signal**: error fields that tell the agent specifically how to retry: stable code, offending field, allowed values, retryability, suggested next call.
 - **State handle**: an opaque reference to server-side state, such as a job, cursor, or session, with declared lifetime and expiry behavior.
 - **Long-running operation**: work that may need progress, cancellation, status polling, or result retrieval after the original request.
+- **Task-capable tool**: a tool that supports the task-augmented request pattern, declared via `execution.taskSupport: "optional" | "required" | "forbidden"`, so clients can recover status and results after the original call returns.
 
 ## State Handles
 

@@ -19,15 +19,15 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 - **Distinguish credential failure modes.** "Missing credential," "wrong credential," and "insufficient scope" are three different repair paths. Collapsing them forces the agent to guess.
 
 - **Declare agent-actionable implicit state.** List workspace/project context, default resources, caches, session data, or configuration only when it affects tool choice, results, permissions, or repair.
-Hidden deployment details belong in operator docs, not the first-read surface.
+  Hidden deployment details belong in operator docs, not the first-read surface.
 
 - **Declare state-handle discipline.** Handles for jobs, cursors, sessions, or server-side state are opaque IDs with readable labels where useful, declared lifetime, expiry behavior, auth checked on every use, and bounded retention.
 
 - **Surface observability in responses, not dashboards.** Rate limits, timeouts, retry hints, deprecation notices, and the capability fingerprint belong in the response payload an agent reads. Operator dashboards are out of scope here.
 
 - **Treat server metadata as contract.** Name, version, fingerprint, and summary are part of the discovery surface.
-Changes to them are discoverable changes (see §9).
-See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
+  Changes to them are discoverable changes (see §9).
+  See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
 
 Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
@@ -38,7 +38,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 *Worked shapes: `examples.md` §7 (server capability summary), §8 (`search_tools` response shape).*
 
 - **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it.
-Expose it via a resource, discovery tool, or instructions field, whichever the client honors.
+  Expose it via a resource, discovery tool, or instructions field, whichever the client honors.
 
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
@@ -83,22 +83,22 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 - **Close object schemas.** Use `additionalProperties: false` on all object schemas unless unknown extension fields are an intentional, documented contract.
 
 - **Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.**
-Output schema support varies across MCP versions, so keep the fallback parser-compatible.
+  Output schema support varies across MCP versions, so keep the fallback parser-compatible.
 
 - **Default to structured output.** Structured data is authoritative; text or markdown is supplemental rendering for human-facing clients.
-Token-efficiency rules for responses live in §8.
+  Token-efficiency rules for responses live in §8.
 
 - **Declare side effects, idempotency, and rate limits as first-class contract.** Use tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and structured response fields.
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
-Enforcement lives in the implementation.
+  Enforcement lives in the implementation.
 
 - **Do not rely on annotation visibility.** Some clients do not surface annotations to the model, so annotations are advisory and cannot be the only safety prompt.
 
 - **Prefer task-completing tools over endpoint mirrors.** Tool granularity follows user/agent tasks, not the underlying API's resource map.
-Valid split exceptions are recorded in `design-workflow.md` Step 3.
+  Valid split exceptions are recorded in `design-workflow.md` Step 3.
 
 - **Hide internal step granularity.** When a task requires multiple steps internally, expose the task — not the steps — unless the steps are themselves separately useful tasks.
 
@@ -197,7 +197,7 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 - **Document every error code per tool.** An undocumented code is an undiscoverable code; agents cannot branch on it reliably. List the codes a tool can return in its schema.
 
 - **Code semantic changes are breaking.** Introducing a new additive code is safe; changing or renaming an existing code's meaning is a breaking change.
-Both are recorded in the fingerprint (see §9).
+  Both are recorded in the fingerprint (see §9).
 
 - **Provide field-level validation feedback.** Which field, why it's invalid, and which values are allowed. "Invalid input" without a field name forces the agent to guess.
 
@@ -210,10 +210,10 @@ Both are recorded in the fingerprint (see §9).
 - **Repair hints reference real, callable surfaces.** Tool names, parameter names, valid enum values — not free-form prose.
 
 - **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result.
-Protocol-level JSON-RPC errors are reserved for transport and protocol failures; conflating them strips the structured-response contract from the failure path.
-See `examples.md` §6 for an actionable tool-result error payload.
+  JSON-RPC errors are reserved for transport, protocol, and non-tool RPC methods (such as `resources/read` and `resources/list`); raising a JSON-RPC error from `tools/call` strips the structured-response contract from the failure path.
+  See `examples.md` §6 for an actionable tool-result error payload.
 
-- **Resource semantic errors return as JSON-RPC errors.** Use structured `error.data` with the same repair fields agents need for tool errors: `human_message`, `machine_code`, `repair_hints`, and `recoverable`.
+- **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the repair fields agents need (`human_message`, `machine_code`, `repair_hints`, and `recoverable`) in structured `error.data`.
 
 - **Errors include correlation context.** A `request_id`, the offending parameter, and (where applicable) the resource URI. Agents need to correlate failures with the requests that caused them.
 
@@ -270,10 +270,10 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 ### Anti-patterns
 
 - **Free `response_format` toggles** (markdown vs. json vs. xml as parallel contracts on the same tool).
-Format proliferation creates ambiguous contracts: which format is authoritative?
-Which one carries error signals?
-Which gets versioned when the schema changes?
-Prefer one structured default with optional supplemental text or markdown rendering.
+  Format proliferation creates ambiguous contracts: which format is authoritative?
+  Which one carries error signals?
+  Which gets versioned when the schema changes?
+  Prefer one structured default with optional supplemental text or markdown rendering.
 
 Audit prompt: Could an agent complete a typical task on this server in a single context window, including discovery, calls, and one round of repair?
 

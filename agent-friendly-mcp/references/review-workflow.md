@@ -14,9 +14,9 @@ A review is grounded when its findings cite evidence from the schema, the respon
 ## Audit Procedure
 
 1. **Read or generate the server capability summary.** If the server publishes one, start there.
-If it does not, that absence is usually a Major finding against §2 and §1; make it Critical only when the server surface is broad or ambiguous enough that agents predictably fail without it.
-Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
-Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
+   If it does not, that absence is usually a Major finding against §2 and §1; make it Critical only when the server surface is broad or ambiguous enough that agents predictably fail without it.
+   Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
+   Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
 2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** For each section (§1 through §9), record exactly one of:
    - a **finding** with severity and evidence,
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),
@@ -36,7 +36,7 @@ Seven questions to ask while reading code and transcripts. Each should be answer
 - **First repair.** When the agent makes an invalid call, does the error response tell it specifically how to retry — which field, which allowed values, which tool to call instead? Force one invalid call per error code documented for the tool and read the payload, not just the message. *(maps to §6; see `examples.md` §6 for the target payload shape)*
 - **Discovery cost.** How many tokens does the agent spend learning the server's surface before its first useful call? Does discovery paginate, filter, and offer summaries before full definitions? Count, do not estimate — a 50-tool server with no progressive disclosure typically costs an order of magnitude more than one with `search_tools` / `describe_tool`. *(maps to §2, §8; see `examples.md` §8 for one valid progressive-disclosure shape)*
 - **Long-running operation.** Does a 2-minute operation give useful progress, and can the client cancel it or recover the result later? *(maps to §7; see `examples.md` §11 for one valid shape)*
-Exercise the status and cancellation surface, not only the initial call.
+  Exercise the status and cancellation surface, not only the initial call.
 - **Security boundary.** Do confirmation boundaries, least-privilege scopes, secret redaction, and untrusted-content handling show up in schema, annotations, and response payloads? Trace at least one open-world or external-send tool when available. *(maps to §3 security subsection)*
 - **Cross-version.** What changes when this server upgrades? Does the capability fingerprint move, and can a cached client detect the change without re-walking the full surface? Diff two versions of the discovery surface if available; otherwise inspect what the fingerprint covers. *(maps to §9; see `examples.md` §9 for a deprecation lifecycle)*
 
