@@ -64,7 +64,7 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 ## 3. Tools
 
-*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §10 (worked task: API mirroring vs. task completion).*
+*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §10 (worked task: API mirroring vs. task completion), §12 (response-delivery artifact).*
 
 - **Name with `snake_case`, prefix, verb, noun.** `slack_send_message`, not `send_message`. Generic verbs collide across servers in multi-server contexts.
 
@@ -92,6 +92,12 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
+- **Define mutation by observable scope, not by I/O.** `readOnlyHint` describes whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
+  It is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
+  A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is part of the response, not a side effect, and the tool is still `readOnlyHint: true`.
+  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, content_type}`) and the tool description, not by flipping the annotation.
+  See `examples.md` §12 for a worked response-delivery artifact.
+
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
   Enforcement lives in the implementation.
 
@@ -111,6 +117,8 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 - **Wrapping every API endpoint as a tool.** More tools dilute discovery, increase token cost on every definition load, and make selection harder. A 60-tool server where every tool maps to a REST endpoint typically expresses 6–10 actual user tasks. Collapse endpoint chains into the task they serve.
 
 - **Burying side effects, idempotency, or rate limits in description prose.** Agents do not reliably read prose for safety-relevant signals. If a tool mutates state, say so via `destructiveHint`; if it can be retried safely, say so via `idempotentHint`; if it has a per-minute call limit, surface that in the response, not the description.
+
+- **Flipping `readOnlyHint` to `false` because the tool writes a transient response artifact.** Equally misleading as the inverse. Clients use `readOnlyHint: false` to gate auto-approval and surface confirmation prompts; if the call is semantically read-only (no shared-state mutation), `false` creates unnecessary friction without protecting against any real risk. Disclose response artifacts through the structured response and the tool description, not through the annotation.
 
 ### Security
 
