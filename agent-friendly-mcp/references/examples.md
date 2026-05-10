@@ -568,3 +568,55 @@ What to notice: `task_id` is an opaque state handle with a readable surrounding 
 The progress notification is rate-limitable and keyed by `progressToken`, so a client can monitor without polling every phase.
 The nonterminal `status_running` shape carries `poll_after_ms` so the client knows when to check again, and the terminal shape enumerates the full state set so the agent can branch deterministically.
 Cancellation is dual-pathed: `notifications/cancelled` for the request-bound call, and a task-level cancel tool for work that has already detached behind a `task_id`.
+
+## 12. Response-delivery artifact
+
+A read-only query tool whose result is delivered as a local CSV file rather than inlined in the response. *Demonstrates §3 annotation honesty when the tool writes a transient artifact.*
+
+```json
+{
+  "name": "warehouse_query",
+  "description": "Run a read-only SQL query against the analytics warehouse.\n\nResults are delivered as a CSV under the local cache dir (path returned in `result_artifact.path`); files self-expire after 24h. The artifact is the response, not a side effect — this tool does not mutate warehouse state, and the cache directory is per-session and not shared across users.\n\nExample: {\"sql\": \"SELECT user_id, signup_at FROM users WHERE signup_at > '2026-05-01' LIMIT 10000\"}",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["sql"],
+    "properties": {
+      "sql": {"type": "string", "minLength": 1, "maxLength": 100000}
+    },
+    "additionalProperties": false
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true
+  }
+}
+```
+
+A successful response:
+
+```json
+{
+  "row_count": 8472,
+  "result_artifact": {
+    "path": "/var/cache/warehouse-mcp/results/q_01J9XYZ.csv",
+    "content_type": "text/csv",
+    "size_bytes": 412908,
+    "ttl_hours": 24,
+    "expires_at": "2026-05-11T18:14:32Z"
+  },
+  "schema": [
+    {"name": "USER_ID", "type": "string"},
+    {"name": "SIGNUP_AT", "type": "timestamp_ntz"}
+  ],
+  "fingerprint": "warehouse-mcp@2.1.0+a4b7c1d"
+}
+```
+
+What to notice: `readOnlyHint: true` is correct because the call doesn't mutate the warehouse, doesn't change shared state, and the CSV path is the response delivery mechanism — not a side effect on the caller's environment.
+`idempotentHint: true` follows the same framing: repeated calls don't compound state — each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
+`openWorldHint: true` reflects that the tool reaches an external warehouse.
+The artifact is disclosed in the structured response (`result_artifact` with `path`, `content_type`, `ttl_hours`, `expires_at`) and in the tool description, never by flipping the annotation.
+Flipping `readOnlyHint` to `false` here would gate auto-approval on a semantically read-only call and create friction with no safety benefit.
