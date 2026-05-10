@@ -615,8 +615,8 @@ A successful response:
 }
 ```
 
-What to notice: `readOnlyHint: true` is correct because the call doesn't mutate the warehouse, doesn't change shared state, and the CSV path is the response delivery mechanism — not a side effect on the caller's environment.
-`idempotentHint: true` follows the same framing: repeated calls don't compound state — each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
+What to notice: `readOnlyHint: true` is correct because the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is the response delivery — scoped to this call, declared TTL, no shared visibility — not persistent state that outlives the response contract.
+`idempotentHint: true` follows the same framing: repeated calls don't compound state. Each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
 The artifact is disclosed in the structured response (`result_artifact` with `path`, `content_type`, `ttl_hours`, `expires_at`) and in the tool description, never by flipping the annotation.
 Flipping `readOnlyHint` to `false` here would gate auto-approval on a semantically read-only call and create friction with no safety benefit.

@@ -92,9 +92,9 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
-- **Define mutation by observable scope, not by I/O.** `readOnlyHint` describes whether the call changes state observable beyond the caller's invocation: shared systems, persistent records, other users' data, or the calling agent's environment.
-  It is not about whether the tool performs any I/O at all.
-  A tool that writes a transient artifact as its response-delivery mechanism — for example, a CSV or Parquet result file with a declared TTL and no shared visibility — is still `readOnlyHint: true`, because the artifact *is* the response, not a side effect.
+- **Define mutation by observable scope, not by I/O.** `readOnlyHint` describes whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
+  It is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
+  A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is part of the response, not a side effect, and the tool is still `readOnlyHint: true`.
   Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, content_type}`) and the tool description, not by flipping the annotation.
   See `examples.md` §12 for a worked response-delivery artifact.
 
