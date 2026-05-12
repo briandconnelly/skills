@@ -38,11 +38,16 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 ## Workflow
 
-1. Classify the task: new CLI or redesign vs review of an existing CLI.
-2. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
-3. For an audit, follow [review-workflow.md](references/review-workflow.md); severity scale and report format live there.
-4. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
-5. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
+1. Identify the audience before choosing the output shape: tool author, internal operator, or third-party consumer.
+   - Tool author: optimize for contract gaps, release-blocking findings, and concrete redesign guidance.
+   - Internal operator: lead with the smallest safe caller-side mitigation, then separate owner-side fixes from operator-side workarounds.
+   - Third-party consumer: do not assume they can change the tool; prioritize containment, explicit assumptions, and what to escalate to the owner.
+   - If the audience is unclear, say so and default to the most actionable split: caller-side mitigation first, tool-side fixes second.
+2. Classify the task: new CLI or redesign vs review of an existing CLI vs diagnosis of a concrete failure. Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
+3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
+4. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
+5. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
+6. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
 
 ## Done Criteria
 
@@ -50,3 +55,4 @@ Before declaring done, walk [contract-checklist.md](references/contract-checklis
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
 - **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason. Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).
+- **Diagnosis tasks**: response names the most likely failure path with an evidence label, separates caller-side mitigations the user can take today from owner-side fixes, and either offers safe confirmation probes or states why probing isn't useful. Full checklist coverage isn't required unless the answer broadens into an audit.

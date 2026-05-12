@@ -2,11 +2,30 @@
 
 Use this workflow when auditing an existing CLI or advising how to make it more agent-friendly.
 
+## 0. Route Audit vs Diagnosis
+
+If the user reports a concrete failure while using an existing CLI, start in diagnosis mode before broadening to a full audit.
+
+In diagnosis mode:
+- identify the most likely failure mechanism from the evidence at hand
+- give the smallest caller-side changes that reduce the failure today
+- separate those from tool-side fixes the owner should make
+- if one or two safe probes would confirm the hypothesis, ask for permission before running them
+
+If the user is asking for a general audit or redesign, continue with the full workflow below.
+
 ## 1. Establish Evidence
 
 Prefer direct evidence over inferred behavior.
 
 When recording findings, label each as `observed` (you ran it), `inferred` (deduced from related output), or `absence-of-evidence` (a contract piece is missing from `--help`/schema/session). Absence is itself a finding when a contract piece is required.
+
+Before probing a live CLI, decide whether direct runs would materially reduce uncertainty.
+
+If yes, ask the user for permission before you run commands, even for read paths.
+Prefer the cheapest safe probes first: `--help`, `version`, `schema`, one harmless read, and one invalid-input case.
+For anything riskier, follow the approval rule below.
+If permission is not available, continue with the supplied help text, sessions, schema, or source and label findings as `observed`, `inferred`, or `absence-of-evidence`.
 
 If the CLI is runnable, collect:
 
@@ -120,7 +139,7 @@ Release should block when:
 
 ## 6. Report Format
 
-For code reviews, put findings first.
+For code reviews, put findings first. Audience-sensitive output shape — including any caller-side mitigation preface for non-owner users — is decided by the audience step in [SKILL.md](../SKILL.md) Workflow §1, not here.
 
 Use this structure:
 

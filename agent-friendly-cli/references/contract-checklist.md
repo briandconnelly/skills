@@ -33,7 +33,7 @@ The schema is the primary contract. It should include:
 - async, polling, streaming, pagination, truncation, artifact, and version-negotiation behavior
 - schema version and stable fingerprint
 
-Expose a compact fingerprint endpoint so agents can cache the schema cheaply. The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly.
+Expose a compact fingerprint endpoint so agents can cache the schema cheaply. The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly. Pair the fingerprint with `fingerprint_scope` — e.g. `schema-contract` when the fingerprint covers the full command contract — so agents know what changing the fingerprint invalidates.
 
 ## Stdin Contract
 
@@ -75,7 +75,7 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 
 ## Errors And Exit Codes
 
-Reserved numeric exit-code meanings (skill convention; codes `0`, `1`, `2` follow common Unix usage but `3`-`9` are not POSIX or `sysexits.h` — declare them in schema):
+Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` follow common Unix usage but `3`-`9` are not POSIX or `sysexits.h` — declare them in schema):
 
 - `0`: success
 - `1`: generic
