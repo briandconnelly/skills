@@ -17,6 +17,16 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Provide explicit discovery primitives so agents can load capabilities selectively.
 - Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
 
+## Native Fields vs Convention Extensions
+
+This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, a capability `fingerprint`, prompt prerequisites, and detail toggles.
+Keep them — but never let them masquerade as protocol.
+
+- Use native fields with their exact spec names and casing. Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`. Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations`, `_meta`. Prompt: `name`, `title`, `description`, `arguments`, `_meta`.
+- Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
+- Label every convention extension as such where it appears, so a reader can tell protocol from house style.
+- The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
+
 ## When To Use
 
 - Designing a new MCP server that agents (Claude Code, Codex, custom agents) will invoke.
@@ -61,9 +71,10 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later recovery.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and rate-limited `notifications/progress` when progress exists.
-- Support cancellation through `notifications/cancelled` or `tasks/cancel` where work can continue after the call starts.
-- For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
-- Define status/result retrieval, polling interval, TTL, and terminal states.
+- Use `notifications/cancelled` to cancel request-bound non-task work, and `tasks/cancel` to cancel task-augmented work.
+- Enable native tasks at both levels: the server declares `capabilities.tasks.requests.tools.call` and the tool declares `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- Recover via native operations — poll `tasks/get` (respecting `pollInterval`), fetch with `tasks/result`, using the spec's task fields (`taskId`, `status`, `ttl`, `createdAt`, `lastUpdatedAt`) and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
+- Tasks are experimental in MCP 2025-11-25, so a domain-specific status/cancel tool is an acceptable labeled fallback for clients without task support, mirroring the native signals rather than replacing `tasks/*`.
 
 ## Workflow
 

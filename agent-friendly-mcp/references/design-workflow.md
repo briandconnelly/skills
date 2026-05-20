@@ -50,7 +50,7 @@ Treat the schema as the authoritative contract. Write it before behavior.
 - Required vs optional discipline: required parameters are necessary; optional ones have meaningful defaults declared in schema.
 - Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
 - Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
-- Outputs: Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.
+- Outputs: Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them; keep parser-compatible JSON in `content` as the fallback for older or weaker clients.
 - Disambiguating names: `user_id` not `user`, `started_after` not `since`, `channel_id` not `channel`.
 - Descriptions cover when to use, edge cases, and an example invocation.
 
@@ -92,8 +92,8 @@ For each operation that may outlive a normal request/response turn, decide how t
 
 - Choose blocking `tools/call`, progress notifications, or task-augmented requests.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
-- Support `progressToken`, cancellation, status/result retrieval, polling interval, TTL, and terminal states where applicable.
-- Document `execution.taskSupport` as `optional`, `required`, or `forbidden` for task-capable tools.
+- Support `progressToken` and recover through native task operations where applicable — poll `tasks/get` (respect `pollInterval`), fetch with `tasks/result`, cancel with `tasks/cancel` — using the spec's task fields and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
+- Enable tasks at both levels: declare the server `capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`); tasks are experimental, so add a domain-specific status/cancel fallback only as a labeled stand-in for clients without task support.
 
 Output: long-running behavior contract for each affected tool, including progress, cancellation, retrieval, and terminal-state semantics.
 Checkpoint: §7.

@@ -54,7 +54,7 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
 }
 ```
 
-What to notice: the description orients the agent (when-to-use, usage notes, example invocation) but does **not** carry failure semantics — those live in the structured `errors` array, where each code has a `temporary` flag and a concrete repair direction. Parameter names are disambiguated (`channel_id`, `thread_ts`); `required` lists only what's truly necessary; annotations are honest — `idempotentHint: false` because re-sending creates a duplicate post, not a no-op. (`errors` is a convention extension on top of MCP; see §3 contract-checklist rule that side effects, idempotency, and rate limits are first-class contract, not prose.)
+What to notice: the description orients the agent (when-to-use, usage notes, example invocation) but does **not** carry failure semantics — those live in the structured `errors` array, where each code has a `temporary` flag and a concrete repair direction. Parameter names are disambiguated (`channel_id`, `thread_ts`); `required` lists only what's truly necessary; annotations are honest — `idempotentHint: false` because re-sending creates a duplicate post, not a no-op. (`errors` is a convention extension, not a native `Tool` field — see the native-vs-convention rule in `SKILL.md`; §3 of the contract-checklist requires side effects, idempotency, and rate limits to be first-class contract, not prose.)
 
 ## 2. Structured tool response
 
@@ -127,15 +127,18 @@ A single entry from a `slack://channels/C0123ABCD/messages` index listing. *Demo
 ```json
 {
   "uri": "slack://channels/C0123ABCD/messages/1714600000.001200",
+  "name": "1714600000.001200",
   "title": "Deploy started for api@v2.4.1",
-  "summary": "Alice announces the start of the v2.4.1 API deploy; thread contains 12 follow-up replies including the green-light from deploy-bot.",
+  "description": "Alice announces the start of the v2.4.1 API deploy; thread contains 12 follow-up replies including the green-light from deploy-bot.",
+  "mimeType": "application/vnd.slack.message+json",
   "size": 8421,
-  "last_modified": "2026-05-01T18:14:32Z",
-  "content_type": "application/vnd.slack.message+json"
+  "annotations": {"lastModified": "2026-05-01T18:14:32Z"}
 }
 ```
 
-What to notice: `uri` is hierarchical and stable (channel id + message ts); `title` and `summary` together let the agent decide whether to fetch the body without reading it; `size` lets the agent estimate token cost; `last_modified` lets the agent skip a re-fetch if it already cached this version; `content_type` tells the agent which parser to use.
+What to notice: every field here is a native `Resource` field (`uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations.lastModified`) — see the native-vs-convention rule in `SKILL.md`.
+`uri` is hierarchical and stable (channel id + message ts); `title` and `description` together let the agent decide whether to fetch the body without reading it; `size` lets the agent estimate token cost; `annotations.lastModified` lets the agent skip a re-fetch if it already cached this version; `mimeType` tells the agent which parser to use.
+Custom index metadata that has no native field goes under `_meta` (demonstrated in §4), not as a new top-level key.
 
 ## 4. Resource body with chunking
 
@@ -146,16 +149,19 @@ Index entry that points at it:
 ```json
 {
   "uri": "slack://channels/C0123ABCD/messages/1714600000.001200",
+  "name": "1714600000.001200",
   "title": "Deploy started for api@v2.4.1",
-  "summary": "Deploy thread; 12 replies across 3 chunks.",
+  "description": "Deploy thread; 12 replies across 3 chunks.",
+  "mimeType": "application/vnd.slack.thread+json",
   "size": 8421,
-  "last_modified": "2026-05-01T18:14:32Z",
-  "content_type": "application/vnd.slack.thread+json",
-  "chunks": [
-    {"id": "thread:1714600000.001200#root", "size": 412},
-    {"id": "thread:1714600000.001200#replies-1-6", "size": 3902},
-    {"id": "thread:1714600000.001200#replies-7-12", "size": 4107}
-  ]
+  "annotations": {"lastModified": "2026-05-01T18:14:32Z"},
+  "_meta": {
+    "com.slack-mcp/chunks": [
+      {"id": "thread:1714600000.001200#root", "size": 412},
+      {"id": "thread:1714600000.001200#replies-1-6", "size": 3902},
+      {"id": "thread:1714600000.001200#replies-7-12", "size": 4107}
+    ]
+  }
 }
 ```
 
@@ -175,8 +181,9 @@ Body fragment for chunk `thread:1714600000.001200#replies-1-6`:
 }
 ```
 
-What to notice: chunk ids are domain-readable (`#replies-1-6`) because they name stable positions inside a Slack thread, not server-side state handles.
-`version` matches the index's `last_modified` so the agent can detect stale chunk references; `next_chunk_id` lets the agent paginate without re-fetching the index.
+What to notice: the chunk catalog is a server-specific convention with no native `Resource` field, so it rides under a namespaced `_meta` key (`com.slack-mcp/chunks`) rather than a new top-level field — this is the worked `_meta` namespacing pattern the rest of the skill points at.
+Chunk ids are domain-readable (`#replies-1-6`) because they name stable positions inside a Slack thread, not server-side state handles.
+`version` matches the index's `annotations.lastModified` so the agent can detect stale chunk references; `next_chunk_id` lets the agent paginate without re-fetching the index.
 The agent can quote `chunk_id` back to a tool that asks "where did you read that?"
 
 ## 5. Prompt scaffold
@@ -212,6 +219,7 @@ A prompt that orchestrates posting a release announcement across multiple channe
 ```
 
 What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the required permissions, tool names, resource URIs, and context assumptions in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
+`when_to_use`, `prerequisites`, and `expected_followups` are convention extensions, not native MCP `Prompt` fields (native is `name`, `title`, `description`, `arguments`, `_meta`); a portable server carries them in the prompt `description` text or under a namespaced `_meta` key (see the native-vs-convention rule in `SKILL.md`).
 
 ## 6. Actionable error payload
 
@@ -311,6 +319,7 @@ What to notice: an agent reads this once, through whatever summary surface the c
 The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses.
 The transport choice (`stdio`) is declared.
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
+This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8. `search_tools` response shape
 
@@ -348,6 +357,7 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 ```
 
 What to notice: only summaries come back, not full schemas; the agent calls `describe_tool` to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
+Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 9. Capability fingerprint with deprecation
 
@@ -409,6 +419,7 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
 The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened.
 Every fingerprint string changes when any covered surface changes.
+The fingerprint and its `covers`, `deprecation`, and `schema_hash` fields are a convention extension, not a native MCP structure (see the native-vs-convention rule in `SKILL.md`).
 When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
 
 ## 10. Worked task: API mirroring vs. task completion
@@ -505,69 +516,186 @@ What to notice: (a) costs five round-trips and two failed attempts because endpo
 
 ## 11. Long-running operation
 
-Exporting a wide date range can take minutes, so `slack_export_history` uses task support rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
+Exporting a wide date range can take minutes, so `slack_export_history` declares task support and recovers through the native MCP task lifecycle rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
+
+Tasks are **experimental** in MCP 2025-11-25, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for servers or clients that do not implement tasks.
+
+**Capability negotiation.** Native task recovery requires two declarations, not one — the server advertises the `tasks` capability, and the tool advertises `execution.taskSupport`. The per-tool flag alone is insufficient.
 
 ```json
 {
-  "tool": {
-    "name": "slack_export_history",
-    "description": "Export Slack history for channels and a date range; wide exports run as recoverable tasks.",
-    "inputSchema": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "required": ["channel_ids", "started_after", "ended_before"],
-      "properties": {
-        "channel_ids": {"type": "array", "items": {"type": "string", "pattern": "^C[A-Z0-9]{8,}$"}},
-        "started_after": {"type": "string", "format": "date-time"},
-        "ended_before": {"type": "string", "format": "date-time"}
-      },
-      "additionalProperties": false
-    },
-    "execution": {
-      "taskSupport": "optional",
-      "expected_duration_seconds": {"typical": 45, "wide_range": 180},
-      "timeout_behavior": "returns task_id before server timeout; result is retrievable for 24h"
+  "capabilities": {
+    "tasks": {
+      "list": {},
+      "cancel": {},
+      "requests": {"tools": {"call": {}}}
     }
-  },
-  "progress_notification": {
-    "method": "notifications/progress",
-    "params": {
-      "progressToken": "pt_01J9EXPORT",
-      "progress": 0.62,
-      "message": "Exported 31 of 50 channel-days.",
-      "phase": "collecting_messages"
-    }
-  },
-  "status_running": {
-    "tool": "slack_get_export_status",
-    "task_id": "task_01J9EXPORT",
-    "state": "running",
-    "terminal": false,
-    "poll_after_ms": 5000,
-    "progress": 0.62
-  },
-  "status_terminal": {
-    "tool": "slack_get_export_status",
-    "task_id": "task_01J9EXPORT",
-    "state": "succeeded",
-    "terminal": true,
-    "terminal_states": ["succeeded", "failed", "cancelled", "expired"],
-    "result_resource_uri": "slack://exports/task_01J9EXPORT/result.json",
-    "expires_at": "2026-05-02T18:14:32Z",
-    "poll_after_ms": null
-  },
-  "cancel": {
-    "method": "notifications/cancelled",
-    "params": {"requestId": "req_01HXYZ", "reason": "user_cancelled"},
-    "task_alternative": {"tool": "slack_cancel_export", "arguments": {"task_id": "task_01J9EXPORT"}}
   }
 }
 ```
 
-What to notice: `task_id` is an opaque state handle with a readable surrounding status response, while the result is exposed as a resource URI with a declared TTL.
-The progress notification is rate-limitable and keyed by `progressToken`, so a client can monitor without polling every phase.
-The nonterminal `status_running` shape carries `poll_after_ms` so the client knows when to check again, and the terminal shape enumerates the full state set so the agent can branch deterministically.
-Cancellation is dual-pathed: `notifications/cancelled` for the request-bound call, and a task-level cancel tool for work that has already detached behind a `task_id`.
+**Tool definition** (entry in `tools/list`):
+
+```json
+{
+  "name": "slack_export_history",
+  "description": "Export Slack history for channels and a date range; wide exports run as recoverable tasks.\n\nDuration: typically ~45s, up to ~180s for wide ranges. Run as a task, the call returns a taskId before any server timeout and the result is retrievable until `ttl` elapses.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["channel_ids", "started_after", "ended_before"],
+    "properties": {
+      "channel_ids": {"type": "array", "items": {"type": "string", "pattern": "^C[A-Z0-9]{8,}$"}},
+      "started_after": {"type": "string", "format": "date-time"},
+      "ended_before": {"type": "string", "format": "date-time"}
+    },
+    "additionalProperties": false
+  },
+  "execution": {"taskSupport": "optional"}
+}
+```
+
+**Create the task.** The client augments its `tools/call` with a `task` field in `params`; the receiver returns a `CreateTaskResult` carrying the native `Task` object under `result.task`, not the tool result.
+
+Request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_01HXYZ",
+  "method": "tools/call",
+  "params": {
+    "name": "slack_export_history",
+    "arguments": {
+      "channel_ids": ["C0123ABCD"],
+      "started_after": "2026-01-01T00:00:00Z",
+      "ended_before": "2026-05-01T00:00:00Z"
+    },
+    "task": {"ttl": 86400000}
+  }
+}
+```
+
+Response (`CreateTaskResult`):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_01HXYZ",
+  "result": {
+    "task": {
+      "taskId": "task_01J9EXPORT",
+      "status": "working",
+      "statusMessage": "Export accepted; collecting messages.",
+      "createdAt": "2026-05-01T18:14:32Z",
+      "lastUpdatedAt": "2026-05-01T18:14:32Z",
+      "ttl": 86400000,
+      "pollInterval": 5000
+    }
+  }
+}
+```
+
+**Progress** is keyed by `progressToken` and, like every task-associated message, carries `io.modelcontextprotocol/related-task` in `_meta`.
+
+Notification:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/progress",
+  "params": {
+    "progressToken": "pt_01J9EXPORT",
+    "progress": 0.62,
+    "total": 1,
+    "message": "Exported 31 of 50 channel-days.",
+    "_meta": {"io.modelcontextprotocol/related-task": {"taskId": "task_01J9EXPORT"}}
+  }
+}
+```
+
+**Poll** with `tasks/get` (`params: {"taskId": "task_01J9EXPORT"}`) until a terminal status, respecting `pollInterval`; the response carries the `Task` directly in `result`.
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_poll_2",
+  "result": {
+    "taskId": "task_01J9EXPORT",
+    "status": "completed",
+    "createdAt": "2026-05-01T18:14:32Z",
+    "lastUpdatedAt": "2026-05-01T18:21:48Z",
+    "ttl": 86400000,
+    "pollInterval": 5000
+  }
+}
+```
+
+**Retrieve** the result with `tasks/result` (`params: {"taskId": "task_01J9EXPORT"}`) once the task is terminal; it returns exactly what the original `tools/call` would have, including the related-task `_meta`. Domain payload (export location, counts) rides in `structuredContent`.
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_result",
+  "result": {
+    "content": [{"type": "text", "text": "Export ready: 9,214 messages across 50 channel-days."}],
+    "structuredContent": {
+      "result_resource_uri": "slack://exports/task_01J9EXPORT/result.json",
+      "message_count": 9214
+    },
+    "isError": false,
+    "_meta": {"io.modelcontextprotocol/related-task": {"taskId": "task_01J9EXPORT"}}
+  }
+}
+```
+
+**Cancel** task-augmented work with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT"}`) — not `notifications/cancelled`, which cancels request-bound non-task calls. The receiver transitions the task to the terminal `cancelled` status before responding.
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_cancel",
+  "result": {
+    "taskId": "task_01J9EXPORT",
+    "status": "cancelled",
+    "statusMessage": "Export cancelled by request.",
+    "createdAt": "2026-05-01T18:14:32Z",
+    "lastUpdatedAt": "2026-05-01T18:19:02Z",
+    "ttl": 86400000
+  }
+}
+```
+
+**Fallback for clients without task support** (convention, not native). When the server cannot rely on the experimental task capability, expose a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
+
+```json
+{
+  "status": {
+    "tool": "slack_get_export_status",
+    "export_id": "exp_01J9EXPORT",
+    "state": "running",
+    "terminal": false,
+    "poll_after_ms": 5000,
+    "progress": 0.62,
+    "terminal_states": ["succeeded", "failed", "cancelled"]
+  },
+  "cancel": {"tool": "slack_cancel_export", "arguments": {"export_id": "exp_01J9EXPORT"}}
+}
+```
+
+What to notice: native recovery needs both the server `capabilities.tasks.requests.tools.call` declaration and the tool's `execution.taskSupport` — the per-tool flag alone does nothing.
+Native task fields use the spec's casing exactly: `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — do not rename them to the snake_case used by domain fields.
+`ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
+Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.
+`CreateTaskResult` nests the `Task` under `result.task`; `tasks/get` and `tasks/cancel` return the `Task` directly in `result`; `tasks/result` returns the underlying tool result — read each shape from the spec rather than assuming one envelope.
+Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
+The domain-specific status/cancel tools are a labeled fallback for the experimental-task gap, not a replacement for `tasks/*`.
 
 ## 12. Response-delivery artifact
 
@@ -602,7 +730,7 @@ A successful response:
   "row_count": 8472,
   "result_artifact": {
     "path": "/var/cache/warehouse-mcp/results/q_01J9XYZ.csv",
-    "content_type": "text/csv",
+    "mimeType": "text/csv",
     "size_bytes": 412908,
     "ttl_hours": 24,
     "expires_at": "2026-05-11T18:14:32Z"
@@ -615,8 +743,9 @@ A successful response:
 }
 ```
 
-What to notice: `readOnlyHint: true` is correct because the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is the response delivery — scoped to this call, declared TTL, no shared visibility — not persistent state that outlives the response contract.
+What to notice: this skill treats `readOnlyHint: true` as defensible here — the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is response delivery (scoped to this call, declared TTL, no shared visibility), not persistent state that outlives the response contract.
+That is a deliberate reading of an ambiguous hint, not settled spec (see contract-checklist §3): a reviewer who reads `readOnlyHint` literally as "does not modify its environment" may count the local write as mutation, so where you can, prefer returning the result as a resource or resource link with TTL metadata rather than a local-file artifact.
 `idempotentHint: true` follows the same framing: repeated calls don't compound state. Each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
-The artifact is disclosed in the structured response (`result_artifact` with `path`, `content_type`, `ttl_hours`, `expires_at`) and in the tool description, never by flipping the annotation.
-Flipping `readOnlyHint` to `false` here would gate auto-approval on a semantically read-only call and create friction with no safety benefit.
+The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mimeType`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
+Flipping `readOnlyHint` to `false` here would gate auto-approval on a call this skill considers read-only and create friction with no safety benefit; a server that takes the literal reading instead should say so and annotate consistently.

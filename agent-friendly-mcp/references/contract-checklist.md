@@ -58,6 +58,8 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **Include the capability fingerprint in discovery responses.** Clients can short-circuit a re-walk if nothing has changed (see §9).
 
+- **Discovery may vary by authorization context, but never by hidden side effects.** The tool and resource lists an agent sees may legitimately differ across auth scopes — an unauthorized scope simply does not see a capability. They MUST NOT drift as a side effect of unrelated calls within a connection: the same authorized client gets the same surface in the same order (see §9), so a cached client can trust it. Make differences auth-scoped, declared, and stable, not per-request surprises.
+
 Audit prompt: Can an agent find the right tool or resource for a task without loading every definition the server exposes?
 
 ---
@@ -82,8 +84,8 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Close object schemas.** Use `additionalProperties: false` on all object schemas unless unknown extension fields are an intentional, documented contract.
 
-- **Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.**
-  Output schema support varies across MCP versions, so keep the fallback parser-compatible.
+- **Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them.** This is the normative target, not an optional nicety: when a tool declares an `outputSchema`, servers MUST return conforming `structuredContent`, and clients SHOULD validate against it.
+  Keep parser-compatible JSON in `content` as a fallback for older or weaker clients; support varies across MCP versions, so the fallback stays useful — but it is the fallback, not the contract.
 
 - **Default to structured output.** Structured data is authoritative; text or markdown is supplemental rendering for human-facing clients.
   Token-efficiency rules for responses live in §8.
@@ -92,10 +94,13 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
-- **Define mutation by observable scope, not by I/O.** `readOnlyHint` describes whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
-  It is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
-  A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is part of the response, not a side effect, and the tool is still `readOnlyHint: true`.
-  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, content_type}`) and the tool description, not by flipping the annotation.
+- **Define mutation by observable scope, not by I/O — a deliberate reading of an ambiguous hint.** The MCP spec glosses `readOnlyHint` only as "the tool does not modify its environment," which is broad enough to read either way for a local write.
+  This skill takes the position that `readOnlyHint` should track whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
+  Under that reading it is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
+  A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is treated as part of the response, not a side effect, so the tool stays `readOnlyHint: true`.
+  This is a judgment call, not settled spec: a reviewer who reads "environment" literally may disagree, so document the choice rather than asserting it.
+  Prefer returning large results as resources or resource links with TTL metadata where you can, and reserve the response-delivery-artifact pattern for cases where an inline or linked resource does not fit.
+  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, mimeType}`) and the tool description, not by flipping the annotation.
   See `examples.md` §12 for a worked response-delivery artifact.
 
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
@@ -156,7 +161,9 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 - **Chunk identifiers are stable across reads of the same resource version.** If the resource changes, identifiers may change — but the change is observable via the resource's modification metadata.
 
-- **Include the metadata fields agents use to triage.** `title`, `summary`, `size`, `last_modified`, `content_type`. Missing metadata pushes the agent into fetching bodies blindly.
+- **Include the metadata fields agents use to triage.** Use native `Resource` fields: `title`, `description`, `mimeType`, `size`, and `annotations.lastModified`. Missing metadata pushes the agent into fetching bodies blindly; custom triage fields with no native home go under a namespaced `_meta` key, not a new top-level field.
+
+- **Expose URI-shaped resources through resource templates.** When resources are parameterized by a URI pattern, publish `resourceTemplates` via `resources/templates/list` (with `uriTemplate`, `name`, `title`, `description`, `mimeType`) so agents can discover the shape without enumerating every instance. Templates are a native discovery primitive distinct from the resource list itself.
 
 - **Keep summaries short.** Typically 1–3 sentences, not paragraphs. Resource summaries appear in lists of dozens; long summaries defeat the index.
 
@@ -241,9 +248,11 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 - **Support cancellation where work can continue after the call starts.** Honor `notifications/cancelled` for request-bound work and `tasks/cancel` for task-capable tools.
 
-- **Declare task support explicitly.** For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`. The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
-- **Define status and result retrieval.** Task responses include polling interval, result TTL, terminal states, and the tool or resource used to fetch the final result.
+- **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`. Task objects use the spec's fields and casing — `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`. Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
+
+- **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
 
 - **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
 
