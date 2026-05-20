@@ -1,0 +1,2 @@
+- When writing markdown, use one sentence per line for easy diffs
+- Commit messages follow conventional commits

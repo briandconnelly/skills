@@ -14,6 +14,8 @@ List the real tasks an agent should be able to complete with this server.
 - Pull tasks from real workflows — what a user or agent already does end-to-end without this server.
 - Group near-duplicates; collapse 60 endpoint variations into the 6–10 tasks they actually serve.
 - Note prerequisites per task (auth scope, workspace/project context, prior calls, implicit state, handles, cursors, jobs, or sessions that affect behavior) — these surface again in Step 5.
+- Note optional MCP capabilities each task benefits from or requires: roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks.
+  Record the weaker-client fallback at the same time.
 
 Output: a written task list, each task expressed as a verb phrase with the user/agent goal.
 Checkpoint: §1, §3 granularity rule.
@@ -50,7 +52,9 @@ Treat the schema as the authoritative contract. Write it before behavior.
 - Required vs optional discipline: required parameters are necessary; optional ones have meaningful defaults declared in schema.
 - Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
 - Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
-- Outputs: Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them; keep parser-compatible JSON in `content` as the fallback for older or weaker clients.
+- Outputs: Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them.
+  Keep parser-compatible JSON in `content` as the fallback for older or weaker clients.
+- Rich results: for large or binary outputs, plan `resource_link` or embedded `resource` content plus a concise `structuredContent` summary instead of inlining bulk data.
 - Disambiguating names: `user_id` not `user`, `started_after` not `since`, `channel_id` not `channel`.
 - Descriptions cover when to use, edge cases, and an example invocation.
 
@@ -66,6 +70,10 @@ Decide how an agent finds the right primitive without loading every definition.
 - Pick a progressive-disclosure mechanism: `search_tools` / `describe_tool`, resource catalog, namespaced filters — at least one.
 - Make discovery selective: filter by name, namespace, or topic. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.
+- Publish `resources/templates/list` for URI-shaped resources that cannot or should not be fully enumerated.
+- Implement `completion/complete` for prompt arguments and resource-template variables with dynamic value sets when `server.capabilities.completions` is negotiated.
+  Document that completion does not cover arbitrary tool arguments.
+- For workspace-scoped servers, request `roots/list` from clients that negotiate roots and declare how root changes are handled.
 - If resource discoverability matters, provide a tool fallback for clients that do not expose resources well.
 
 Output: server capability summary, discovery primitives implemented, resource catalog shape.
@@ -81,6 +89,8 @@ Design the error surface as deliberately as the success surface.
 - Tool semantic errors return as tool result errors with `isError: true`.
 - Resource failures return JSON-RPC errors with structured `error.data` repair fields.
 - Repair hints reference real callable surfaces — tool names, parameter names, valid enum values — not free-form prose.
+- Capability failures name the missing negotiated capability and the fallback path (`capability_not_negotiated`, `required_capability`, `fallback`).
+- If the server can use elicitation for missing input or sensitive external flows, define both the elicitation path and the non-elicitation fallback error.
 - Draft a worked JSON payload for each top failure mode — not just a field inventory. Concrete payloads expose contradictions a field list hides.
 
 Output: error taxonomy with example payloads for the top failure modes per tool, including correlation context (`request_id`, offending parameter).
@@ -93,7 +103,9 @@ For each operation that may outlive a normal request/response turn, decide how t
 - Choose blocking `tools/call`, progress notifications, or task-augmented requests.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and recover through native task operations where applicable — poll `tasks/get` (respect `pollInterval`), fetch with `tasks/result`, cancel with `tasks/cancel` — using the spec's task fields and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
-- Enable tasks at both levels: declare the server `capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`); tasks are experimental, so add a domain-specific status/cancel fallback only as a labeled stand-in for clients without task support.
+- For `input_required`, say whether the task resumes through elicitation, URL-mode elicitation, or a domain-specific status/repair tool.
+- Enable tasks at both levels: declare the server `server.capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`).
+  Tasks are experimental, so add a domain-specific status/cancel fallback only as a labeled stand-in for clients without task support.
 
 Output: long-running behavior contract for each affected tool, including progress, cancellation, retrieval, and terminal-state semantics.
 Checkpoint: §7.
