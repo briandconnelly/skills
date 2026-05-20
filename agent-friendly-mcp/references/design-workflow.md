@@ -71,7 +71,7 @@ Decide how an agent finds the right primitive without loading every definition.
 - Make discovery selective: filter by name, namespace, or topic. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.
 - Publish `resources/templates/list` for URI-shaped resources that cannot or should not be fully enumerated.
-- Implement `completion/complete` for prompt arguments and resource-template variables with dynamic value sets.
+- Implement `completion/complete` for prompt arguments and resource-template variables with dynamic value sets when `server.capabilities.completions` is negotiated.
   Document that completion does not cover arbitrary tool arguments.
 - For workspace-scoped servers, request `roots/list` from clients that negotiate roots and declare how root changes are handled.
 - If resource discoverability matters, provide a tool fallback for clients that do not expose resources well.
@@ -104,7 +104,7 @@ For each operation that may outlive a normal request/response turn, decide how t
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and recover through native task operations where applicable — poll `tasks/get` (respect `pollInterval`), fetch with `tasks/result`, cancel with `tasks/cancel` — using the spec's task fields and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
 - For `input_required`, say whether the task resumes through elicitation, URL-mode elicitation, or a domain-specific status/repair tool.
-- Enable tasks at both levels: declare the server `capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`).
+- Enable tasks at both levels: declare the server `server.capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`).
   Tasks are experimental, so add a domain-specific status/cancel fallback only as a labeled stand-in for clients without task support.
 
 Output: long-running behavior contract for each affected tool, including progress, cancellation, retrieval, and terminal-state semantics.

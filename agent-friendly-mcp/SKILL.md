@@ -26,9 +26,10 @@ Keep them — but never let them masquerade as protocol.
 
 - Use native fields with their exact spec names and casing.
   Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`.
-  Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations`, `_meta`.
-  Resource template: `uriTemplate`, `name`, `title`, `description`, `mimeType`, `annotations`, `_meta`.
-  Prompt: `name`, `title`, `description`, `arguments`, `_meta`.
+  Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `icons`, `annotations`, `_meta`.
+  Resource template: `uriTemplate`, `name`, `title`, `description`, `mimeType`, `icons`, `annotations`, `_meta`.
+  Prompt: `name`, `title`, `description`, `icons`, `arguments`, `_meta`.
+  Implementation: `name`, `title`, `version`, `description`, `icons`, `websiteUrl`.
 - Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
 - Label every convention extension as such where it appears, so a reader can tell protocol from house style.
 - The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
@@ -82,9 +83,9 @@ Keep them — but never let them masquerade as protocol.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and rate-limited `notifications/progress` when progress exists.
 - Use `notifications/cancelled` to cancel request-bound non-task work, and `tasks/cancel` to cancel task-augmented work.
-- Enable native tasks at both levels: the server declares `capabilities.tasks.requests.tools.call` and the tool declares `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- Enable native tasks at both levels: the server declares `server.capabilities.tasks.requests.tools.call` and the tool declares `execution.taskSupport` as `optional`, `required`, or `forbidden`.
 - Recover via native operations — poll `tasks/get` (respecting `pollInterval`), fetch with `tasks/result`, using the spec's task fields (`taskId`, `status`, `ttl`, `createdAt`, `lastUpdatedAt`) and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
-- If a task can enter `input_required`, declare whether it uses MCP elicitation (`elicitation/create`) or a domain-specific repair/status fallback, and gate that path on the client's negotiated `elicitation` and `tasks.requests.elicitation.create` capabilities.
+- If a task can enter `input_required`, declare whether it uses MCP elicitation (`elicitation/create`) or a domain-specific repair/status fallback, and gate that path on the client's negotiated `client.capabilities.elicitation` and `client.capabilities.tasks.requests.elicitation.create` capabilities.
 - Tasks are experimental in MCP 2025-11-25, so a domain-specific status/cancel tool is an acceptable labeled fallback for clients without task support, mirroring the native signals rather than replacing `tasks/*`.
 
 ## Workflow

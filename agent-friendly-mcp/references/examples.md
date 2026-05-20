@@ -275,7 +275,7 @@ Completion response:
 ```
 
 What to notice: `uriTemplate` is native resource-template metadata, and `completion/complete` is native completion for a resource reference.
-The server must advertise `capabilities.completions` during initialization before clients can rely on this path.
+The server must advertise `server.capabilities.completions` during initialization before clients can rely on this path.
 Completion is useful here because Slack channel ids are dynamic and hard to guess; it does not replace normal validation or repair errors for tool-call arguments.
 
 ## 5b. Resource subscription
@@ -395,8 +395,17 @@ The capability summary exposed via a resource, discovery tool, or instructions f
     "workspace_scope": "One Slack workspace per server instance.",
     "required_scopes": ["chat:write", "channels:read", "users:read"],
     "negotiated_capabilities": {
-      "uses": ["resources.listChanged", "resources.subscribe", "completions", "tasks.requests.tools.call"],
-      "optional_client_features": ["roots", "elicitation.form", "elicitation.url"],
+      "server": [
+        "server.capabilities.resources.listChanged",
+        "server.capabilities.resources.subscribe",
+        "server.capabilities.completions",
+        "server.capabilities.tasks.requests.tools.call"
+      ],
+      "client": [
+        "client.capabilities.roots",
+        "client.capabilities.elicitation.form",
+        "client.capabilities.elicitation.url"
+      ],
       "fallbacks": {
         "no_completions": "Return invalid-field errors with allowed channel ids where safe.",
         "no_resource_subscribe": "Use annotations.lastModified and explicit re-read guidance.",
@@ -408,8 +417,13 @@ The capability summary exposed via a resource, discovery tool, or instructions f
     },
     "auth": {
       "mode": "stdio environment credential",
-      "http_resource_indicator": "https://slack-mcp.example.com/mcp",
-      "step_up_scopes": ["admin.conversations:write"]
+      "credential_source": "SLACK_BOT_TOKEN",
+      "http_variant": {
+        "only_when_exposed_over_http": true,
+        "canonical_server_uri": "https://slack-mcp.example.com/mcp",
+        "resource_indicator": "https://slack-mcp.example.com/mcp",
+        "step_up_scopes": ["admin.conversations:write"]
+      }
     },
     "failure_codes": {
       "missing_credential": "server is not connected to Slack",
@@ -425,7 +439,9 @@ The summary does not spend first-read tokens on credential wiring details the ag
 The transport choice (`stdio`) is declared.
 The negotiated-capability block is convention metadata, but the capabilities it names are native MCP features.
 It tells the agent which paths are fast paths and which fallbacks to expect on weaker clients.
-The auth block includes the parts that affect agent repair: required and step-up scopes, plus the HTTP resource indicator/canonical server URI if the same contract is exposed over HTTP.
+Capability strings use fully qualified `server.capabilities.*` and `client.capabilities.*` paths so the server/client side of negotiation is unambiguous.
+The auth block separates stdio credential sourcing from the optional HTTP variant.
+The `http_variant` fields apply only if the same contract is also exposed over streamable HTTP; stdio-only servers should omit that object.
 It does not ask the model to handle bearer tokens directly.
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
 This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
@@ -838,7 +854,7 @@ Response:
 }
 ```
 
-What to notice: native recovery needs both the server `capabilities.tasks.requests.tools.call` declaration and the tool's `execution.taskSupport` — the per-tool flag alone does nothing.
+What to notice: native recovery needs both the server `server.capabilities.tasks.requests.tools.call` declaration and the tool's `execution.taskSupport` — the per-tool flag alone does nothing.
 Native task fields use the spec's casing exactly: `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — do not rename them to the snake_case used by domain fields.
 `ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
 Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.

@@ -6,6 +6,8 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 ## 1. Server-Level
 
+*Worked shapes: `examples.md` §7 (server capability summary), §8a (roots-aware workspace behavior).*
+
 - **Name with a service prefix.** Use a descriptive, agent-facing name with no version numbers, not a host-language convention. The name shows up in tool selection across multi-server contexts and is part of the discovery surface.
 
 - **Avoid generic service names.** Names like `api`, `data`, or `tools` collide silently in multiplexed clients. Pick a name a human could disambiguate at a glance.
@@ -33,7 +35,7 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
   These fields are not a substitute for precise names and descriptions, but they reduce wrong selection in mixed human/agent workflows.
 
 - **Record negotiated capabilities as part of the contract.** During initialization, client and server exchange protocol versions and capabilities; optional features are usable only if negotiated.
-  A design or audit must say which features it depends on (`roots`, `completions`, `resources.subscribe`, `listChanged`, `elicitation`, `tasks`) and what fallback weaker clients receive.
+  A design or audit must say which fully qualified paths it depends on (for example, `server.capabilities.completions`, `server.capabilities.resources.subscribe`, `client.capabilities.roots`, `client.capabilities.elicitation`, or `server.capabilities.tasks.requests.tools.call`) and what fallback weaker clients receive.
 
 - **Handle roots deliberately for workspace-scoped servers.** If a server reads or writes local project content, request `roots/list` from clients that advertise `roots`, stay within those declared roots unless the tool contract explicitly says otherwise, and handle `notifications/roots/list_changed`.
   Roots guide server behavior and reduce path ambiguity; they are not access control, so still enforce filesystem permissions independently.
@@ -58,7 +60,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **Make discovery selective.** Clients can filter by name, namespace, or topic. A server with 80 tools and no filter is functionally undiscoverable.
 
-- **Use native completion for hard-to-guess prompt and resource-template arguments.** If the server has prompt arguments or resource-template variables with large, dynamic, or enum-like value sets, advertise `capabilities.completions` and implement `completion/complete`.
+- **Use native completion for hard-to-guess prompt and resource-template arguments.** If the server has prompt arguments or resource-template variables with large, dynamic, or enum-like value sets, advertise `server.capabilities.completions` and implement `completion/complete`.
   Use it proactively to reduce invalid IDs, paths, project keys, channel names, and URI components; keep tool-argument repair in normal tool errors because MCP completion does not complete arbitrary tool arguments.
 
 - **Discovery obeys token-efficiency rules.** Definitions paginate, support filtering, and return concise summaries by default with an opt-in detailed mode (see §8).
@@ -218,7 +220,7 @@ Audit prompt: Can an agent decide whether to fetch a resource — and which chun
 
 - **List prerequisites.** Which tools, which resources, and which permission or context assumptions the prompt relies on. Missing prerequisites surface as confusing failures partway through execution.
 
-- **Offer completion for prompt arguments with dynamic value sets.** If a prompt argument asks for a project, workspace, repository, environment, channel, or similar value the agent should not guess, support `completion/complete` when `capabilities.completions` is negotiated.
+- **Offer completion for prompt arguments with dynamic value sets.** If a prompt argument asks for a project, workspace, repository, environment, channel, or similar value the agent should not guess, support `completion/complete` when `server.capabilities.completions` is negotiated.
 
 - **Reference expected follow-on tools and resources by name.** A prompt that doesn't tell the agent what to invoke next is half a scaffold.
 
@@ -287,7 +289,8 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 - **Support cancellation where work can continue after the call starts.** Honor `notifications/cancelled` for request-bound work and `tasks/cancel` for task-capable tools.
 
-- **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`. The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
+- **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`server.capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+  The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
   Task objects use the spec's fields and casing — `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`.
