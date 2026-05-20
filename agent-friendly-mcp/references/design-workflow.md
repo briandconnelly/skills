@@ -67,6 +67,7 @@ Decide how an agent finds the right primitive without loading every definition.
 
 - Write the server capability summary: what it does, what it does NOT do, and any prerequisites that affect whether or how an agent should use it.
 - Expose the summary through a resource, discovery tool, or instructions field, whichever the client honors.
+  Treat `instructions` as supplemental because some clients do not surface it to the model.
 - Pick a progressive-disclosure mechanism: `search_tools` / `describe_tool`, resource catalog, namespaced filters — at least one.
 - Make discovery selective: filter by name, namespace, or topic. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.

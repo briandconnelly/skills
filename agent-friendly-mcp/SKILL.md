@@ -10,6 +10,8 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 ## Core Standard
 
 - Tool and resource schemas are the operational contract; prompts are advisory scaffolding for orchestration. Do not hide essential behavior in prompts.
+- Server-level `instructions` are advisory and may not be surfaced by every client.
+  Do not put essential selection, prerequisite, safety, or repair behavior only in `instructions`.
 - Optional MCP features only exist for an agent after protocol version and capability negotiation.
   Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
 - Optimize for the first successful tool call **and** the first successful repair from a cold start.
