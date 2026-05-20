@@ -54,7 +54,7 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
 }
 ```
 
-What to notice: the description orients the agent (when-to-use, usage notes, example invocation) but does **not** carry failure semantics — those live in the structured `errors` array, where each code has a `temporary` flag and a concrete repair direction. Parameter names are disambiguated (`channel_id`, `thread_ts`); `required` lists only what's truly necessary; annotations are honest — `idempotentHint: false` because re-sending creates a duplicate post, not a no-op. (`errors` is a convention extension on top of MCP; see §3 contract-checklist rule that side effects, idempotency, and rate limits are first-class contract, not prose.)
+What to notice: the description orients the agent (when-to-use, usage notes, example invocation) but does **not** carry failure semantics — those live in the structured `errors` array, where each code has a `temporary` flag and a concrete repair direction. Parameter names are disambiguated (`channel_id`, `thread_ts`); `required` lists only what's truly necessary; annotations are honest — `idempotentHint: false` because re-sending creates a duplicate post, not a no-op. (`errors` is a convention extension, not a native `Tool` field — see the native-vs-convention rule in `SKILL.md`; §3 of the contract-checklist requires side effects, idempotency, and rate limits to be first-class contract, not prose.)
 
 ## 2. Structured tool response
 
@@ -136,7 +136,7 @@ A single entry from a `slack://channels/C0123ABCD/messages` index listing. *Demo
 }
 ```
 
-What to notice: every field here is a native `Resource` field (`uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations.lastModified`) — see the protocol-native-vs-convention rule in `SKILL.md`.
+What to notice: every field here is a native `Resource` field (`uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations.lastModified`) — see the native-vs-convention rule in `SKILL.md`.
 `uri` is hierarchical and stable (channel id + message ts); `title` and `description` together let the agent decide whether to fetch the body without reading it; `size` lets the agent estimate token cost; `annotations.lastModified` lets the agent skip a re-fetch if it already cached this version; `mimeType` tells the agent which parser to use.
 Custom index metadata that has no native field goes under `_meta` (demonstrated in §4), not as a new top-level key.
 
@@ -219,6 +219,7 @@ A prompt that orchestrates posting a release announcement across multiple channe
 ```
 
 What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the required permissions, tool names, resource URIs, and context assumptions in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
+`when_to_use`, `prerequisites`, and `expected_followups` are convention extensions, not native MCP `Prompt` fields (native is `name`, `title`, `description`, `arguments`, `_meta`); a portable server carries them in the prompt `description` text or under a namespaced `_meta` key (see the native-vs-convention rule in `SKILL.md`).
 
 ## 6. Actionable error payload
 
@@ -318,6 +319,7 @@ What to notice: an agent reads this once, through whatever summary surface the c
 The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses.
 The transport choice (`stdio`) is declared.
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
+This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8. `search_tools` response shape
 
@@ -355,6 +357,7 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 ```
 
 What to notice: only summaries come back, not full schemas; the agent calls `describe_tool` to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
+Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 9. Capability fingerprint with deprecation
 
@@ -416,6 +419,7 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
 The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened.
 Every fingerprint string changes when any covered surface changes.
+The fingerprint and its `covers`, `deprecation`, and `schema_hash` fields are a convention extension, not a native MCP structure (see the native-vs-convention rule in `SKILL.md`).
 When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
 
 ## 10. Worked task: API mirroring vs. task completion
@@ -696,7 +700,7 @@ A successful response:
   "row_count": 8472,
   "result_artifact": {
     "path": "/var/cache/warehouse-mcp/results/q_01J9XYZ.csv",
-    "content_type": "text/csv",
+    "mimeType": "text/csv",
     "size_bytes": 412908,
     "ttl_hours": 24,
     "expires_at": "2026-05-11T18:14:32Z"
@@ -709,8 +713,9 @@ A successful response:
 }
 ```
 
-What to notice: `readOnlyHint: true` is correct because the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is the response delivery — scoped to this call, declared TTL, no shared visibility — not persistent state that outlives the response contract.
+What to notice: this skill treats `readOnlyHint: true` as defensible here — the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is response delivery (scoped to this call, declared TTL, no shared visibility), not persistent state that outlives the response contract.
+That is a deliberate reading of an ambiguous hint, not settled spec (see contract-checklist §3): a reviewer who reads `readOnlyHint` literally as "does not modify its environment" may count the local write as mutation, so where you can, prefer returning the result as a resource or resource link with TTL metadata rather than a local-file artifact.
 `idempotentHint: true` follows the same framing: repeated calls don't compound state. Each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
-The artifact is disclosed in the structured response (`result_artifact` with `path`, `content_type`, `ttl_hours`, `expires_at`) and in the tool description, never by flipping the annotation.
-Flipping `readOnlyHint` to `false` here would gate auto-approval on a semantically read-only call and create friction with no safety benefit.
+The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mimeType`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
+Flipping `readOnlyHint` to `false` here would gate auto-approval on a call this skill considers read-only and create friction with no safety benefit; a server that takes the literal reading instead should say so and annotate consistently.

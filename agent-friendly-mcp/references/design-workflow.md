@@ -50,7 +50,7 @@ Treat the schema as the authoritative contract. Write it before behavior.
 - Required vs optional discipline: required parameters are necessary; optional ones have meaningful defaults declared in schema.
 - Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
 - Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
-- Outputs: Prefer structuredContent with an outputSchema where the client supports them; fall back to structured JSON in content otherwise.
+- Outputs: Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them; keep parser-compatible JSON in `content` as the fallback for older or weaker clients.
 - Disambiguating names: `user_id` not `user`, `started_after` not `since`, `channel_id` not `channel`.
 - Descriptions cover when to use, edge cases, and an example invocation.
 

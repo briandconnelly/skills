@@ -17,6 +17,16 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Provide explicit discovery primitives so agents can load capabilities selectively.
 - Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
 
+## Native Fields vs Convention Extensions
+
+This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, a capability `fingerprint`, prompt prerequisites, and detail toggles.
+Keep them — but never let them masquerade as protocol.
+
+- Use native fields with their exact spec names and casing. Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`. Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations`, `_meta`. Prompt: `name`, `title`, `description`, `arguments`, `_meta`.
+- Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
+- Label every convention extension as such where it appears, so a reader can tell protocol from house style.
+- The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
+
 ## When To Use
 
 - Designing a new MCP server that agents (Claude Code, Codex, custom agents) will invoke.

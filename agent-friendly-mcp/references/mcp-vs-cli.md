@@ -58,6 +58,7 @@ When you do build more than one surface, the elements that must be **shared** ac
 - **Versioning fingerprint.** A single capability fingerprint covers the underlying behavior. Surfaces may add their own surface-version on top, but the behavioral version is one number — clients on any surface detect breaking changes the same way.
 
 What may legitimately differ: argument shape (typed JSON vs flags vs function args), output rendering (structured response vs stdout text vs return value), discovery mechanics (catalog vs filesystem vs `--help`). These are surface concerns. The contract underneath them is one contract.
+`_meta` namespacing is itself a surface concern: it is MCP-specific, so keep the semantic error codes and metadata identical across surfaces but let each carry them in its own envelope — `_meta` or `error.data` on MCP, exit codes plus stderr on a CLI, language-native exceptions on a code API.
 
 ## Anti-patterns
 
