@@ -221,6 +221,91 @@ A prompt that orchestrates posting a release announcement across multiple channe
 What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the required permissions, tool names, resource URIs, and context assumptions in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
 `when_to_use`, `prerequisites`, and `expected_followups` are convention extensions, not native MCP `Prompt` fields (native is `name`, `title`, `description`, `arguments`, `_meta`); a portable server carries them in the prompt `description` text or under a namespaced `_meta` key (see the native-vs-convention rule in `SKILL.md`).
 
+## 5a. Resource template with completion
+
+A parameterized resource for channel history, discoverable without enumerating every channel. *Demonstrates §2 completion and §4 resource templates.*
+
+Resource template entry from `resources/templates/list`:
+
+```json
+{
+  "uriTemplate": "slack://channels/{channel_id}/messages{?started_after,ended_before}",
+  "name": "channel_messages",
+  "title": "Channel messages",
+  "description": "Read Slack messages for one channel, optionally bounded by RFC3339 timestamps.",
+  "mimeType": "application/vnd.slack.messages+json"
+}
+```
+
+Completion request for the dynamic `channel_id` variable:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_complete_channel",
+  "method": "completion/complete",
+  "params": {
+    "ref": {
+      "type": "ref/resource",
+      "uri": "slack://channels/{channel_id}/messages{?started_after,ended_before}"
+    },
+    "argument": {
+      "name": "channel_id",
+      "value": "dep"
+    }
+  }
+}
+```
+
+Completion response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_complete_channel",
+  "result": {
+    "completion": {
+      "values": ["C0123DEPLOYS", "C0456DEPLOYOPS"],
+      "total": 2,
+      "hasMore": false
+    }
+  }
+}
+```
+
+What to notice: `uriTemplate` is native resource-template metadata, and `completion/complete` is native completion for a resource reference. The server must advertise `capabilities.completions` during initialization before clients can rely on this path. Completion is useful here because Slack channel ids are dynamic and hard to guess; it does not replace normal validation or repair errors for tool-call arguments.
+
+## 5b. Resource subscription
+
+A mutable flags resource that can change during a long-lived agent session. *Demonstrates §4 resource subscriptions and §9 update-vs-list-change behavior.*
+
+Subscribe request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_subscribe_flags",
+  "method": "resources/subscribe",
+  "params": {
+    "uri": "slack://workspace/T0123/flags"
+  }
+}
+```
+
+Update notification:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/resources/updated",
+  "params": {
+    "uri": "slack://workspace/T0123/flags"
+  }
+}
+```
+
+What to notice: the update notification tells the agent to re-read a resource body it already cares about. It is different from `notifications/resources/list_changed`, which means the resource catalog membership or metadata changed. A server must advertise `resources.subscribe` before accepting subscriptions; `annotations.lastModified` remains useful as a passive staleness check for clients that do not subscribe.
+
 ## 6. Actionable error payload
 
 A failure response from `slack_send_message` when the channel is archived. *Demonstrates §6 failure recovery.*
@@ -303,8 +388,22 @@ The capability summary exposed via a resource, discovery tool, or instructions f
   "prerequisites": {
     "workspace_scope": "One Slack workspace per server instance.",
     "required_scopes": ["chat:write", "channels:read", "users:read"],
+    "negotiated_capabilities": {
+      "uses": ["resources.listChanged", "resources.subscribe", "completions", "tasks.requests.tools.call"],
+      "optional_client_features": ["roots", "elicitation.form", "elicitation.url"],
+      "fallbacks": {
+        "no_completions": "Return invalid-field errors with allowed channel ids where safe.",
+        "no_resource_subscribe": "Use annotations.lastModified and explicit re-read guidance.",
+        "no_tasks": "Use slack_get_export_status and slack_cancel_export fallback tools."
+      }
+    },
     "default_context": {
       "announce_channel": "Optional default channel used only when a tool omits `channel_id`."
+    },
+    "auth": {
+      "mode": "stdio environment credential",
+      "http_resource_indicator": "https://slack-mcp.example.com/mcp",
+      "step_up_scopes": ["admin.conversations:write"]
     },
     "failure_codes": {
       "missing_credential": "server is not connected to Slack",
@@ -318,6 +417,8 @@ The capability summary exposed via a resource, discovery tool, or instructions f
 What to notice: an agent reads this once, through whatever summary surface the client exposes, and knows the server's name, scope, negative scope, permission boundaries, and the small amount of implicit context that can change behavior.
 The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses.
 The transport choice (`stdio`) is declared.
+The negotiated-capability block is convention metadata, but the capabilities it names are native MCP features. It tells the agent which paths are fast paths and which fallbacks to expect on weaker clients.
+The auth block includes the parts that affect agent repair: required and step-up scopes, plus the HTTP resource indicator/canonical server URI if the same contract is exposed over HTTP. It does not ask the model to handle bearer tokens directly.
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
 This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
 
@@ -359,6 +460,43 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 What to notice: only summaries come back, not full schemas; the agent calls `describe_tool` to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
 Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
+## 8a. Roots-aware workspace behavior
+
+A local code-search server asks the client which project roots are relevant before indexing. *Demonstrates §1 roots and capability gating.*
+
+Request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_roots",
+  "method": "roots/list"
+}
+```
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_roots",
+  "result": {
+    "roots": [
+      {
+        "uri": "file:///Users/alice/work/frontend",
+        "name": "frontend"
+      },
+      {
+        "uri": "file:///Users/alice/work/backend",
+        "name": "backend"
+      }
+    ]
+  }
+}
+```
+
+What to notice: the server only sends `roots/list` after the client advertised `roots` during initialization. It treats those roots as the workspace scope for search and path resolution, and listens for `notifications/roots/list_changed`. Roots are not access control; the implementation still needs normal filesystem checks and must not assume that a root URI grants permission to every path below it.
+
 ## 9. Capability fingerprint with deprecation
 
 A fingerprint snapshot showing one tool transitioning from `stable` through `deprecated` to removal. *Demonstrates §9 versioning and compatibility.*
@@ -368,7 +506,7 @@ Fingerprint at `slack-mcp@1.3.0`:
 ```json
 {
   "fingerprint": "slack-mcp@1.3.0+a112de9",
-  "covers": ["tools", "resources", "prompts", "error_codes", "summary"],
+  "covers": ["tools", "resources", "resource_templates", "prompts", "completion_support", "subscription_support", "error_codes", "summary"],
   "tools": [
     {"name": "slack_post", "stability": "stable", "schema_hash": "sha256:9c…"},
     {"name": "slack_list_channels", "stability": "stable", "schema_hash": "sha256:7a…"}
@@ -381,7 +519,7 @@ Fingerprint at `slack-mcp@1.4.0` — `slack_post` is deprecated, `slack_send_mes
 ```json
 {
   "fingerprint": "slack-mcp@1.4.0+s7ab21c",
-  "covers": ["tools", "resources", "prompts", "error_codes", "summary"],
+  "covers": ["tools", "resources", "resource_templates", "prompts", "completion_support", "subscription_support", "error_codes", "summary"],
   "tools": [
     {
       "name": "slack_post",
@@ -405,7 +543,7 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 ```json
 {
   "fingerprint": "slack-mcp@2.0.0+f0e1d2c",
-  "covers": ["tools", "resources", "prompts", "error_codes", "summary"],
+  "covers": ["tools", "resources", "resource_templates", "prompts", "completion_support", "subscription_support", "error_codes", "summary"],
   "tools": [
     {"name": "slack_send_message", "stability": "stable", "schema_hash": "sha256:b4…"},
     {"name": "slack_list_channels", "stability": "stable", "schema_hash": "sha256:7a…"}
@@ -418,7 +556,7 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 
 What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
 The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened.
-Every fingerprint string changes when any covered surface changes.
+Every fingerprint string changes when any covered surface changes, including resource templates, completion behavior, and subscription support.
 The fingerprint and its `covers`, `deprecation`, and `schema_hash` fields are a convention extension, not a native MCP structure (see the native-vs-convention rule in `SKILL.md`).
 When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
 
@@ -749,3 +887,39 @@ That is a deliberate reading of an ambiguous hint, not settled spec (see contrac
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
 The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mimeType`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
 Flipping `readOnlyHint` to `false` here would gate auto-approval on a call this skill considers read-only and create friction with no safety benefit; a server that takes the literal reading instead should say so and annotate consistently.
+
+## 13. Tool result with resource link
+
+A chart-rendering tool returns a small machine summary plus a linked image resource. *Demonstrates §3 rich tool-result content and §8 token efficiency.*
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"chart_uri\":\"slack://reports/deploys/chart.png\",\"series_count\":3,\"point_count\":90}"
+    },
+    {
+      "type": "resource_link",
+      "uri": "slack://reports/deploys/chart.png",
+      "name": "deploys-chart.png",
+      "description": "PNG chart of deploy count and failure rate for the last 30 days.",
+      "mimeType": "image/png",
+      "annotations": {
+        "audience": ["user"],
+        "priority": 0.8,
+        "lastModified": "2026-05-11T18:14:32Z"
+      }
+    }
+  ],
+  "structuredContent": {
+    "chart_uri": "slack://reports/deploys/chart.png",
+    "series_count": 3,
+    "point_count": 90,
+    "summary": "Deploy volume increased 12% over the prior 30 days; failure rate stayed below 2%."
+  },
+  "isError": false
+}
+```
+
+What to notice: `structuredContent` carries the authoritative fields an agent should parse. The text block serializes the same core JSON for older clients. The PNG is linked as a resource instead of base64-inlined, so a capable client can fetch or show it only when needed. `audience` and `priority` help a client decide that the image is primarily for the user, but correctness does not depend on those annotations being surfaced.

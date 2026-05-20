@@ -29,6 +29,14 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
   Changes to them are discoverable changes (see §9).
   See `examples.md` §7 for a capability summary that carries server identity, negative scope, and actionable prerequisites.
 
+- **Declare display metadata where humans choose capabilities.** Use native `title` and `icons` on tools, resources, resource templates, prompts, and implementation info when a client has a human-facing picker. These fields are not a substitute for precise names and descriptions, but they reduce wrong selection in mixed human/agent workflows.
+
+- **Record negotiated capabilities as part of the contract.** During initialization, client and server exchange protocol versions and capabilities; optional features are usable only if negotiated. A design or audit must say which features it depends on (`roots`, `completions`, `resources.subscribe`, `listChanged`, `elicitation`, `tasks`) and what fallback weaker clients receive.
+
+- **Handle roots deliberately for workspace-scoped servers.** If a server reads or writes local project content, request `roots/list` from clients that advertise `roots`, stay within those declared roots unless the tool contract explicitly says otherwise, and handle `notifications/roots/list_changed`. Roots guide server behavior and reduce path ambiguity; they are not access control, so still enforce filesystem permissions independently.
+
+- **Expose auth mechanics that affect repair.** For HTTP authorization, document the canonical server URI and resource indicator used for token audience binding, never pass through tokens issued for a different resource, and surface incremental or step-up scope challenges as structured repair (`required_scopes`, `resource`, `authorization_url` or elicitation URL where appropriate). For stdio, document where credentials come from only when the agent can act on it.
+
 Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
 ---
@@ -45,6 +53,8 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 - **Provide at least one progressive-disclosure mechanism.** `search_tools` / `describe_tool` and resource-catalog endpoints are valid patterns. The requirement is that clients can load definitions on demand rather than receiving everything upfront.
 
 - **Make discovery selective.** Clients can filter by name, namespace, or topic. A server with 80 tools and no filter is functionally undiscoverable.
+
+- **Use native completion for hard-to-guess prompt and resource-template arguments.** If the server has prompt arguments or resource-template variables with large, dynamic, or enum-like value sets, advertise `capabilities.completions` and implement `completion/complete`. Use it proactively to reduce invalid IDs, paths, project keys, channel names, and URI components; keep tool-argument repair in normal tool errors because MCP completion does not complete arbitrary tool arguments.
 
 - **Discovery obeys token-efficiency rules.** Definitions paginate, support filtering, and return concise summaries by default with an opt-in detailed mode (see §8).
 
@@ -66,7 +76,7 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 ## 3. Tools
 
-*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §10 (worked task: API mirroring vs. task completion), §12 (response-delivery artifact).*
+*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §10 (worked task: API mirroring vs. task completion), §12 (response-delivery artifact), §13 (tool result with resource link).*
 
 - **Name with `snake_case`, prefix, verb, noun.** `slack_send_message`, not `send_message`. Generic verbs collide across servers in multi-server contexts.
 
@@ -89,6 +99,12 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Default to structured output.** Structured data is authoritative; text or markdown is supplemental rendering for human-facing clients.
   Token-efficiency rules for responses live in §8.
+
+- **Use rich content types deliberately.** Tool results may include `text`, `image`, `audio`, `resource_link`, embedded `resource`, and `structuredContent`. Put machine-contract fields in `structuredContent`; use `content` for human rendering, linked artifacts, and compatibility fallbacks.
+
+- **Prefer resource links over inline bulk or binary payloads.** For large documents, generated charts, exports, or files, return a concise `structuredContent` summary plus a `resource_link` with `uri`, `name`, `description`, `mimeType`, `size` where known, and `annotations.lastModified` where useful. Resource links returned by tools may not appear in `resources/list`, so include enough metadata for the agent to fetch, subscribe, cite, or discard them.
+
+- **Use content annotations to steer attention, not correctness.** `annotations.audience`, `priority`, and `lastModified` help capable clients decide what to show the user vs. model and when to re-read linked content. Never make safety or parsing depend on annotations being visible.
 
 - **Declare side effects, idempotency, and rate limits as first-class contract.** Use tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and structured response fields.
 
@@ -147,7 +163,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 ## 4. Resources
 
-*Worked shapes: `examples.md` §3 (resource index entry), §4 (resource body with chunking).*
+*Worked shapes: `examples.md` §3 (resource index entry), §4 (resource body with chunking), §5a (resource template with completion), §5b (resource subscription).*
 
 - **Use stable, hierarchical, predictable URI patterns.** Resource URIs are identifiers agents quote back to the server and may cache; instability breaks repeat calls.
 
@@ -165,7 +181,11 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 - **Expose URI-shaped resources through resource templates.** When resources are parameterized by a URI pattern, publish `resourceTemplates` via `resources/templates/list` (with `uriTemplate`, `name`, `title`, `description`, `mimeType`) so agents can discover the shape without enumerating every instance. Templates are a native discovery primitive distinct from the resource list itself.
 
+- **Pair resource templates with completion where values are dynamic.** For template variables such as `{project}`, `{channel_id}`, `{schema}`, or `{path}`, implement `completion/complete` when clients negotiate `completions`. This gives agents a proactive way to build valid URIs instead of learning the value space through failed reads.
+
 - **Keep summaries short.** Typically 1–3 sentences, not paragraphs. Resource summaries appear in lists of dozens; long summaries defeat the index.
+
+- **Support resource subscriptions for mutable resources.** If a resource can change during a long-lived agent session and stale reads matter, advertise `resources.subscribe`, accept `resources/subscribe`, and emit `notifications/resources/updated` for subscribed URIs. Use `notifications/resources/list_changed` for catalog membership changes; use per-resource updates for body changes.
 
 - **Resources share the failure-recovery contract.** Missing-credential, not-found, gone, and rate-limit signals must be machine-readable (see §6).
 
@@ -186,6 +206,8 @@ Audit prompt: Can an agent decide whether to fetch a resource — and which chun
 - **State when to use the prompt explicitly.** The agent needs to recognize the matching task, not infer it from the title.
 
 - **List prerequisites.** Which tools, which resources, and which permission or context assumptions the prompt relies on. Missing prerequisites surface as confusing failures partway through execution.
+
+- **Offer completion for prompt arguments with dynamic value sets.** If a prompt argument asks for a project, workspace, repository, environment, channel, or similar value the agent should not guess, support `completion/complete` when `capabilities.completions` is negotiated.
 
 - **Reference expected follow-on tools and resources by name.** A prompt that doesn't tell the agent what to invoke next is half a scaffold.
 
@@ -224,6 +246,10 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Repair hints reference real, callable surfaces.** Tool names, parameter names, valid enum values — not free-form prose.
 
+- **Surface capability-missing failures explicitly.** If a path needs an optional feature the client did not negotiate, return a structured error such as `capability_not_negotiated` with `required_capability`, the affected operation, and the fallback tool/resource/prompt when one exists.
+
+- **Use elicitation only behind negotiated support and clear fallback.** When a server needs missing user input, user confirmation, or sensitive external interaction during a call, prefer MCP elicitation for clients that advertise it. URL-mode elicitation is the safe path for passwords, API keys, payment credentials, OAuth, or other sensitive exchanges. For clients without elicitation, return an actionable error or task `input_required` status that names the next callable surface or external action.
+
 - **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result.
   JSON-RPC errors are reserved for transport, protocol, and non-tool RPC methods (such as `resources/read` and `resources/list`); raising a JSON-RPC error from `tools/call` strips the structured-response contract from the failure path.
   See `examples.md` §6 for an actionable tool-result error payload.
@@ -251,6 +277,8 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 - **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`. The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`. Task objects use the spec's fields and casing — `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`. Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
+
+- **Define `input_required` recovery.** If a task can pause for user input or authorization, say whether the recovery path is native elicitation (`elicitation/create`), URL-mode elicitation, or a domain-specific fallback. The task status alone is not enough; the agent needs the next operation and the capabilities required to perform it.
 
 - **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
 
@@ -302,11 +330,13 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
 
 - **Advertise and emit protocol-native list-changed notifications.** Declare the `listChanged` capability where supported, and emit `notifications/tools/list_changed`, `notifications/resources/list_changed`, and `notifications/prompts/list_changed` when the corresponding list changes.
 
+- **Distinguish list changes from resource updates.** `listChanged` means the catalog changed; `notifications/resources/updated` means a subscribed resource's contents changed. Emit both only when both facts are true.
+
 - **Keep list ordering deterministic.** `tools/list` and resource catalogs use stable ordering so clients can diff and cache predictably.
 
 - **Treat fingerprints as additive signals.** A capability fingerprint helps clients short-circuit discovery, but it does not replace native change notifications or stable list ordering.
 
-- **The fingerprint covers the full agent-visible surface.** Tool definitions, resource catalogs, prompt scaffolds, error codes, and the server capability summary. Anything an agent can plan against is part of the fingerprint input.
+- **The fingerprint covers the full agent-visible surface.** Tool definitions, resource catalogs, resource templates, prompt scaffolds, completion support, subscription behavior, negotiated-capability expectations, error codes, and the server capability summary. Anything an agent can plan against is part of the fingerprint input.
 
 - **Define deprecation semantics.** How a tool, resource, or prompt is marked deprecated, how long it remains available, and what replaces it. Deprecation is a contract, not a sticky note.
 
