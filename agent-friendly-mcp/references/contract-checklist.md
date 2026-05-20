@@ -156,7 +156,9 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 - **Chunk identifiers are stable across reads of the same resource version.** If the resource changes, identifiers may change — but the change is observable via the resource's modification metadata.
 
-- **Include the metadata fields agents use to triage.** `title`, `summary`, `size`, `last_modified`, `content_type`. Missing metadata pushes the agent into fetching bodies blindly.
+- **Include the metadata fields agents use to triage.** Use native `Resource` fields: `title`, `description`, `mimeType`, `size`, and `annotations.lastModified`. Missing metadata pushes the agent into fetching bodies blindly; custom triage fields with no native home go under a namespaced `_meta` key, not a new top-level field.
+
+- **Expose URI-shaped resources through resource templates.** When resources are parameterized by a URI pattern, publish `resourceTemplates` via `resources/templates/list` (with `uriTemplate`, `name`, `title`, `description`, `mimeType`) so agents can discover the shape without enumerating every instance. Templates are a native discovery primitive distinct from the resource list itself.
 
 - **Keep summaries short.** Typically 1–3 sentences, not paragraphs. Resource summaries appear in lists of dozens; long summaries defeat the index.
 
@@ -241,9 +243,11 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 
 - **Support cancellation where work can continue after the call starts.** Honor `notifications/cancelled` for request-bound work and `tasks/cancel` for task-capable tools.
 
-- **Declare task support explicitly.** For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`. The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
-- **Define status and result retrieval.** Task responses include polling interval, result TTL, terminal states, and the tool or resource used to fetch the final result.
+- **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`. Task objects use the spec's fields and casing — `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`. Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
+
+- **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
 
 - **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
 

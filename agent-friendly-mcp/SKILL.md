@@ -61,9 +61,10 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 - Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later recovery.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and rate-limited `notifications/progress` when progress exists.
-- Support cancellation through `notifications/cancelled` or `tasks/cancel` where work can continue after the call starts.
-- For task-capable tools, document `execution.taskSupport` as `optional`, `required`, or `forbidden`.
-- Define status/result retrieval, polling interval, TTL, and terminal states.
+- Use `notifications/cancelled` to cancel request-bound non-task work, and `tasks/cancel` to cancel task-augmented work.
+- Enable native tasks at both levels: the server declares `capabilities.tasks.requests.tools.call` and the tool declares `execution.taskSupport` as `optional`, `required`, or `forbidden`.
+- Recover via native operations — poll `tasks/get` (respecting `pollInterval`), fetch with `tasks/result`, using the spec's task fields (`taskId`, `status`, `ttl`, `createdAt`, `lastUpdatedAt`) and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
+- Tasks are experimental in MCP 2025-11-25, so a domain-specific status/cancel tool is an acceptable labeled fallback for clients without task support, mirroring the native signals rather than replacing `tasks/*`.
 
 ## Workflow
 
