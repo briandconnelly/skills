@@ -12,7 +12,7 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 - Treat the machine-readable schema as the primary contract.
 - Optimize for the first successful non-interactive invocation.
 - Keep stdout as success payload only; put diagnostics and structured failures on stderr.
-- Make ambient state, side effects, auth, latency, truncation, and retryability visible.
+- Make ambient state, side effects, auth, latency, truncation, retryability, and secret-handling visible.
 - Prefer compact, deterministic output shapes over prose explanations.
 
 ## When To Use
@@ -24,15 +24,18 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 ## When Not To Use
 
-- General code review of CLI internals that does not face agents — use the standard code-review skill.
+- General code review of CLI internals that does not face agents — use your normal code-review workflow.
 - Library or SDK design that is not exposed as a command — this skill is CLI-specific.
 - Trivial flag additions to an already-agent-friendly CLI; just follow the existing schema.
 
 ## Vocabulary
 
-- **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode (e.g., `--json --machine --no-config --no-progress`). Declared in the schema.
+- **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode (e.g., `--json --machine --no-progress`). Declared in the schema.
 - **Machine mode**: the runtime state the machine profile produces — no prompts, no color, no progress, no pager, no browser, structured output only.
-- **Non-TTY mode**: any invocation where stdout or stderr is not a terminal; conservatively suppresses color, spinners, pagers, and prompts even without the explicit machine profile.
+- **Isolation profile**: an optional flag bundle that disables ambient config, credentials, caches, and other implicit state when the CLI can support that safely (e.g., `--isolated` or `--no-config`).
+  Distinct from the machine profile.
+- **Non-TTY mode**: runtime behavior based on each stream's terminal status: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
+  Conservatively suppress terminal-only behavior even without the explicit machine profile.
 - **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`, or another explicitly declared class with a stable contract. Each command declares one.
 - **Ambient state**: config files, environment variables, credentials, and caches the CLI reads implicitly.
 
@@ -43,15 +46,16 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
    - Internal operator: lead with the smallest safe caller-side mitigation, then separate owner-side fixes from operator-side workarounds.
    - Third-party consumer: do not assume they can change the tool; prioritize containment, explicit assumptions, and what to escalate to the owner.
    - If the audience is unclear, say so and default to the most actionable split: caller-side mitigation first, tool-side fixes second.
-2. Classify the task: new CLI or redesign vs review of an existing CLI vs diagnosis of a concrete failure. Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
+2. Classify the task: new CLI or redesign vs contract hardening vs review of an existing CLI vs diagnosis of a concrete failure. Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
 3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
-4. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
-5. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
-6. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
+4. For contract hardening, follow [design-workflow.md](references/design-workflow.md) when the user owns the CLI and wants a contract designed; follow [review-workflow.md](references/review-workflow.md) when evaluating an existing third-party contract.
+5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
+6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
+7. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
 
 ## Done Criteria
 
-Before declaring done, walk [contract-checklist.md](references/contract-checklist.md) against your output.
+Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
 - **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason. Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).
