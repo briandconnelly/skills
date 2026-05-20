@@ -555,7 +555,28 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 }
 ```
 
-**Create the task.** The client augments its `tools/call` with a `task` field; the receiver returns a `CreateTaskResult` carrying the native `Task` object under `result.task`, not the tool result.
+**Create the task.** The client augments its `tools/call` with a `task` field in `params`; the receiver returns a `CreateTaskResult` carrying the native `Task` object under `result.task`, not the tool result.
+
+Request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_01HXYZ",
+  "method": "tools/call",
+  "params": {
+    "name": "slack_export_history",
+    "arguments": {
+      "channel_ids": ["C0123ABCD"],
+      "started_after": "2026-01-01T00:00:00Z",
+      "ended_before": "2026-05-01T00:00:00Z"
+    },
+    "task": {"ttl": 86400000}
+  }
+}
+```
+
+Response (`CreateTaskResult`):
 
 ```json
 {
@@ -577,6 +598,8 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 
 **Progress** is keyed by `progressToken` and, like every task-associated message, carries `io.modelcontextprotocol/related-task` in `_meta`.
 
+Notification:
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -591,7 +614,9 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 }
 ```
 
-**Poll** with `tasks/get` until a terminal status, respecting `pollInterval`; the response carries the `Task` directly in `result`.
+**Poll** with `tasks/get` (`params: {"taskId": "task_01J9EXPORT"}`) until a terminal status, respecting `pollInterval`; the response carries the `Task` directly in `result`.
+
+Response:
 
 ```json
 {
@@ -608,7 +633,9 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 }
 ```
 
-**Retrieve** the result with `tasks/result` once the task is terminal; it returns exactly what the original `tools/call` would have, including the related-task `_meta`. Domain payload (export location, counts) rides in `structuredContent`.
+**Retrieve** the result with `tasks/result` (`params: {"taskId": "task_01J9EXPORT"}`) once the task is terminal; it returns exactly what the original `tools/call` would have, including the related-task `_meta`. Domain payload (export location, counts) rides in `structuredContent`.
+
+Response:
 
 ```json
 {
@@ -626,7 +653,9 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 }
 ```
 
-**Cancel** task-augmented work with `tasks/cancel` — not `notifications/cancelled`, which cancels request-bound non-task calls. The receiver transitions the task to the terminal `cancelled` status before responding.
+**Cancel** task-augmented work with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT"}`) — not `notifications/cancelled`, which cancels request-bound non-task calls. The receiver transitions the task to the terminal `cancelled` status before responding.
+
+Response:
 
 ```json
 {
@@ -662,6 +691,7 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
 
 What to notice: native recovery needs both the server `capabilities.tasks.requests.tools.call` declaration and the tool's `execution.taskSupport` — the per-tool flag alone does nothing.
 Native task fields use the spec's casing exactly: `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — do not rename them to the snake_case used by domain fields.
+`ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
 Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.
 `CreateTaskResult` nests the `Task` under `result.task`; `tasks/get` and `tasks/cancel` return the `Task` directly in `result`; `tasks/result` returns the underlying tool result — read each shape from the spec rather than assuming one envelope.
 Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
