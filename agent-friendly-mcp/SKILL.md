@@ -10,7 +10,8 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 ## Core Standard
 
 - Tool and resource schemas are the operational contract; prompts are advisory scaffolding for orchestration. Do not hide essential behavior in prompts.
-- Optional MCP features only exist for an agent after protocol version and capability negotiation. Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
+- Optional MCP features only exist for an agent after protocol version and capability negotiation.
+  Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
 - Optimize for the first successful tool call **and** the first successful repair from a cold start.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
 - Make side effects, idempotency, rate limits, and agent-actionable prerequisites visible.
@@ -23,7 +24,11 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, a capability `fingerprint`, prompt prerequisites, and detail toggles.
 Keep them — but never let them masquerade as protocol.
 
-- Use native fields with their exact spec names and casing. Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`. Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations`, `_meta`. Resource template: `uriTemplate`, `name`, `title`, `description`, `mimeType`, `annotations`, `_meta`. Prompt: `name`, `title`, `description`, `arguments`, `_meta`.
+- Use native fields with their exact spec names and casing.
+  Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`.
+  Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `annotations`, `_meta`.
+  Resource template: `uriTemplate`, `name`, `title`, `description`, `mimeType`, `annotations`, `_meta`.
+  Prompt: `name`, `title`, `description`, `arguments`, `_meta`.
 - Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
 - Label every convention extension as such where it appears, so a reader can tell protocol from house style.
 - The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
@@ -42,7 +47,8 @@ Keep them — but never let them masquerade as protocol.
 - Library or SDK design that is not exposed via MCP — this skill is MCP-specific.
 - Trivial schema additions to an already agent-friendly server; just follow the existing contract.
 - Out of scope: sampling, server logging streams, server-operator dashboards, packaging/deployment, and skills-over-MCP (experimental at https://github.com/modelcontextprotocol/experimental-ext-skills — revisit when stable).
-  Elicitation is in scope only as an agent-facing contract boundary: when a server needs missing user input, confirmation, or sensitive external interaction, declare whether it supports MCP elicitation and how non-elicitation clients recover. Do not use this skill for designing full user-experience flows.
+  Elicitation is in scope only as an agent-facing contract boundary: when a server needs missing user input, confirmation, or sensitive external interaction, declare whether it supports MCP elicitation and how non-elicitation clients recover.
+  Do not use this skill for designing full user-experience flows.
 
 ## Vocabulary
 

@@ -223,7 +223,8 @@ What to notice: `when_to_use` distinguishes this from "draft a message"; `prereq
 
 ## 5a. Resource template with completion
 
-A parameterized resource for channel history, discoverable without enumerating every channel. *Demonstrates §2 completion and §4 resource templates.*
+A parameterized resource for channel history, discoverable without enumerating every channel.
+*Demonstrates §2 completion and §4 resource templates.*
 
 Resource template entry from `resources/templates/list`:
 
@@ -273,11 +274,14 @@ Completion response:
 }
 ```
 
-What to notice: `uriTemplate` is native resource-template metadata, and `completion/complete` is native completion for a resource reference. The server must advertise `capabilities.completions` during initialization before clients can rely on this path. Completion is useful here because Slack channel ids are dynamic and hard to guess; it does not replace normal validation or repair errors for tool-call arguments.
+What to notice: `uriTemplate` is native resource-template metadata, and `completion/complete` is native completion for a resource reference.
+The server must advertise `capabilities.completions` during initialization before clients can rely on this path.
+Completion is useful here because Slack channel ids are dynamic and hard to guess; it does not replace normal validation or repair errors for tool-call arguments.
 
 ## 5b. Resource subscription
 
-A mutable flags resource that can change during a long-lived agent session. *Demonstrates §4 resource subscriptions and §9 update-vs-list-change behavior.*
+A mutable flags resource that can change during a long-lived agent session.
+*Demonstrates §4 resource subscriptions and §9 update-vs-list-change behavior.*
 
 Subscribe request:
 
@@ -304,7 +308,9 @@ Update notification:
 }
 ```
 
-What to notice: the update notification tells the agent to re-read a resource body it already cares about. It is different from `notifications/resources/list_changed`, which means the resource catalog membership or metadata changed. A server must advertise `resources.subscribe` before accepting subscriptions; `annotations.lastModified` remains useful as a passive staleness check for clients that do not subscribe.
+What to notice: the update notification tells the agent to re-read a resource body it already cares about.
+It is different from `notifications/resources/list_changed`, which means the resource catalog membership or metadata changed.
+A server must advertise `resources.subscribe` before accepting subscriptions; `annotations.lastModified` remains useful as a passive staleness check for clients that do not subscribe.
 
 ## 6. Actionable error payload
 
@@ -417,8 +423,10 @@ The capability summary exposed via a resource, discovery tool, or instructions f
 What to notice: an agent reads this once, through whatever summary surface the client exposes, and knows the server's name, scope, negative scope, permission boundaries, and the small amount of implicit context that can change behavior.
 The summary does not spend first-read tokens on credential wiring details the agent cannot act on; those remain operator documentation and structured failure responses.
 The transport choice (`stdio`) is declared.
-The negotiated-capability block is convention metadata, but the capabilities it names are native MCP features. It tells the agent which paths are fast paths and which fallbacks to expect on weaker clients.
-The auth block includes the parts that affect agent repair: required and step-up scopes, plus the HTTP resource indicator/canonical server URI if the same contract is exposed over HTTP. It does not ask the model to handle bearer tokens directly.
+The negotiated-capability block is convention metadata, but the capabilities it names are native MCP features.
+It tells the agent which paths are fast paths and which fallbacks to expect on weaker clients.
+The auth block includes the parts that affect agent repair: required and step-up scopes, plus the HTTP resource indicator/canonical server URI if the same contract is exposed over HTTP.
+It does not ask the model to handle bearer tokens directly.
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
 This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
 
@@ -462,7 +470,8 @@ Fields like `summary`, `stability`, `score`, and `load_definition_with` are conv
 
 ## 8a. Roots-aware workspace behavior
 
-A local code-search server asks the client which project roots are relevant before indexing. *Demonstrates §1 roots and capability gating.*
+A local code-search server asks the client which project roots are relevant before indexing.
+*Demonstrates §1 roots and capability gating.*
 
 Request:
 
@@ -495,7 +504,9 @@ Response:
 }
 ```
 
-What to notice: the server only sends `roots/list` after the client advertised `roots` during initialization. It treats those roots as the workspace scope for search and path resolution, and listens for `notifications/roots/list_changed`. Roots are not access control; the implementation still needs normal filesystem checks and must not assume that a root URI grants permission to every path below it.
+What to notice: the server only sends `roots/list` after the client advertised `roots` during initialization.
+It treats those roots as the workspace scope for search and path resolution, and listens for `notifications/roots/list_changed`.
+Roots are not access control; the implementation still needs normal filesystem checks and must not assume that a root URI grants permission to every path below it.
 
 ## 9. Capability fingerprint with deprecation
 
@@ -890,7 +901,8 @@ Flipping `readOnlyHint` to `false` here would gate auto-approval on a call this 
 
 ## 13. Tool result with resource link
 
-A chart-rendering tool returns a small machine summary plus a linked image resource. *Demonstrates §3 rich tool-result content and §8 token efficiency.*
+A chart-rendering tool returns a small machine summary plus a linked image resource.
+*Demonstrates §3 rich tool-result content and §8 token efficiency.*
 
 ```json
 {
@@ -922,4 +934,7 @@ A chart-rendering tool returns a small machine summary plus a linked image resou
 }
 ```
 
-What to notice: `structuredContent` carries the authoritative fields an agent should parse. The text block serializes the same core JSON for older clients. The PNG is linked as a resource instead of base64-inlined, so a capable client can fetch or show it only when needed. `audience` and `priority` help a client decide that the image is primarily for the user, but correctness does not depend on those annotations being surfaced.
+What to notice: `structuredContent` carries the authoritative fields an agent should parse.
+The text block serializes the same core JSON for older clients.
+The PNG is linked as a resource instead of base64-inlined, so a capable client can fetch or show it only when needed.
+`audience` and `priority` help a client decide that the image is primarily for the user, but correctness does not depend on those annotations being surfaced.
