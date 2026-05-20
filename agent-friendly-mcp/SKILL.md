@@ -27,7 +27,7 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 
 ## When Not To Use
 
-- General code review of MCP server internals that does not face agents — use the standard code-review skill.
+- General code review of MCP server internals that does not face agents — use your normal code-review workflow.
 - Library or SDK design that is not exposed via MCP — this skill is MCP-specific.
 - Trivial schema additions to an already agent-friendly server; just follow the existing contract.
 - Out of scope: elicitation, sampling, server logging streams, server-operator dashboards, packaging/deployment, and skills-over-MCP (experimental at https://github.com/modelcontextprotocol/experimental-ext-skills — revisit when stable).

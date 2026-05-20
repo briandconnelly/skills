@@ -38,6 +38,7 @@ Treat the schema as the authoritative design artifact. The schema should declare
 - command tree, canonical invocation path, aliases, and deprecations
 - arguments, flags, types, defaults, enums, cardinality, and examples
 - canonical machine profile
+- optional isolation profile, kept separate from machine mode unless the CLI can still complete normal authenticated reads without ambient state
 - read-only vs mutating classification
 - stdin contract: read behavior, formats, size limits, blocking, empty input, and exclusivity
 - output class, output format, field shape, and example payloads
@@ -59,7 +60,7 @@ Expose:
 Make the safe path the default path.
 
 - Machine mode must never prompt, page, launch browsers, emit ANSI color, show spinners, or wait for terminal input.
-- Non-TTY mode should conservatively suppress color, spinners, pagers, browser launch, and prompts.
+- Non-TTY mode should evaluate each stream separately and conservatively suppress color, spinners, pagers, browser launch, and prompts.
 - Mutating commands should require explicit action verbs and support `--dry-run`.
 - Replay-sensitive mutations should support idempotency: `--if-not-exists`, `--if-exists`, or idempotency keys.
 - Reads should avoid side effects by default and declare any unavoidable network, cache, or token-refresh effects.
@@ -92,6 +93,7 @@ Output rules:
 - In machine mode, avoid prose `message` fields that duplicate structured payload data; if a `message` field exists, it should add non-duplicative context only.
 - Pagination, truncation, omitted fields, partial failure, retries exhausted, and version mismatch must be structured.
 - NDJSON is for streams and large result sets; arrays are for small finite lists.
+- Machine output uses UTF-8, locale-independent numbers, stable path style, and UTC or explicitly declared timezones for timestamps.
 - `--output <file>` should be restricted to explicit export commands and return path, byte size, and content hash.
 
 Error rules:
@@ -101,6 +103,7 @@ Error rules:
 - Include required error fields `code` and `message`.
 - Prefer useful optional fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.
 - Stack traces and raw request/response dumps are opt-in under `--debug` and must redact secrets.
+- Secrets must not appear in stdout, stderr, schema examples, request/response dumps, or artifact metadata unless the command's explicit purpose is to return a secret.
 
 ## 6. Build For Testability
 

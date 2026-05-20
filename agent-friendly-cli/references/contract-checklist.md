@@ -21,6 +21,7 @@ The schema is the primary contract. It should include:
 - aliases, deprecations, and replacements
 - arguments, flags, types, defaults, enums, cardinality, and examples
 - canonical machine profile
+- optional isolation profile, when ambient state can be disabled
 - stdin contract
 - read-only vs mutating classification
 - auth, role, scope, environment, config, cache, and credential requirements
@@ -52,7 +53,9 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 ## Agent-Safe Invocation
 
 - Define one canonical machine profile.
+- Keep isolation controls such as `--isolated` or `--no-config` distinct from the canonical machine profile unless the CLI can still complete normal authenticated reads without ambient state.
 - Machine mode is non-interactive.
+- Non-TTY mode is evaluated per stream: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
 - Non-TTY mode conservatively suppresses color, progress, spinners, pagers, browser launch, and prompts.
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
 - Every interactive setup or login flow needs a documented non-interactive bootstrap.
@@ -61,6 +64,7 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 
 - stdout is success payload only.
 - stderr carries diagnostics and machine-readable failures.
+- Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
@@ -71,6 +75,7 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 - Truncation, omitted fields, and size caps are explicit.
 - `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
 - Default sort is deterministic.
+- Machine output uses UTF-8, locale-independent numbers, stable path style, and UTC or explicitly declared timezones for timestamps.
 - `--output <file>` is restricted to export commands and returns path, byte size, and content hash.
 
 ## Errors And Exit Codes
@@ -99,6 +104,7 @@ Structured errors:
 - Numeric codes are only the shell-branching fallback.
 - Retryability is explicit.
 - Debug detail is opt-in and redacted.
+- Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
 
 Partial failure:
 
@@ -117,6 +123,7 @@ Document:
 - precedence rules, preferably flags > env vars > config files > local caches
 - how to disable ambient state
 - how to inspect resolved state
+- which resolved values are secret and how they are redacted
 
 Required inspection affordances for tools that read ambient state (config files, env vars, credentials, caches — not the tool's own primary data store):
 

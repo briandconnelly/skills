@@ -68,6 +68,7 @@ Ask whether an agent can answer these quickly:
 Findings are likely when:
 
 - help is long prose and no machine schema exists
+- existing tools expose no stable machine-readable substitute for `tool schema`, such as `--help --json`, a generated schema file, completion metadata, manpage metadata, or an upstream API contract
 - aliases or synonyms obscure the canonical command
 - examples are required to learn flags
 - default output changes by TTY without a declared contract
@@ -80,6 +81,7 @@ Check for automation hazards:
 - prompts in machine mode or non-TTY contexts
 - pagers, browser launch, spinners, ANSI color, or progress on machine paths
 - reads with hidden side effects
+- machine mode conflated with isolated mode, causing credentials, endpoints, or workspace defaults to disappear from the first non-interactive call
 - mutations without `--dry-run`, confirmation bypass, or idempotency
 - long-running operations without async polling or timeout controls
 - networked commands without explicit `--timeout` and retry behavior
@@ -100,6 +102,7 @@ Check:
 - no banners, summaries, warnings, debug logs, progress, or prose mixed into stdout
 - NDJSON for streaming or large per-record output
 - deterministic sort order and stable JSON fields
+- locale-independent numbers, stable path style, UTF-8, and UTC or explicitly declared timestamp timezones
 
 Failure output should support branching without parsing English.
 
@@ -111,6 +114,7 @@ Check:
 - retryability is explicit
 - rate limits include `retry_after_ms`
 - stack traces and raw dumps are opt-in and redact secrets
+- secrets are redacted from stdout, stderr, debug output, schema examples, dumps, and artifact metadata unless the command intentionally returns a secret
 - partial failure has deterministic aggregate semantics
 - declared exit codes match observed runtime behavior
 

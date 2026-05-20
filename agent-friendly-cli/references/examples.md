@@ -10,7 +10,8 @@ The complete minimal schema output for `widgetctl schema` is below.
   "schema_version": "1.0",
   "fingerprint": "wgt-a1b2c3d4",
   "fingerprint_scope": "schema-contract",
-  "canonical_machine_profile": ["--json", "--machine", "--no-config", "--no-progress"],
+  "canonical_machine_profile": ["--json", "--machine", "--no-progress"],
+  "isolation_profile": ["--isolated"],
   "command_tree": {
     "widget": {
       "get": "widgetctl widget get <id>",
