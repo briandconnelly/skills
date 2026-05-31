@@ -11,6 +11,7 @@ Agent harnesses load a skill when its description matches the task at hand.
 | --- | --- |
 | [agent-friendly-cli](agent-friendly-cli/) | Best practices for designing CLIs that AI agents invoke directly. |
 | [agent-friendly-mcp](agent-friendly-mcp/) | Best practices for designing MCP (Model Context Protocol) servers that AI agents invoke directly. |
+| [bundle-uv-mcp-server](bundle-uv-mcp-server/) | Package an existing uv + Python MCP server as an MCPB bundle (.mcpb) using the uv runtime. |
 
 ## Installation
 

@@ -1,0 +1,52 @@
+{
+  "manifest_version": "0.4",
+  "name": "your-server-name",
+  "display_name": "Your Server Display Name",
+  "version": "0.1.0",
+  "description": "One-line summary from pyproject [project].description",
+  "author": {
+    "name": "Your Name",
+    "email": "you@example.com",
+    "url": "https://github.com/you/your-server-name"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/you/your-server-name"
+  },
+  "license": "MIT",
+  "keywords": ["mcp"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/your_package/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "--frozen", "your-console-script"],
+      "env": {
+        "YOUR_API_TOKEN": "${user_config.api_token}",
+        "YOUR_HOST": "${user_config.host}"
+      }
+    }
+  },
+  "user_config": {
+    "api_token": {
+      "type": "string",
+      "title": "API Token",
+      "description": "Credential used to authenticate with the upstream service",
+      "sensitive": true,
+      "required": true
+    },
+    "host": {
+      "type": "string",
+      "title": "Host",
+      "description": "Example non-secret setting with a default",
+      "required": false,
+      "default": "localhost"
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  }
+}
