@@ -42,7 +42,7 @@ This keeps the bundle tiny and avoids the legacy `python` path's need to vendor 
 
 ## Release consistency
 
-To ship the same code for `1.0.0` as the `1.0.0` git tag and PyPI release: pack from a clean checkout at the release tag, include `uv.lock`, and confirm `manifest.version` == `[project].version` == the tag.
+To ship the same code for `1.0.0` as the `1.0.0` git tag and PyPI release: pack from a clean checkout at the release tag, include `uv.lock`, and confirm the manifest's `version` == `[project].version` == the tag.
 The bundle runs `--frozen` (use the lockfile as-is); run `uv run --locked …` once before packing to assert the lock still matches `pyproject.toml`.
 To pin the published PyPI package instead of bundling source, see the alternative in [references/entry-point-patterns.md](references/entry-point-patterns.md).
 
@@ -58,7 +58,19 @@ Manifest field ← source:
 | `server.mcp_config.args` | `uv run --directory ${__dirname} --frozen …`, derived from `[project.scripts]` (see references) |
 | `user_config.*` + `mcp_config.env` | env vars the server reads |
 
-`.mcpbignore` (one pattern per line; `.git` is excluded automatically): `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `*.egg-info/`, `dist/`, `tests/`.
+`.mcpbignore` (one pattern per line; `.git` is excluded automatically):
+
+```
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+tests/
+```
 
 CLI: `mcpb init` (interactive manifest), `mcpb validate .`, `mcpb pack .`, `mcpb sign`, `mcpb verify`, `mcpb info`.
 

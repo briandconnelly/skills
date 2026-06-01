@@ -14,6 +14,8 @@ For a bundled-source uv bundle (Approach A) that is `uv run --directory ${__dirn
 | Console script + optional extra | `my-mcp-server = "my_mcp_server.server:main"` with MCP deps in `[project.optional-dependencies] mcp` | `["run","--directory","${__dirname}","--frozen","--extra","mcp","my-mcp-server"]` |
 | CLI subcommand | `my-tool = "my_tool.cli:app"`, server behind `my-tool mcp serve` | `["run","--directory","${__dirname}","--frozen","my-tool","mcp","serve"]` |
 
+The Bare script row matches the MCPB spec example verbatim and omits `--frozen`; add it (as in the other rows) whenever you ship a `uv.lock`.
+
 For Approach A, `command` is `"uv"`.
 Set `entry_point` to the module file that defines the server (e.g. `src/my_mcp_server/server.py`); the schema requires the field, while `mcp_config.args` is the command the host runs (per the `hello-world-uv` example).
 
