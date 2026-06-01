@@ -1,6 +1,6 @@
 ---
 name: bundle-uv-mcp-server
-description: Use when packaging or distributing an existing uv-managed Python MCP server as an MCPB bundle (.mcpb) for one-click install in Claude Desktop or another MCPB host. Triggers include making a .mcpb, writing a manifest.json for a local stdio server, running mcpb pack or mcpb validate, and wiring API tokens or config into user_config. Scoped to uv + pyproject.toml Python servers using the uv runtime (manifest_version 0.4+); not for Node servers or cloud-only remote HTTP servers.
+description: Use when packaging, validating, or distributing an existing uv-managed Python MCP server as an MCPB bundle (.mcpb) for Claude Desktop or another MCPB host. Triggers include creating an MCPB manifest.json, setting server.type to uv, bundling a uv + pyproject.toml stdio server, running mcpb pack or mcpb validate, preparing one-click install, and exposing API tokens or install-time settings through user_config. Scoped to MCPB packaging for existing Python uv servers using manifest_version 0.4+; not for designing MCP tools/resources/prompts, auditing schemas, building new servers, Node servers, or cloud-only remote HTTP servers.
 ---
 
 # Bundle a uv MCP Server as MCPB
