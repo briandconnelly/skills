@@ -15,6 +15,7 @@
   },
   "license": "MIT",
   "keywords": ["mcp"],
+  "icon": "icon.png",
   "server": {
     "type": "uv",
     "entry_point": "src/your_package/server.py",

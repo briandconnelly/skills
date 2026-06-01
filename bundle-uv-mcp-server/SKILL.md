@@ -62,6 +62,8 @@ Manifest field ← source:
 
 CLI: `mcpb init` (interactive manifest), `mcpb validate .`, `mcpb pack .`, `mcpb sign`, `mcpb verify`, `mcpb info`.
 
+Optional manifest fields (add as needed): `icon` (ship the PNG in the bundle too, or omit the line), `long_description`, `homepage`, `documentation`, `support`, `privacy_policies`; `tools`/`prompts` arrays or the `tools_generated`/`prompts_generated` booleans; `mcp_config.platform_overrides` for per-OS command/args/env. Beyond `string`, `user_config` entries can be `number` (`min`/`max`), `boolean`, or `directory`/`file` (`multiple`).
+
 ## Caveats
 
 - The MCPB examples only demonstrate the bare-script form `args: ["run","--directory","${__dirname}","src/server.py"]`.
