@@ -36,9 +36,11 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 - **Record negotiated capabilities as part of the contract.** During initialization, client and server exchange protocol versions and capabilities; optional features are usable only if negotiated.
   A design or audit must say which fully qualified paths it depends on (for example, `server.capabilities.completions`, `server.capabilities.resources.subscribe`, `client.capabilities.roots`, `client.capabilities.elicitation`, or `server.capabilities.tasks.requests.tools.call`) and what fallback weaker clients receive.
+  *Forward-compat (see `SKILL.md` Spec Baseline):* the 2026-07-28 RC is expected to make negotiation per-request rather than init-time and to express optional features as a reverse-DNS `extensions` map. The contract obligation — declare what you depend on and what weaker clients get — is stable; the carrier mechanism is a likely migration point.
 
 - **Handle roots deliberately for workspace-scoped servers.** If a server reads or writes local project content, request `roots/list` from clients that advertise `roots`, stay within those declared roots unless the tool contract explicitly says otherwise, and handle `notifications/roots/list_changed`.
   Roots guide server behavior and reduce path ambiguity; they are not access control, so still enforce filesystem permissions independently.
+  *Forward-compat:* roots is slated for deprecation in the 2026-07-28 RC on a long retention window, with explicit tool-minted/model-returned handles taking over scope declaration. Keep workspace scope expressible as ordinary tool arguments so it survives roots' removal.
 
 - **Expose auth mechanics that affect repair.** For HTTP authorization, document the canonical server URI and resource indicator used for token audience binding, never pass through tokens issued for a different resource, and surface incremental or step-up scope challenges as structured repair (`required_scopes`, `resource`, `authorization_url` or elicitation URL where appropriate).
   For stdio, document where credentials come from only when the agent can act on it.
@@ -143,6 +145,8 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Declare every parameter the tool reads.** Hidden parameters that affect behavior belong in the agent-actionable implicit state declaration (see §1), not implicit in tool behavior.
 
+- **Design tool surfaces to survive code-execution clients.** When an agent imports the server as a code API instead of calling tools through a chat UI (see [mcp-vs-cli.md](mcp-vs-cli.md)), tool and parameter names become identifiers in source and errors cross a language boundary. Keep names import-friendly (`snake_case`, no collisions when flattened into one module namespace), keep `structuredContent` the authoritative return so it maps to a native value, and choose symbolic error `code`s that translate cleanly into language-native exceptions. A task-completing tool composes in code far better than an endpoint chain the agent must re-orchestrate by hand.
+
 ### Anti-patterns
 
 - **Wrapping every API endpoint as a tool.** More tools dilute discovery, increase token cost on every definition load, and make selection harder. A 60-tool server where every tool maps to a REST endpoint typically expresses 6–10 actual user tasks. Collapse endpoint chains into the task they serve.
@@ -165,7 +169,7 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
 
 - **Keep state handles opaque.** Handles must not embed credentials or internal record IDs; they are references to server-side state, not encoded payloads.
 
-- **Keep this subsection bounded.** Use a future dedicated security skill for threat modeling beyond these agent-facing contract rules.
+- **Keep this subsection bounded.** These are agent-facing contract rules only; full threat modeling (trust boundaries, attack trees, data-flow analysis) is out of scope here — route it to a dedicated security review.
 
 Audit prompt: For each tool, can an agent decide to use it, call it correctly, and recover from a failure — using only the schema and structured response, never the prose?
 
@@ -300,6 +304,7 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
   The task status alone is not enough; the agent needs the next operation and the capabilities required to perform it.
 
 - **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
+  *Forward-compat (see `SKILL.md` Spec Baseline):* the 2026-07-28 RC is expected to move tasks out of core into a negotiated extension — server-directed task creation, `tasks/update` added, `tasks/list` removed. The labeled domain-specific fallback this checklist already requires is the hedge that survives that move; keep status/result/cancel expressible as ordinary tools so recovery does not depend on the task surface staying core.
 
 - **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
 

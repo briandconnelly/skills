@@ -319,30 +319,64 @@ A failure response from `slack_send_message` when the channel is archived. *Demo
 ```json
 {
   "isError": true,
-  "code": "channel_archived",
-  "message": "Cannot post to archived channel.",
-  "details": {
-    "field": "channel_id",
-    "value": "C0123ABCD",
-    "reason": "Channel was archived on 2026-04-12T09:00:00Z."
-  },
-  "temporary": false,
-  "retry_after_ms": null,
-  "repair": {
-    "next_step": "unarchive_then_retry",
-    "tool": "slack_unarchive_channel",
-    "arguments": {"channel_id": "C0123ABCD"},
-    "alternative": "Choose a different `channel_id` and re-call `slack_send_message`."
-  },
-  "request_id": "req_01HXYZ7K3M9ABCDEF",
-  "fingerprint": "slack-mcp@1.4.0+s7ab21c"
+  "content": [
+    {"type": "text", "text": "Cannot post to archived channel C0123ABCD. Unarchive it with slack_unarchive_channel, or choose a different channel_id."}
+  ],
+  "structuredContent": {
+    "code": "channel_archived",
+    "message": "Cannot post to archived channel.",
+    "details": {
+      "field": "channel_id",
+      "value": "C0123ABCD",
+      "reason": "Channel was archived on 2026-04-12T09:00:00Z."
+    },
+    "temporary": false,
+    "retry_after_ms": null,
+    "repair": {
+      "next_step": "unarchive_then_retry",
+      "tool": "slack_unarchive_channel",
+      "arguments": {"channel_id": "C0123ABCD"},
+      "alternative": "Choose a different `channel_id` and re-call `slack_send_message`."
+    },
+    "request_id": "req_01HXYZ7K3M9ABCDEF",
+    "fingerprint": "slack-mcp@1.4.0+s7ab21c"
+  }
 }
 ```
 
-What to notice: the `code` is a stable symbolic string the agent can branch on; `details` names the offending field and its value; `temporary: false` with `retry_after_ms: null` tells the agent not to back off and try again — this isn't transient, so don't retry; `repair` points at a real tool name and argument shape — the agent's first repair attempt has everything it needs.
+What to notice: this is a tool-result error, so `isError: true` sits at the top level of the result, the convention repair fields ride in `structuredContent` (the machine contract, per §3), and `content` carries a plain-text fallback for clients that do not surface `structuredContent`.
+The `code` is a stable symbolic string the agent can branch on; `details` names the offending field and its value; `temporary: false` with `retry_after_ms: null` tells the agent not to back off and try again — this isn't transient, so don't retry; `repair` points at a real tool name and argument shape — the agent's first repair attempt has everything it needs.
 `request_id` and `fingerprint` give the agent correlation context.
-Note that fields beyond `isError` — `code`, `temporary`, `retry_after_ms`, `repair`, `request_id`, `fingerprint` — are a convention extension on top of MCP's error shape; an MCP client that does not share this convention will see `isError: true` plus whatever you put in `content`.
+Note that the fields inside `structuredContent` — `code`, `temporary`, `retry_after_ms`, `repair`, `request_id`, `fingerprint` — are a convention extension on top of MCP's error shape; a client that does not share this convention still gets `isError: true` plus the `content` text.
 Mirror the pattern, but document the envelope your server emits.
+
+A more common first-call failure — an unknown channel name passed where an id was required — should route the agent to the lookup tool rather than a dead end:
+
+```json
+{
+  "isError": true,
+  "content": [
+    {"type": "text", "text": "No channel matches 'deploys'. Resolve the name to an id with slack_lookup_channel, then re-call slack_send_message."}
+  ],
+  "structuredContent": {
+    "code": "channel_not_found",
+    "message": "channel_id does not match any channel the bot can see.",
+    "details": {"field": "channel_id", "value": "deploys", "reason": "Looks like a channel name, not a C… id."},
+    "temporary": false,
+    "retry_after_ms": null,
+    "repair": {
+      "next_step": "lookup_then_retry",
+      "tool": "slack_lookup_channel",
+      "arguments": {"name": "deploys"},
+      "alternative": "Browse the `slack://channels` resource index and pick a valid id."
+    },
+    "request_id": "req_01HXYZ7K3M9ABCDEH",
+    "fingerprint": "slack-mcp@1.4.0+s7ab21c"
+  }
+}
+```
+
+What to notice: the channel-name-vs-id mistake is the predictable first-call failure for a tool whose `channel_id` is a hard-to-guess `C…` id (see §1), and MCP completion does not cover tool arguments — so the repair carries the agent across the gap by naming `slack_lookup_channel` and the exact argument to pass, with the resource index as a fallback.
 
 A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, with the same repair signal carried in `error.data`.
 
@@ -351,7 +385,7 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
   "jsonrpc": "2.0",
   "id": "req_01HXYZ7K3M9ABCDEG",
   "error": {
-    "code": -32004,
+    "code": -32002,
     "message": "Resource not found.",
     "data": {
       "human_message": "Message thread was deleted or is no longer visible.",
@@ -365,6 +399,8 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
   }
 }
 ```
+
+`-32002` is MCP's resource-not-found JSON-RPC code under the 2025-11-25 baseline; the `data` block carries the repair contract. (The 2026-07-28 RC is expected to fold this into the standard `-32602` *Invalid params* — see the spec-baseline note in `SKILL.md` — so branch on `machine_code`, not the numeric code, to stay portable across that change.)
 
 ## 7. Server capability summary
 
@@ -413,7 +449,7 @@ The capability summary exposed via a resource, discovery tool, or instructions f
       }
     },
     "default_context": {
-      "announce_channel": "Optional default channel used only when a tool omits `channel_id`."
+      "announce_channel": "Optional default channel for the `announce_release` prompt when its `channels` argument is omitted. Tools like `slack_send_message` still require an explicit `channel_id`."
     },
     "auth": {
       "mode": "stdio environment credential",
@@ -481,7 +517,7 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool` to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `description`, `inputSchema`, `outputSchema`, `annotations`, documented `errors`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
 Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8a. Roots-aware workspace behavior

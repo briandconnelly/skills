@@ -32,7 +32,7 @@ A shell-composable command with stable text contracts on stdout, diagnostics on 
 
 **Decision hinge.** Typed schemas don't earn their cost. If the surface is small, the operations are obvious, and the agent's environment already speaks shell, a CLI is the lowest-overhead choice and integrates with everything else the agent does in that environment.
 
-**Cost.** Weaker discoverability when the capability count grows; less ergonomic in chat UIs that don't expose a shell to the model. Read-only vs destructive distinctions live in conventions and exit codes rather than typed annotations. Defer to [agent-friendly-cli](../../agent-friendly-cli/SKILL.md) for detailed CLI guidance.
+**Cost.** Weaker discoverability when the capability count grows; less ergonomic in chat UIs that don't expose a shell to the model. Read-only vs destructive distinctions live in conventions and exit codes rather than typed annotations. Defer to the **agent-friendly-cli** skill for detailed CLI guidance.
 
 ## Decision Hinges
 

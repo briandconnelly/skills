@@ -121,6 +121,35 @@ Build an eval suite from the Step 1 task list before iterating further.
 - Measure token consumption and tool-call count per completed task — both are first-class quality signals.
 - Include fixture types for cold-start/tool discovery, wrong-tool selection, invalid-argument, auth-failure, pagination, upgrade/version-change, and long-running progress plus cancel/recover.
 
+A worked fixture for one task makes the metrics runnable rather than aspirational. Each fixture pairs a prompt with an assertion the harness can check against the transcript:
+
+```json
+{
+  "task": "announce that api@v2.4.1 shipped to the #deploys channel",
+  "expect_first_call": {"tool": "slack_send_message", "args_match": {"text": {"contains": "v2.4.1"}}},
+  "metrics": {"max_tool_calls": 2, "max_tokens": 4000},
+  "fixtures": [
+    {
+      "type": "cold_start",
+      "given": "fresh connection, no prior discovery",
+      "assert": "agent reads the capability summary (or search_tools) before its first slack_send_message call, not the full tool list"
+    },
+    {
+      "type": "first_repair",
+      "given": "first call passes channel_id='deploys' (a name, not a C… id)",
+      "inject_error": {"code": "channel_not_found", "repair": {"tool": "slack_lookup_channel"}},
+      "assert": "next call is slack_lookup_channel(name='deploys'), then slack_send_message with the resolved id — repair succeeds in one hop"
+    },
+    {
+      "type": "discovery_cost",
+      "assert": "tokens spent before the first useful call stay under the max_tokens budget; record the count, do not estimate"
+    }
+  ]
+}
+```
+
+Score each run for first-call correctness (did `expect_first_call` match?), first-repair correctness (did the injected error resolve in one hop?), and the two budgets. A fixture that no current transcript can satisfy is a finding against the schema, not a flaky test.
+
 Output: at least one eval task suite covering the high-value tasks from Step 1, with metrics for first-call correctness, first-repair correctness, token consumption, and tool-call count.
 Checkpoint: §2, §3, §6, §7, §8, §9 — the eval should exercise discovery, tool selection, error repair, long-running behavior, token consumption, and upgrade behavior.
 

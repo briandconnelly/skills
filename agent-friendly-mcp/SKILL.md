@@ -7,6 +7,15 @@ description: Use when designing, building, auditing, or reviewing an MCP server 
 
 Use this skill to make MCP servers easy for agents to discover, invoke correctly, recover from, and use at low token cost without sacrificing correctness.
 
+## Spec Baseline
+
+This skill is written against the stable **MCP 2025-11-25** specification; the field names, capability paths, and task lifecycle it uses follow that revision.
+
+A **2026-07-28 release candidate** is in flight — not yet ratified, and still subject to change before it finalizes.
+It is expected to make the protocol stateless (removing the `initialize`/`initialized` handshake and per-session ids, with client info and capabilities traveling per request), move **tasks** from experimental core to a negotiated **extension**, deprecate **roots**, **sampling**, and **logging** on long retention windows, and formalize a reverse-DNS **extensions framework** that gives the convention metadata below an official home.
+Treat init-time capability negotiation, native tasks, and roots as **likely migration points**: design against them today, but keep server logic able to absorb their restructuring, and branch on stable symbolic codes rather than numeric or transport-level details where you have the choice.
+Revisit this skill when 2026-07-28 finalizes.
+
 ## Core Standard
 
 - Tool and resource schemas are the operational contract; prompts are advisory scaffolding for orchestration. Do not hide essential behavior in prompts.
@@ -70,25 +79,22 @@ Keep them — but never let them masquerade as protocol.
 - **Long-running operation**: work that may need progress, cancellation, status polling, or result retrieval after the original request.
 - **Task-capable tool**: a tool that supports the task-augmented request pattern, declared via `execution.taskSupport: "optional" | "required" | "forbidden"`, so clients can recover status and results after the original call returns.
 
-## State Handles
+## Checklist Map
 
-- Domain IDs with natural meaning, such as message timestamps, channel names, or usernames, may stay readable.
-- State handles, such as job IDs, cursor tokens, and session refs, are opaque IDs with readable labels or summaries where useful.
-- Security-sensitive references, such as auth tokens or internal record IDs, are opaque and never leak structure.
-- Declare handle lifetime, expiry behavior, and bounded retention policy in the tool or resource contract.
-- Check authorization on every handle use, not only when the handle is created.
-- Return structured expiry errors with a repair path when a handle can no longer be used.
+The normative standard lives in [contract-checklist.md](references/contract-checklist.md); walk it top to bottom for any design or review.
+This index orients and routes — it does not restate the rules. State-handle discipline and long-running-operation contracts are normative in §1/§8 and §7 respectively; consult them there rather than a second copy here.
 
-## Long-Running Operations
-
-- Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later recovery.
-- Declare expected duration, timeout behavior, and whether partial progress is observable.
-- Support `progressToken` and rate-limited `notifications/progress` when progress exists.
-- Use `notifications/cancelled` to cancel request-bound non-task work, and `tasks/cancel` to cancel task-augmented work.
-- Enable native tasks at both levels: the server declares `server.capabilities.tasks.requests.tools.call` and the tool declares `execution.taskSupport` as `optional`, `required`, or `forbidden`.
-- Recover via native operations — poll `tasks/get` (respecting `pollInterval`), fetch with `tasks/result`, using the spec's task fields (`taskId`, `status`, `ttl`, `createdAt`, `lastUpdatedAt`) and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
-- If a task can enter `input_required`, declare whether it uses MCP elicitation (`elicitation/create`) or a domain-specific repair/status fallback, and gate that path on the client's negotiated `client.capabilities.elicitation` and `client.capabilities.tasks.requests.elicitation.create` capabilities.
-- Tasks are experimental in MCP 2025-11-25, so a domain-specific status/cancel tool is an acceptable labeled fallback for clients without task support, mirroring the native signals rather than replacing `tasks/*`.
+| § | Section | One-line rule | Worked examples |
+| --- | --- | --- | --- |
+| §1 | Server-Level | Identity, transport, auth modes, agent-actionable prerequisites, negotiated capabilities, and roots — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | §7, §8a |
+| §2 | Discovery | A capability summary plus at least one progressive-disclosure mechanism, so agents load definitions on demand rather than all upfront. | §7, §8 |
+| §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | §1, §2, §10, §12, §13 |
+| §4 | Resources | Stable hierarchical URIs; index before body; stable chunk ids; templates + completion; subscriptions for mutable resources. | §3, §4, §5a, §5b |
+| §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | §5 |
+| §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | §6 |
+| §7 | Long-Running Operations | Choose blocking / progress / task-augmented deliberately; declare duration and timeout; recover via the native task lifecycle with a labeled fallback. | §11 |
+| §8 | Token Efficiency | Concise default with a `detail` toggle; cursor pagination with `has_more`; explicit truncation with a repair hint; identifiers chosen by role. | §2 |
+| §9 | Versioning | Publish a capability fingerprint; deterministic list ordering; native list-changed notifications; discoverable deprecation. | §9 |
 
 ## Workflow
 
@@ -97,6 +103,7 @@ Keep them — but never let them masquerade as protocol.
 3. For an audit, follow [review-workflow.md](references/review-workflow.md); severity scale and report format live there.
 4. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
 5. Use [mcp-vs-cli.md](references/mcp-vs-cli.md) if deciding which surface to expose; use [examples.md](references/examples.md) for concrete schema, response, error, and discovery shapes.
+6. Once the contract is designed, implement it with an MCP SDK — e.g. FastMCP for Python or the official TypeScript SDK. This skill defines the agent-facing wire contract, not the framework; if a FastMCP (or equivalent SDK) skill is available in your environment, use it for implementation specifics.
 
 ## Done Criteria
 

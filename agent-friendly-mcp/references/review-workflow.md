@@ -29,7 +29,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 ## Transcript Probes
 
-Seven questions to ask while reading code and transcripts. Each should be answerable from concrete evidence — schema text, response payloads, or transcript excerpts — not intuition.
+Nine questions to ask while reading code and transcripts. Each should be answerable from concrete evidence — schema text, response payloads, or transcript excerpts — not intuition.
 
 - **Cold start.** What does an agent see when it first connects? Can it learn what the server does, what it does NOT do, and what prerequisites affect use in one read? Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
 - **Tool selection.** Given two adjacent tools (same verb, overlapping nouns, or similar surface), can an agent pick the right one without invoking both? Are descriptions narrow enough that the schema alone disambiguates? Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
@@ -83,6 +83,6 @@ End the report with open questions or assumptions, and an optional remediation s
 ## Done Criteria
 
 - Every section §1 through §9 in [contract-checklist.md](contract-checklist.md) is accounted for in the coverage table — covered by at least one finding, marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
-- At least one of the seven transcript probes was run with concrete evidence (real or simulated transcript), and its answer is recorded in the report.
+- At least one of the nine transcript probes was run with concrete evidence (real or simulated transcript), and its answer is recorded in the report.
 - Each finding carries all five labeled lines (severity, section, summary, evidence, remediation), and remediation references real callable surfaces.
 - When no Critical or Major findings are found, the report says so explicitly and names residual risks (e.g., "no live auth-failure transcript was available" or "fingerprint behavior on upgrade was not exercised").
