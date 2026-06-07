@@ -30,7 +30,7 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 - Rulesets (or branch protection) are applied to the default and release branches for ALL actors with an empty bypass-actors list (no admins, apps, or PATs) so nothing can push past it.
   Merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry. (closes T4)
 - Required status checks are configured; in monorepos, use a single always-running gate check per relevant scope that detects changed paths internally and short-circuits (exits 0) when nothing relevant changed — do NOT use `paths:` filters on a required check, because a skipped workflow leaves the required check PENDING and blocks merge forever; per-directory rulesets are an alternative. (closes T4)
-- `dismiss_stale_reviews` is enabled so a post-approval push invalidates the prior approval; this is the branch-protection or ruleset setting, not merely an agent convention. (closes T3)
+- `dismiss_stale_reviews` is enabled so a post-approval push invalidates the prior approval; this is the branch-protection field (`dismiss_stale_reviews_on_push` in the rulesets API), not merely an agent convention. (closes T3)
 - `require_last_push_approval` is enabled so the most recent push must be approved by someone other than its author, preventing an author from pushing after approval and merging unreviewed code; this is the strongest anti-approval-laundering control because it directly closes the "approve then sneak a commit" gap. (closes T3)
 - Linear history is required. (closes T8)
 - Signed commits are required; define the accepted mechanism in your repo (GitHub App commit signing, GPG, or SSH) so audits know what evidence to check. (closes T8)
