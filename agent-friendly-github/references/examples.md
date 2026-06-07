@@ -24,6 +24,7 @@ The `bypass_actors` array is intentionally empty — no admins, apps, or PATs ar
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
 Replace `"context"` values under `required_status_checks` with the exact check names your CI jobs report.
+Scoped checks (such as the issue-link verifier in the §1 example below) are added to `required_status_checks` only in repos whose workflow mandates them.
 
 ```json
 {
@@ -67,10 +68,6 @@ Replace `"context"` values under `required_status_checks` with the exact check n
         "required_status_checks": [
           {
             "context": "CI / test",
-            "integration_id": 0
-          },
-          {
-            "context": "draft-gate / check",
             "integration_id": 0
           }
         ]
@@ -206,6 +203,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 # Default token is read-only for all jobs in this workflow.
 permissions:
@@ -223,6 +223,8 @@ jobs:
       - name: Log PR title safely
         # Bind the untrusted PR title via env: — NEVER interpolate ${{ github.event.* }}
         # directly into a run: script (T2 / injection-safe).
+        # This step only runs on pull_request events — push events have no PR title.
+        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -242,10 +244,12 @@ jobs:
   # OIDC cloud-auth job — only this job gets id-token: write.
   # The test job above keeps the default contents: read from the top-level block.
   # OIDC replaces stored long-lived cloud credentials (T5, T9).
+  # The deploy job runs only on push to the protected branch — never in a PR context —
+  # so OIDC cloud credentials are never available to PR-triggered runs.
   deploy:
     runs-on: ubuntu-24.04
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Grant id-token: write only to this job — narrowest possible scope (T5).
     permissions:
       contents: read
@@ -511,82 +515,95 @@ Add `monorepo-gate / gate` as the single required status check in the ruleset.
 The GitHub UI under **Settings → Rules → Rulesets** lets you add required checks by name; the check name is `<workflow-name> / <job-id>` as GitHub reports it.
 Because this workflow always runs, the required check always reports a result and never stalls a merge.
 
-## Draft-First Enforcement Check
+## Draft-First: a Convention, Not a CI Gate
 
 Implements: §1 (T3)
 
-GitHub has no native "require draft by path" feature.
-This required status check fills part of that gap: it blocks merging a PR that touches CODEOWNERS-owned paths while the PR is still in draft state, and it fires on `ready_for_review` so a PR cannot be merged without going through that transition.
-Add `draft-gate / check` as a required status check in the branch ruleset so the PR cannot be merged while this check is red.
+Draft-first (open a protected-path change as a draft, let a human promote it to ready) is an OPERATE convention, not something a required status check can robustly enforce.
 
-**Important limitation:** this check cannot verify that a *human* promoted the PR from draft to ready — the `ready_for_review` event fires for any actor, including the agent itself.
-The actual human-judgment gate is the required CODEOWNERS review (§2): a CODEOWNERS-listed human must approve, and agents must not be listed as owners.
-Treat the draft gate as a supplementary forcing function that keeps agent-opened PRs in draft until a human explicitly moves them forward — not as the enforcement mechanism for human review itself.
+No robust required check exists for this property.
+A required check that fails while the PR is ready-for-review would block merge permanently — a PR must be non-draft to merge, so a check that demands draft state would never clear.
+A variant that only inspects the `opened` action is cleared by the next push (`synchronize`), so it is trivially bypassed.
+"Opened as draft" is not durably re-verifiable: once the PR is promoted, there is no webhook event that reliably re-runs the check to confirm the original state.
 
-The check reads `github.event.pull_request.draft` (a boolean) and the list of changed files.
-If the PR touches a protected path and is not in draft state, the step exits 1 and leaves the required check red.
-Any untrusted PR fields (title, body) are bound via `env:` and never interpolated directly into `run:` scripts (T2).
-The `protected_prefixes` list in this workflow must be kept in sync with the CODEOWNERS-owned paths it mirrors (or derived directly from CODEOWNERS); a drifted list silently under- or over-enforces, and the real human gate remains the required CODEOWNERS review (§2).
+The actual enforcement for protected-path changes is the required CODEOWNERS review (§2): a CODEOWNERS-listed human must approve, and agents are never listed as owners.
+Pair that enforcement with the operate-playbook draft-first rule.
+
+If you want a nudge, a NON-required workflow may post a comment when a protected-path PR is opened ready — but never make draft-state a required merge gate.
+
+## Required Check: PR Links a Real Open Issue (scoped)
+
+Implements: §1, §2 (T3)
+
+This is the worked example of the principle in §1: template-prompted metadata that matters (the linked issue) is CI-verified, not trusted.
+Mark this check REQUIRED in the §2 ruleset ONLY in repos whose workflow mandates issue-backed PRs.
+
+Escape hatch: a `no-issue-required` label, applied through a maintainer/CODEOWNERS-gated process, exempts hotfixes, reverts, release PRs, and dependency-bump PRs.
+
+Scope limitations and failure modes: only same-repo numeric `#N` references are verified — cross-repo `owner/repo#N` and private-repo references are not (they would 404); an issue can be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
 
 ```yaml
-name: draft-gate
+name: require-issue-link
 
 on:
   pull_request:
     types:
       - opened
-      - ready_for_review
+      - edited
+      - reopened
       - synchronize
     branches:
       - main
 
 permissions:
   contents: read
+  issues: read
   pull-requests: read
 
 jobs:
-  check:
+  require-issue:
     runs-on: ubuntu-24.04
-
+    # Escape hatch: a maintainer/CODEOWNER applies `no-issue-required` for hotfixes,
+    # reverts, release, or dependency-bump PRs. Gate who can add that label through
+    # your process — the label is the documented exception, not a free bypass.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-issue-required') }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-
-      - name: Enforce draft-first on protected paths
-        # Bind untrusted PR fields via env: — never interpolate ${{ github.event.* }}
-        # directly in a run: script (T2 / injection-safe).
-        env:
-          PR_DRAFT: ${{ github.event.pull_request.draft }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Collect changed files for this PR
-          changed=$(gh pr view "$PR_NUMBER" --json files --jq '[.files[].path] | join("\n")')
-
-          # Protected path prefixes that require draft-first promotion
-          protected_prefixes=(
-            "packages/auth/"
-            "packages/billing/"
-            ".github/"
-            "infra/"
-          )
-
-          touches_protected=false
-          for prefix in "${protected_prefixes[@]}"; do
-            if echo "$changed" | grep -q "^${prefix}"; then
-              touches_protected=true
-              break
-            fi
-          done
-
-          if [ "$touches_protected" = "true" ] && [ "$PR_DRAFT" = "false" ]; then
-            echo "ERROR: This PR touches a CODEOWNERS-protected path."
-            echo "Open it as a draft first, complete all checks and human review,"
-            echo "then have a human promote it to ready-for-review."
-            exit 1
-          fi
-
-          echo "Draft-first gate passed."
+      - name: Verify the PR closes a real open issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            // Match explicit closing keywords only — not incidental "#123" mentions.
+            const re = /\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
+            const nums = [...body.matchAll(re)].map((m) => Number(m[3]));
+            if (nums.length === 0) {
+              core.setFailed(
+                "PR body must close an issue, e.g. 'Closes #123'. " +
+                "Apply the maintainer-gated 'no-issue-required' label for hotfixes/reverts/release PRs."
+              );
+              return;
+            }
+            for (const n of nums) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: n,
+                });
+                if (issue.pull_request) {
+                  core.setFailed(`#${n} is a pull request, not an issue.`);
+                  return;
+                }
+                if (issue.state !== "open") {
+                  core.setFailed(`#${n} is not open (state: ${issue.state}).`);
+                  return;
+                }
+              } catch (err) {
+                core.setFailed(`Could not verify #${n}: ${err.message}`);
+                return;
+              }
+            }
+            core.info("Verified: PR references a real open issue.");
 ```
 
 ## Starter .gitignore
