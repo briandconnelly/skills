@@ -11,7 +11,7 @@ Do not run workflows, approve PRs, or write to the repository in any form during
 ## Severity Scale
 
 - **Critical** — an active path to compromise or to an unreviewed merge reaching a protected branch.
-  Examples: a non-empty bypass-actors list on a protected-branch ruleset (§2, T4); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity that is a CODEOWNER on protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled in a context where secrets are present (§3, T5).
+  Examples: a non-empty bypass-actors list on a protected-branch ruleset (§2, T4); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity listed in `CODEOWNERS` for protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled in a context where secrets are present (§3, T5).
   Blocks confidence; fix before agents operate.
 
 - **High** — a guardrail is missing or easily defeated.
@@ -57,7 +57,7 @@ Mark each probe with the checklist section and threat class it targets.
 - **`pull_request_target` and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` as a trigger; for any match, check whether the workflow checks out or executes PR head code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent), whether any privileged job is protected by an environment with human approval, and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`.
   *(§3, T2)*
 
-- **Agent identity as CODEOWNER or self-approver** — read the active `CODEOWNERS` file (GitHub looks for it at the repo root, in `.github/`, or in `docs/` — check all three) and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.
+- **Agent identity listed in CODEOWNERS or counted as approver** — read the active `CODEOWNERS` file (GitHub looks for it at the repo root, in `.github/`, or in `docs/` — check all three) and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.
   *(§1, §2, T3)*
 
 - **Action pin format** — for each `uses:` line in all workflow files, confirm the pin is a full 40-character commit SHA, not a mutable tag (`@v3`, `@main`, `@latest`) and not absent.
@@ -118,7 +118,7 @@ The table below shows an illustrative example of a completed audit; replace valu
 
 - Every §1–§4 item in config-checklist.md is accounted for in the coverage table: covered by at least one finding (with severity and a `Tn` threat reference), marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
 - Each finding carries all five labeled lines (Severity, Section, Threat, Evidence, Remediation).
-- At least the Critical-risk probes (bypass-actors list, `pull_request_target` injection surface, agent-as-CODEOWNER, classic PAT scope) were run and their output or a reason they could not be run is recorded.
+- At least the Critical-risk probes (bypass-actors list, `pull_request_target` injection surface, agent listed in `CODEOWNERS`, classic PAT scope) were run and their output or a reason they could not be run is recorded.
 - When no Critical or High findings are present, the report says so explicitly and names residual risks (e.g., "bypass-actors probe could not be run — admin access unavailable" or "no live Actions run logs were inspected for secret exposure").
 
 This mirrors the Audit Done Criteria stated in SKILL.md.
