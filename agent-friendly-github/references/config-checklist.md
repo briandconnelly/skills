@@ -41,6 +41,7 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 - OIDC is used for cloud authentication instead of stored long-lived secrets. (closes T5, T9)
 - Secret handling: `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` are not enabled in production (debug logging can expose secrets). (closes T5)
 - Dependabot is enabled for both version updates and security updates. (closes T6)
+- Dependency-update PRs (Dependabot or version bumps) pass through the same required reviews and status checks as any other change; where auto-merge is used it is limited to non-major updates with green checks and never bypasses the required review assembled in §2. (closes T6)
 - Code scanning is enabled (CodeQL or an equivalent analyzer). (closes T6)
 - Secret scanning is enabled with push protection. (closes T5)
 - Dependency review is enabled on PRs; for agent-added packages, a scoped or private registry and a committed lockfile blunt dependency confusion. (closes T6, T7)

@@ -57,16 +57,18 @@ Agents also commonly stage broadly (`git add -A` or `git add .`) without auditin
 **Config close:** §1 (`.gitignore` covering secret-bearing paths, as the preventive layer) and §3 (least-privilege `GITHUB_TOKEN`; OIDC-based authentication instead of stored long-lived secrets where possible; `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` not set in production environments; actions pinned to a full commit SHA so a tag move cannot swap in exfiltrating code; secret scanning with push protection enabled).
 
 **Operate close:** Stage selectively — never `git add -A` or `git add .`; review exactly what will be committed and confirm no secret-bearing file is staged, even when a `.gitignore` exists, because `.gitignore` does not protect already-tracked files.
+If a secret is nonetheless exposed (committed, pushed, or logged), rotate or revoke it immediately — history rewrite removes the secret from the tree but does not un-expose an already-pushed or logged credential.
 
 ## T6 — Supply-chain (actions & build)
 
-**What it is:** Actions pinned to a mutable tag (or left unpinned) and compromised transitive dependencies pull in attacker-controlled code at build time.
+**What it is:** Actions pinned to a mutable tag (or left unpinned) and compromised or malicious transitive dependencies — whether newly added or introduced through a dependency update — pull in attacker-controlled code at build time.
 
 **Why agents amplify it:** Agents add actions and dependencies readily, and tags can be silently moved to different commits under them after the agent references them.
 
 **Config close:** §3 (all actions pinned to a full commit SHA, not a tag or `@main`; Dependabot configured for both Actions and ecosystem dependencies; dependency review action on pull requests blocks newly introduced vulnerable or license-violating packages).
 
-**Operate close:** Prefer SHA-pinned actions when adding or updating workflow steps; verify the SHA corresponds to the expected release.
+**Operate close:** Prefer SHA-pinned actions when adding or updating workflow steps and verify the SHA corresponds to the expected release.
+Treat dependency-update PRs as real code changes — review the diff and changelog, and do not auto-merge a major-version bump or an update whose package ownership or source registry changed without human review.
 
 ## T7 — Dependency confusion / namespace hijacking
 
