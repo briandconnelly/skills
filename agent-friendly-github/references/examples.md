@@ -245,8 +245,10 @@ Key points enforced in this workflow:
 
 ```yaml
 # WARNING: never use pull_request_target for workflows that check out untrusted code
-# or interpolate github.event.* into run: steps — it runs with repo secrets and
-# write scope regardless of what it checks out. Use pull_request instead.
+# or interpolate github.event.* into run: steps — it runs in the base-repo context
+# with repository secrets, and its token defaults to write scope unless restricted via
+# permissions:; the danger is that privileged context and secret access, not the checkout.
+# Use pull_request instead.
 name: CI
 
 on:
@@ -616,7 +618,7 @@ permissions:
 jobs:
   require-issue:
     runs-on: ubuntu-24.04
-    # Escape hatch: a maintainer/CODEOWNER applies `no-issue-required` for hotfixes,
+    # Escape hatch: a maintainer or CODEOWNERS-listed reviewer applies `no-issue-required` for hotfixes,
     # reverts, release, or dependency-bump PRs. Gate who can add that label through
     # your process — the label is the documented exception, not a free bypass.
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-issue-required') }}

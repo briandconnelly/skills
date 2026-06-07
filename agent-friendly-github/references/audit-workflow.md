@@ -57,7 +57,7 @@ Mark each probe with the checklist section and threat class it targets.
 - **`pull_request_target` and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` as a trigger; for any match, check whether the workflow checks out or executes PR head code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent), whether any privileged job is protected by an environment with human approval, and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`.
   *(§3, T2)*
 
-- **Agent identity as CODEOWNER or self-approver** — read `.github/CODEOWNERS` and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.
+- **Agent identity as CODEOWNER or self-approver** — read the active `CODEOWNERS` file (GitHub looks for it at the repo root, in `.github/`, or in `docs/` — check all three) and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.
   *(§1, §2, T3)*
 
 - **Action pin format** — for each `uses:` line in all workflow files, confirm the pin is a full 40-character commit SHA, not a mutable tag (`@v3`, `@main`, `@latest`) and not absent.
