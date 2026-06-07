@@ -36,7 +36,10 @@ For a GitHub App, create it at the org level and generate an installation token 
 gh api /orgs/{org}/installations \
   --jq '.installations[] | {app_slug, app_id, repository_selection}'
 
-# Confirm token scopes for a specific installation
+# Confirm token scopes for a specific installation.
+# NOTE: the /app/* endpoints require authenticating AS THE APP with a JWT signed by the
+# app's private key — a normal `gh auth login` user token will not work here.
+# See the Agent Identity Setup artifact in examples.md.
 gh api /app/installations/{installation_id}/access_tokens \
   --method POST \
   --field "repositories[]={repo_name}" \
