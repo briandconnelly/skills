@@ -54,7 +54,7 @@ Mark each probe with the checklist section and threat class it targets.
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
 
-- **`pull_request_target` and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` as a trigger; for any match, check whether the workflow checks out PR code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent) and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`.
+- **`pull_request_target` and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` as a trigger; for any match, check whether the workflow checks out or executes PR head code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent), whether any privileged job is protected by an environment with human approval, and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`.
   *(§3, T2)*
 
 - **Agent identity as CODEOWNER or self-approver** — read `.github/CODEOWNERS` and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.

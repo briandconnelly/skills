@@ -20,6 +20,7 @@ The `bypass_actors` array is intentionally empty — no admins, apps, or PATs ar
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
 `require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3).
+`required_review_thread_resolution: true` requires code-review conversations to be resolved before merge.
 `required_signatures` requires signed commits (T8).
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
@@ -58,6 +59,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
         "require_code_owner_review": true,
         "required_approving_review_count": 1,
         "require_last_push_approval": true,
+        "required_review_thread_resolution": true,
         "allowed_merge_methods": ["squash", "rebase"]
       }
     },
@@ -77,6 +79,54 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 }
 ```
 
+## Production Environment Gate
+
+Implements: §2, §3 (T5)
+
+Use this when a repository has production deployments.
+The protected environment controls access to production secrets and OIDC credentials.
+The optional `required_deployments` ruleset rule makes the named deployment environment pass before matching branches can be merged.
+Only use `required_deployments` when every PR matching the branch ruleset reliably triggers a deployment to that environment.
+If no deployment reports for a matching PR, the requirement remains unsatisfied and blocks merge just like a skipped required check.
+If production deployment is human-managed or conditional, keep the environment protection rule and do not add `required_deployments` to the branch ruleset.
+
+Create `production-environment.json` with the required reviewer and apply it:
+
+```sh
+gh api --method PUT repos/{owner}/{repo}/environments/production \
+  --input production-environment.json
+```
+
+```json
+{
+  "wait_timer": 0,
+  "prevent_self_review": true,
+  "reviewers": [
+    {
+      "type": "Team",
+      "id": 123456
+    }
+  ],
+  "deployment_branch_policy": {
+    "protected_branches": true,
+    "custom_branch_policies": false
+  }
+}
+```
+
+The reviewer team must be human-owned and bot-free, just like CODEOWNERS teams.
+
+Add this rule to the default-branch ruleset when production deployment must pass before merge:
+
+```json
+{
+  "type": "required_deployments",
+  "parameters": {
+    "required_deployment_environments": ["production"]
+  }
+}
+```
+
 ## Monorepo CODEOWNERS
 
 Implements: §1 (T3)
@@ -87,7 +137,7 @@ Implements: §1 (T3)
 # A required CODEOWNERS review can only be satisfied by a listed owner;
 # if a bot or agent account were listed, it could satisfy its own review (T3).
 
-# Per-package ownership — explicit path prefixes, no overlapping catch-all-only rules
+# Per-package ownership — explicit path prefixes, never catch-all-only
 /packages/auth/          @org/auth-team
 /packages/billing/       @org/billing-team
 /packages/core/          @org/platform-team
@@ -305,7 +355,7 @@ In a monorepo, add a nested `AGENTS.md` per subtree that has meaningfully differ
 
 ## Pull requests
 
-- Open all PRs as drafts; only mark ready for review after all checks pass.
+- Open PRs touching CODEOWNERS-owned paths as drafts; only mark ready for review after all checks pass.
 - Never approve or auto-merge your own PR.
 - Re-request human review after any post-approval push.
 - CODEOWNERS paths require a human team review — do not attempt to satisfy it yourself.
@@ -385,7 +435,9 @@ Implements: §4 (T8, T9)
 
 Provision a distinct GitHub App identity for agent work.
 The App gets fine-grained permissions scoped to the target repository, produces short-lived installation tokens, and creates a clear audit trail.
-Commit signing is automatic when the App pushes via the GitHub API.
+GitHub can mark commits as verified when they are created through a verified GitHub App API path that meets GitHub's bot-signature rules.
+Local `git commit` followed by `git push` with an App installation token is not automatically signed.
+Local commits still need GPG, SSH, or S/MIME signing when the ruleset requires signed commits.
 
 ```sh
 # 1. Create the App at the org level (GitHub UI or gh api).
@@ -405,7 +457,8 @@ gh api /orgs/{org}/installations \
 #   --jq '{token: .token, expires_at: .expires_at, permissions: .permissions}'
 
 # 4. Use the installation token as GH_TOKEN in subsequent gh or git operations.
-#    Commits pushed via the GitHub API with an App token are auto-signed by GitHub.
+#    Commits created through a verified GitHub App API path can be auto-verified by GitHub.
+#    Local git commits pushed with an App token still need GPG, SSH, or S/MIME signing.
 
 # 5. For human+agent pairing, add a co-authorship trailer to commit messages:
 #    Co-authored-by: Human Name <human@example.com>
@@ -515,7 +568,7 @@ Add `monorepo-gate / gate` as the single required status check in the ruleset.
 The GitHub UI under **Settings → Rules → Rulesets** lets you add required checks by name; the check name is `<workflow-name> / <job-id>` as GitHub reports it.
 Because this workflow always runs, the required check always reports a result and never stalls a merge.
 
-## Draft-First: a Convention, Not a CI Gate
+## Draft-First Convention, Not a CI Gate
 
 Implements: §1 (T3)
 
@@ -638,15 +691,15 @@ coverage/
 
 Implements: §1 (auditability)
 
-`text=auto` normalizes line endings on the next add/commit and will produce a one-time churn commit if the repo already has mixed line endings; `linguist-generated` only affects GitHub's diff display and stats, it does not block or enforce anything.
+`text=auto` normalizes line endings on the next add/commit and will produce a one-time churn commit if the repo already has mixed line endings.
+`linguist-generated` only affects GitHub's diff display and stats; it does not block or enforce anything.
+Do not mark lockfiles as generated, because lockfile diffs are part of dependency review.
 
 ```text
 # Normalize line endings for all text files
 * text=auto eol=lf
 
-# Mark generated files so GitHub collapses their diffs and excludes them from language stats
-*.lock linguist-generated=true
-package-lock.json linguist-generated=true
+# Mark true generated output so GitHub collapses its diffs and excludes it from language stats
 dist/** linguist-generated=true
 build/** linguist-generated=true
 ```
@@ -663,7 +716,7 @@ Implements: §1 (T1)
 Agent guidance lives in [`AGENTS.md`](AGENTS.md); read it before opening any PR.
 
 - Branch off `main`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`.
-- Open all PRs as drafts; mark ready for review only after all required checks pass.
+- Open PRs touching CODEOWNERS-owned paths as drafts; mark ready for review only after all required checks pass.
 - At least one human reviewer must approve before merge — agents may not self-approve.
 - Run `uv run pytest` locally before marking a PR ready.
 - Follow [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.

@@ -9,14 +9,20 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 
 - Issue and PR templates are present and in use: `.github/ISSUE_TEMPLATE/` directory for issues and `.github/PULL_REQUEST_TEMPLATE.md` for pull requests. (productivity; closes T1 via reduced ambiguity)
 - Label taxonomy covers type and priority labels; monorepos add `scope/<area>` labels so PRs and issues are routable per subtree. (productivity)
-- `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths must be human users or teams, kept bot-free by membership hygiene — GitHub has no native "owners must be human" enforcement, so this is a repository policy you maintain; the goal is that a required CODEOWNERS review can never be satisfied by an agent. Monorepo: one prefix per owned subtree. (closes T3)
+- `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths must be human users or teams, kept bot-free by membership hygiene — GitHub has no native "owners must be human" enforcement, so this is a repository policy you maintain.
+  The goal is that a required CODEOWNERS review can never be satisfied by an agent.
+  Monorepo: one prefix per owned subtree.
+  A human-owned last-resort catch-all is acceptable only after explicit path rules. (closes T3)
 - Required reviews are enabled on protected branches and enforced through CODEOWNERS. (closes T3)
 - Draft-first on owned paths is an operate convention, not a CI gate: open a protected-path change as a draft and wait for a human to promote it to ready; there is no robust required status check for "opened as draft" — a check that fails while the PR is ready-for-review blocks merge permanently, and one that only inspects the `opened` action is cleared by the next push; the enforcement for protected-path changes is the required CODEOWNERS review (§2), which requires a CODEOWNERS-listed human to approve. (closes T3)
 - Canonical instruction file (`AGENTS.md`) is present; per-tool files are thin references to it; reusable procedures live as committed artifacts, not pasted into instruction files; monorepos add a nested `AGENTS.md` per subtree. (closes T1 via clear guidance)
 - `CONTRIBUTING` is present and discoverable (`CONTRIBUTING.md` or `.github/CONTRIBUTING.md`) describing branch, PR, and review expectations that a contributor or agent must follow. (productivity; closes T1)
 - `SECURITY.md` is present (required for public repos; cross-referenced in §4 with private vulnerability reporting). (closes T1)
 - `.gitignore` is present and covers the language/framework's secret-bearing and noise paths (`.env*`, `*.pem`, `*.key`, `*.p12`, credential files, build output, caches, dependency dirs); it is the preventive layer in front of §3's secret scanning and push protection, and it keeps PR diffs reviewable; note it does NOT untrack already-committed files — a `git rm --cached` plus history rewrite is needed for those, and that rewrite is the force-push the branch guardrails otherwise warn against, which is why prevention via `.gitignore` matters. (closes T5)
-- `.gitattributes` sets `* text=auto` (with `eol=lf`, or `eol=crlf` on Windows-primary repos) to prevent line-ending churn across agent platforms, and marks generated files (lockfiles, build output) with `linguist-generated=true` to keep PR diffs reviewable; note `linguist-generated` affects GitHub's diff display and language stats only — it does not enforce anything; also note that adding `* text=auto` to a repo that already has mixed line endings will produce a one-time normalization (churn) commit on first add/commit. (auditability)
+- `.gitattributes` sets `* text=auto` (with `eol=lf`, or `eol=crlf` on Windows-primary repos) to prevent line-ending churn across agent platforms, and marks true generated build output with `linguist-generated=true` to keep PR diffs reviewable.
+  Do not mark lockfiles as generated, because lockfile diffs are part of dependency review.
+  Note `linguist-generated` affects GitHub's diff display and language stats only — it does not enforce anything.
+  Adding `* text=auto` to a repo that already has mixed line endings will produce a one-time normalization commit on first add/commit. (auditability)
 - Metadata a PR template prompts for that matters for safety or correctness (a linked issue, a changelog entry, a migration note) is verified by a CI check that is marked REQUIRED in the §2 ruleset — a check enforces nothing until it is required, and a template's prose or checkboxes are never treated as evidence the property holds. (closes T3)
 
 ## §2 Branch / Repo Guardrails
@@ -37,7 +43,8 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 
 - `GITHUB_TOKEN` permissions are least-privilege at both layers: the repository/org Actions setting sets the maximum the token can be granted (set it to read-only), and each workflow declares a top-level `permissions:` block for its actual scope (read-only default, granting write narrowly per job) — the repo setting is the ceiling, the workflow block is the operative grant. (closes T5)
 - Untrusted `github.event.*` strings are never interpolated directly into `run:` steps; bind them through `env:` and reference the environment variable. (closes T2)
-- `pull_request_target` discipline: it runs privileged with repository secrets, so do not use it for untrusted PRs; gate it behind a protected environment or use plain `pull_request` from forks, which is read-only with no secrets by default. (closes T2)
+- `pull_request_target` discipline: it runs privileged with repository secrets, so prefer plain `pull_request` for untrusted fork PRs because it is read-only with no repository secrets by default.
+  If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with human approval. (closes T2)
 - Third-party actions are pinned to a full commit SHA, not a mutable tag. (closes T6)
 - OIDC is used for cloud authentication instead of stored long-lived secrets. (closes T5, T9)
 - Secret handling: `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` are not enabled in production (debug logging can expose secrets). (closes T5)

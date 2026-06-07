@@ -57,7 +57,8 @@ Merge queues operate through the normal ruleset flow and require no bypass entry
 Required ruleset conditions:
 
 - Required status checks; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
-- `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3). Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
+- `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3).
+  Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
 - Signed commits required — matches the mechanism chosen in Step 1 (closes T8).
 - Linear history required (closes T8).
 - Force-push and branch deletion blocked on protected refs (closes T4).
@@ -66,6 +67,8 @@ Assemble auto-merge safety as a combination of three settings (GitHub has no sin
 required approving review count ≥ 1 + self-approval not counted + CODEOWNERS-required human review on protected paths (closes T3).
 
 Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds (closes T5).
+If the default branch ruleset must require successful production deployment before merge, add a `required_deployments` rule for that environment.
+See the **production environment gate** artifact in [examples.md](examples.md).
 
 Apply the ruleset via `gh api` (illustrative — substitute your repo and the hardened ruleset JSON from [examples.md](examples.md)):
 
@@ -91,7 +94,8 @@ Pin every third-party action to a full commit SHA, not a mutable tag or `@main` 
 Enable OIDC for cloud authentication in place of stored long-lived secrets (closes T5, T9).
 
 Ensure no untrusted `github.event.*` strings flow directly into `run:` steps — bind them through `env:` and reference the environment variable in shell (closes T2).
-Audit `pull_request_target` usage: if present, gate it behind a protected environment or replace it with plain `pull_request` (read-only token, no secrets for fork workflows) (closes T2).
+Audit `pull_request_target` usage: prefer replacing it with plain `pull_request`, which gets a read-only token and no repository secrets for fork workflows (closes T2).
+If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with a human reviewer.
 
 Enable GitHub-native security features:
 
@@ -123,10 +127,12 @@ Owners on protected paths must be human users or teams, never bot or agent accou
 In a monorepo, one prefix per owned subtree.
 See the **CODEOWNERS** artifact in [examples.md](examples.md).
 
-**Draft-first enforcement.**
+**Draft-first convention.**
 GitHub has no native "require draft by path" feature.
-Enforce it with a required status check or labeler workflow that stays red until a human promotes the PR to ready.
-See the **draft-first enforcement check** artifact in [examples.md](examples.md).
+Document the convention in `AGENTS.md` and the operating playbook: protected-path changes open as drafts and wait for a human to promote them.
+Do not make draft-state a required merge gate.
+The enforceable control is the CODEOWNERS-required human review.
+See the **draft-first convention** note in [examples.md](examples.md).
 
 **`AGENTS.md` and per-tool files.**
 Create a canonical `AGENTS.md` at the repo root covering branching strategy, commit format, review expectations, label use, test commands, and off-limits paths.
@@ -151,7 +157,8 @@ Run through the variations that apply to your repository type:
 Confirm an always-running monorepo gate check is configured (not `paths:`-filtered) so a change in one subtree does not block unrelated subtrees (§2).
 Confirm nested `AGENTS.md` files exist for subtrees with different rules (§1).
 Confirm `scope/<area>` labels cover all major subtrees (§1).
-Confirm CODEOWNERS has one prefix per owned subtree with no overlapping catch-all (§1).
+Confirm CODEOWNERS has one prefix per owned subtree and is never catch-all-only (§1).
+If a last-resort catch-all exists, confirm it is human-owned and appears after explicit path rules.
 
 **Public repos.**
 Enable private vulnerability reporting (GitHub Security → Private vulnerability reporting) and verify `SECURITY.md` references it (§4, §1).
@@ -175,11 +182,11 @@ This mirrors the Set up Done Criteria in SKILL.md: every checklist item configur
 
 Checklist walkthrough by section:
 
-**§1 Issues & PRs** — verify issue templates present, PR template present, label taxonomy defined (including `scope/<area>` if monorepo), CODEOWNERS with explicit prefixes and human-only owners on protected paths, required reviews enabled, draft-first enforcement check active, `AGENTS.md` present with thin per-tool adapter files, `CONTRIBUTING` present, `SECURITY.md` present.
+**§1 Issues & PRs** — verify issue templates present, PR template present, label taxonomy defined (including `scope/<area>` if monorepo), CODEOWNERS with explicit prefixes and human-only owners on protected paths, required reviews enabled, draft-first convention documented, `AGENTS.md` present with thin per-tool adapter files, `CONTRIBUTING` present, `SECURITY.md` present.
 
 **§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list is empty, required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, linear history required, signed commits required, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
 
-**§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` on untrusted PRs without environment gate, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
+**§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
 **§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored and signed with attribution preserved, audit-log retention considered at org level, no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
@@ -191,6 +198,7 @@ Emitted artifacts (confirm each is in place or pointed to in [examples.md](examp
 - Issue and PR templates
 - Label taxonomy
 - `AGENTS.md` pattern (canonical file + thin adapter)
-- Draft-first enforcement check
+- Draft-first convention note
 - Agent identity setup (App registration, token scope table, co-authorship trailer)
 - Always-running monorepo gate check (if monorepo)
+- Production environment gate (if production deployments exist)

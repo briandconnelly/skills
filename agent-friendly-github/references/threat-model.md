@@ -19,7 +19,9 @@ Auditors cite these IDs (T1–T9) in findings to make the connection explicit; t
 
 **Why agents amplify it:** Agents author and edit workflows and may wire `github.event.*` data straight into shell commands without recognizing the injection surface.
 
-**Config close:** §3 (least-privilege `GITHUB_TOKEN` with minimal write scopes, `pull_request_target` discipline — a plain `pull_request` workflow triggered from a fork runs with a read-only token and no repository secrets, but `pull_request_target` runs in the base-repo context WITH secrets and write scope regardless of what it checks out, so the rule is to avoid `pull_request_target` for untrusted PRs entirely, or gate it behind a protected environment, rather than assuming a safe checkout is sufficient; restrict which events trigger privileged workflows).
+**Config close:** §3 (least-privilege `GITHUB_TOKEN` with minimal write scopes, `pull_request_target` discipline — a plain `pull_request` workflow triggered from a fork runs with a read-only token and no repository secrets, but `pull_request_target` runs in the base-repo context WITH secrets and write scope regardless of what it checks out).
+Avoid `pull_request_target` for untrusted PRs entirely.
+If it is unavoidable, no job may check out or execute untrusted head code, and any job with secrets or write scopes must sit behind a protected environment with a human reviewer.
 
 **Operate close:** Never interpolate untrusted `github.event.*` values directly into `run:` steps — bind them via `env:` and reference the environment variable instead.
 
