@@ -168,7 +168,7 @@ Confirm secret scanning with push protection is active — GitHub enables it by 
 Private repos get no guardrail exemption.
 Apply identical rulesets, the same least-privilege `GITHUB_TOKEN` defaults, and the same CODEOWNERS rules.
 Enable Dependabot and code scanning explicitly (not automatic for private repos on all plans).
-Enable secret scanning manually if not on GitHub Advanced Security.
+Enable secret scanning with push protection where the plan provides it — it is free on public repos but requires GitHub Advanced Security on private repos; if GHAS is unavailable, record secret scanning as N/A in the audit rather than implying it can always be turned on.
 
 ## Verification
 

@@ -14,7 +14,7 @@ Agents err, and they can be prompt-injected; the repo must stay safe regardless.
 
 - Configuration is the enforced contract and conventions are advisory — safety-critical rules live in rulesets, required status checks, and CODEOWNERS, never in agent instructions that can be overridden or bypassed.
 - Optimize for the agent's first correct contribution — discoverable conventions (`AGENTS.md`, `CONTRIBUTING`), issue and PR templates, a canonical label set, and a fast unambiguous green path are all part of the setup.
-- Every agent action is attributable and auditable — agents use a distinct identity, commits are authored and optionally signed, issues and PRs are cross-linked, and no silent force-push or history rewrite occurs on protected branches.
+- Every agent action is attributable and auditable — agents use a distinct identity, commits are authored and signed, issues and PRs are cross-linked, and no silent force-push or history rewrite occurs on protected branches.
 - All repo-resident text is untrusted input — issue bodies, PR descriptions, comments, and code file content can carry prompt-injection payloads into both the agent and CI; never grant write access or secrets to workflows triggered by untrusted actors, and never interpolate untrusted `${{ github.event.* }}` expressions directly into a `run:` script — bind them through `env:` and reference the variable instead.
 - The agent cannot launder its own approval — an agent that authored a PR must not approve it, trigger auto-merge to satisfy a human-review requirement, or manipulate review requests to make its own work look approved.
   After a post-approval push, the agent requests fresh human review rather than treating stale approval as sufficient.
