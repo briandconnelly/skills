@@ -713,7 +713,7 @@ Implements: §1 (T1)
 ```markdown
 # Contributing
 
-Agent guidance lives in [`AGENTS.md`](AGENTS.md); read it before opening any PR.
+Agent guidance lives in [`AGENTS.md`](/AGENTS.md); read it before opening any PR.
 
 - Branch off `main`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`.
 - Open PRs touching CODEOWNERS-owned paths as drafts; mark ready for review only after all required checks pass.
