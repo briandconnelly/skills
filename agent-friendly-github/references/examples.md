@@ -167,7 +167,7 @@ name: Bug report
 description: Report a reproducible defect
 title: "[bug] "
 labels:
-  - bug
+  - type/bug
 body:
   - type: markdown
     attributes:

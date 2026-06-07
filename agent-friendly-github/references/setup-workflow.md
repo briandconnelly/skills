@@ -117,7 +117,7 @@ Create `.github/ISSUE_TEMPLATE/` with templates for the issue types your project
 See the **issue and PR templates** artifacts in [examples.md](examples.md).
 
 **Label taxonomy.**
-Define type labels (bug, feature, chore, docs) and priority labels (p0–p2).
+Define type labels (`type/bug`, `type/feature`, `type/chore`, `type/docs`) and priority labels (`priority/p0`–`priority/p2`).
 In a monorepo, add `scope/<area>` labels for each major subtree so PRs and issues are routable without reading the diff.
 See the **label taxonomy** artifact in [examples.md](examples.md).
 
