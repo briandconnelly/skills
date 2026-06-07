@@ -39,7 +39,7 @@ Auditors cite these IDs (T1–T9) in findings to make the connection explicit; t
 
 **Why agents amplify it:** Agents act through tokens or GitHub Apps that may hold elevated scopes and can push non-interactively at machine speed, without the friction that slows down a human making the same mistake.
 
-**Config close:** §2 (rulesets apply to ALL actors including repository admins and GitHub Apps — the bypass-actors list is empty except possibly the merge-queue app; force-push and deletion are blocked on protected refs).
+**Config close:** §2 (rulesets apply to ALL actors including repository admins and GitHub Apps — the bypass-actors list is empty (no admins, apps, or PATs); merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry; force-push and deletion are blocked on protected refs).
 
 **Operate close:** Always branch off the protected base; never commit directly to a protected branch; never force-push a remote ref without explicit human instruction.
 
