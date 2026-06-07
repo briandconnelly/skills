@@ -25,6 +25,7 @@ The `bypass_actors` array is intentionally empty — no admins, apps, or PATs ar
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
 Replace `"context"` values under `required_status_checks` with the exact check names your CI jobs report.
+`integration_id` is optional and omitted here — leave it out to match any app reporting that context, or set it to the reporting app's id (for example, the GitHub Actions app) to require that the status come from that specific app.
 Scoped checks (such as the issue-link verifier in the §1 example below) are added to `required_status_checks` only in repos whose workflow mandates them.
 
 ```json
@@ -69,8 +70,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
           {
-            "context": "CI / test",
-            "integration_id": 0
+            "context": "CI / test"
           }
         ]
       }
