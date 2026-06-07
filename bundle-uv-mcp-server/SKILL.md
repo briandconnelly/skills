@@ -24,7 +24,7 @@ This keeps the bundle tiny and avoids the legacy `python` path's need to vendor 
 
 ## Prerequisites
 
-- The MCPB CLI: `npm install -g @anthropic-ai/mcpb` (needs Node/npm).
+- The MCPB CLI: `npm install -g @anthropic-ai/mcpb` (needs Node/npm). In CI, pin the version (`@anthropic-ai/mcpb@X.Y.Z`) — the manifest schema and pack output can change across releases, so an unpinned install makes bundles non-reproducible.
 - A working uv project where `uv run` already starts the server.
 - `uv` must be on PATH for the host (the bundle's `command` is `uv`).
 
@@ -55,7 +55,7 @@ Manifest field ← source:
 | `name`, `version`, `description` | `pyproject.toml` `[project]` |
 | `compatibility.runtimes.python` | `[project]` `requires-python` |
 | `server.entry_point` | the server module file |
-| `server.mcp_config.args` | `uv run --directory ${__dirname} --frozen …`, derived from `[project.scripts]` (see references) |
+| `server.mcp_config.args` | `uv run --directory ${__dirname} --frozen …`, derived from `[project.scripts]` or `python -m <pkg>` (see references) |
 | `user_config.*` + `mcp_config.env` | env vars the server reads |
 
 `.mcpbignore` (one pattern per line; `.git` is excluded automatically):
@@ -82,6 +82,8 @@ Optional manifest fields (add as needed): `icon` (ship the PNG in the bundle too
   The console-script, CLI-subcommand, and `--extra <group>` forms this skill uses are standard **uv** invocations, not shapes shown in the MCPB spec — so step 2's local verification is mandatory, not optional.
 - The v0.4 schema requires both `entry_point` and `mcp_config` under `server`; include both even though MANIFEST.md prose calls `mcp_config` optional.
 - `uv.lock` and `--frozen` are not required by the MCPB spec; this skill recommends them for release reproducibility (see Release consistency). `--frozen` installs from the lockfile without updating or re-resolving it; `--locked` instead asserts the lock is up to date with `pyproject.toml`.
+- Module execution (`python -m <pkg>` with `entry_point` at `src/<pkg>/__main__.py`) is a supported launch form alongside the console-script forms; prefer it when you pass `--no-dev`. See [references/entry-point-patterns.md](references/entry-point-patterns.md).
+- Generating `manifest.json` (from `pyproject.toml` plus the server's tool list) instead of hand-maintaining it is a repo-tooling choice, not a packaging requirement. Be wary of deriving the `tools[]` array by importing the running server: it makes the packaging step depend on the server being importable (deps installed, env/credentials satisfied, no import-time side effects). Hand-maintain the manifest, or set `tools_generated: true`, unless you have many tools that change often.
 
 ## Common mistakes
 
