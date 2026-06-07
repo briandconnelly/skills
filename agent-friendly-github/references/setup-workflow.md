@@ -33,14 +33,14 @@ For a GitHub App, create it at the org level and generate an installation token 
 
 ```sh
 # Inspect an existing app installation (illustrative — substitute real app and org IDs)
-gh api /orgs/{org}/installations \
+gh api orgs/{org}/installations \
   --jq '.installations[] | {app_slug, app_id, repository_selection}'
 
 # Confirm token scopes for a specific installation.
 # NOTE: the /app/* endpoints require authenticating AS THE APP with a JWT signed by the
 # app's private key — a normal `gh auth login` user token will not work here.
 # See the Agent Identity Setup artifact in examples.md.
-gh api /app/installations/{installation_id}/access_tokens \
+gh api app/installations/{installation_id}/access_tokens \
   --method POST \
   --field "repositories[]={repo_name}" \
   --jq '.permissions'
@@ -77,12 +77,12 @@ Apply the ruleset via `gh api` (illustrative — substitute your repo and the ha
 
 ```sh
 # Create a repository ruleset from a local JSON file
-gh api /repos/{owner}/{repo}/rulesets \
+gh api repos/{owner}/{repo}/rulesets \
   --method POST \
   --input hardened-ruleset.json
 
 # List existing rulesets to confirm
-gh api /repos/{owner}/{repo}/rulesets \
+gh api repos/{owner}/{repo}/rulesets \
   --jq '.[].name'
 ```
 

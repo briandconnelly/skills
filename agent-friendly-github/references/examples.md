@@ -447,13 +447,13 @@ Local commits still need GPG, SSH, or S/MIME signing when the ruleset requires s
 #    Record the App ID and generate a private key.
 
 # 2. Install the App on the target repository and note the installation ID.
-gh api /orgs/{org}/installations \
+gh api orgs/{org}/installations \
   --jq '.installations[] | {app_slug, app_id, installation_id: .id, repository_selection}'
 
 # 3. Generate a short-lived installation token (expires in 1 hour).
 #    In CI, use an action like tibdex/github-app-token to do this automatically.
 #    Illustrative manual call (requires a signed JWT — use gh-app-token or similar):
-# gh api /app/installations/{installation_id}/access_tokens \
+# gh api app/installations/{installation_id}/access_tokens \
 #   --method POST \
 #   --field "repositories[]={repo_name}" \
 #   --jq '{token: .token, expires_at: .expires_at, permissions: .permissions}'
