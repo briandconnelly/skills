@@ -79,6 +79,7 @@ Mark each probe with the checklist section and threat class it targets.
   A classic PAT with `repo` scope is a Critical finding.
   To inspect active fine-grained PAT requests at the org level (requires org-owner scope): `gh api orgs/{org}/personal-access-token-requests --jq '.[] | {login: .owner.login, type: .token_type}'` (illustrative — adjust endpoint to `orgs/{org}/personal-access-tokens` for approved tokens).
   The target finding is any token where `token_type` is `classic` rather than `fine-grained`; classic broad PATs are the Critical pattern.
+  This probe is best-effort: if the org's token-listing endpoint is unavailable or returns only pending requests rather than active tokens, mark the item `not-checked` with that reason rather than asserting a clean result.
   *(§4, T9)*
 
 ## Finding Format

@@ -29,7 +29,7 @@ Auditors cite these IDs (T1–T9) in findings to make the connection explicit; t
 
 **Why agents amplify it:** An agent acting as both author and approver can satisfy a required-review rule without any human judgment ever entering the loop.
 
-**Config close:** §2 (required reviews enforced through CODEOWNERS files owned by humans; self-approval not counted toward the required threshold; auto-merge requires at least one human approver; `dismiss_stale_reviews` enabled so a post-approval push invalidates the existing approval).
+**Config close:** §2 (required reviews enforced through CODEOWNERS files owned by humans; self-approval not counted toward the required threshold; auto-merge requires at least one human approver; `dismiss_stale_reviews` enabled so a post-approval push invalidates the existing approval; `require_last_push_approval` enabled so the most recent push must be approved by someone other than its author, defeating the "approve then sneak a commit" pattern).
 
 **Operate close:** Never approve, auto-merge, or re-trigger review on your own PR; re-request human review after any post-approval push.
 

@@ -19,8 +19,10 @@ The `bypass_actors` array is intentionally empty — no admins, apps, or PATs ar
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
+`require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3).
 `required_signatures` requires signed commits (T8).
 `required_linear_history` prevents merge commits (T8).
+`allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
 Replace `"context"` values under `required_status_checks` with the exact check names your CI jobs report.
 
 ```json
@@ -227,12 +229,12 @@ jobs:
           echo "PR title: $PR_TITLE"
 
       - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2f  # v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a  # v5.3.1
+        uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231  # v5.3.1
 
       - name: Run tests
         run: uv run pytest
@@ -484,12 +486,12 @@ jobs:
           echo "billing_changed=$billing_changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2f  # v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a  # v5.3.1
+        uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231  # v5.3.1
 
       - name: Run auth tests
         if: steps.changed.outputs.auth_changed == 'true'
@@ -524,6 +526,7 @@ Treat the draft gate as a supplementary forcing function that keeps agent-opened
 The check reads `github.event.pull_request.draft` (a boolean) and the list of changed files.
 If the PR touches a protected path and is not in draft state, the step exits 1 and leaves the required check red.
 Any untrusted PR fields (title, body) are bound via `env:` and never interpolated directly into `run:` scripts (T2).
+The `protected_prefixes` list in this workflow must be kept in sync with the CODEOWNERS-owned paths it mirrors (or derived directly from CODEOWNERS); a drifted list silently under- or over-enforces, and the real human gate remains the required CODEOWNERS review (§2).
 
 ```yaml
 name: draft-gate
