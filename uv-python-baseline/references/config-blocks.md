@@ -1,7 +1,7 @@
 # Config blocks
 
-Copy-pasteable starting points for the baseline. Replace `<pkg>` with the
-import name (e.g. `mcp_server_tempest`) and `<dist>` with the distribution name.
+Copy-pasteable starting points for the baseline.
+Replace `<pkg>` with the import name (e.g. `mcp_server_tempest`) and `<dist>` with the distribution name.
 
 ## `pyproject.toml`
 
@@ -11,7 +11,8 @@ name = "<dist>"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"            # SPDX expression (PEP 639); replace with your license
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=3",
@@ -32,6 +33,9 @@ build-backend = "uv_build"
 
 [tool.uv]
 package = true
+
+[tool.uv.build-backend]
+source-exclude = ["tests/**"]  # keep the test suite (incl. live tests) out of the sdist
 
 [dependency-groups]
 dev = [
@@ -84,59 +88,66 @@ show_missing = true
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
 ```
 
-Note: the live CI job runs `uv run pytest -m integration --no-cov` — the command-line
-`-m` overrides the `addopts` default (`-m 'not integration'`; last `-m` wins) and
-`--no-cov` keeps the small live subset from tripping the `fail_under` gate.
+Note: the live CI job runs `uv run pytest -m integration --no-cov` — the command-line `-m` overrides the `addopts` default (`-m 'not integration'`; last `-m` wins) and `--no-cov` keeps the small live subset from tripping the `fail_under` gate.
 
 ## `prek.toml`
 
 ```toml
 default_install_hook_types = ["pre-commit", "pre-push"]
 
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - { id: trailing-whitespace, exclude: '^\.github/workflows/' }
-      - { id: end-of-file-fixer,   exclude: '^\.github/workflows/' }
-      - { id: mixed-line-ending,   exclude: '^\.github/workflows/' }
-      - { id: check-toml }
-      - { id: check-yaml }
-      - { id: check-merge-conflict }
-      - { id: check-added-large-files }
-      - { id: detect-private-key }
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v5.0.0"
+hooks = [
+  { id = "trailing-whitespace", exclude = "^\\.github/workflows/" },
+  { id = "end-of-file-fixer", exclude = "^\\.github/workflows/" },
+  { id = "mixed-line-ending", exclude = "^\\.github/workflows/" },
+  { id = "check-toml" },
+  { id = "check-yaml" },
+  { id = "check-json" },
+  { id = "check-merge-conflict" },
+  { id = "check-added-large-files" },
+  { id = "detect-private-key" },
+]
 
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.7
-    hooks:
-      - { id: uv-lock }
+[[repos]]
+repo = "https://github.com/astral-sh/uv-pre-commit"
+rev = "0.9.7"
+hooks = [
+  { id = "uv-lock" },
+]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
-    hooks:
-      - { id: ruff-check, args: ["--fix"] }
-      - { id: ruff-format }
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.15.13"
+hooks = [
+  { id = "ruff-check", args = ["--fix"] },
+  { id = "ruff-format" },
+]
 
-  - repo: local
-    hooks:
-      - id: ty
-        name: ty check
-        entry: uv run ty check
-        language: system
-        types: [python]
-        pass_filenames: false
-      - id: pytest
-        name: pytest
-        entry: uv run pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "ty"
+name = "ty check"
+entry = "uv run ty check"
+language = "system"
+types = ["python"]
+pass_filenames = false
+stages = ["pre-commit"]  # without this, prek runs it on every configured stage (incl. pre-push)
+
+[[repos.hooks]]
+id = "pytest"
+name = "pytest"
+entry = "uv run pytest"
+language = "system"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
 ```
 
-(prek reads `.pre-commit-config.yaml`-style repo lists; if you keep a TOML
-`prek.toml` instead, mirror these repos/hooks in TOML `[[repos]]` form as the
-existing sibling repos do.)
+`prek.toml` uses native TOML `[[repos]]` blocks; use `.pre-commit-config.yaml` only when upstream pre-commit compatibility is more important than the TOML format.
 
 ## `.github/workflows/ci.yml`
 
@@ -161,9 +172,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v8.2.0
         with: { enable-cache: true, cache-dependency-glob: uv.lock }
-      - run: uv sync --group dev
+      - run: uv python install ${{ matrix.python }}
+      - run: uv sync --locked --python ${{ matrix.python }} --group dev
       - run: uv run ruff check src tests
       - run: uv run ruff format --check src tests
       - run: uv run ty check   # continue-on-error while ty is pre-1.0
@@ -174,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v8.2.0
       - run: uv build
 ```
 
@@ -184,18 +196,42 @@ jobs:
 name: Publish
 on:
   push: { tags: ["v*"] }
-permissions: { contents: write, id-token: write }
+permissions: { contents: read }
+
 jobs:
-  publish:
+  gate:                       # never ship a tag that can't pass lint/types/tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v8.2.0
+        with: { enable-cache: true, cache-dependency-glob: uv.lock }
+      - run: uv sync --locked
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      - run: uv run pytest
+
+  publish:
+    needs: [gate]             # publish only after the gate job succeeds
+    runs-on: ubuntu-latest
+    permissions: { contents: write, id-token: write }
     environment: pypi
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v8.2.0
       - run: uv build
+      # @release/v1 is PyPA's stable track; pin to a commit SHA for stricter supply-chain safety.
       - uses: pypa/gh-action-pypi-publish@release/v1   # OIDC: no token
+      - name: Extract changelog notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { capture = 1; next }
+            capture && /^## \\[/ { exit }
+            capture { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || { echo "::error::no CHANGELOG section for $version"; exit 1; }
       - uses: softprops/action-gh-release@v2
-        with: { generate_release_notes: true, files: dist/* }
+        with: { body_path: release-notes.md, files: dist/* }
 ```
 
 ## `.gitignore` essentials
