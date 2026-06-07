@@ -46,7 +46,7 @@ gh api /app/installations/{installation_id}/access_tokens \
 Set up commit signing before any agent commits land.
 Decide the accepted mechanism — GitHub App commit signing (automatic when the App pushes via the API), GPG, or SSH — and record it in the repository so audits know what evidence to expect (closes T8).
 
-See the identity guidance in [examples.md](examples.md) for a full App registration checklist, a token-scope inventory table, and the co-authorship trailer format.
+See the **agent identity setup** artifact in [examples.md](examples.md) for App registration steps, a token-scope inventory table, and the co-authorship trailer format.
 
 ### Step 2 — Apply branch / repo guardrails (§2)
 
@@ -56,7 +56,7 @@ Merge queues operate through the normal ruleset flow and require no bypass entry
 
 Required ruleset conditions:
 
-- Required status checks (path-filtered in monorepos so unrelated subtrees do not block each other).
+- Required status checks; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
 - `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3). Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
 - Signed commits required — matches the mechanism chosen in Step 1 (closes T8).
 - Linear history required (closes T8).
@@ -80,7 +80,7 @@ gh api /repos/{owner}/{repo}/rulesets \
   --jq '.[].name'
 ```
 
-See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the complete field set including `required_status_checks`, `required_pull_request_reviews` with `dismiss_stale_reviews`, `required_signatures`, and `non_fast_forward`.
+See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the complete field set including `required_status_checks`, `dismiss_stale_reviews_on_push` (the ruleset field; the branch-protection equivalent is `dismiss_stale_reviews`), `required_signatures`, and `non_fast_forward`.
 
 ### Step 3 — Wire Actions / supply-chain hardening (§3)
 
@@ -114,7 +114,7 @@ See the **issue and PR templates** artifacts in [examples.md](examples.md).
 **Label taxonomy.**
 Define type labels (bug, feature, chore, docs) and priority labels (p0–p2).
 In a monorepo, add `scope/<area>` labels for each major subtree so PRs and issues are routable without reading the diff.
-See the **label taxonomy YAML** artifact in [examples.md](examples.md).
+See the **label taxonomy** artifact in [examples.md](examples.md).
 
 **CODEOWNERS.**
 Use explicit path prefixes — never a catch-all-only rule.
@@ -143,7 +143,7 @@ Add `SECURITY.md` — required for public repos and recommended for private repo
 Run through the variations that apply to your repository type:
 
 **Monorepo.**
-Confirm path-filtered required checks are configured in the ruleset so a change in one subtree does not block unrelated subtrees (§2).
+Confirm an always-running monorepo gate check is configured (not `paths:`-filtered) so a change in one subtree does not block unrelated subtrees (§2).
 Confirm nested `AGENTS.md` files exist for subtrees with different rules (§1).
 Confirm `scope/<area>` labels cover all major subtrees (§1).
 Confirm CODEOWNERS has one prefix per owned subtree with no overlapping catch-all (§1).
@@ -172,7 +172,7 @@ Checklist walkthrough by section:
 
 **§1 Issues & PRs** — verify issue templates present, PR template present, label taxonomy defined (including `scope/<area>` if monorepo), CODEOWNERS with explicit prefixes and human-only owners on protected paths, required reviews enabled, draft-first enforcement check active, `AGENTS.md` present with thin per-tool adapter files, `CONTRIBUTING` present, `SECURITY.md` present.
 
-**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list is empty, required status checks configured (path-filtered if monorepo), `dismiss_stale_reviews` set in ruleset, linear history required, signed commits required, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
+**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list is empty, required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, linear history required, signed commits required, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
 
 **§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` on untrusted PRs without environment gate, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
@@ -181,10 +181,11 @@ Checklist walkthrough by section:
 Emitted artifacts (confirm each is in place or pointed to in [examples.md](examples.md)):
 
 - Hardened ruleset JSON
-- Least-privilege, injection-safe Actions workflow
+- Least-privilege, injection-safe Actions workflow (including OIDC job)
 - CODEOWNERS file
 - Issue and PR templates
-- Label taxonomy YAML
+- Label taxonomy
 - `AGENTS.md` pattern (canonical file + thin adapter)
 - Draft-first enforcement check
-- Identity guidance (App registration checklist, token scope table, co-authorship trailer)
+- Agent identity setup (App registration, token scope table, co-authorship trailer)
+- Always-running monorepo gate check (if monorepo)

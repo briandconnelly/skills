@@ -9,9 +9,9 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 
 - Issue and PR templates are present and in use: `.github/ISSUE_TEMPLATE/` directory for issues and `.github/PULL_REQUEST_TEMPLATE.md` for pull requests. (productivity; closes T1 via reduced ambiguity)
 - Label taxonomy covers type and priority labels; monorepos add `scope/<area>` labels so PRs and issues are routable per subtree. (productivity)
-- `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths are human users or teams only, never bot or agent accounts, so a required review can never be satisfied by an agent. Monorepo: one prefix per owned subtree. (closes T3)
+- `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths must be human users or teams, kept bot-free by membership hygiene — GitHub has no native "owners must be human" enforcement, so this is a repository policy you maintain; the goal is that a required CODEOWNERS review can never be satisfied by an agent. Monorepo: one prefix per owned subtree. (closes T3)
 - Required reviews are enabled on protected branches and enforced through CODEOWNERS. (closes T3)
-- Draft-first on owned paths: GitHub has no native "require draft by path" feature, so enforce it with a required status check or labeler workflow that stays red until a human promotes the PR to ready. (closes T3)
+- Draft-first on owned paths: GitHub has no native "require draft by path" feature, so enforce it with a required status check that blocks merge while the PR is draft on owned paths; this is a supplementary signal — the human-judgment gate itself is the required CODEOWNERS review (§2), not the draft check, because any actor (including an agent) can promote a draft to ready. (closes T3)
 - Canonical instruction file (`AGENTS.md`) is present; per-tool files are thin references to it; reusable procedures live as committed skills, not pasted into instruction files; monorepos add a nested `AGENTS.md` per subtree. (closes T1 via clear guidance)
 - `CONTRIBUTING` is present and discoverable (`CONTRIBUTING.md` or `.github/CONTRIBUTING.md`) describing branch, PR, and review expectations that a contributor or agent must follow. (productivity; closes T1)
 - `SECURITY.md` is present (required for public repos; cross-referenced in §4 with private vulnerability reporting). (closes T1)
@@ -20,7 +20,7 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 
 - Rulesets (or branch protection) are applied to the default and release branches for ALL actors with an empty bypass-actors list (no admins, apps, or PATs) so nothing can push past it.
   Merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry. (closes T4)
-- Required status checks are configured; in monorepos, path-filter them so unrelated subtrees do not block each other. (closes T4)
+- Required status checks are configured; in monorepos, use a single always-running gate check per relevant scope that detects changed paths internally and short-circuits (exits 0) when nothing relevant changed — do NOT use `paths:` filters on a required check, because a skipped workflow leaves the required check PENDING and blocks merge forever; per-directory rulesets are an alternative. (closes T4)
 - `dismiss_stale_reviews` is enabled so a post-approval push invalidates the prior approval; this is the branch-protection or ruleset setting, not merely an agent convention. (closes T3)
 - Linear history is required. (closes T8)
 - Signed commits are required; define the accepted mechanism in your repo (GitHub App commit signing, GPG, or SSH) so audits know what evidence to check. (closes T8)

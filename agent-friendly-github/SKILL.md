@@ -19,7 +19,7 @@ Agents err, and they can be prompt-injected; the repo must stay safe regardless.
 - The agent cannot launder its own approval — an agent that authored a PR must not approve it, trigger auto-merge to satisfy a human-review requirement, or re-request review to reset a dismissed approval.
 - Constrain blast radius by default — use the least-privilege `GITHUB_TOKEN`, pin third-party actions to a full commit SHA, prefer OIDC over long-lived PATs, enforce protected branches, use environment gates for production deployments, and enable dismiss-stale-reviews-on-push.
 - Keep the green path fast and deterministic so agents do not route around guardrails — flaky required checks create pressure to retry, skip, or override; fix them before they become a bypass habit.
-- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, filter required checks by changed paths, and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
+- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check (never `paths:`-filter a required check, because a skipped required check stays pending and blocks merge forever), and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
 
 ## Agent-Instruction-File Strategy
 

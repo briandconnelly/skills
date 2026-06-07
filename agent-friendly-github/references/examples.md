@@ -83,9 +83,10 @@ Replace `"context"` values under `required_status_checks` with the exact check n
 Implements: §1 (T3)
 
 ```text
-# Owners on protected paths must be human users or teams — never bot or agent accounts.
-# A required CODEOWNERS review can only be satisfied by a listed owner,
-# so listing a bot here would allow agent self-approval (T3).
+# Owners on protected paths must be human users or teams, kept bot-free by membership hygiene.
+# GitHub has no native "owners must be human" enforcement — this is a repository policy.
+# A required CODEOWNERS review can only be satisfied by a listed owner;
+# if a bot or agent account were listed, it could satisfy its own review (T3).
 
 # Per-package ownership — explicit path prefixes, no overlapping catch-all-only rules
 /packages/auth/          @org/auth-team
@@ -235,6 +236,32 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+  # OIDC cloud-auth job — only this job gets id-token: write.
+  # The test job above keeps the default contents: read from the top-level block.
+  # OIDC replaces stored long-lived cloud credentials (T5, T9).
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    # Grant id-token: write only to this job — narrowest possible scope (T5).
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Authenticate to cloud via OIDC
+        # Replace with your cloud provider's OIDC action (AWS, GCP, Azure, etc.).
+        # OIDC issues a short-lived credential; no long-lived secret is stored.
+        # Example for AWS (illustrative — pin to a real SHA before use):
+        # uses: aws-actions/configure-aws-credentials@<sha>  # vX.Y.Z
+        # with:
+        #   role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy
+        #   aws-region: us-east-1
+        run: echo "Replace this step with your cloud OIDC auth action."
 ```
 
 ## Agent Instruction File Pattern
@@ -301,36 +328,160 @@ In a monorepo, add a nested `AGENTS.md` per subtree that has meaningfully differ
 @AGENTS.md
 ```
 
-## Path-Filtered Required Checks
+## Label Taxonomy
+
+Implements: §1
+
+A minimal label set covering type, priority, and (in monorepos) scope.
+Create labels via `gh label create` or import them from a YAML file with a tool like `github-label-sync`.
+
+```yaml
+# labels.yml — adapt names and colors to your project conventions
+labels:
+  # Type labels
+  - name: "type/bug"
+    color: "d73a4a"
+    description: "Something is not working"
+  - name: "type/feature"
+    color: "0075ca"
+    description: "New feature or request"
+  - name: "type/chore"
+    color: "e4e669"
+    description: "Maintenance, refactoring, or tooling"
+  - name: "type/docs"
+    color: "0052cc"
+    description: "Documentation only change"
+  # Priority labels
+  - name: "priority/p0"
+    color: "b60205"
+    description: "Critical — blocking or data-loss risk"
+  - name: "priority/p1"
+    color: "e99695"
+    description: "High — should land this sprint"
+  - name: "priority/p2"
+    color: "f9d0c4"
+    description: "Normal — backlog"
+  # Scope labels (monorepo — add one per major subtree)
+  - name: "scope/auth"
+    color: "c5def5"
+    description: "packages/auth subtree"
+  - name: "scope/billing"
+    color: "bfd4f2"
+    description: "packages/billing subtree"
+  - name: "scope/core"
+    color: "d4c5f9"
+    description: "packages/core subtree"
+```
+
+## Agent Identity Setup
+
+Implements: §4 (T8, T9)
+
+Provision a distinct GitHub App identity for agent work.
+The App gets fine-grained permissions scoped to the target repository, produces short-lived installation tokens, and creates a clear audit trail.
+Commit signing is automatic when the App pushes via the GitHub API.
+
+```sh
+# 1. Create the App at the org level (GitHub UI or gh api).
+#    Set permissions: contents=write, pull_requests=write, issues=write.
+#    Record the App ID and generate a private key.
+
+# 2. Install the App on the target repository and note the installation ID.
+gh api /orgs/{org}/installations \
+  --jq '.installations[] | {app_slug, app_id, installation_id: .id, repository_selection}'
+
+# 3. Generate a short-lived installation token (expires in 1 hour).
+#    In CI, use an action like tibdex/github-app-token to do this automatically.
+#    Illustrative manual call (requires a signed JWT — use gh-app-token or similar):
+# gh api /app/installations/{installation_id}/access_tokens \
+#   --method POST \
+#   --field "repositories[]={repo_name}" \
+#   --jq '{token: .token, expires_at: .expires_at, permissions: .permissions}'
+
+# 4. Use the installation token as GH_TOKEN in subsequent gh or git operations.
+#    Commits pushed via the GitHub API with an App token are auto-signed by GitHub.
+
+# 5. For human+agent pairing, add a co-authorship trailer to commit messages:
+#    Co-authored-by: Human Name <human@example.com>
+```
+
+**Token scope inventory** (minimum required scopes for agent PR work):
+
+| Operation | Scope |
+|---|---|
+| Read repo contents | `contents: read` |
+| Push branch / commits | `contents: write` |
+| Open / update PRs | `pull_requests: write` |
+| Create / update issues | `issues: write` |
+| Read check runs | `checks: read` |
+| Trigger workflow dispatch | `actions: write` (add only if needed) |
+
+Keep `actions: write` out of the default token; grant it only in the specific job that needs it.
+
+## Always-Running Monorepo Gate Check
 
 Implements: §2 (monorepo)
 
-In a monorepo, each package's CI job should run only when that package changes.
-Configure the workflow with `on: pull_request: paths:` so GitHub only triggers the job — and therefore only reports the status check — when the relevant paths are modified.
-Then, in the branch ruleset, add that status check as a required check scoped to the same path filter.
-A change in `packages/auth/` will not block a PR that touches only `packages/billing/`, because the `auth-ci` check will not run (and therefore will not be required) for that PR.
+**Why `paths:` filters on a required check are broken.**
+If a workflow is configured with `on: pull_request: paths:` and the PR touches none of those paths, GitHub skips the workflow entirely — it never reports a status.
+If that workflow's job is listed as a required status check in the ruleset, the required check stays PENDING indefinitely and blocks the merge forever.
+There is no way to merge a PR that has a required check stuck in PENDING.
+
+**The correct pattern: one always-running gate check.**
+Use a single workflow that triggers on every `pull_request` (no `paths:` filter), detects which paths changed internally, runs per-package work conditionally, and always exits with a clear pass/fail status.
+When nothing relevant changed, the gate exits 0 (pass) immediately.
+The single check name (`monorepo-gate / gate`) is what you add to the ruleset's `required_status_checks`.
+
+**Alternative:** per-directory rulesets (GitHub Enterprise or organizations with Advanced Security) let you scope a ruleset to a path prefix so only PRs matching that prefix are subject to it — this is the clean alternative to the gate-check pattern, but it requires org-level ruleset support.
+
+**Non-required cost-saving workflows** (not required checks) may still use `paths:` filters — skipping them saves CI minutes and causes no merge problems.
+Label them clearly and do not add them to `required_status_checks`.
 
 ```yaml
-name: auth-ci
+# monorepo-gate.yml
+# IMPORTANT: No paths: filter here — this workflow MUST run on every PR.
+# A paths:-filtered required check stays PENDING when skipped and blocks merge forever.
+name: monorepo-gate
 
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - "packages/auth/**"
-      - ".github/workflows/auth-ci.yml"
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  gate:
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed packages
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed_files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")
+          echo "Changed files:"
+          echo "$changed_files"
+
+          auth_changed=false
+          billing_changed=false
+          if echo "$changed_files" | grep -q "^packages/auth/"; then
+            auth_changed=true
+          fi
+          if echo "$changed_files" | grep -q "^packages/billing/"; then
+            billing_changed=true
+          fi
+
+          echo "auth_changed=$auth_changed" >> "$GITHUB_OUTPUT"
+          echo "billing_changed=$billing_changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2f  # v5.3.0
@@ -341,23 +492,37 @@ jobs:
         uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a  # v5.3.1
 
       - name: Run auth tests
+        if: steps.changed.outputs.auth_changed == 'true'
         working-directory: packages/auth
         run: uv run pytest
+
+      - name: Run billing tests
+        if: steps.changed.outputs.billing_changed == 'true'
+        working-directory: packages/billing
+        run: uv run pytest
+
+      - name: Gate passed
+        run: echo "All relevant package checks passed (or no relevant paths changed)."
 ```
 
-After deploying this workflow, add `auth-ci / test` as a required status check in the ruleset for PRs touching `packages/auth/**`.
-The GitHub UI under **Settings → Rules → Rulesets** lets you add required checks by name; the check name is `<workflow-name> / <job-id>` as GitHub reports it (here: `auth-ci / test`).
+Add `monorepo-gate / gate` as the single required status check in the ruleset.
+The GitHub UI under **Settings → Rules → Rulesets** lets you add required checks by name; the check name is `<workflow-name> / <job-id>` as GitHub reports it.
+Because this workflow always runs, the required check always reports a result and never stalls a merge.
 
 ## Draft-First Enforcement Check
 
 Implements: §1 (T3)
 
 GitHub has no native "require draft by path" feature.
-This required status check fills that gap: it runs on every PR targeting CODEOWNERS-owned paths and fails (exits non-zero) if the PR is marked ready for review without passing the draft-first gate.
+This required status check fills part of that gap: it blocks merging a PR that touches CODEOWNERS-owned paths while the PR is still in draft state, and it fires on `ready_for_review` so a PR cannot be merged without going through that transition.
 Add `draft-gate / check` as a required status check in the branch ruleset so the PR cannot be merged while this check is red.
 
+**Important limitation:** this check cannot verify that a *human* promoted the PR from draft to ready — the `ready_for_review` event fires for any actor, including the agent itself.
+The actual human-judgment gate is the required CODEOWNERS review (§2): a CODEOWNERS-listed human must approve, and agents must not be listed as owners.
+Treat the draft gate as a supplementary forcing function that keeps agent-opened PRs in draft until a human explicitly moves them forward — not as the enforcement mechanism for human review itself.
+
 The check reads `github.event.pull_request.draft` (a boolean) and the list of changed files.
-If the PR touches a protected path and is not in draft state — meaning no human explicitly promoted it from draft to ready — the step exits 1 and leaves the required check red.
+If the PR touches a protected path and is not in draft state, the step exits 1 and leaves the required check red.
 Any untrusted PR fields (title, body) are bound via `env:` and never interpolated directly into `run:` scripts (T2).
 
 ```yaml
