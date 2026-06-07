@@ -10,6 +10,7 @@ These rules are advisory conventions — where a rule matters for safety it is a
 - Open or claim an issue before non-trivial work, and keep one logical change per PR (e.g. `gh issue create`, `gh issue develop`).
 - Branch off the protected base; never commit directly to it (e.g. `git switch -c feature/x origin/main`). (T4)
 - Never `--force` (or `--force-with-lease`) any remote ref without an explicit human instruction in the current session. (T4, T8)
+- Stage selectively — avoid `git add -A` / `git add .`; review exactly what will be committed and confirm no secret-bearing file (`.env*`, keys, credentials) is staged, even when a `.gitignore` exists, because `.gitignore` does not protect already-tracked files (e.g. `git add src/app.py tests/` then `git status` to verify before committing). (T5)
 - Make conventional, signed, correctly-authored commits; co-author humans when pairing (`Co-authored-by:`); never strip attribution. (T8)
 - The PR body must link its issue (`Closes #N` / `Refs #N`) and fill the template (e.g. `gh pr create`).
 - Open as a draft for any change touching CODEOWNERS-owned paths, and wait for a human to promote it to ready (e.g. `gh pr create --draft`). (T3)

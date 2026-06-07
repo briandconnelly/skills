@@ -72,6 +72,9 @@ Mark each probe with the checklist section and threat class it targets.
   `gh api repos/{owner}/{repo}/actions/variables` and per-environment equivalents.
   *(§3, T5)*
 
+- **`.gitignore` coverage and committed secrets** — confirm a `.gitignore` exists and covers secret-bearing paths (`.env*`, `*.pem`, `*.key`, credentials); then grep the tracked tree for already-committed secret files: `git ls-files | grep -iE '(^|/)\.env($|\.)|\.pem$|\.key$|credentials'` — any match is a finding regardless of what `.gitignore` contains, because `.gitignore` does not protect already-tracked files.
+  *(§1, T5)*
+
 - **Classic PAT scope** — if the agent uses a PAT, verify it is fine-grained, not classic.
   A classic PAT with `repo` scope is a Critical finding.
   To inspect active fine-grained PAT requests at the org level (requires org-owner scope): `gh api orgs/{org}/personal-access-token-requests --jq '.[] | {login: .owner.login, type: .token_type}'` (illustrative — adjust endpoint to `orgs/{org}/personal-access-tokens` for approved tokens).

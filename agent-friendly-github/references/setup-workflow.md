@@ -134,6 +134,10 @@ Reusable procedures belong as committed artifacts, not pasted into instruction f
 In a monorepo, add a nested `AGENTS.md` per subtree with meaningfully different rules.
 See the **`AGENTS.md` pattern** artifact in [examples.md](examples.md).
 
+**`.gitignore` and `.gitattributes`.**
+Add a `.gitignore` covering secret-bearing and noise paths before running the first `git add`, so secrets are never staged; see the **Starter .gitignore** artifact in [examples.md](examples.md).
+Add a `.gitattributes` (with `* text=auto eol=lf`) before cross-platform commits land, so line endings normalize from the start and generated files are collapsed in PR diffs; see the **Minimal .gitattributes** artifact in [examples.md](examples.md).
+
 **`CONTRIBUTING` and `SECURITY.md`.**
 Add `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` describing branching, PR, and review expectations.
 Add `SECURITY.md` — required for public repos and recommended for private repos — and cross-reference it with private vulnerability reporting (Step 5).

@@ -46,12 +46,17 @@ Auditors cite these IDs (T1–T9) in findings to make the connection explicit; t
 ## T5 — Secret exfiltration
 
 **What it is:** Secrets printed into Actions logs (for example, when debug logging is enabled) or passed to attacker-controlled steps that can exfiltrate them.
+A secondary path is accidental commit: an agent runs `git add -A` and stages a `.env`, key, or credential file alongside legitimate changes, committing it before any human review.
+`.gitignore` is the PREVENTIVE layer in front of §3's DETECTIVE controls (secret scanning and push protection) — it stops an untracked secret from being staged in the first place.
+Accuracy trap: `.gitignore` only prevents committing UNTRACKED files; it does not untrack a secret that is already committed.
+Purging a committed secret requires a history rewrite that is itself dangerous — it is exactly the kind of force-push the T4/T8 rules warn against.
 
 **Why agents amplify it:** Agents add workflow steps and third-party actions readily and may enable debug logging or pipe secret values through shell commands without recognizing the exposure.
+Agents also commonly stage broadly (`git add -A` or `git add .`) without auditing what is about to be committed, making accidental secret commits a realistic failure mode at machine speed.
 
-**Config close:** §3 (least-privilege `GITHUB_TOKEN`; OIDC-based authentication instead of stored long-lived secrets where possible; `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` not set in production environments; actions pinned to a full commit SHA so a tag move cannot swap in exfiltrating code; secret scanning with push protection enabled).
+**Config close:** §1 (`.gitignore` covering secret-bearing paths, as the preventive layer) and §3 (least-privilege `GITHUB_TOKEN`; OIDC-based authentication instead of stored long-lived secrets where possible; `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` not set in production environments; actions pinned to a full commit SHA so a tag move cannot swap in exfiltrating code; secret scanning with push protection enabled).
 
-**Operate close:** None — config only (do not rely on the agent to notice a leak at runtime).
+**Operate close:** Stage selectively — never `git add -A` or `git add .`; review exactly what will be committed and confirm no secret-bearing file is staged, even when a `.gitignore` exists, because `.gitignore` does not protect already-tracked files.
 
 ## T6 — Supply-chain (actions & build)
 

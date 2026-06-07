@@ -586,6 +586,51 @@ jobs:
           echo "Draft-first gate passed."
 ```
 
+## Starter .gitignore
+
+Implements: §1 (T5)
+
+This is a starting point, not exhaustive; it does not untrack files already committed (`git rm --cached <file>` plus a history rewrite is needed for those — and the rewrite is the dangerous force-push the playbook warns against).
+
+```text
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*
+*.secret
+
+# Build output and caches
+node_modules/
+__pycache__/
+.venv/
+dist/
+build/
+*.log
+.coverage
+coverage/
+```
+
+## Minimal .gitattributes
+
+Implements: §1 (auditability)
+
+`text=auto` normalizes line endings on the next add/commit and will produce a one-time churn commit if the repo already has mixed line endings; `linguist-generated` only affects GitHub's diff display and stats, it does not block or enforce anything.
+
+```text
+# Normalize line endings for all text files
+* text=auto eol=lf
+
+# Mark generated files so GitHub collapses their diffs and excludes them from language stats
+*.lock linguist-generated=true
+package-lock.json linguist-generated=true
+dist/** linguist-generated=true
+build/** linguist-generated=true
+```
+
 ## Supporting Files (CONTRIBUTING.md, SECURITY.md)
 
 Implements: §1 (T1)
