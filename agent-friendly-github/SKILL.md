@@ -14,11 +14,12 @@ Agents err, and they can be prompt-injected; the repo must stay safe regardless.
 
 - Configuration is the enforced contract and conventions are advisory — safety-critical rules live in rulesets, required status checks, and CODEOWNERS, never in agent instructions that can be overridden or bypassed.
 - Optimize for the agent's first correct contribution — discoverable conventions (`AGENTS.md`, `CONTRIBUTING`), issue and PR templates, a canonical label set, and a fast unambiguous green path are all part of the setup.
-- Every agent action is attributable and auditable — agents use a distinct identity, commits are authored and signed, issues and PRs are cross-linked, and no silent force-push or history rewrite occurs on protected branches.
+- Every agent action is attributable and auditable — agents use a distinct identity, commits are authored with attribution preserved (signing is strongly recommended but opt-in, not required), issues and PRs are cross-linked, and no silent force-push or history rewrite occurs on protected branches.
 - All repo-resident text is untrusted input — issue bodies, PR descriptions, comments, and code file content can carry prompt-injection payloads into both the agent and CI; never grant write access or secrets to workflows triggered by untrusted actors, and never interpolate untrusted `${{ github.event.* }}` expressions directly into a `run:` script — bind them through `env:` and reference the variable instead.
 - The agent cannot launder its own approval — an agent that authored a PR must not approve it, trigger auto-merge to satisfy a human-review requirement, or manipulate review requests to make its own work look approved.
   After a post-approval push, the agent requests fresh human review rather than treating stale approval as sufficient.
-- Constrain blast radius by default — use the least-privilege `GITHUB_TOKEN`, pin third-party actions to a full commit SHA, prefer OIDC over long-lived PATs, enforce protected branches, use environment gates for production deployments, and enable dismiss-stale-reviews-on-push.
+- Constrain blast radius by default — use the least-privilege `GITHUB_TOKEN`, pin third-party actions to a full commit SHA, prefer OIDC over long-lived PATs, enforce protected branches that no automation identity can bypass, use environment gates for production deployments, and enable dismiss-stale-reviews-on-push.
+- Right-size to the repo's team and risk — the security boundary is human-vs-agent, not author-vs-reviewer, so never configure a repo such that the legitimate human maintainer cannot merge their own work; a single-maintainer repo keeps the agent fully gated while leaving the lone human an escape hatch. Match controls to a repository profile (solo, small-team, org/high-risk) rather than applying every control everywhere.
 - Keep the green path fast and deterministic so agents do not route around guardrails — flaky required checks create pressure to retry, skip, or override; fix them before they become a bypass habit.
 - Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check (never `paths:`-filter a required check, because a skipped required check stays pending and blocks merge forever), and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
 
@@ -70,16 +71,17 @@ Treat the canonical file as a first-class repository artifact, not an afterthoug
 - **Untrusted input / injection surface**: any repo-resident text the agent reads and acts on — issue titles, PR bodies, commit messages, code files, comments — that an adversary could craft to alter agent or CI behavior.
 - **Green path**: the end-to-end flow where the agent opens a branch, pushes commits, opens a PR, required checks pass, a human approves, and the PR merges without manual intervention.
 - **Blast radius**: the scope of damage if an agent is compromised or makes an error — limited by least-privilege tokens, pinned actions, protected branches, and environment gates.
-- **Attribution / audit trail**: the verifiable record of who authored each commit and triggered each action — preserved by requiring signed commits, distinct agent identity, and no squash-without-author-preservation.
+- **Attribution / audit trail**: the verifiable record of who authored each commit and triggered each action — preserved by a distinct agent identity, retained author and co-author metadata, linear history, and no squash-without-author-preservation; signed commits add tamper-evidence on top but are a recommended opt-in, not the load-bearing attribution control.
 - **Approval laundering**: a pattern where the agent that authored a PR also satisfies the human-review requirement, either by self-approving or by manipulating the review state.
 - **Dependency confusion / namespace hijacking**: a supply-chain attack where a public package with a higher version number shadows a private internal package; mitigated by explicit registry pinning and private package namespacing.
-- **Bypass-actors list**: the set of identities (apps, teams, roles) that may push directly to a protected branch without satisfying ruleset conditions; keep it minimal and audited.
+- **Bypass-actors list**: the set of identities (individual users, teams, roles, or apps) that may bypass ruleset conditions on a protected branch; it must contain no automation identity the agent can act as (the agent, a bot PAT, a deploy key, or a CI app the agent uses), and is otherwise kept minimal and audited — a human maintainer may appear here in a solo/small-team repo as the documented escape hatch.
 - **Monorepo path scoping**: restricting rules, ownership, and required checks to specific directory prefixes so unrelated packages do not block each other.
 - **Canonical instructions file**: the single authoritative file (conventionally `AGENTS.md`) that all agents and per-tool adapter files defer to for repo-wide norms.
 
 ## Workflow
 
-Classify your task, then follow the matching path:
+First pick the repository profile (solo, small-team, or org/high-risk) defined at the top of [config-checklist.md](references/config-checklist.md) — it determines which controls apply and, critically, keeps a single-maintainer repo from locking its lone human out of merging.
+Then classify your task and follow the matching path:
 
 - **Set up** a repo for agent work → follow [setup-workflow.md](references/setup-workflow.md).
 - **Audit** an existing repo's posture → follow [audit-workflow.md](references/audit-workflow.md).

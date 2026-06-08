@@ -12,7 +12,7 @@ These rules are advisory conventions — where a rule matters for safety it is a
 - Never `--force` (or `--force-with-lease`) any remote ref without an explicit human instruction in the current session. (T4, T8)
 - Stage selectively — avoid `git add -A` / `git add .`; review exactly what will be committed and confirm no secret-bearing file (`.env*`, keys, credentials) is staged, even when a `.gitignore` exists, because `.gitignore` does not protect already-tracked files (e.g. `git add src/app.py tests/` then `git status` to verify before committing). (T5)
 - If a secret is ever exposed — committed, pushed, or printed to a workflow log — treat it as compromised: rotate or revoke the credential immediately and report it, because removing the commit or rewriting history does not un-expose a secret that was already pushed or logged. (T5)
-- Make conventional, signed, correctly-authored commits; co-author humans when pairing (`Co-authored-by:`); never strip attribution. (T8)
+- Make conventional, correctly-authored commits with attribution preserved; sign them when the repo enforces required signing or you have signing configured (recommended); co-author humans when pairing (`Co-authored-by:`); never strip attribution. (T8)
 - The PR body must link its issue (`Closes #N` / `Refs #N`) and fill the template (e.g. `gh pr create`).
 - Fill the PR template to communicate intent, but never treat a template checkbox or first-person attestation (e.g. "I ran the tests") as evidence a property holds — anything that must be true is confirmed by a required check, not asserted by the author. (T3)
 - When a repo offers multiple PR template variants, pick the one matching the change type deliberately rather than accepting the default.

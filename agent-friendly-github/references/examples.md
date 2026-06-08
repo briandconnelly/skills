@@ -15,15 +15,17 @@ gh api --method POST repos/{owner}/{repo}/rulesets --input hardened-ruleset.json
 ```
 
 JSON has no comment syntax; all caveats are in this prose.
-The `bypass_actors` array is intentionally empty — no admins, apps, or PATs are exempted.
+This baseline matches the **org / high-risk** profile; see the solo/small-team adaptation note after the JSON.
+The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In a solo or small-team repo, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work; never add the agent identity, a bot PAT, a deploy key, or the `Write` role.
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
-`require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3).
+`require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3). It needs a second human, so omit this parameter in a solo repo, where it would deadlock the lone maintainer.
 `required_review_thread_resolution: true` requires code-review conversations to be resolved before merge.
-`required_signatures` requires signed commits (T8).
+Signed commits (`required_signatures`) are intentionally NOT in this baseline: enforce them only when you have opted into signing and every committer (humans and the agent) has a working signing path — see the optional signing variant below (T8).
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
+Note: a squash merge builds a new commit message, so confirm `Co-authored-by:` trailers carry into it (attribution, T8); and if you enable required signing, GitHub blocks a non-author from squash-merging via the web UI — a reason to prefer rebase for attribution- or signing-sensitive agent PRs.
 Replace `"context"` values under `required_status_checks` with the exact check names your CI jobs report.
 `integration_id` is optional and omitted here — leave it out to match any app reporting that context, or set it to the reporting app's id (for example, the GitHub Actions app) to require that the status come from that specific app.
 Scoped checks (such as the issue-link verifier in the §1 example below) are added to `required_status_checks` only in repos whose workflow mandates them.
@@ -51,9 +53,6 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
       "type": "required_linear_history"
     },
     {
-      "type": "required_signatures"
-    },
-    {
       "type": "pull_request",
       "parameters": {
         "dismiss_stale_reviews_on_push": true,
@@ -78,6 +77,28 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
   ]
 }
 ```
+
+### Optional: required signing, and the solo / small-team adaptation
+
+**Enable signing (opt-in).** When the maintainer adopts signing and every committer has a working signing path, add this rule object to the `rules` array above:
+
+```json
+{
+  "type": "required_signatures"
+}
+```
+
+A local commit pushed with a GitHub App token is not auto-signed, so the agent must either sign locally (GPG/SSH) or commit through the App's verified API path; otherwise its pushes are rejected.
+
+**Solo / small-team adaptation.** Starting from the baseline above: add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters. Keep `required_approving_review_count: 1` — lowering it to 0 would let the agent self-merge after checks.
+
+```json
+"bypass_actors": [
+  { "actor_type": "User", "actor_id": 1234567, "bypass_mode": "pull_request" }
+]
+```
+
+Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, excluded from bypass and unable to self-approve, still cannot merge anything without the human.
 
 ## Production Environment Gate
 
@@ -115,6 +136,7 @@ gh api --method PUT repos/{owner}/{repo}/environments/production \
 ```
 
 The reviewer team must be human-owned and bot-free, just like CODEOWNERS teams.
+`prevent_self_review: true` stops whoever triggered the deployment from approving it — correct for multi-human teams, but in a solo repo it locks the lone maintainer out of their own deployments; set it to `false` (or rely on the wait timer / an external approval) in the solo profile.
 
 Add this rule to the default-branch ruleset when production deployment must pass before merge:
 
@@ -152,6 +174,15 @@ Implements: §1 (T3)
 # Last-resort catch-all: any path not matched above goes to platform-team.
 # Must be a human team, not a bot.
 *                        @org/platform-team
+```
+
+**Solo variant.** A single-maintainer repo uses one user owner and usually does NOT enable "require review from code owners," because the maintainer cannot approve their own PR:
+
+```text
+# Solo: one human owner. If you DO enable required code-owner review,
+# the maintainer must merge their own owned-path PRs via the §2 human bypass.
+*        @maintainer
+/infra/  @maintainer
 ```
 
 ## Issue and PR Templates
@@ -464,6 +495,10 @@ gh api orgs/{org}/installations \
 
 # 5. For human+agent pairing, add a co-authorship trailer to commit messages:
 #    Co-authored-by: Human Name <human@example.com>
+
+# 6. If the repo squash-merges, confirm Co-authored-by: trailers carry into the final
+#    squash commit message — squash builds a new message and drops trailers not included
+#    in it. Prefer rebase merge for attribution-sensitive agent work.
 ```
 
 **Token scope inventory** (minimum required scopes for agent PR work):

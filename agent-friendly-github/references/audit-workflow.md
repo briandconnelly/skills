@@ -11,17 +11,23 @@ Do not run workflows, approve PRs, or write to the repository in any form during
 ## Severity Scale
 
 - **Critical** — an active path to compromise or to an unreviewed merge reaching a protected branch.
-  Examples: a non-empty bypass-actors list on a protected-branch ruleset (§2, T4); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity listed in `CODEOWNERS` for protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled in a context where secrets are present (§3, T5).
+  Examples: an automation identity (the agent, a bot PAT, a deploy key, or a CI app the agent uses) present in the bypass-actors list of a protected-branch ruleset (§2, T4); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity listed in `CODEOWNERS` for protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled in a context where secrets are present (§3, T5).
   Blocks confidence; fix before agents operate.
 
 - **High** — a guardrail is missing or easily defeated.
   Examples: `dismiss_stale_reviews` not enabled, so a post-approval commit avoids re-review (§2, T3); third-party actions pinned to mutable tags or left unpinned (§3, T6); no dependency review or committed lockfile on a repository where agents add dependencies (§3, T7); no required reviews configured on protected branches (§2, T3); force-push or branch deletion not blocked on protected refs (§2, T4).
 
 - **Medium** — weakens auditability or team productivity without an immediate compromise path.
-  Examples: commits are unsigned or linear history is not required (§2, T8); `CODEOWNERS` uses only a catch-all rule rather than explicit path prefixes (§1, T3); issue and PR templates are absent (§1, productivity); debug logging is enabled but no secret is currently exposed (§3, T5); the agent identity is a shared user account rather than a GitHub App or fine-grained PAT (§4, T8, T9).
+  Examples: linear history is not required (§2, T8); the repo opted into signing but commits are unsigned (§2, T8); `CODEOWNERS` uses only a catch-all rule rather than explicit path prefixes (§1, T3); issue and PR templates are absent (§1, productivity); debug logging is enabled but no secret is currently exposed (§3, T5); the agent identity is a shared user account rather than a GitHub App or fine-grained PAT (§4, T8, T9).
 
 - **Low** — hygiene items.
   Examples: `scope/<area>` labels missing in a monorepo (§1, productivity); `SECURITY.md` absent on a private repository (§1); `CONTRIBUTING.md` absent or not linked from `AGENTS.md` (§1, productivity); audit-log retention not explicitly considered (§4, T8).
+
+**Availability / operability** is a finding class orthogonal to the compromise-focused scale above: a control configured so strictly that the legitimate human maintainer cannot merge a compliant PR, ship a release, or apply an emergency fix.
+Rate it **High** normally, or **Critical** when it blocks a security fix or production recovery.
+Examples: a single-maintainer repo with required reviews and a bypass-actors list empty of any human, so the lone maintainer can never merge their own work (§2); `require_last_push_approval` or environment `prevent_self_review` enabled in a solo repo; `required_signatures` enforced where a committer has no signing path, rejecting all their pushes (§2, T8).
+Remediation is profile-aware — add the human bypass actor or relax the opt-in control to match the repository profile, not "remove all bypass actors."
+A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; a human-maintainer bypass in a solo/small-team repo is expected, not a defect.
 
 ## Audit Procedure
 
@@ -50,7 +56,7 @@ Read-only checks to confirm the highest-risk controls.
 Run each with `gh api` or `gh ruleset view` unless otherwise stated.
 Mark each probe with the checklist section and threat class it targets.
 
-- **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` is an empty array.
+- **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds). A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in a solo/small-team repo and is not a finding; an empty list is expected in an org/high-risk repo.
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
 
@@ -97,9 +103,9 @@ Each finding has five labeled lines:
 - **Severity:** Critical
 - **Section:** §2
 - **Threat:** T4
-- **Evidence:** `gh ruleset view 42` returns `"bypass_actors": [{"actor_id": 1, "actor_type": "RepositoryRole", "bypass_mode": "always"}]` — the `maintain` role can push directly to `main` without review or status checks.
-- **Remediation:** Remove all entries from `bypass_actors` in the ruleset (config-checklist.md §2: "empty bypass-actors list (no admins, apps, or PATs)").
-  Navigate to Settings → Rules → Rulesets → select the ruleset → Bypass list → remove all entries, then save.
+- **Evidence:** `gh ruleset view 42` returns `"bypass_actors": [{"actor_id": 99, "actor_type": "Integration", "bypass_mode": "always"}]` — the agent's GitHub App can push directly to `main` without review or status checks, and the `Maintain` role (which the agent account also holds) is present.
+- **Remediation:** Remove every automation identity from `bypass_actors` — the agent App and any role the agent can hold (config-checklist.md §2: "no automation identity ... may appear in the bypass-actors list"). In a solo or small-team repo a human-maintainer `User` entry with `bypass_mode: pull_request` may remain as the documented escape hatch; in an org/high-risk repo the list should be empty.
+  Navigate to Settings → Rules → Rulesets → select the ruleset → Bypass list, remove the offending entries, then save.
 
 ## Coverage Table
 
@@ -110,7 +116,7 @@ The table below shows an illustrative example of a completed audit; replace valu
 | Section | Status | Notes |
 | --- | --- | --- |
 | §1 Issues & PRs | finding F1; OK on remaining items | F1 (Medium): CODEOWNERS catch-all only — no explicit path prefixes; templates present at `.github/ISSUE_TEMPLATE/`; `CONTRIBUTING.md` present; `SECURITY.md` absent (private repo — Low) |
-| §2 Branch / Repo Guardrails | finding F2, F3 | F2 (Critical): bypass-actors list non-empty on `main` ruleset — `gh ruleset view 42`; F3 (High): `dismiss_stale_reviews` is `false` — `gh api .../branches/main/protection` returns `"dismiss_stale_reviews": false` |
+| §2 Branch / Repo Guardrails | finding F2, F3 | F2 (Critical): agent GitHub App present in bypass-actors list on `main` ruleset — `gh ruleset view 42`; F3 (High): `dismiss_stale_reviews` is `false` — `gh api .../branches/main/protection` returns `"dismiss_stale_reviews": false` |
 | §3 Actions & Supply Chain | finding F4; OK on remaining items | F4 (High): three actions pinned to mutable tags (`actions/checkout@v4`, `actions/setup-node@v4`, `github/codeql-action@v3`) — `.github/workflows/ci.yml:12,18,34`; OIDC configured; secret scanning enabled |
 | §4 Auditability & Identity | OK | Agent uses GitHub App (App ID 1234); fine-grained tokens only; linear history required; audit-log retention set to 90 days at org level |
 

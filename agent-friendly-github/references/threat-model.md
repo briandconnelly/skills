@@ -43,7 +43,7 @@ Do not download artifacts or caches from the triggering run, and do not check ou
 
 **Why agents amplify it:** Agents act through tokens or GitHub Apps that may hold elevated scopes and can push non-interactively at machine speed, without the friction that slows down a human making the same mistake.
 
-**Config close:** §2 (rulesets apply to ALL actors including repository admins and GitHub Apps — the bypass-actors list is empty (no admins, apps, or PATs); merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry; force-push and deletion are blocked on protected refs).
+**Config close:** §2 (rulesets apply to ALL actors including repository admins and GitHub Apps — no automation identity (the agent, a bot PAT, a deploy key, or any CI app the agent can act as) appears in the bypass-actors list; a human maintainer may be a bypass actor in solo/small-team repos as a documented escape hatch, because the security boundary is human-vs-agent and a lone maintainer must still be able to merge their own work; merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry; force-push and deletion are blocked on protected refs).
 
 **Operate close:** Always branch off the protected base; never commit directly to a protected branch; never force-push a remote ref without explicit human instruction.
 
@@ -90,7 +90,9 @@ Treat dependency-update PRs as real code changes — review the diff and changel
 
 **Why agents amplify it:** Agent commits can flood history quickly, and a single shared bot identity collapses accountability across many automated actions into one indistinguishable actor.
 
-**Config close:** §2 and §4 (linear history policy prevents force-rewrite loops; signed commits provide tamper-evident attribution; a distinct per-agent identity with a meaningful name and email makes the audit log meaningful; audit-log retention configured at the organization level).
+**Config close:** §2 and §4.
+The load-bearing attribution controls are a distinct per-agent identity with a meaningful name and email, preserved author and `Co-authored-by` metadata, linear history (which prevents force-rewrite loops), and audit-log retention at the organization level.
+Signed commits add tamper-evidence on top and are strongly recommended, but are opt-in rather than required by default: mandatory `required_signatures` blocks every committer who has not provisioned a key (including an agent committing locally with a GitHub App token, which is not auto-signed) and can block a non-author from squash-merging via the web UI — so the maintainer decides when to enforce it.
 
 **Operate close:** Use conventional, authored, and signed commits; preserve co-authorship metadata; add a `Co-authored-by:` trailer when pairing with a human.
 

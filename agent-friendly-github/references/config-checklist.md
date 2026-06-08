@@ -16,6 +16,30 @@ Any control the repo's plan does not provide is marked N/A with the plan reason 
 | Environment required reviewers & wait timers | All plans | GitHub Pro, Team, or Enterprise |
 | Code scanning (CodeQL), secret scanning + push protection, dependency review | Free | GitHub Advanced Security |
 
+## Repository Profiles
+
+Pick the profile that matches the repository, then walk §1–§4 applying the controls it calls for.
+Every profile shares a non-negotiable baseline; higher-risk profiles add controls on top.
+The baseline guarantees the property that must hold everywhere: an agent can never reach a protected branch unreviewed — and, equally, a control is never configured so the legitimate human maintainer is locked out of merging their own work.
+The security boundary is human-vs-agent, not author-vs-reviewer.
+
+**Baseline — all profiles:**
+- Agent identity is least-privilege and is NOT a bypass actor. (§2, §4; T4, T9)
+- Protected-branch ruleset: a PR is required, with >= 1 approving review, self-approval not counted, and force-push and deletion blocked — so the agent can neither self-approve nor self-merge. (§2; T3, T4)
+- Least-privilege `GITHUB_TOKEN`; no privileged `pull_request_target`/`workflow_run` on untrusted code; third-party actions pinned to a full commit SHA. (§3; T2, T5, T6)
+- `.gitignore` covers secret-bearing paths; secret scanning + push protection enabled where the plan provides it. (§1, §3; T5)
+- No classic broad PATs. (§4; T9)
+
+**solo** — one active human maintainer.
+Add a human bypass actor so the maintainer can merge their own work (see §2); CODEOWNERS is optional (single-owner) and "require review from code owners" is usually left off for the maintainer's own PRs.
+`require_last_push_approval`, merge queue, required deployments, team reviewers, and `required_signatures` are N/A unless the maintainer opts in.
+
+**small-team** — 2+ active humans, low-to-moderate risk.
+Routine changes get real human review with no bypass; CODEOWNERS by path; `dismiss_stale_reviews` on; `require_last_push_approval` recommended; signing opt-in.
+
+**org / high-risk** — production, regulated, or many contributors.
+All of the above plus merge queue, environment gates with required deployments, GitHub Advanced Security (code scanning, dependency review), `require_last_push_approval`, CODEOWNERS teams, and `required_signatures` if the org mandates it.
+
 ## §1 Issues & PRs
 
 - Issue and PR templates are present and in use: `.github/ISSUE_TEMPLATE/` directory for issues and `.github/PULL_REQUEST_TEMPLATE.md` for pull requests. (productivity; closes T1 via reduced ambiguity)
@@ -23,7 +47,8 @@ Any control the repo's plan does not provide is marked N/A with the plan reason 
 - `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths must be human users or teams, kept bot-free by membership hygiene — GitHub has no native "owners must be human" enforcement, so this is a repository policy you maintain.
   The goal is that a required CODEOWNERS review can never be satisfied by an agent.
   Monorepo: one prefix per owned subtree.
-  A human-owned last-resort catch-all is acceptable only after explicit path rules. (closes T3)
+  A human-owned last-resort catch-all is acceptable only after explicit path rules.
+  Solo: a single-user owner (`* @maintainer`) is fine, but a solo owner cannot satisfy their own required CODEOWNERS review, so either rely on the §2 human bypass to merge their own owned-path PRs or do not enable "require review from code owners" in a single-maintainer repo. (closes T3)
 - Required reviews are enabled on protected branches and enforced through CODEOWNERS. (closes T3)
 - Draft-first on owned paths is an operate convention, not a CI gate: open a protected-path change as a draft and wait for a human to promote it to ready; there is no robust required status check for "opened as draft" — a check that fails while the PR is ready-for-review blocks merge permanently, and one that only inspects the `opened` action is cleared by the next push; the enforcement for protected-path changes is the required CODEOWNERS review (§2), which requires a CODEOWNERS-listed human to approve. (closes T3)
 - Canonical instruction file (`AGENTS.md`) is present; per-tool files are thin references to it; reusable procedures live as committed artifacts, not pasted into instruction files; monorepos add a nested `AGENTS.md` per subtree. (closes T1 via clear guidance)
@@ -38,16 +63,20 @@ Any control the repo's plan does not provide is marked N/A with the plan reason 
 
 ## §2 Branch / Repo Guardrails
 
-- Rulesets (or branch protection) are applied to the default and release branches for ALL actors with an empty bypass-actors list (no admins, apps, or PATs) so nothing can push past it.
+- Rulesets (or branch protection) are applied to the default and release branches for ALL actors. No automation identity — the agent identity, a bot PAT, a deploy key, or any CI app the agent can act as — may appear in the bypass-actors list, so the agent can never push past the ruleset.
+  In a solo or small-team repo a human maintainer MAY be a bypass actor so the lone human can merge their own work — prefer an individual `User` entry with `bypass_mode: pull_request` (GitHub added user-level ruleset bypass in May 2026); where user-level bypass is unavailable (older GitHub Enterprise Server, etc.), use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent does hold. This human entry is the documented escape hatch; the security boundary is human-vs-agent, not author-vs-reviewer.
   Merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry. (closes T4)
 - Required status checks are configured; in monorepos, use a single always-running gate check per relevant scope that detects changed paths internally and short-circuits (exits 0) when nothing relevant changed — do NOT use `paths:` filters on a required check, because a skipped workflow leaves the required check PENDING and blocks merge forever; there is no ruleset condition that scopes a required status check to changed file paths (branch rulesets target refs, not changed files), so the always-running aggregate gate or an external check app are the correct alternatives. (closes T4)
 - `dismiss_stale_reviews` is enabled so a post-approval push invalidates the prior approval; this is the branch-protection field (`dismiss_stale_reviews_on_push` in the rulesets API), not merely an agent convention. (closes T3)
-- `require_last_push_approval` is enabled so the most recent push must be approved by someone other than its author, preventing an author from pushing after approval and merging unreviewed code; this is the strongest anti-approval-laundering control because it directly closes the "approve then sneak a commit" gap. (closes T3)
+- `require_last_push_approval` is enabled (small-team and org profiles) so the most recent push must be approved by someone other than its author, preventing an author from pushing after approval and merging unreviewed code; this is the strongest anti-approval-laundering control because it directly closes the "approve then sneak a commit" gap.
+  It requires a second human, so it deadlocks a single-maintainer repo — in the solo profile leave it off and rely on the agent being unable to self-approve or bypass. (closes T3)
 - Linear history is required. (closes T8)
-- Signed commits are required; define the accepted mechanism in your repo (GitHub App commit signing, GPG, or SSH) so audits know what evidence to check. (closes T8)
+- Signed commits are strongly recommended and enforced (`required_signatures`) only when the maintainer opts in AND every committer — humans and the agent — has a working signing path; define the accepted mechanism (GitHub App commit signing, GPG, or SSH) so audits know what evidence to check.
+  Do not enable `required_signatures` by default: it rejects every unsigned push, an agent that commits locally and pushes with a GitHub App token is NOT auto-signed, and required signing can block a non-author from squash-merging a PR through the web UI. Attribution itself rests on a distinct identity, preserved trailers, and linear history (§4), not on signing. (closes T8)
 - Merge queue is configured where serialized merges matter. (productivity; closes T4)
 - Force-push and branch deletion are blocked on protected refs. (closes T4)
-- Auto-merge safety is a combination, not a single setting: required approving review count >= 1, self-approval not counted, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these three settings. (closes T3)
+- Auto-merge safety is a combination, not a single setting: required approving review count >= 1, self-approval not counted, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these three settings.
+  The solo-profile human bypass actor does not weaken this: it lets the human merge their own work, while the agent (excluded from bypass) still cannot approve or merge its own PR. (closes T3)
 - Environment or deployment protection rules gate production via required reviewers or a wait timer on the environment.
   Caveat: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they require GitHub Pro, Team, or Enterprise; if the plan does not provide them, use an external deployment-approval mechanism and mark this item N/A with the plan reason. (closes T5)
 
@@ -72,7 +101,7 @@ Any control the repo's plan does not provide is marked N/A with the plan reason 
 
 - Distinct agent identity is provisioned, in preference order: GitHub App > fine-grained bot PAT > shared user account. (closes T8, T9)
 - PATs, where used at all, are fine-grained and short-lived; classic broad PATs are never used. (closes T9)
-- Commits are authored and signed with attribution preserved through squash and rebase; humans are co-authored when pairing. (closes T8)
+- Commits are authored with attribution preserved through squash and rebase — when squash-merging, verify the `Co-authored-by:` trailers survive into the final squash commit message, since squash builds a new message and drops trailers not carried into it; humans are co-authored when pairing; commits are signed when the repo opts into required signing (recommended, not required by default — see §2). (closes T8)
 - Audit-log retention is configured or explicitly considered for the org or repo plan. (closes T8)
 - No mid-session privilege escalation: token scopes are provisioned up front; widening scope requires a human action. (closes T9)
 - Private vulnerability reporting is enabled and `SECURITY.md` is present for public repos (see §1). (closes T1)
