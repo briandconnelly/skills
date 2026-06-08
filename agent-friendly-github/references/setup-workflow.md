@@ -34,7 +34,7 @@ For a GitHub App, create it at the org level and generate an installation token 
 ```sh
 # Inspect an existing app installation (illustrative — substitute real app and org IDs)
 gh api orgs/{org}/installations \
-  --jq '.installations[] | {app_slug, app_id, repository_selection}'
+  --jq '.installations[] | {installation_id: .id, app_slug, app_id, repository_selection}'
 
 # Confirm token scopes for a specific installation.
 # NOTE: the /app/* endpoints require authenticating AS THE APP with a JWT signed by the
