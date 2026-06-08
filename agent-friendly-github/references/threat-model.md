@@ -94,7 +94,7 @@ Treat dependency-update PRs as real code changes — review the diff and changel
 The load-bearing attribution controls are a distinct per-agent identity with a meaningful name and email, preserved author and `Co-authored-by` metadata, linear history (which prevents force-rewrite loops), and audit-log retention at the organization level.
 Signed commits add tamper-evidence on top and are strongly recommended, but are opt-in rather than required by default: mandatory `required_signatures` blocks every committer who has not provisioned a key (including an agent committing locally with a GitHub App token, which is not auto-signed) and can block a non-author from squash-merging via the web UI — so the maintainer decides when to enforce it.
 
-**Operate close:** Use conventional, authored, and signed commits; preserve co-authorship metadata; add a `Co-authored-by:` trailer when pairing with a human.
+**Operate close:** Use conventional, correctly-authored commits with attribution preserved; sign them when the repo enforces required signing or you have signing configured (recommended); preserve co-authorship metadata; add a `Co-authored-by:` trailer when pairing with a human.
 
 ## T9 — Token / PAT sprawl
 
