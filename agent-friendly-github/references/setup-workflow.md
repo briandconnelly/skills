@@ -23,6 +23,9 @@ If the repository already runs Actions on untrusted input — a `pull_request_ta
 
 ## Procedure
 
+Before Step 1, pick the repository profile (solo, small-team, or org/high-risk) defined at the top of [config-checklist.md](config-checklist.md).
+The profile determines which controls below are required versus N/A — most importantly, a solo repo adds a human bypass actor in Step 2 so the lone maintainer can still merge their own work, and treats `require_last_push_approval` and `required_signatures` as opt-in.
+
 ### Step 1 — Establish agent identity (§4)
 
 Provision a distinct, attributable identity for every agent that will work this repository.
@@ -46,15 +49,17 @@ gh api app/installations/{installation_id}/access_tokens \
   --jq '.permissions'
 ```
 
-Set up commit signing before any agent commits land.
-Decide the accepted mechanism — GitHub App commit signing (automatic when the App pushes via the API), GPG, or SSH — and record it in the repository so audits know what evidence to expect (closes T8).
+Decide your commit-signing posture before any agent commits land.
+Signing is strongly recommended but opt-in — do not enforce `required_signatures` (Step 2) unless every committer (humans and the agent) has a working signing path, because a local commit pushed with a GitHub App token is not auto-signed and would be rejected.
+If you adopt signing, decide the accepted mechanism — GitHub App commit signing (automatic when the App pushes via the API), GPG, or SSH — and record it in the repository so audits know what evidence to expect (closes T8).
 
 See the **agent identity setup** artifact in [examples.md](examples.md) for App registration steps, a token-scope inventory table, and the co-authorship trailer format.
 
 ### Step 2 — Apply branch / repo guardrails (§2)
 
 Create a repository ruleset targeting the default branch and any release branches.
-The bypass-actors list must start empty — no admins, apps, or PATs may bypass the ruleset.
+No automation identity — the agent identity, a bot PAT, a deploy key, or any CI app the agent can act as — may appear in the bypass-actors list, so the agent can never push past the ruleset.
+In a solo or small-team profile, add the human maintainer as a bypass actor so the lone human can merge their own work: prefer an individual `User` entry with `bypass_mode: pull_request`; where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. In an org/high-risk profile the list stays empty.
 Merge queues operate through the normal ruleset flow and require no bypass entry (closes T4).
 
 Required ruleset conditions:
@@ -62,7 +67,8 @@ Required ruleset conditions:
 - Required status checks; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
 - `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3).
   Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
-- Signed commits required — matches the mechanism chosen in Step 1 (closes T8).
+- Signed commits (`required_signatures`) only if you opted into signing in Step 1 and every committer has a working signing path — recommended, not a default; otherwise omit it (closes T8).
+- `require_last_push_approval` in small-team/org profiles; omit it in the solo profile, where it would deadlock the lone maintainer (closes T3).
 - Linear history required (closes T8).
 - Force-push and branch deletion blocked on protected refs (closes T4).
 
@@ -87,7 +93,7 @@ gh api repos/{owner}/{repo}/rulesets \
   --jq '.[].name'
 ```
 
-See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the complete field set including `required_status_checks`, `dismiss_stale_reviews_on_push` (the ruleset field; the branch-protection equivalent is `dismiss_stale_reviews`), `required_signatures`, and `non_fast_forward`.
+See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the complete field set including `required_status_checks`, `dismiss_stale_reviews_on_push` (the ruleset field; the branch-protection equivalent is `dismiss_stale_reviews`), and `non_fast_forward`; `required_signatures` is not in the baseline and appears only in the optional signing variant there.
 
 ### Step 3 — Wire Actions / supply-chain hardening (§3)
 
@@ -188,11 +194,11 @@ Checklist walkthrough by section:
 
 **§1 Issues & PRs** — verify issue templates present, PR template present, label taxonomy defined (including `scope/<area>` if monorepo), CODEOWNERS with explicit prefixes and human-only owners on protected paths, required reviews enabled, draft-first convention documented, `AGENTS.md` present with thin per-tool adapter files, `CONTRIBUTING` present, `SECURITY.md` present.
 
-**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list is empty, required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, linear history required, signed commits required, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
+**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list contains no automation identity (and only the human maintainer in a solo/small-team profile), required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, `require_last_push_approval` set per profile (omitted for solo), linear history required, signed commits required only if signing was opted into, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
 
 **§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
-**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored and signed with attribution preserved, audit-log retention considered at org level, no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
+**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log retention considered at org level, no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
 Emitted artifacts (confirm each is in place or pointed to in [examples.md](examples.md)):
 
