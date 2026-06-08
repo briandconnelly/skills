@@ -103,7 +103,7 @@ Each finding has five labeled lines:
 - **Severity:** Critical
 - **Section:** §2
 - **Threat:** T4
-- **Evidence:** `gh ruleset view 42` returns `"bypass_actors": [{"actor_id": 99, "actor_type": "Integration", "bypass_mode": "always"}]` — the agent's GitHub App can push directly to `main` without review or status checks, and the `Maintain` role (which the agent account also holds) is present.
+- **Evidence:** `gh ruleset view 42` returns `"bypass_actors": [{"actor_id": 99, "actor_type": "Integration", "bypass_mode": "always"}, {"actor_id": 4, "actor_type": "RepositoryRole", "bypass_mode": "always"}]` — the agent's GitHub App and the `Maintain` role (which the agent account also holds) can both push directly to `main` without review or status checks.
 - **Remediation:** Remove every automation identity from `bypass_actors` — the agent App and any role the agent can hold (config-checklist.md §2: "no automation identity ... may appear in the bypass-actors list"). In a solo or small-team repo a human-maintainer `User` entry with `bypass_mode: pull_request` may remain as the documented escape hatch; in an org/high-risk repo the list should be empty.
   Navigate to Settings → Rules → Rulesets → select the ruleset → Bypass list, remove the offending entries, then save.
 
