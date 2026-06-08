@@ -54,7 +54,7 @@ Mark each probe with the checklist section and threat class it targets.
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
 
-- **`pull_request_target` and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` as a trigger; for any match, check whether the workflow checks out or executes PR head code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent), whether any privileged job is protected by an environment with human approval, and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`.
+- **`pull_request_target`, `workflow_run`, and injection surface** — list all workflow files in `.github/workflows/` and grep for `pull_request_target` or `workflow_run` as a trigger; for any `pull_request_target` match, check whether the workflow checks out or executes PR head code (`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or equivalent), whether any privileged job is protected by an environment with human approval, and whether any `run:` step interpolates `${{ github.event.* }}` directly rather than binding through `env:`; for any `workflow_run` match, check whether the workflow downloads artifacts or caches from the triggering run (attacker-controlled when triggered by a fork PR) or checks out untrusted head code in a job that holds secrets or write scope.
   *(§3, T2)*
 
 - **Agent identity listed in CODEOWNERS or counted as approver** — read the active `CODEOWNERS` file (GitHub looks for it at the repo root, in `.github/`, or in `docs/` — check all three) and check whether the agent account or app appears as an owner on any protected path; then check branch-protection or ruleset settings to confirm self-approval is not counted toward the required-review threshold.
@@ -76,10 +76,10 @@ Mark each probe with the checklist section and threat class it targets.
   *(§1, T5)*
 
 - **Classic PAT scope** — if the agent uses a PAT, verify it is fine-grained, not classic.
-  A classic PAT with `repo` scope is a Critical finding.
-  To inspect active fine-grained PAT requests at the org level (requires org-owner scope): `gh api orgs/{org}/personal-access-token-requests --jq '.[] | {login: .owner.login, type: .token_type}'` (illustrative — adjust endpoint to `orgs/{org}/personal-access-tokens` for approved tokens).
-  The target finding is any token where `token_type` is `classic` rather than `fine-grained`; classic broad PATs are the Critical pattern.
-  This probe is best-effort: if the org's token-listing endpoint is unavailable or returns only pending requests rather than active tokens, mark the item `not-checked` with that reason rather than asserting a clean result.
+  A classic broad PAT used by the agent is a Critical finding.
+  You generally cannot enumerate classic PATs via the GitHub API — the org fine-grained-PAT endpoints (`/orgs/{org}/personal-access-tokens`, `/orgs/{org}/personal-access-token-requests`) list fine-grained PATs only and have no `token_type`/`classic` field.
+  Detect the risk via org policy instead: check whether the org restricts or forbids classic PAT access (Settings → Personal access tokens); review the fine-grained PAT inventory and approval policy via `gh api orgs/{org}/personal-access-tokens` (illustrative; lists fine-grained tokens only); and review the audit log for PAT-authenticated writes where available.
+  If none of these are accessible, mark the probe `not-checked` with that reason rather than asserting a clean result.
   *(§4, T9)*
 
 ## Finding Format

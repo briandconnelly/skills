@@ -493,7 +493,8 @@ Use a single workflow that triggers on every `pull_request` (no `paths:` filter)
 When nothing relevant changed, the gate exits 0 (pass) immediately.
 The single check name (`monorepo-gate / gate`) is what you add to the ruleset's `required_status_checks`.
 
-**Alternative:** per-directory rulesets (GitHub Enterprise or organizations with Advanced Security) let you scope a ruleset to a path prefix so only PRs matching that prefix are subject to it — this is the clean alternative to the gate-check pattern, but it requires org-level ruleset support.
+**Alternative:** there is no ruleset condition that scopes a required status check to changed file paths — branch rulesets target refs, not changed files.
+CODEOWNERS path patterns give path-specific human review, but path-specific required CI must come from the always-running aggregate gate above, or from an external check app (a GitHub App that computes which paths changed and posts a single check) — not a ruleset path condition.
 
 **Non-required cost-saving workflows** (not required checks) may still use `paths:` filters — skipping them saves CI minutes and causes no merge problems.
 Label them clearly and do not add them to `required_status_checks`.
@@ -596,6 +597,8 @@ Mark this check REQUIRED in the §2 ruleset ONLY in repos whose workflow mandate
 Escape hatch: a `no-issue-required` label, applied through a maintainer/CODEOWNERS-gated process, exempts hotfixes, reverts, release PRs, and dependency-bump PRs.
 
 Scope limitations and failure modes: only same-repo numeric `#N` references are verified — cross-repo `owner/repo#N` and private-repo references are not (they would 404); an issue can be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
+This check verifies the issue state at the last workflow run, not at merge time, so an issue closed after the last run will not be caught; if that matters, gate merges through a merge queue (which re-runs checks just before merge) or a check that runs close to merge.
+The workflow also triggers on `labeled` and `unlabeled` events so that applying or removing the `no-issue-required` escape-hatch label immediately re-runs the check and clears or sets the status — without those triggers, adding the label after a failed run leaves the check permanently red.
 
 ```yaml
 name: require-issue-link
@@ -607,6 +610,8 @@ on:
       - edited
       - reopened
       - synchronize
+      - labeled
+      - unlabeled
     branches:
       - main
 

@@ -70,6 +70,7 @@ Assemble auto-merge safety as a combination of three settings (GitHub has no sin
 required approving review count ≥ 1 + self-approval not counted + CODEOWNERS-required human review on protected paths (closes T3).
 
 Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds (closes T5).
+Note: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they require GitHub Pro, Team, or Enterprise; if the plan does not provide them, use an external deployment-approval mechanism and mark this step N/A with the plan reason.
 If the default branch ruleset must require successful production deployment before merge, add a `required_deployments` rule for that environment.
 See the **production environment gate** artifact in [examples.md](examples.md).
 
@@ -91,7 +92,7 @@ See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the
 ### Step 3 — Wire Actions / supply-chain hardening (§3)
 
 Set least-privilege `GITHUB_TOKEN` permissions at the repository level (Settings → Actions → Workflow permissions → Read repository contents and packages) and enforce them in every workflow file with a top-level `permissions:` block that defaults to read-only; grant write scopes narrowly per job only (closes T5).
-These are two distinct layers: the repository or organization default-token setting caps the maximum scope the token can ever be granted, while the per-workflow top-level `permissions:` block sets the actual scope for that specific workflow; configure both — the repository setting as a safety ceiling and the workflow block as the operative grant.
+These are two distinct layers: the repository or organization "Workflow permissions" setting sets the DEFAULT `GITHUB_TOKEN` permission — it is a default, not a hard ceiling, because a workflow can still elevate via its own `permissions:` block; the per-workflow top-level `permissions:` declaration is the actual control, so configure both — the repository setting as the least-privilege default and the workflow block as the operative grant.
 
 Pin every third-party action to a full commit SHA, not a mutable tag or `@main` (closes T6).
 Enable OIDC for cloud authentication in place of stored long-lived secrets (closes T5, T9).

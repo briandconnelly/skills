@@ -5,6 +5,17 @@ Each item names the concrete GitHub mechanism where one exists, and otherwise st
 Public/private and monorepo/traditional variations are noted inline where the requirement differs.
 Walk the sections in order; they are numbered §1–§4 and cited by that number elsewhere in the skill.
 
+## Plan & Visibility Caveats
+
+Several controls are gated by repository visibility and GitHub plan.
+Any control the repo's plan does not provide is marked N/A with the plan reason in an audit, and an external alternative is used where one exists.
+
+| Control | Public repos | Private / internal repos |
+| --- | --- | --- |
+| Rulesets / branch protection, CODEOWNERS, Dependabot | All plans | All plans |
+| Environment required reviewers & wait timers | All plans | GitHub Pro, Team, or Enterprise |
+| Code scanning (CodeQL), secret scanning + push protection, dependency review | Free | GitHub Advanced Security |
+
 ## §1 Issues & PRs
 
 - Issue and PR templates are present and in use: `.github/ISSUE_TEMPLATE/` directory for issues and `.github/PULL_REQUEST_TEMPLATE.md` for pull requests. (productivity; closes T1 via reduced ambiguity)
@@ -29,7 +40,7 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 
 - Rulesets (or branch protection) are applied to the default and release branches for ALL actors with an empty bypass-actors list (no admins, apps, or PATs) so nothing can push past it.
   Merge queue operates through the ruleset's normal flow and does not require a bypass-actors entry. (closes T4)
-- Required status checks are configured; in monorepos, use a single always-running gate check per relevant scope that detects changed paths internally and short-circuits (exits 0) when nothing relevant changed — do NOT use `paths:` filters on a required check, because a skipped workflow leaves the required check PENDING and blocks merge forever; per-directory rulesets are an alternative. (closes T4)
+- Required status checks are configured; in monorepos, use a single always-running gate check per relevant scope that detects changed paths internally and short-circuits (exits 0) when nothing relevant changed — do NOT use `paths:` filters on a required check, because a skipped workflow leaves the required check PENDING and blocks merge forever; there is no ruleset condition that scopes a required status check to changed file paths (branch rulesets target refs, not changed files), so the always-running aggregate gate or an external check app are the correct alternatives. (closes T4)
 - `dismiss_stale_reviews` is enabled so a post-approval push invalidates the prior approval; this is the branch-protection field (`dismiss_stale_reviews_on_push` in the rulesets API), not merely an agent convention. (closes T3)
 - `require_last_push_approval` is enabled so the most recent push must be approved by someone other than its author, preventing an author from pushing after approval and merging unreviewed code; this is the strongest anti-approval-laundering control because it directly closes the "approve then sneak a commit" gap. (closes T3)
 - Linear history is required. (closes T8)
@@ -37,22 +48,25 @@ Walk the sections in order; they are numbered §1–§4 and cited by that number
 - Merge queue is configured where serialized merges matter. (productivity; closes T4)
 - Force-push and branch deletion are blocked on protected refs. (closes T4)
 - Auto-merge safety is a combination, not a single setting: required approving review count >= 1, self-approval not counted, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these three settings. (closes T3)
-- Environment or deployment protection rules gate production via required reviewers or a wait timer on the environment. (closes T5)
+- Environment or deployment protection rules gate production via required reviewers or a wait timer on the environment.
+  Caveat: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they require GitHub Pro, Team, or Enterprise; if the plan does not provide them, use an external deployment-approval mechanism and mark this item N/A with the plan reason. (closes T5)
 
 ## §3 Actions & Supply Chain
 
-- `GITHUB_TOKEN` permissions are least-privilege at both layers: the repository/org Actions setting sets the maximum the token can be granted (set it to read-only), and each workflow declares a top-level `permissions:` block for its actual scope (read-only default, granting write narrowly per job) — the repo setting is the ceiling, the workflow block is the operative grant. (closes T5)
-- Untrusted `github.event.*` strings are never interpolated directly into `run:` steps; bind them through `env:` and reference the environment variable. (closes T2)
-- `pull_request_target` discipline: it runs privileged with repository secrets, so prefer plain `pull_request` for untrusted fork PRs because it is read-only with no repository secrets by default.
-  If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with human approval. (closes T2)
+- `GITHUB_TOKEN` permissions are least-privilege at both layers: the repository/org Actions "Workflow permissions" setting sets the DEFAULT `GITHUB_TOKEN` permission — set it to read-only so workflows that declare nothing start least-privilege; it is a default, not a hard ceiling, because a workflow can still elevate permissions via its own top-level or job `permissions:` block, so the per-workflow least-privilege `permissions:` declaration is the actual control — declare it in every workflow.
+  Additionally, for workflows triggered by fork PRs the `GITHUB_TOKEN` is read-only with no repository secrets by default unless explicitly enabled. (closes T5)
+- Untrusted `github.event.*` strings are never interpolated directly into `run:` steps; bind them through `env:` and reference it as a quoted shell variable (e.g. `"$PR_TITLE"`), never via `eval`. (closes T2)
+- `pull_request_target` and `workflow_run` discipline: both run privileged with repository secrets and a write-capable token even when the triggering workflow could not, so prefer plain `pull_request` for untrusted fork PRs because it is read-only with no repository secrets by default.
+  If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with human approval.
+  For `workflow_run`, do not trust artifacts, caches, or other inputs downloaded from the triggering run (they are attacker-controlled when the triggering run came from a fork), and do not check out untrusted head code in any `workflow_run` job that holds secrets or write scope. (closes T2)
 - Third-party actions are pinned to a full commit SHA, not a mutable tag. (closes T6)
 - OIDC is used for cloud authentication instead of stored long-lived secrets. (closes T5, T9)
 - Secret handling: `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` are not enabled in production (debug logging can expose secrets). (closes T5)
 - Dependabot is enabled for both version updates and security updates. (closes T6)
 - Dependency-update PRs (Dependabot or version bumps) pass through the same required reviews and status checks as any other change; where auto-merge is used it is limited to non-major updates with green checks and never bypasses the required review assembled in §2. (closes T6)
-- Code scanning is enabled (CodeQL or an equivalent analyzer). (closes T6)
-- Secret scanning is enabled with push protection. (closes T5)
-- Dependency review is enabled on PRs; for agent-added packages, a scoped or private registry and a committed lockfile blunt dependency confusion. (closes T6, T7)
+- Code scanning is enabled (CodeQL or an equivalent analyzer); on private/internal repos this requires GitHub Advanced Security (free on public repos) — configure where available, otherwise mark N/A with the plan reason. (closes T6)
+- Secret scanning is enabled with push protection; on private/internal repos this requires GitHub Advanced Security (free on public repos) — configure where available, otherwise mark N/A with the plan reason. (closes T5)
+- Dependency review is enabled on PRs; for agent-added packages, a scoped or private registry and a committed lockfile blunt dependency confusion; on private/internal repos dependency review requires GitHub Advanced Security (free on public repos) — configure where available, otherwise mark N/A with the plan reason. (closes T6, T7)
 
 ## §4 Auditability & Identity
 

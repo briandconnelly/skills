@@ -15,13 +15,15 @@ Auditors cite these IDs (T1–T9) in findings to make the connection explicit; t
 
 ## T2 — Injection into CI
 
-**What it is:** Untrusted strings interpolated directly into `run:` steps, or `pull_request_target` and fork workflows that gain write scope and secrets while handling untrusted code.
+**What it is:** Untrusted strings interpolated directly into `run:` steps, or `pull_request_target` and `workflow_run` and fork workflows that gain write scope and secrets while handling untrusted code.
 
 **Why agents amplify it:** Agents author and edit workflows and may wire `github.event.*` data straight into shell commands without recognizing the injection surface.
 
 **Config close:** §3 (least-privilege `GITHUB_TOKEN` with minimal write scopes, `pull_request_target` discipline — a plain `pull_request` workflow triggered from a fork runs with a read-only token and no repository secrets, but `pull_request_target` runs in the base-repo context with access to repository secrets, and its `GITHUB_TOKEN` defaults to write scope unless restricted via `permissions:` — the danger is that privileged context and secret access, not the checkout).
 Avoid `pull_request_target` for untrusted PRs entirely.
 If it is unavoidable, no job may check out or execute untrusted head code, and any job with secrets or write scopes must sit behind a protected environment with a human reviewer.
+`workflow_run` is a second privileged-trigger vector: it runs with repository secrets and a write-capable token even when the triggering workflow (e.g., a fork PR workflow) could not — and it is exploitable when the `workflow_run` job downloads artifacts or caches from the triggering run or checks out untrusted head code, because those artifacts are attacker-controlled.
+Do not download artifacts or caches from the triggering run, and do not check out untrusted head code, in any `workflow_run` job that holds secrets or write scope.
 
 **Operate close:** Never interpolate untrusted `github.event.*` values directly into `run:` steps — bind them via `env:` and reference the environment variable instead.
 
