@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-mcp
-description: Use when designing, building, auditing, or reviewing an MCP server that AI agents will invoke directly. Symptoms include agents picking the wrong tool from many candidates, burning tokens loading hundreds of tool definitions upfront, repeated invalid tool calls due to ambiguous schemas, tools that mirror an underlying API endpoint-by-endpoint instead of completing tasks, missing or unclear resource browsing, prompts that duplicate tool contracts, token-heavy responses that should be paginated or filtered, brittle integrations that break across server versions. Also use when defining or hardening tool, resource, or prompt schemas.
+description: Use when designing, building, auditing, or reviewing an MCP server that AI agents will invoke directly. Symptoms include agents picking the wrong tool from many candidates, burning tokens loading hundreds of tool definitions upfront, repeated invalid tool calls due to ambiguous schemas, tools that mirror an underlying API endpoint-by-endpoint instead of completing tasks, missing or unclear resource browsing, prompts that duplicate tool contracts, token-heavy responses that should be paginated or filtered, brittle integrations that break across server versions, long-running operations with no progress, cancellation, or recoverable task status. Also use when defining or hardening tool, resource, or prompt schemas.
 ---
 
 # Agent-Friendly MCP
@@ -64,37 +64,25 @@ Keep them — but never let them masquerade as protocol.
 
 ## Vocabulary
 
-- **Discovery surface**: the union of definitions, summaries, and discovery primitives an agent can see before deciding which capability to invoke.
-- **Concise vs detailed result**: a single structured default response, with an opt-in detail mode for richer content. Not a free `response_format` toggle.
-- **Resource index**: a lightweight catalog of available resources with metadata sufficient to decide whether to read the body, distinct from the bodies themselves.
-- **Prompt scaffold**: a reusable task starter that points at tools and resources, with explicit prerequisites and expected follow-on actions.
-- **Composable primitive vs workflow tool**: granularity decision: one tool that completes a user task vs. several tools the agent must chain.
-- **Operational prerequisites**: auth scopes, workspace/project context, prior setup, or implicit state that affects capability availability, result shape, permissions, or repair.
-- **Negotiated capability**: an optional MCP feature that both sides advertised during initialization; agents must not assume it exists from schema prose alone.
-- **Root**: a client-declared filesystem boundary exposed through `roots/list`; useful for workspace-scoped servers, but guidance rather than access control.
-- **Capability fingerprint**: a versioned identity for the server's surface, so clients can detect breaking changes.
-- **Code-execution client**: an agent that writes code against the MCP server's surface (per "Code Execution with MCP") rather than calling tools directly.
-- **Repair signal**: error fields that tell the agent specifically how to retry: stable code, offending field, allowed values, retryability, suggested next call.
-- **State handle**: an opaque reference to server-side state, such as a job, cursor, or session, with declared lifetime and expiry behavior.
-- **Long-running operation**: work that may need progress, cancellation, status polling, or result retrieval after the original request.
-- **Task-capable tool**: a tool that supports the task-augmented request pattern, declared via `execution.taskSupport: "optional" | "required" | "forbidden"`, so clients can recover status and results after the original call returns.
+Shared terms — discovery surface, repair signal, state handle, capability fingerprint, negotiated capability, task-capable tool, and the rest — are defined in [vocabulary.md](references/vocabulary.md); consult it when a term in the checklist or workflows is unfamiliar.
 
 ## Checklist Map
 
 The normative standard lives in [contract-checklist.md](references/contract-checklist.md); walk it top to bottom for any design or review.
 This index orients and routes — it does not restate the rules. State-handle discipline and long-running-operation contracts are normative in §1/§8 and §7 respectively; consult them there rather than a second copy here.
+Notation: bare `§N` always means a contract-checklist section; `ex§N` means section N of [examples.md](references/examples.md).
 
 | § | Section | One-line rule | Worked examples |
 | --- | --- | --- | --- |
-| §1 | Server-Level | Identity, transport, auth modes, agent-actionable prerequisites, negotiated capabilities, and roots — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | §7, §8a |
-| §2 | Discovery | A capability summary plus at least one progressive-disclosure mechanism, so agents load definitions on demand rather than all upfront. | §7, §8 |
-| §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | §1, §2, §10, §12, §13 |
-| §4 | Resources | Stable hierarchical URIs; index before body; stable chunk ids; templates + completion; subscriptions for mutable resources. | §3, §4, §5a, §5b |
-| §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | §5 |
-| §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | §6 |
-| §7 | Long-Running Operations | Choose blocking / progress / task-augmented deliberately; declare duration and timeout; recover via the native task lifecycle with a labeled fallback. | §11 |
-| §8 | Token Efficiency | Concise default with a `detail` toggle; cursor pagination with `has_more`; explicit truncation with a repair hint; identifiers chosen by role. | §2 |
-| §9 | Versioning | Publish a capability fingerprint; deterministic list ordering; native list-changed notifications; discoverable deprecation. | §9 |
+| §1 | Server-Level | Identity, transport, auth modes, agent-actionable prerequisites, negotiated capabilities, and roots — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | ex§7, ex§8a |
+| §2 | Discovery | A capability summary plus at least one progressive-disclosure mechanism, so agents load definitions on demand rather than all upfront. | ex§7, ex§8 |
+| §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | ex§1, ex§2, ex§10, ex§12, ex§13 |
+| §4 | Resources | Stable hierarchical URIs; index before body; stable chunk ids; templates + completion; subscriptions for mutable resources. | ex§3, ex§4, ex§5a, ex§5b |
+| §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | ex§5 |
+| §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | ex§6 |
+| §7 | Long-Running Operations | Choose blocking / progress / task-augmented deliberately; declare duration and timeout; recover via the native task lifecycle with a labeled fallback. | ex§11 |
+| §8 | Token Efficiency | Concise default with a `detail` toggle; cursor pagination with `has_more`; explicit truncation with a repair hint; identifiers chosen by role. | ex§2 |
+| §9 | Versioning | Publish a capability fingerprint; deterministic list ordering; native list-changed notifications; discoverable deprecation. | ex§9 |
 
 ## Workflow
 
