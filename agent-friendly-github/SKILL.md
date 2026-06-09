@@ -87,7 +87,7 @@ Then classify your task and follow the matching path:
 - **Audit** an existing repo's posture → follow [audit-workflow.md](references/audit-workflow.md).
 - **Operate** as an agent in a configured repo → follow [operating-playbook.md](references/operating-playbook.md).
 
-Both Set up and Audit walk [config-checklist.md](references/config-checklist.md) as their normative standard; Operate does not use the checklist and follows [operating-playbook.md](references/operating-playbook.md) exclusively.
+Both Set up and Audit walk [config-checklist.md](references/config-checklist.md) as their normative standard; Operate follows [operating-playbook.md](references/operating-playbook.md) and does not walk the checklist — where a playbook rule mirrors a configured control, the configuration is the authoritative, enforced version.
 The rationale behind every checklist rule — including which threat class it mitigates — lives in [threat-model.md](references/threat-model.md).
 Concrete artifacts (ruleset JSON, CODEOWNERS snippets, workflow permission blocks, label YAML) live in [examples.md](references/examples.md).
 
