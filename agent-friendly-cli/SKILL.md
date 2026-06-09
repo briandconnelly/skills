@@ -26,6 +26,7 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 - General code review of CLI internals that does not face agents — use your normal code-review workflow.
 - Library or SDK design that is not exposed as a command — this skill is CLI-specific.
+- Deciding whether a capability should be a CLI or an MCP server at all — use the agent-friendly-mcp skill's `references/mcp-vs-cli.md` decision aid first, then return here if a CLI is the right surface.
 - Trivial flag additions to an already-agent-friendly CLI; just follow the existing schema.
 
 ## Vocabulary
@@ -36,7 +37,8 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
   Distinct from the machine profile.
 - **Non-TTY mode**: runtime behavior based on each stream's terminal status: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
   Conservatively suppress terminal-only behavior even without the explicit machine profile.
-- **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`, or another explicitly declared class with a stable contract. Each command declares one.
+- **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`, or another explicitly declared class with a stable contract.
+  Each command declares one; a flag may switch a command to a different class only when the schema declares the switch explicitly.
 - **Ambient state**: config files, environment variables, credentials, and caches the CLI reads implicitly.
 
 ## Workflow
@@ -46,9 +48,11 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
    - Internal operator: lead with the smallest safe caller-side mitigation, then separate owner-side fixes from operator-side workarounds.
    - Third-party consumer: do not assume they can change the tool; prioritize containment, explicit assumptions, and what to escalate to the owner.
    - If the audience is unclear, say so and default to the most actionable split: caller-side mitigation first, tool-side fixes second.
-2. Classify the task: new CLI or redesign vs contract hardening vs review of an existing CLI vs diagnosis of a concrete failure. Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
+2. Classify the task: new CLI or redesign vs contract hardening vs review of an existing CLI vs diagnosis of a concrete failure.
+   Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
 3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
-4. For contract hardening, follow [design-workflow.md](references/design-workflow.md) when the user owns the CLI and wants a contract designed; follow [review-workflow.md](references/review-workflow.md) when evaluating an existing third-party contract.
+4. For contract hardening when the user owns the CLI, follow [design-workflow.md](references/design-workflow.md); if a contract already exists, first walk [review-workflow.md](references/review-workflow.md) to find the gaps, then design the fixes.
+   For a contract the user does not own, follow [review-workflow.md](references/review-workflow.md) only.
 5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
 6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
 7. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
@@ -58,5 +62,7 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
-- **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason. Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).
-- **Diagnosis tasks**: response names the most likely failure path with an evidence label, separates caller-side mitigations the user can take today from owner-side fixes, and either offers safe confirmation probes or states why probing isn't useful. Full checklist coverage isn't required unless the answer broadens into an audit.
+- **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason.
+  Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).
+- **Diagnosis tasks**: response names the most likely failure path with an evidence label, separates caller-side mitigations the user can take today from owner-side fixes, and either offers safe confirmation probes or states why probing isn't useful.
+  Full checklist coverage isn't required unless the answer broadens into an audit.

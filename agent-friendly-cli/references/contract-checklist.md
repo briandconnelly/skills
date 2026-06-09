@@ -15,11 +15,14 @@ Use this as the detailed standard for both design and review tasks.
 
 ## Machine Schema
 
-The schema is the primary contract. It should include:
+The schema is the primary contract.
+It should include:
 
 - command tree and canonical invocation path
 - aliases, deprecations, and replacements
 - arguments, flags, types, defaults, enums, cardinality, and examples
+- global flags, including every flag named in the machine profile
+- units for duration and size flags, declared in the flag name (`--timeout-ms`) or a `unit` field; undeclared units are a contract gap
 - canonical machine profile
 - optional isolation profile, when ambient state can be disabled
 - stdin contract
@@ -34,7 +37,13 @@ The schema is the primary contract. It should include:
 - async, polling, streaming, pagination, truncation, artifact, and version-negotiation behavior
 - schema version and stable fingerprint
 
-Expose a compact fingerprint endpoint so agents can cache the schema cheaply. The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly. Pair the fingerprint with `fingerprint_scope` — e.g. `schema-contract` when the fingerprint covers the full command contract — so agents know what changing the fingerprint invalidates.
+Expose a compact fingerprint endpoint so agents can cache the schema cheaply.
+The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly.
+Pair the fingerprint with `fingerprint_scope` — e.g. `schema-contract` when the fingerprint covers the full command contract — so agents know what changing the fingerprint invalidates.
+
+Declare what compatibility `schema_version` promises: which changes are additive (new commands, new optional fields, new optional flags) vs breaking (removals, renames, type or meaning changes, exit-code remapping).
+Any contract change, additive or breaking, must change the fingerprint; breaking changes must also bump the major version component.
+The fingerprint tells callers to re-fetch the schema; the major version tells them existing call sites may break.
 
 ## Stdin Contract
 
@@ -48,7 +57,8 @@ For every command, declare:
 - whether stdin is mutually exclusive with positional args or flags
 - how empty stdin is handled
 
-Reading explicitly piped stdin is fine when declared. Waiting for terminal input in machine mode is not.
+Reading explicitly piped stdin is fine when declared.
+Waiting for terminal input in machine mode is not.
 
 ## Agent-Safe Invocation
 
@@ -64,14 +74,18 @@ Reading explicitly piped stdin is fine when declared. Waiting for terminal input
 
 - stdout is success payload only.
 - stderr carries diagnostics and machine-readable failures.
+- Machine-mode stderr framing is declared in the schema: on failure, the structured error object is the only stderr content, or stderr is NDJSON records with a `type` field (`progress`, `warning`, `error`) so agents can separate diagnostics from the failure payload.
+- Free-form diagnostics must never interleave with the structured failure payload on machine-mode stderr.
 - Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
-- If JSON includes a `message` field, it must not duplicate structured data that is already present elsewhere in the payload.
+- In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
+- In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code` and never parse `message`.
+- Each command declares one output class; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
-- Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`. Include `limit` and `estimated_total` when available.
+- Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`, plus `limit` and `estimated_total` when available.
 - Truncation, omitted fields, and size caps are explicit.
 - `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
 - Default sort is deterministic.
@@ -92,7 +106,9 @@ Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` foll
 - `7`: timeout
 - `8`: conflict
 - `9`: transient or retryable
-- `10+`: domain-specific, declared in schema
+- `10`-`125`: domain-specific, declared in schema
+
+Avoid `126` and `127` (shell launch failures) and `128+n` (signal exits); shells already assign those meanings.
 
 The symbolic JSON `code` is the authoritative branch key for agents; the numeric exit code is the shell-branching fallback.
 
@@ -131,13 +147,16 @@ Required inspection affordances for tools that read ambient state (config files,
 - `config show --resolved`
 - `env`
 
-Provide `--no-config` or `--isolated` for tools that read ambient config, credentials, or caches. If state cannot be disabled, expose that fact in schema and machine output.
+Provide `--no-config` or `--isolated` for tools that read ambient config, credentials, or caches.
+If state cannot be disabled, expose that fact in schema and machine output.
 
 ## Mutations And Long-Running Work
 
 - Mutations require explicit action triggers such as `create`, `apply`, `delete`, or `--yes`.
 - Every mutating command should support `--dry-run`.
 - Dry runs must avoid externally visible mutations.
+- Dry runs exit `0` when the planned mutation is valid and use the command's declared error contract otherwise.
+- Dry-run output includes `dry_run: true` and describes the planned effect; it must never be byte-identical to real mutation output.
 - Internal effects during dry runs, such as cache warming or token refresh, must be documented and suppressible in isolated mode.
 - Replay-sensitive mutations should support `--if-not-exists`, `--if-exists`, or idempotency keys.
 - Long-running operations need job IDs, machine-readable status, polling, and `wait --timeout`.
