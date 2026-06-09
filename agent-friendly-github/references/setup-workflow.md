@@ -59,7 +59,7 @@ See the **agent identity setup** artifact in [examples.md](examples.md) for App 
 
 Create a repository ruleset targeting the default branch and any release branches.
 No automation identity — the agent identity, a bot PAT, a deploy key, or any CI app the agent can act as — may appear in the bypass-actors list, so the agent can never push past the ruleset.
-In a solo or small-team profile, add the human maintainer as a bypass actor so the lone human can merge their own work: use an individual `User` entry with `bypass_mode: pull_request`, never `bypass_mode: always` — `always` additionally permits direct pushes that bypass the PR and its required checks entirely, making it strictly weaker. Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. In an org/high-risk profile the list stays empty.
+In the solo profile, add the human maintainer as a bypass actor so the lone human can merge their own work: use an individual `User` entry with `bypass_mode: pull_request`, never `bypass_mode: always` — `always` additionally permits direct pushes that bypass the PR and its required checks entirely, making it strictly weaker. Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. In the small-team and org/high-risk profiles the list stays empty — a second human provides the review, so there is no lone maintainer to unblock.
 Merge queues operate through the normal ruleset flow and require no bypass entry (closes T4).
 
 Required ruleset conditions:
