@@ -15,8 +15,8 @@ gh api --method POST repos/{owner}/{repo}/rulesets --input hardened-ruleset.json
 ```
 
 JSON has no comment syntax; all caveats are in this prose.
-This baseline matches the **org / high-risk** profile; see the solo/small-team adaptation note after the JSON.
-The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In a solo or small-team repo, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work; never add the agent identity, a bot PAT, a deploy key, or the `Write` role.
+This baseline matches the **org / high-risk** profile; see the solo-profile adaptation note after the JSON.
+The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In the solo profile, once a distinct agent identity exists and reviews are >= 1, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work past the review requirement; in the pre-identity solo interim (reviews 0) leave this empty — a `pull_request`-mode bypass would let the shared-credential agent merge past the required checks, and with reviews 0 the maintainer needs none. Never add the agent identity, a bot PAT, a deploy key, or the `Write` role. Small-team and org repos keep this list empty too — a second human reviewer unblocks merges without a bypass.
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
@@ -78,7 +78,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 }
 ```
 
-### Optional: required signing, and the solo / small-team adaptation
+### Optional: required signing, and the solo-profile adaptation
 
 **Enable signing (opt-in).** When the maintainer adopts signing and every committer has a working signing path, add this rule object to the `rules` array above:
 
@@ -90,7 +90,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 
 A local commit pushed with a GitHub App token is not auto-signed, so the agent must either sign locally (GPG/SSH) or commit through the App's verified API path; otherwise its pushes are rejected.
 
-**Solo / small-team adaptation.** Starting from the baseline above: add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters. Keep `required_approving_review_count: 1` — lowering it to 0 would let the agent self-merge after checks.
+**Solo-profile adaptation.** Starting from the baseline above, for the post-identity solo posture (distinct agent identity, reviews >= 1): add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters (the small-team profile keeps both an empty bypass list and `require_last_push_approval` — it has a second human to review). Keep `required_approving_review_count: 1` ONLY once the agent has a distinct identity excluded from the bypass list — then lowering it to 0 would let that agent self-merge after checks, so keep it at 1. If the agent still runs on the maintainer's own credentials (no distinct identity yet), `required_approving_review_count: 1` is illusory — the agent inherits the maintainer's bypass and merges through it — so set it to `0` in that interim, keep `bypass_actors` empty (a `pull_request`-mode bypass would let the shared-credential agent merge past the required checks), and rely on the actor-independent gates (strict checks, linear history, blocked force-push/deletion); see the solo interim posture in [config-checklist.md](config-checklist.md). Flip reviews to 1 and add the human bypass actor when you provision the distinct identity.
 
 ```json
 "bypass_actors": [
@@ -98,7 +98,7 @@ A local commit pushed with a GitHub App token is not auto-signed, so the agent m
 ]
 ```
 
-Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, excluded from bypass and unable to self-approve, still cannot merge anything without the human.
+Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, once it has a distinct identity excluded from bypass and unable to self-approve, still cannot merge anything without the human (until that identity exists, see the interim caveat above).
 
 ## Production Environment Gate
 
