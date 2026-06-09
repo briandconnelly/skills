@@ -15,8 +15,8 @@ gh api --method POST repos/{owner}/{repo}/rulesets --input hardened-ruleset.json
 ```
 
 JSON has no comment syntax; all caveats are in this prose.
-This baseline matches the **org / high-risk** profile; see the solo/small-team adaptation note after the JSON.
-The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In a solo or small-team repo, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work; never add the agent identity, a bot PAT, a deploy key, or the `Write` role.
+This baseline matches the **org / high-risk** profile; see the solo-profile adaptation note after the JSON.
+The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In the solo profile, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work; never add the agent identity, a bot PAT, a deploy key, or the `Write` role. Small-team and org repos keep this list empty — a second human reviewer unblocks merges without a bypass.
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).

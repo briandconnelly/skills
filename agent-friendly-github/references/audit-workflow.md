@@ -27,7 +27,7 @@ Do not run workflows, approve PRs, or write to the repository in any form during
 Rate it **High** normally, or **Critical** when it blocks a security fix or production recovery.
 Examples: a single-maintainer repo with required reviews and a bypass-actors list empty of any human, so the lone maintainer can never merge their own work (§2); `require_last_push_approval` or environment `prevent_self_review` enabled in a solo repo; `required_signatures` enforced where a committer has no signing path, rejecting all their pushes (§2, T8).
 Remediation is profile-aware — add the human bypass actor or relax the opt-in control to match the repository profile, not "remove all bypass actors."
-A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; a human-maintainer bypass in a solo/small-team repo is expected, not a defect.
+A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; a human-maintainer bypass in the solo profile is expected, not a defect (small-team and org repos keep the list empty — a second human reviewer unblocks merges without a bypass).
 Exception — the illusory review gate: if a solo repo has required reviews >= 1, the agent runs on the maintainer's own credentials (no distinct agent identity, §4), AND a human bypass actor is configured so merges are actually possible, then that bypass is agent-reachable and the review requirement is theater — the agent author and the bypassing/approving maintainer are one actor. Flag this (Medium; T3): the review setting implies a protection that does not hold.
 (If instead the bypass list is empty in that scenario, no one can merge — the lone human cannot self-approve and there is no second reviewer — so it is the availability/lockout finding above, not an illusory gate.)
 Medium, not High, even though "no required reviews configured" is a High example above: in a solo repo human review is structurally unenforceable (there is no second human), so the illusory gate does not defeat a guardrail that could otherwise have bound — it advertises one that never could, a misleading-auditability harm, while the actor-independent gates (strict checks, linear history, blocked force-push/deletion) still bind. Remediation is not to tighten the review rule but to provision a distinct agent identity, or, in the interim, drop required reviews to 0 and lean on the actor-independent gates (strict checks, linear history, blocked force-push/deletion) per the solo interim posture in config-checklist.md.
@@ -59,7 +59,7 @@ Read-only checks to confirm the highest-risk controls.
 Run each with `gh api` or `gh ruleset view` unless otherwise stated.
 Mark each probe with the checklist section and threat class it targets.
 
-- **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds). A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in a solo/small-team repo and is not a finding; an empty list is expected in an org/high-risk repo.
+- **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds). A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in the solo profile and is not a finding; an empty list is expected in small-team and org/high-risk repos (a second human reviewer unblocks merges without a bypass).
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
 
@@ -107,7 +107,7 @@ Each finding has five labeled lines:
 - **Section:** §2
 - **Threat:** T4
 - **Evidence:** `gh ruleset view 42` returns `"bypass_actors": [{"actor_id": 99, "actor_type": "Integration", "bypass_mode": "always"}, {"actor_id": 4, "actor_type": "RepositoryRole", "bypass_mode": "always"}]` — the agent's GitHub App and the `Maintain` role (which the agent account also holds) can both push directly to `main` without review or status checks.
-- **Remediation:** Remove every automation identity from `bypass_actors` — the agent App and any role the agent can hold (config-checklist.md §2: "no automation identity ... may appear in the bypass-actors list"). In a solo or small-team repo a human-maintainer `User` entry with `bypass_mode: pull_request` may remain as the documented escape hatch; in an org/high-risk repo the list should be empty.
+- **Remediation:** Remove every automation identity from `bypass_actors` — the agent App and any role the agent can hold (config-checklist.md §2: "no automation identity ... may appear in the bypass-actors list"). In the solo profile a human-maintainer `User` entry with `bypass_mode: pull_request` may remain as the documented escape hatch; in small-team and org/high-risk repos the list should be empty.
   Navigate to Settings → Rules → Rulesets → select the ruleset → Bypass list, remove the offending entries, then save.
 
 ## Coverage Table
