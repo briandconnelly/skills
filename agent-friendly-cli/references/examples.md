@@ -88,7 +88,7 @@ Later sections also use `count`, `list`, `watch`, and `export`; their schema ent
         "--from-file": {"class": "bulk-result", "format": "json", "shape": {"partial": "boolean", "results": "array of {id, name, status} or {id, error}"}, "size_mode": "grows with input"},
         "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "size_mode": "small"}
       },
-      "side_effects": {"external_mutation": "deletes widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},
+      "side_effects": {"external_mutation": true, "writes": ["remote widget store"], "description": "deletes the widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},
       "latency_class": "network",
       "timeout_defaults_ms": 5000,
       "retry_defaults": {"retries": 0},
