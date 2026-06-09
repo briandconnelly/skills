@@ -60,6 +60,7 @@ Later sections also use `count`, `list`, `watch`, and `export`; their schema ent
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3},
         {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
@@ -98,9 +99,12 @@ Later sections also use `count`, `list`, `watch`, and `export`; their schema ent
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3, "suppressed_by": "--if-exists"},
+        {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "FORBIDDEN", "exit": 5},
-        {"code": "RATE_LIMITED", "exit": 6, "retryable": true}
+        {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
+        {"code": "TIMEOUT", "exit": 7, "retryable": true}
       ]
     }
   ]
