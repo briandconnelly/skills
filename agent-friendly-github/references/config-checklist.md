@@ -26,8 +26,8 @@ The security boundary is human-vs-agent, not author-vs-reviewer.
 
 **Baseline — all profiles:**
 - Agent identity is least-privilege and is NOT a bypass actor. (§2, §4; T4, T9)
-- Protected-branch ruleset: a PR is required, with >= 1 approving review, self-approval not counted, and force-push and deletion blocked — so the agent can neither self-approve nor self-merge. (§2; T3, T4)
-  This review requirement presumes the distinct agent identity from the item above: if the agent has no identity separate from the human maintainer (it runs on the maintainer's own credentials), a required review is **illusory** — an empty bypass list locks out the lone human, and any human bypass that lets the maintainer merge is one the agent inherits and can merge through. Provision the distinct identity FIRST; until it exists, follow the solo profile's interim posture rather than enabling an unenforceable review gate. (T3, T4)
+- Protected-branch ruleset: a PR is required, self-approval not counted, and force-push and deletion blocked — so the agent can neither self-approve nor self-merge. Set `required_approving_review_count` to >= 1 ONCE a distinct agent identity exists (the item above); until it exists — the agent runs on the maintainer's own credentials — set it to `0` per the solo interim posture, because a required review is then **illusory**. (§2; T3, T4)
+  Why the precondition: with no identity separate from the human maintainer, an empty bypass list locks out the lone human, and any human bypass that lets the maintainer merge is one the agent inherits and can merge through — so the review gate enforces nothing. Provision the distinct identity FIRST; until it exists, follow the solo profile's interim posture rather than enabling an unenforceable review gate. (T3, T4)
 - Least-privilege `GITHUB_TOKEN`; no privileged `pull_request_target`/`workflow_run` on untrusted code; third-party actions pinned to a full commit SHA. (§3; T2, T5, T6)
 - `.gitignore` covers secret-bearing paths; secret scanning + push protection enabled where the plan provides it. (§1, §3; T5)
 - No classic broad PATs. (§4; T9)
