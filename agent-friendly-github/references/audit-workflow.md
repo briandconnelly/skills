@@ -28,6 +28,7 @@ Rate it **High** normally, or **Critical** when it blocks a security fix or prod
 Examples: a single-maintainer repo with required reviews and a bypass-actors list empty of any human, so the lone maintainer can never merge their own work (§2); `require_last_push_approval` or environment `prevent_self_review` enabled in a solo repo; `required_signatures` enforced where a committer has no signing path, rejecting all their pushes (§2, T8).
 Remediation is profile-aware — add the human bypass actor or relax the opt-in control to match the repository profile, not "remove all bypass actors."
 A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; a human-maintainer bypass in a solo/small-team repo is expected, not a defect.
+Exception — the illusory review gate: if a solo repo has required reviews >= 1 AND the agent runs on the maintainer's own credentials (no distinct agent identity, §4), then the "human" bypass is agent-reachable and the review requirement is theater — the agent author and the bypassing/approving maintainer are one actor. Flag this (Medium; T3): the review setting implies a protection that does not hold. Remediation is not to tighten the review rule but to provision a distinct agent identity, or, in the interim, drop required reviews to 0 and lean on the actor-independent gates (strict checks, linear history, blocked force-push/deletion) per the solo interim posture in config-checklist.md.
 
 ## Audit Procedure
 
