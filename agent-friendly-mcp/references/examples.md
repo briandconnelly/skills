@@ -897,7 +897,7 @@ Native task fields use the spec's casing exactly: `taskId`, `status`, `createdAt
 `ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
 Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.
 `CreateTaskResult` nests the `Task` under `result.task`; `tasks/get` and `tasks/cancel` return the `Task` directly in `result`; `tasks/result` returns the underlying tool result — read each shape from the spec rather than assuming one envelope.
-Task-associated messages carry `io.modelcontextprotocol/related-task` in `_meta` — required on `tasks/result` responses — but `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT include it because the `taskId` already travels in the message, which is why the poll and cancel responses above omit it.
+Carry `io.modelcontextprotocol/related-task` in `_meta` only where the payload does not already name the task: it is required on `tasks/result` responses, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT include it because the `taskId` already travels in the message — which is why the poll and cancel responses above omit it.
 The domain-specific status/cancel tools are a labeled fallback for the experimental-task gap, not a replacement for `tasks/*`.
 
 ## 12. Response-delivery artifact
