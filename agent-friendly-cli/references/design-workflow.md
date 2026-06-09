@@ -12,7 +12,8 @@ Define the smallest useful task model before choosing names, framework, or flags
 4. Define the minimum successful output needed for the next machine step.
 5. Remove convenience wrappers around shell pipelines unless they provide a real contract advantage.
 
-Prefer a few high-value verbs over a wide surface area. If two commands require long prose to explain the difference, the command model is not ready.
+Prefer a few high-value verbs over a wide surface area.
+If two commands require long prose to explain the difference, the command model is not ready.
 
 ## 2. Design A Guessable Command Surface
 
@@ -33,7 +34,8 @@ Keep argument shapes uniform:
 
 ## 3. Write The Schema Before Behavior
 
-Treat the schema as the authoritative design artifact. The schema should declare:
+Treat the schema as the authoritative design artifact.
+The schema should declare:
 
 - command tree, canonical invocation path, aliases, and deprecations
 - arguments, flags, types, defaults, enums, cardinality, and examples
@@ -52,7 +54,7 @@ Treat the schema as the authoritative design artifact. The schema should declare
 Expose:
 
 - `tool schema`: the authoritative full contract
-- `tool schema --fingerprint`: a small stable cache key that changes when the schema contract changes; if version-only releases also change it, declare that explicitly
+- `tool schema --fingerprint`: a small stable cache key that changes when the schema contract changes; if version-only releases also change it, declare that explicitly, and pair it with `fingerprint_scope` as defined in [contract-checklist.md](contract-checklist.md)
 - optionally `tool schema --summary` or `tool schema <command>` for compact partial loading
 
 ## 4. Choose Agent-Safe Defaults
@@ -61,7 +63,7 @@ Make the safe path the default path.
 
 - Machine mode must never prompt, page, launch browsers, emit ANSI color, show spinners, or wait for terminal input.
 - Non-TTY mode should evaluate each stream separately and conservatively suppress color, spinners, pagers, browser launch, and prompts.
-- Mutating commands should require explicit action verbs and support `--dry-run`.
+- Mutating commands should require explicit action verbs and support `--dry-run`; dry-run output carries `dry_run: true` and the planned effect, never a payload identical to a real mutation result.
 - Replay-sensitive mutations should support idempotency: `--if-not-exists`, `--if-exists`, or idempotency keys.
 - Reads should avoid side effects by default and declare any unavoidable network, cache, or token-refresh effects.
 - Long-running operations need a pollable async pattern with job ID, status, and `wait --timeout`.
@@ -84,13 +86,16 @@ Standardize on a small number of output classes:
 - `artifact`: large result written to disk with structured pointer
 
 Custom output classes are acceptable when the built-in set does not fit cleanly, but they must be explicitly named in the schema and have a stable shape, paging behavior, and examples.
+Each command declares one output class; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
 
 Output rules:
 
 - stdout contains only the success payload.
 - stderr contains diagnostics, warnings, progress, debug detail, and structured failures.
+- Declare machine-mode stderr framing: on failure the structured error object is the only stderr content, or stderr is NDJSON records typed `progress`, `warning`, or `error`, so agents never fish a JSON payload out of free-form text.
 - JSON should be shallow, stable, deterministic, and free of human summaries.
-- In machine mode, avoid prose `message` fields that duplicate structured payload data; if a `message` field exists, it should add non-duplicative context only.
+- In machine-mode success payloads, avoid prose `message` fields that duplicate structured payload data; if a `message` field exists, it should add non-duplicative context only.
+- In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code`.
 - Pagination, truncation, omitted fields, partial failure, retries exhausted, and version mismatch must be structured.
 - NDJSON is for streams and large result sets; arrays are for small finite lists.
 - Machine output uses UTF-8, locale-independent numbers, stable path style, and UTC or explicitly declared timezones for timestamps.
@@ -98,7 +103,7 @@ Output rules:
 
 Error rules:
 
-- Reserve numeric exit codes `0-9` for cross-tool meanings.
+- Reserve numeric exit codes `0-9` for the cross-tool meanings suggested in [contract-checklist.md](contract-checklist.md); beyond `0`-`2` they are a skill convention, so declare them in the schema.
 - Use symbolic JSON error codes as the authoritative branch key.
 - Include required error fields `code` and `message`.
 - Prefer useful optional fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.

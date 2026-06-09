@@ -18,7 +18,8 @@ If the user is asking for a general audit or redesign, continue with the full wo
 
 Prefer direct evidence over inferred behavior.
 
-When recording findings, label each as `observed` (you ran it), `inferred` (deduced from related output), or `absence-of-evidence` (a contract piece is missing from `--help`/schema/session). Absence is itself a finding when a contract piece is required.
+When recording findings, label each as `observed` (you ran it), `inferred` (deduced from related output), or `absence-of-evidence` (a contract piece is missing from `--help`/schema/session).
+Absence is itself a finding when a contract piece is required.
 
 Before probing a live CLI, decide whether direct runs would materially reduce uncertainty.
 
@@ -83,6 +84,7 @@ Check for automation hazards:
 - reads with hidden side effects
 - machine mode conflated with isolated mode, causing credentials, endpoints, or workspace defaults to disappear from the first non-interactive call
 - mutations without `--dry-run`, confirmation bypass, or idempotency
+- dry-run output indistinguishable from real mutation output (no `dry_run: true` marker)
 - long-running operations without async polling or timeout controls
 - networked commands without explicit `--timeout` and retry behavior
 - commands that depend on ambient config, credentials, or caches without inspection or isolation flags
@@ -97,6 +99,7 @@ Check:
 
 - stdout success payload only
 - diagnostics and structured failures on stderr
+- machine-mode stderr framing is declared and parseable: the failure payload is either the only stderr content or arrives as typed NDJSON records, never interleaved with free-form diagnostics
 - shallow stable JSON in machine mode
 - explicit pagination, truncation, omitted fields, partial failure, and artifact pointers
 - no banners, summaries, warnings, debug logs, progress, or prose mixed into stdout
@@ -143,7 +146,8 @@ Release should block when:
 
 ## 6. Report Format
 
-For code reviews, put findings first. Audience-sensitive output shape — including any caller-side mitigation preface for non-owner users — is decided by the audience step in [SKILL.md](../SKILL.md) Workflow §1, not here.
+Put findings first.
+Audience-sensitive output shape — including any caller-side mitigation preface for non-owner users — is decided by the audience step in [SKILL.md](../SKILL.md) Workflow §1, not here.
 
 Use this structure:
 
