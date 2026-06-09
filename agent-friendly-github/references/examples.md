@@ -90,7 +90,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 
 A local commit pushed with a GitHub App token is not auto-signed, so the agent must either sign locally (GPG/SSH) or commit through the App's verified API path; otherwise its pushes are rejected.
 
-**Solo / small-team adaptation.** Starting from the baseline above: add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters. Keep `required_approving_review_count: 1` — lowering it to 0 would let the agent self-merge after checks.
+**Solo / small-team adaptation.** Starting from the baseline above: add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters. Keep `required_approving_review_count: 1` ONLY once the agent has a distinct identity excluded from the bypass list — then lowering it to 0 would let that agent self-merge after checks, so keep it at 1. If the agent still runs on the maintainer's own credentials (no distinct identity yet), `required_approving_review_count: 1` is illusory — the agent inherits the maintainer's bypass and merges through it — so set it to `0` in that interim and rely on the actor-independent gates (strict checks, linear history, blocked force-push/deletion); see the solo interim posture in [config-checklist.md](config-checklist.md). Flip reviews to 1 when you provision the distinct identity.
 
 ```json
 "bypass_actors": [
@@ -98,7 +98,7 @@ A local commit pushed with a GitHub App token is not auto-signed, so the agent m
 ]
 ```
 
-Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, excluded from bypass and unable to self-approve, still cannot merge anything without the human.
+Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, once it has a distinct identity excluded from bypass and unable to self-approve, still cannot merge anything without the human (until that identity exists, see the interim caveat above).
 
 ## Production Environment Gate
 

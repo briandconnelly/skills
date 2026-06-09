@@ -74,6 +74,7 @@ Required ruleset conditions:
 
 Assemble auto-merge safety as a combination of three settings (GitHub has no single "human-only approver" flag):
 required approving review count ≥ 1 + self-approval not counted + CODEOWNERS-required human review on protected paths (closes T3).
+This presumes a distinct agent identity exists; in the solo interim before that identity (the agent runs on the maintainer's own credentials) a required review is illusory — set the count to 0 and rely on the actor-independent gates per the solo interim posture in [config-checklist.md](config-checklist.md), then flip it to ≥ 1 once the distinct identity is provisioned.
 
 Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds (closes T5).
 Note: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they require GitHub Pro, Team, or Enterprise; if the plan does not provide them, use an external deployment-approval mechanism and mark this step N/A with the plan reason.
