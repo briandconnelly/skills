@@ -84,7 +84,10 @@ Later sections also use `count`, `list`, `watch`, and `export`; their schema ent
       ],
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "deleted"}, "size_mode": "small"},
-      "alternate_outputs": {"--from-file": {"class": "bulk-result", "format": "json", "shape": {"partial": "boolean", "results": "array of {id, name, status} or {id, error}"}, "size_mode": "grows with input"}},
+      "alternate_outputs": {
+        "--from-file": {"class": "bulk-result", "format": "json", "shape": {"partial": "boolean", "results": "array of {id, name, status} or {id, error}"}, "size_mode": "grows with input"},
+        "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "size_mode": "small"}
+      },
       "side_effects": {"external_mutation": "deletes widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},
       "latency_class": "network",
       "timeout_defaults_ms": 5000,
