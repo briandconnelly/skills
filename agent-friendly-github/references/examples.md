@@ -161,9 +161,11 @@ Add this rule to the default-branch ruleset when production deployment must pass
 }
 ```
 
-## Monorepo CODEOWNERS
+## CODEOWNERS Patterns (Monorepo and Solo)
 
 Implements: §1 (T3)
+
+The explicit-prefix pattern applies to any repo; the monorepo example below shows per-subtree ownership, and the solo variant follows it.
 
 ```text
 # Owners on protected paths must be human users or teams, kept bot-free by membership hygiene.

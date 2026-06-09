@@ -19,7 +19,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 > You are configuring a GitHub repository so an AI coding agent can work in it safely.
 > Facts: the repo is `acme/billing-api`, private, on the GitHub Team plan, with one active human maintainer.
 > The AI agent currently authenticates with the maintainer's own user-account credentials; no separate agent identity exists yet.
-> CI is GitHub Actions; the repo is a traditional (non-monorepo) Python service whose workflow file is named `CI` and contains a single job with id `test`.
+> CI is GitHub Actions; the repo is a traditional (non-monorepo) Python service with one workflow (`.github/workflows/ci.yml`, whose `name:` is `CI`) containing a single job with id `test`.
 > There are production deployments to a `production` environment.
 > Deliverables: (1) the branch-protection/ruleset configuration you would apply RIGHT NOW, as JSON for the GitHub rulesets REST API; (2) the identity plan for the agent, and exactly what changes in the ruleset once that plan is carried out; (3) the Actions / supply-chain hardening list; (4) anything you would explicitly defer or mark not-applicable, with reasons.
 

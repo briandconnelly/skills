@@ -140,7 +140,7 @@ See the **label taxonomy** artifact in [examples.md](examples.md).
 Use explicit path prefixes — never a catch-all-only rule.
 Owners on protected paths must be human users or teams, never bot or agent accounts, so a required review can never be satisfied by an agent (closes T3).
 In a monorepo, one prefix per owned subtree.
-See the **Monorepo CODEOWNERS** artifact (with its solo variant) in [examples.md](examples.md).
+See the **CODEOWNERS Patterns (Monorepo and Solo)** artifact in [examples.md](examples.md).
 
 **Draft-first convention.**
 GitHub has no native "require draft by path" feature.
@@ -204,13 +204,13 @@ Checklist walkthrough by section:
 
 **§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, no `workflow_run` job with secrets or write scope downloads triggering-run artifacts or caches or checks out untrusted head code, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, dependency-update PRs subject to the same required reviews and checks (auto-merge limited to non-major updates with green checks), CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
-**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log retention considered at org level, no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
+**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
 Emitted artifacts (confirm each is in place or pointed to in [examples.md](examples.md)):
 
 - Hardened ruleset JSON
 - Least-privilege, injection-safe Actions workflow (including OIDC job)
-- Monorepo CODEOWNERS file (with solo variant)
+- CODEOWNERS file (monorepo or solo pattern)
 - Issue and PR templates
 - Issue-link required check (if the workflow mandates issue-backed PRs)
 - Label taxonomy
