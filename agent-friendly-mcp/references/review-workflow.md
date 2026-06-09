@@ -22,7 +22,8 @@ A review is grounded when its findings cite evidence from the schema, the respon
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),
    - **`not-checked`** with a reason (e.g., "no transcript available," "auth model out of scope for this audit," "no resources defined — §4 N/A").
    A section may have multiple findings; a section with both findings and `OK` evidence on adjacent items is fine — note both.
-3. **Run the transcript-style probes below.** Use a real agent transcript when available; otherwise simulate one from the schema by tracing what an agent would see at each step. At least one probe must be answered with concrete evidence before the audit is done.
+3. **Run the transcript-style probes below.** Use a real agent transcript when available; otherwise simulate one from the schema by tracing what an agent would see at each step.
+   The cold-start and first-repair probes must be answered with concrete evidence, plus at least three other probes where the server's surface makes them applicable; record an inapplicability reason for any probe skipped (e.g., "no long-running operations defined").
 4. **Synthesize findings into the report format below.** Order findings by severity (Critical → Nit), then by checklist section. Then assemble the coverage table.
 
 **Safety:** Do not invoke tools that mutate live state, rotate credentials, or trigger paid operations unless the user explicitly approves. When simulating credential failures, prefer obviously invalid placeholder values over real-looking incorrect ones.
@@ -83,6 +84,6 @@ End the report with open questions or assumptions, and an optional remediation s
 ## Done Criteria
 
 - Every section §1 through §9 in [contract-checklist.md](contract-checklist.md) is accounted for in the coverage table — covered by at least one finding, marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
-- At least one of the nine transcript probes was run with concrete evidence (real or simulated transcript), and its answer is recorded in the report.
+- The cold-start and first-repair probes were run with concrete evidence (real or simulated transcript), plus at least three other applicable probes; every skipped probe is recorded with its inapplicability reason.
 - Each finding carries all five labeled lines (severity, section, summary, evidence, remediation), and remediation references real callable surfaces.
 - When no Critical or Major findings are found, the report says so explicitly and names residual risks (e.g., "no live auth-failure transcript was available" or "fingerprint behavior on upgrade was not exercised").

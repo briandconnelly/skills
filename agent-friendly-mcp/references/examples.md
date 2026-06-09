@@ -220,6 +220,7 @@ A prompt that orchestrates posting a release announcement across multiple channe
 
 What to notice: `when_to_use` distinguishes this from "draft a message"; `prerequisites` lists the required permissions, tool names, resource URIs, and context assumptions in one place; `expected_followups` names tools by their canonical schema name — the prompt references but does not redefine.
 `when_to_use`, `prerequisites`, and `expected_followups` are convention extensions, not native MCP `Prompt` fields (native is `name`, `title`, `description`, `arguments`, `_meta`); a portable server carries them in the prompt `description` text or under a namespaced `_meta` key (see the native-vs-convention rule in `SKILL.md`).
+The same applies inside `arguments`: native `PromptArgument` fields are `name`, `title`, `description`, and `required`, so the `type`, `items`, and `default` keys shown here are convention too — for portable servers, carry value-shape guidance in each argument's `description`.
 
 ## 5a. Resource template with completion
 
@@ -348,6 +349,7 @@ What to notice: this is a tool-result error, so `isError: true` sits at the top 
 The `code` is a stable symbolic string the agent can branch on; `details` names the offending field and its value; `temporary: false` with `retry_after_ms: null` tells the agent not to back off and try again — this isn't transient, so don't retry; `repair` points at a real tool name and argument shape — the agent's first repair attempt has everything it needs.
 `request_id` and `fingerprint` give the agent correlation context.
 Note that the fields inside `structuredContent` — `code`, `temporary`, `retry_after_ms`, `repair`, `request_id`, `fingerprint` — are a convention extension on top of MCP's error shape; a client that does not share this convention still gets `isError: true` plus the `content` text.
+Because this is an `isError: true` result, `structuredContent` carries the error envelope rather than the tool's success-shape `outputSchema` — see the §3 position on `outputSchema` scope in `contract-checklist.md`, and document the envelope per tool so validators know which shape applies.
 Mirror the pattern, but document the envelope your server emits.
 
 A more common first-call failure — an unknown channel name passed where an id was required — should route the agent to the lookup tool rather than a dead end:
@@ -400,7 +402,7 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
 }
 ```
 
-`-32002` is MCP's resource-not-found JSON-RPC code under the 2025-11-25 baseline; the `data` block carries the repair contract. (The 2026-07-28 RC is expected to fold this into the standard `-32602` *Invalid params* — see the spec-baseline note in `SKILL.md` — so branch on `machine_code`, not the numeric code, to stay portable across that change.)
+`-32002` is MCP's resource-not-found JSON-RPC code under the 2025-11-25 baseline; the `data` block carries the repair contract. (The 2026-07-28 RC is expected — not yet confirmed final text — to fold this into the standard `-32602` *Invalid params*; see the spec-baseline note in `SKILL.md`. Either way, branch on `machine_code`, not the numeric code, to stay portable across that change.)
 
 ## 7. Server capability summary
 
@@ -797,7 +799,7 @@ Response (`CreateTaskResult`):
 }
 ```
 
-**Progress** is keyed by `progressToken` and, like every task-associated message, carries `io.modelcontextprotocol/related-task` in `_meta`.
+**Progress** is keyed by `progressToken` and, like other task-associated notifications, carries `io.modelcontextprotocol/related-task` in `_meta`.
 
 Notification:
 
@@ -895,7 +897,7 @@ Native task fields use the spec's casing exactly: `taskId`, `status`, `createdAt
 `ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
 Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.
 `CreateTaskResult` nests the `Task` under `result.task`; `tasks/get` and `tasks/cancel` return the `Task` directly in `result`; `tasks/result` returns the underlying tool result — read each shape from the spec rather than assuming one envelope.
-Every task-associated message carries `io.modelcontextprotocol/related-task` in `_meta`.
+Task-associated messages carry `io.modelcontextprotocol/related-task` in `_meta` — required on `tasks/result` responses — but `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT include it because the `taskId` already travels in the message, which is why the poll and cancel responses above omit it.
 The domain-specific status/cancel tools are a labeled fallback for the experimental-task gap, not a replacement for `tasks/*`.
 
 ## 12. Response-delivery artifact

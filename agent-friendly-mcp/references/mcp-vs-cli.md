@@ -41,7 +41,7 @@ A shell-composable command with stable text contracts on stdout, diagnostics on 
 | Agent location     | chat                  | code-exec              | code-exec / shell      |
 | Capability count   | few–moderate          | many                   | few                    |
 | Discovery needs    | semantic              | progressive (on disk)  | none / `--help`        |
-| State changes      | read-only or RW (typed annotations) | read-only or RW (language exceptions) | read-only or RW (exit codes) |
+| Mutation signaling | typed annotations (`readOnlyHint`, `destructiveHint`) | language exceptions + typed returns | exit codes + stderr + flag conventions |
 | Output size        | small                 | large / streamed       | small / streamed text  |
 | Selection pressure | many candidates, model picks | agent code picks, by name | agent picks one verb |
 
