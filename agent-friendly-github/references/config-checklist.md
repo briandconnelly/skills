@@ -52,7 +52,7 @@ All of the above plus merge queue, environment gates with required deployments, 
   Monorepo: one prefix per owned subtree.
   A human-owned last-resort catch-all is acceptable only after explicit path rules.
   Solo: a single-user owner (`* @maintainer`) is fine, but a solo owner cannot satisfy their own required CODEOWNERS review, so either rely on the §2 human bypass to merge their own owned-path PRs or do not enable "require review from code owners" in a single-maintainer repo. (closes T3)
-- Required reviews are enabled on protected branches and enforced through CODEOWNERS. (closes T3)
+- Required reviews are enabled on protected branches and enforced through CODEOWNERS — once a distinct agent identity exists. In the solo interim before that identity (the agent runs on the maintainer's credentials), required reviews are intentionally set to 0 and CODEOWNERS-enforced review is not relied upon; see the baseline and solo interim posture above. (closes T3)
 - Draft-first on owned paths is an operate convention, not a CI gate: open a protected-path change as a draft and wait for a human to promote it to ready; there is no robust required status check for "opened as draft" — a check that fails while the PR is ready-for-review blocks merge permanently, and one that only inspects the `opened` action is cleared by the next push; the enforcement for protected-path changes is the required CODEOWNERS review (§2), which requires a CODEOWNERS-listed human to approve. (closes T3)
 - Canonical instruction file (`AGENTS.md`) is present; per-tool files are thin references to it; reusable procedures live as committed artifacts, not pasted into instruction files; monorepos add a nested `AGENTS.md` per subtree. (closes T1 via clear guidance)
 - `CONTRIBUTING` is present and discoverable (`CONTRIBUTING.md` or `.github/CONTRIBUTING.md`) describing branch, PR, and review expectations that a contributor or agent must follow. (productivity; closes T1)
@@ -79,7 +79,8 @@ All of the above plus merge queue, environment gates with required deployments, 
 - Merge queue is configured where serialized merges matter. (productivity; closes T4)
 - Force-push and branch deletion are blocked on protected refs. (closes T4)
 - Auto-merge safety is a combination, not a single setting: required approving review count >= 1, self-approval not counted, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these three settings.
-  The solo-profile human bypass actor does not weaken this: it lets the human merge their own work, while the agent (excluded from bypass) still cannot approve or merge its own PR. (closes T3)
+  This presumes a distinct agent identity excluded from bypass; in the solo interim before that identity (the agent runs on the maintainer's credentials) reviews are intentionally 0 and this combination does not apply — rely on the actor-independent gates per the solo interim posture above.
+  Once the distinct identity exists, the solo-profile human bypass actor does not weaken this: it lets the human merge their own work, while the agent (excluded from bypass) still cannot approve or merge its own PR. (closes T3)
 - Environment or deployment protection rules gate production via required reviewers or a wait timer on the environment.
   Caveat: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they require GitHub Pro, Team, or Enterprise; if the plan does not provide them, use an external deployment-approval mechanism and mark this item N/A with the plan reason. (closes T5)
 

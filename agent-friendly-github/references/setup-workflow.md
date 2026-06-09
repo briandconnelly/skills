@@ -59,12 +59,12 @@ See the **agent identity setup** artifact in [examples.md](examples.md) for App 
 
 Create a repository ruleset targeting the default branch and any release branches.
 No automation identity — the agent identity, a bot PAT, a deploy key, or any CI app the agent can act as — may appear in the bypass-actors list, so the agent can never push past the ruleset.
-In a solo or small-team profile, add the human maintainer as a bypass actor so the lone human can merge their own work: prefer an individual `User` entry with `bypass_mode: pull_request`; where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. In an org/high-risk profile the list stays empty.
+In a solo or small-team profile, add the human maintainer as a bypass actor so the lone human can merge their own work: use an individual `User` entry with `bypass_mode: pull_request`, never `bypass_mode: always` — `always` additionally permits direct pushes that bypass the PR and its required checks entirely, making it strictly weaker. Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. In an org/high-risk profile the list stays empty.
 Merge queues operate through the normal ruleset flow and require no bypass entry (closes T4).
 
 Required ruleset conditions:
 
-- Required status checks; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
+- Required status checks, set strict (`strict_required_status_checks_policy: true`, the "Require branches to be up to date before merging" toggle) so a branch green against a stale base cannot merge and silently break the protected branch — load-bearing especially in the solo interim posture, where these checks do the work review otherwise would; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
 - `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3).
   Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
 - Signed commits (`required_signatures`) only if you opted into signing in Step 1 and every committer has a working signing path — recommended, not a default; otherwise omit it (closes T8).
