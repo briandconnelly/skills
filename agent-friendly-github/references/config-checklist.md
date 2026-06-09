@@ -20,7 +20,8 @@ Any control the repo's plan does not provide is marked N/A with the plan reason 
 
 Pick the profile that matches the repository, then walk §1–§4 applying the controls it calls for.
 Every profile shares a non-negotiable baseline; higher-risk profiles add controls on top.
-The baseline guarantees the property that must hold everywhere: an agent can never reach a protected branch unreviewed — and, equally, a control is never configured so the legitimate human maintainer is locked out of merging their own work.
+The baseline guarantees the property that must hold everywhere: an agent can never reach a protected branch on its own authority — it can neither self-approve, self-merge, push directly, nor force-push past the guardrails — and, equally, a control is never configured so the legitimate human maintainer is locked out of merging their own work.
+Once a distinct agent identity exists this also means no agent change merges unreviewed; before it exists (the solo interim posture below) human review is not yet enforceable, so the actor-independent gates carry that load instead.
 The security boundary is human-vs-agent, not author-vs-reviewer.
 
 **Baseline — all profiles:**
