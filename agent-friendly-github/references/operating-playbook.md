@@ -26,7 +26,3 @@ These rules are advisory conventions — where a rule matters for safety it is a
 - Do not escalate permissions mid-session; if a required scope is missing, stop and ask rather than silently widening a token. (T9)
 - Let required checks run; fix red, do not route around it; never disable or bypass a guardrail to merge. (T3, T4)
 - Respond to review by addressing or explaining — not by force-pushing over history. (T8)
-
-## Note
-
-These rules are advisory; where a rule matters for safety it is also enforced in `config-checklist.md`, and the enforced version wins.

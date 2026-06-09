@@ -15,18 +15,25 @@ gh api --method POST repos/{owner}/{repo}/rulesets --input hardened-ruleset.json
 ```
 
 JSON has no comment syntax; all caveats are in this prose.
-This baseline matches the **org / high-risk** profile; see the solo-profile adaptation note after the JSON.
-The `bypass_actors` array is empty in this baseline — no automation identity is exempted. In the solo profile, once a distinct agent identity exists and reviews are >= 1, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work past the review requirement; in the pre-identity solo interim (reviews 0) leave this empty — a `pull_request`-mode bypass would let the shared-credential agent merge past the required checks, and with reviews 0 the maintainer needs none. Never add the agent identity, a bot PAT, a deploy key, or the `Write` role. Small-team and org repos keep this list empty too — a second human reviewer unblocks merges without a bypass.
+This baseline implements the **org / high-risk** profile's ruleset-expressible review and merge controls; full org posture adds merge queue and `required_deployments` (see the production environment gate below) where they apply.
+See the solo-profile adaptation note after the JSON.
+The `bypass_actors` array is empty in this baseline — no automation identity is exempted.
+In the solo profile, once a distinct agent identity exists and reviews are >= 1, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work past the review requirement.
+In the pre-identity solo interim (reviews 0) leave this empty, per the solo interim posture in [config-checklist.md](config-checklist.md).
+Never add the agent identity, a bot PAT, a deploy key, or the `Write` role, and never use `bypass_mode: exempt`, which skips the rules silently with no bypass audit entry.
+Small-team and org repos keep this list empty too — a second human reviewer unblocks merges without a bypass.
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
-`require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3). It needs a second human, so omit this parameter in a solo repo, where it would deadlock the lone maintainer.
+`require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3).
+It needs a second human, so omit this parameter in a solo repo, where it would deadlock the lone maintainer.
 `required_review_thread_resolution: true` requires code-review conversations to be resolved before merge.
 Signed commits (`required_signatures`) are intentionally NOT in this baseline: enforce them only when you have opted into signing and every committer (humans and the agent) has a working signing path — see the optional signing variant below (T8).
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
 Note: a squash merge builds a new commit message, so confirm `Co-authored-by:` trailers carry into it (attribution, T8); and if you enable required signing, GitHub blocks a non-author from squash-merging via the web UI — a reason to prefer rebase for attribution- or signing-sensitive agent PRs.
-Replace `"context"` values under `required_status_checks` with the exact check names your CI jobs report.
+Replace `"context"` values under `required_status_checks` with the exact check-run names your CI reports — for a GitHub Actions job this is the job name (the job's `name:`, or its id when no `name:` is set), NOT the `workflow / job` string the PR UI displays; a reusable workflow reports `caller-job / called-job`.
+Verify the exact string via the ruleset UI's check picker or `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`.
 `integration_id` is optional and omitted here — leave it out to match any app reporting that context, or set it to the reporting app's id (for example, the GitHub Actions app) to require that the status come from that specific app.
 Scoped checks (such as the issue-link verifier in the §1 example below) are added to `required_status_checks` only in repos whose workflow mandates them.
 
@@ -69,7 +76,7 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
           {
-            "context": "CI / test"
+            "context": "test"
           }
         ]
       }
@@ -90,7 +97,10 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 
 A local commit pushed with a GitHub App token is not auto-signed, so the agent must either sign locally (GPG/SSH) or commit through the App's verified API path; otherwise its pushes are rejected.
 
-**Solo-profile adaptation.** Starting from the baseline above, for the post-identity solo posture (distinct agent identity, reviews >= 1): add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters (the small-team profile keeps both an empty bypass list and `require_last_push_approval` — it has a second human to review). Keep `required_approving_review_count: 1` ONLY once the agent has a distinct identity excluded from the bypass list — then lowering it to 0 would let that agent self-merge after checks, so keep it at 1. If the agent still runs on the maintainer's own credentials (no distinct identity yet), `required_approving_review_count: 1` is illusory — the agent inherits the maintainer's bypass and merges through it — so set it to `0` in that interim, keep `bypass_actors` empty (a `pull_request`-mode bypass would let the shared-credential agent merge past the required checks), and rely on the actor-independent gates (strict checks, linear history, blocked force-push/deletion); see the solo interim posture in [config-checklist.md](config-checklist.md). Flip reviews to 1 and add the human bypass actor when you provision the distinct identity.
+**Solo-profile adaptation.** Starting from the baseline above, for the post-identity solo posture (distinct agent identity, reviews >= 1): add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters (the small-team profile keeps both an empty bypass list and `require_last_push_approval` — it has a second human to review).
+Keep `required_approving_review_count: 1` ONLY once the agent has a distinct identity excluded from the bypass list — then lowering it to 0 would let that agent self-merge after checks, so keep it at 1.
+If the agent still runs on the maintainer's own credentials (no distinct identity yet), `required_approving_review_count: 1` is illusory: set it to `0` in that interim, keep `bypass_actors` empty, and rely on the actor-independent gates (strict checks, linear history, blocked force-push/deletion), per the solo interim posture in [config-checklist.md](config-checklist.md).
+Flip reviews to 1 and add the human bypass actor when you provision the distinct identity.
 
 ```json
 "bypass_actors": [
@@ -98,7 +108,9 @@ A local commit pushed with a GitHub App token is not auto-signed, so the agent m
 ]
 ```
 
-Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass). Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds. The maintainer merges their own PRs via this bypass; the agent, once it has a distinct identity excluded from bypass and unable to self-approve, still cannot merge anything without the human (until that identity exists, see the interim caveat above).
+Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass).
+Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds.
+The maintainer merges their own PRs via this bypass; the agent, once it has a distinct identity excluded from bypass and unable to self-approve, still cannot merge anything without the human (until that identity exists, see the interim caveat above).
 
 ## Production Environment Gate
 
@@ -277,8 +289,9 @@ Key points enforced in this workflow:
 ```yaml
 # WARNING: never use pull_request_target for workflows that check out untrusted code
 # or interpolate github.event.* into run: steps — it runs in the base-repo context
-# with repository secrets, and its token defaults to write scope unless restricted via
-# permissions:; the danger is that privileged context and secret access, not the checkout.
+# with repository secrets, and its token can hold write scope unless the repo/org
+# workflow-permissions setting or a permissions: block restricts it; the danger is
+# that privileged context and secret access, not the checkout.
 # Use pull_request instead.
 name: CI
 
@@ -526,7 +539,7 @@ There is no way to merge a PR that has a required check stuck in PENDING.
 **The correct pattern: one always-running gate check.**
 Use a single workflow that triggers on every `pull_request` (no `paths:` filter), detects which paths changed internally, runs per-package work conditionally, and always exits with a clear pass/fail status.
 When nothing relevant changed, the gate exits 0 (pass) immediately.
-The single check name (`monorepo-gate / gate`) is what you add to the ruleset's `required_status_checks`.
+The required-check context is the job name `gate` — that is what you add to the ruleset's `required_status_checks`.
 
 **Alternative:** there is no ruleset condition that scopes a required status check to changed file paths — branch rulesets target refs, not changed files.
 CODEOWNERS path patterns give path-specific human review, but path-specific required CI must come from the always-running aggregate gate above, or from an external check app (a GitHub App that computes which paths changed and posts a single check) — not a ruleset path condition.
@@ -602,8 +615,8 @@ jobs:
         run: echo "All relevant package checks passed (or no relevant paths changed)."
 ```
 
-Add `monorepo-gate / gate` as the single required status check in the ruleset.
-The GitHub UI under **Settings → Rules → Rulesets** lets you add required checks by name; the check name is `<workflow-name> / <job-id>` as GitHub reports it.
+Add `gate` as the single required status check in the ruleset.
+The GitHub UI under **Settings → Rules → Rulesets** lets you pick required checks by name; for a GitHub Actions job the check-run name is the job name (`gate`, or the job's `name:` if one is set), not the `monorepo-gate / gate` string the PR UI displays.
 Because this workflow always runs, the required check always reports a result and never stalls a merge.
 
 ## Draft-First Convention, Not a CI Gate
@@ -634,6 +647,7 @@ Escape hatch: a `no-issue-required` label, applied through a maintainer/CODEOWNE
 Scope limitations and failure modes: only same-repo numeric `#N` references are verified — cross-repo `owner/repo#N` and private-repo references are not (they would 404); an issue can be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
 This check verifies the issue state at the last workflow run, not at merge time, so an issue closed after the last run will not be caught; if that matters, gate merges through a merge queue (which re-runs checks just before merge) or a check that runs close to merge.
 The workflow also triggers on `labeled` and `unlabeled` events so that applying or removing the `no-issue-required` escape-hatch label immediately re-runs the check and clears or sets the status — without those triggers, adding the label after a failed run leaves the check permanently red.
+When the label makes the job-level `if:` skip the job, GitHub reports the skipped job as success, so the required check clears; keep the job id stable, since `require-issue` is the check-run name the ruleset matches.
 
 ```yaml
 name: require-issue-link
@@ -731,7 +745,7 @@ coverage/
 
 ## Minimal .gitattributes
 
-Implements: §1 (auditability)
+Implements: §1 (productivity)
 
 `text=auto` normalizes line endings on the next add/commit and will produce a one-time churn commit if the repo already has mixed line endings.
 `linguist-generated` only affects GitHub's diff display and stats; it does not block or enforce anything.
