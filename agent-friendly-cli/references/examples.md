@@ -185,7 +185,7 @@ Artifact success payload for `widgetctl widget export --output out.json --json`.
 ```
 
 ## 4. Structured error payloads
-Per the declared `stderr_framing`, each error object below is the only stderr content for its failure.
+Per the declared `stderr_framing`, in machine mode each error object below is the only stderr content for its failure; human mode may surround it with additional diagnostics.
 Validation error for exit `2`, with JSON on stderr and empty stdout in machine mode.
 ```json
 {
