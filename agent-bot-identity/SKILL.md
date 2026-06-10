@@ -148,13 +148,14 @@ A blank password would either attempt auth that fails confusingly or fall throug
 # stays UNEVALUATED in the file so it re-runs per command (bot-token caches, <100ms
 # on a hit), keeping the 1h installation token fresh across long sessions.
 [ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
-printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token || echo BOT-TOKEN-MINT-FAILED)"\n' "$HOME" >> "$CLAUDE_ENV_FILE"
+line="export GH_TOKEN=\"\$(${HOME}/.claude/bot-shims/bot-token || echo BOT-TOKEN-MINT-FAILED)\""
+grep -qxF -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf '%s\n' "$line" >> "$CLAUDE_ENV_FILE"
 exit 0
 ```
 
-`printf` writes the literal `$(...)` into the env file (single-quoted format string), so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start.
+The escaped `\$(...)` keeps the command substitution unevaluated in the env file, so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start.
 The `|| echo` fallback makes this path fail closed, matching `git-credential-bot`: a failed mint substitutes a non-empty invalid token, so `gh` fails with an auth error instead of silently using the human account — an *empty* `GH_TOKEN` is treated by `gh` as unset, and that fallback to the personal stored credentials is exactly this skill's headline failure mode.
-The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`; a duplicate `GH_TOKEN` export across re-runs is harmless (last wins).
+The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`, and the `grep -qxF` guard makes re-runs idempotent — SessionStart fires on resume and clear as well as startup, and without the guard each duplicated line would mint a token (subprocess, ~100 ms on a cache hit) per Bash command.
 
 ## Phase 4 — Project-scoped configuration
 
