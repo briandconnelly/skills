@@ -55,7 +55,7 @@ Never present this setup as a sandbox.
    - **Never Workflows: Read and write** — a prompt-injected agent could rewrite CI; the absence is also a server-side control, because pushes touching `.github/workflows/` get rejected
 5. Note the **App ID** from the settings page (GitHub also issues a client ID and now recommends it as the JWT `iss`; the App ID continues to work).
 6. Generate a private key; store at `~/.config/acme-agent/key.pem`, `chmod 600`.
-   Hardening option: store the PEM in the login keychain (`security add-generic-password`, base64-wrapped) and delete the file, accepting the extra moving parts.
+   Hardening option: store the PEM in the login keychain (`security add-generic-password`, base64-wrapped). This only works if you also change `bot-token` to read the key from the keychain instead of `KEY.read_text()` — deleting `key.pem` while the script still reads from disk breaks token minting. Either rewrite the read or keep the file; don't delete it on the strength of the keychain copy alone.
 
 ## Phase 2 — Install the App
 
@@ -147,11 +147,13 @@ A blank password would either attempt auth that fails confusingly or fall throug
 # stays UNEVALUATED in the file so it re-runs per command (bot-token caches, <100ms
 # on a hit), keeping the 1h installation token fresh across long sessions.
 [ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
-printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token)"\n' "$HOME" > "$CLAUDE_ENV_FILE"
+printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token)"\n' "$HOME" >> "$CLAUDE_ENV_FILE"
 exit 0
 ```
 
 `printf` writes the literal `$(...)` into the env file (single-quoted format string), so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start.
+Note the asymmetry with `git-credential-bot`: that helper fails closed, but this path is fail-open — a failed mint yields an empty `GH_TOKEN`, which `gh` treats as unset and falls back to the personal stored credentials (the cache makes mint outages rare, but never read a green `gh` call during one as proof the bot identity is active).
+The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`; a duplicate `GH_TOKEN` export across re-runs is harmless (last wins).
 
 ## Phase 4 — Project-scoped configuration
 
