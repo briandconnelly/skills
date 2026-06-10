@@ -105,6 +105,8 @@ r = httpx.post(
 r.raise_for_status()
 data = r.json()
 exp = datetime.datetime.fromisoformat(data["expires_at"]).timestamp()  # fromisoformat parses the trailing Z on >=3.11
+# Phase 1 already created this dir for key.pem; ensure it so the script is self-contained.
+CACHE.parent.mkdir(parents=True, exist_ok=True)
 # Write 0600 to a temp file, then os.replace() to swap it in atomically — never truncate the live cache.
 tmp = CACHE.with_suffix(f".{os.getpid()}.tmp")
 fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -123,10 +125,15 @@ Optional hardening: pass a `"repositories"` field in the token request to scope 
 
 ```bash
 #!/usr/bin/env bash
-[[ $1 == get ]] || exit 0
+set -euo pipefail
+[[ "${1:-}" == get ]] || exit 0
+token="$("$HOME/.claude/bot-shims/bot-token")"  # set -e aborts here if the mint fails — nothing is printed
 echo username=x-access-token
-echo "password=$("$HOME/.claude/bot-shims/bot-token")"
+echo "password=$token"
 ```
+
+Like the `gh` shim, this must fail closed: `set -e` plus capturing the token before printing means a failed mint aborts with no output, rather than emitting an empty `password=`.
+A blank password would either attempt auth that fails confusingly or, if the helper list were not fully cleared, fall through to the personal keychain — the human-as-agent failure this setup prevents.
 
 ### `gh` — shim so the gh CLI uses the bot token
 
