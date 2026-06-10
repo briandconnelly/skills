@@ -95,7 +95,7 @@ if CACHE.exists():
         c = json.loads(CACHE.read_text())
         if c["exp"] - time.time() > 300:
             print(c["token"]); sys.exit()
-    except (ValueError, KeyError, OSError):
+    except (ValueError, KeyError, TypeError, OSError):
         pass  # partial/corrupt cache (e.g. an interrupted write) — treat as a miss and re-mint
 
 now = int(time.time())
