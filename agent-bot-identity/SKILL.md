@@ -1,6 +1,6 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent (e.g. Claude Code) a distinct GitHub App bot identity — commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project credential injection, verification, and what the isolation does and does not enforce.
+description: Use when giving a local coding agent a distinct GitHub App bot identity — commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project credential injection, verification, and what the isolation does and does not enforce. The App/token/credential-helper core is harness-neutral; the worked per-project wiring is a Claude Code adapter, with an explicit contract for what any other harness's adapter must provide.
 ---
 
 # Agent Bot Identity
@@ -32,7 +32,7 @@ Never present this setup as a sandbox.
 | --- | --- | --- |
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
 | Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if config leaks |
-| Local routing | Per-project `.claude/settings.local.json` (env + SessionStart hook) | Bot identity activates only in opted-in repos; no shell dotfiles change |
+| Local routing | Per-project env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only in opted-in repos, no shell-dotfile edits"; Claude Code adapter: `.claude/settings.local.json` (env + SessionStart hook) | Bot identity activates only in opted-in repos; no shell dotfiles change |
 | git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | `GH_TOKEN` written to `$CLAUDE_ENV_FILE` by a SessionStart hook | `gh` calls use the installation token; sourced before every Bash command |
 | Enforcement | Repo rulesets (Phase 6) | The only controls that bind a misbehaving agent |
@@ -71,6 +71,7 @@ Never present this setup as a sandbox.
 ## Phase 3 — Helper scripts
 
 All three live in `~/.claude/bot-shims/`, all `chmod +x`.
+Only `session-env.sh` is Claude Code-specific; `bot-token` and `git-credential-bot` are harness-neutral, and the directory is a convention, not a dependency — a neutral location such as `~/.config/acme-agent/bin/` works identically if the paths below are adjusted to match.
 
 ### `bot-token` — mints and caches installation tokens
 
@@ -147,12 +148,12 @@ A blank password would either attempt auth that fails confusingly or fall throug
 # stays UNEVALUATED in the file so it re-runs per command (bot-token caches, <100ms
 # on a hit), keeping the 1h installation token fresh across long sessions.
 [ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
-printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token)"\n' "$HOME" >> "$CLAUDE_ENV_FILE"
+printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token || echo BOT-TOKEN-MINT-FAILED)"\n' "$HOME" >> "$CLAUDE_ENV_FILE"
 exit 0
 ```
 
 `printf` writes the literal `$(...)` into the env file (single-quoted format string), so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start.
-Note the asymmetry with `git-credential-bot`: that helper fails closed, but this path is fail-open — a failed mint yields an empty `GH_TOKEN`, which `gh` treats as unset and falls back to the personal stored credentials (the cache makes mint outages rare, but never read a green `gh` call during one as proof the bot identity is active).
+The `|| echo` fallback makes this path fail closed, matching `git-credential-bot`: a failed mint substitutes a non-empty invalid token, so `gh` fails with an auth error instead of silently using the human account — an *empty* `GH_TOKEN` is treated by `gh` as unset, and that fallback to the personal stored credentials is exactly this skill's headline failure mode.
 The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`; a duplicate `GH_TOKEN` export across re-runs is harmless (last wins).
 
 ## Phase 4 — Project-scoped configuration
@@ -202,7 +203,10 @@ The obvious approach — drop a `gh` wrapper on `PATH` via a shell rc file — f
 Claude Code builds a *shell snapshot* at session start by sourcing `$HOME/.zshrc` from a **non-login** shell, then **freezes `PATH`** into that snapshot and replays it for every Bash command.
 Consequences that defeat the rc-file approach: `.zprofile` is never sourced (non-login); `ZDOTDIR` is ignored (it hardcodes `$HOME/.zshrc`, not `$ZDOTDIR/.zshrc`); and even a correctly-placed `PATH` prepend is frozen at snapshot time, before the per-project `env` (and any marker it sets) is applied.
 `CLAUDE_ENV_FILE` is the supported escape hatch: Claude Code provides it to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sources the file's contents before every Bash command, *after* the snapshot — so an `export GH_TOKEN=...` there reliably reaches `gh`.
-For a non-Claude-Code agent, use whatever per-command env mechanism that harness provides; only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
+**Adapter contract for other harnesses.**
+Phases 1–3's App, token, and credential-helper layers are harness-neutral (only `session-env.sh` is Claude Code glue); what an adapter for another local agent (e.g. Codex) must supply is this phase's routing, without editing shell dotfiles: per-project activation, the static git identity env, command-scope `GIT_CONFIG_*`, a dynamic `GH_TOKEN` re-minted across hour-plus sessions, and a fail-closed substitute when minting fails.
+This skill ships only the Claude Code adapter; if a harness lacks one of these capabilities, treat its support as pending rather than approximating with the steps above — a half-wired adapter fails open to the personal identity.
+Only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
 
 ## Phase 5 — Verify both directions
 
@@ -261,6 +265,7 @@ Not enforced — the part everyone overstates:
 | --- | --- |
 | Activating `gh` via a PATH shim in shell dotfiles | Claude Code freezes PATH into a snapshot built from a non-login `$HOME/.zshrc` (ignores `.zprofile` and `ZDOTDIR`); inject `GH_TOKEN` via a SessionStart hook writing `$CLAUDE_ENV_FILE` instead |
 | Putting `GH_TOKEN` directly in `settings.local.json` `env` | It is a static field; the token expires hourly — mint it per command via the hook + `$CLAUDE_ENV_FILE` |
+| Letting a failed mint leave `GH_TOKEN` empty | `gh` treats empty as unset and silently falls back to the personal stored credentials; substitute a non-empty invalid token so the failure surfaces as an auth error |
 | Probing identity with `gh api user` | Installation tokens have no user and 403 there; use `gh api installation/repositories` |
 | Granting Checks read without Actions read | Under an App token `gh pr checks` needs both — the status rollup traverses each check suite's workflow run |
 | Granting Workflows: write "to be safe" | Hands a prompt-injected agent the ability to rewrite CI |
