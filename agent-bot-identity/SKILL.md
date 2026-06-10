@@ -162,7 +162,7 @@ The `>>` append (not `>`) keeps the line from clobbering anything another hook w
 
 Create `.claude/settings.local.json` in each target repo; it affects only the agent's sessions in that project, and no shell dotfile is touched.
 Claude Code auto-gitignores this file only when it creates it itself — if you create it by hand, gitignore it yourself so the bot config never lands in the repo.
-Replace `<BOT_UID>` with the user ID from Phase 2 and `acme` with your org.
+Replace `<BOT_UID>` with the user ID from Phase 2, `acme` with your org, and `<you>` in the hook command with your username — keep it an absolute path.
 
 ```json
 {
