@@ -39,8 +39,9 @@ In a solo repo — one human, whose credentials the agent runs on — author and
 (In a small-team or org repo a *different* human can review the agent's PR even if the agent is temporarily on one maintainer's account, so the gate still holds there.)
 The fix is not a review setting but a distinct, non-bypass agent identity (§4); until that exists, the solo interim posture in config-checklist.md (reviews at 0, leaning on strict checks, linear history, and blocked force-push/deletion — controls that bind by actor-independent mechanism, not by counting approvals) is the honest interim: it drops the unenforceable review gate instead of advertising one that does not hold.
 With reviews at 0 there is no approval left to launder, so the T3 gaming vector is closed even though the underlying review requirement cannot be enforced.
+The adjacent residual stays open, though: nothing in the configuration stops the shared-credential agent from *merging* its own green PR, so interim merge authority rests on the operate rule below (never merge a PR you authored without explicit delegation) and optionally an agent-runtime command restriction, not on any GitHub control.
 
-**Operate close:** Never approve, auto-merge, or re-trigger review on your own PR; re-request human review after any post-approval push.
+**Operate close:** Never approve, auto-merge, or re-trigger review on your own PR; never merge a PR you authored unless merge authority was explicitly delegated; re-request human review after any post-approval push.
 
 ## T4 — Branch-protection bypass
 

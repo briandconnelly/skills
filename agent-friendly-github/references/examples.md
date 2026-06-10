@@ -404,14 +404,16 @@ In a monorepo, add a nested `AGENTS.md` per subtree that has meaningfully differ
 ## Pull requests
 
 - Open PRs touching CODEOWNERS-owned paths as drafts; only mark ready for review after all checks pass.
-- Never approve or auto-merge your own PR.
+- Agents never merge PRs: open the PR, report check status, and stop — the maintainer merges.
+  (If merge automation is ever wanted, the delegation must be written here explicitly.)
+- Never approve your own PR, and never treat a red required check as ignorable.
 - Re-request human review after any post-approval push.
 - CODEOWNERS paths require a human team review — do not attempt to satisfy it yourself.
 
 ## Testing
 
 - Run `uv run pytest` before marking a PR ready.
-- Do not merge if any required check is red.
+- Every required check must be green before a PR is handed to the maintainer to merge.
 
 ## Off-limits paths
 

@@ -48,6 +48,8 @@ So set `required_approving_review_count: 0` and rely instead on the gates that g
 Keep the bypass-actors list EMPTY in this interim: a `pull_request`-mode bypass would let the shared-credential agent merge a PR past those required checks, defeating the very gates this posture leans on, and with reviews at 0 the maintainer needs no bypass to merge a green PR.
 Provision the distinct identity (§4) FIRST and treat it as the event that flips reviews to 1 and adds the human bypass actor — at that point the agent (a separate non-bypass identity) needs the human's approval, and the human approving the agent's PR is not a self-approval.
 Setting reviews to 0 in this interim is the correct posture, not a baseline violation.
+Name the residual gap this posture cannot close: with shared credentials, no GitHub control distinguishes the human merging from the agent merging *as* the human, so in the interim merge authority is enforceable only outside GitHub — as the operating rule that the agent never merges a PR it authored without explicit delegation (operating-playbook.md), stated affirmatively in `AGENTS.md`, optionally backed by an agent-runtime command restriction (e.g. a deny rule on `gh pr merge` in the agent harness's permission configuration).
+Phrase the `AGENTS.md` rule affirmatively ("agents never merge; the maintainer merges") — a prohibition list that only bans red-check merges or self-approval reads as implicit permission to merge green, which is exactly how a shared-credential agent talks itself into merging.
 This exception does not reach the small-team/org profiles, where a different human supplies the review. (T3, T4)
 
 **small-team** — 2+ active humans, low-to-moderate risk.
