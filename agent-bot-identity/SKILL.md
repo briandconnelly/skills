@@ -88,9 +88,12 @@ KEY = Path.home() / ".config/acme-agent/key.pem"
 CACHE = Path.home() / ".config/acme-agent/token.json"
 
 if CACHE.exists():
-    c = json.loads(CACHE.read_text())
-    if c["exp"] - time.time() > 300:
-        print(c["token"]); sys.exit()
+    try:
+        c = json.loads(CACHE.read_text())
+        if c["exp"] - time.time() > 300:
+            print(c["token"]); sys.exit()
+    except (ValueError, KeyError, OSError):
+        pass  # partial/corrupt cache (e.g. an interrupted write) — treat as a miss and re-mint
 
 now = int(time.time())
 app_jwt = jwt.encode({"iat": now - 60, "exp": now + 540, "iss": APP_ID}, KEY.read_text(), algorithm="RS256")
@@ -101,15 +104,17 @@ r = httpx.post(
 )
 r.raise_for_status()
 data = r.json()
-exp = datetime.datetime.fromisoformat(data["expires_at"]).timestamp()
-# Create with 0600 from the start; write-then-chmod leaves a umask window.
-fd = os.open(CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+exp = datetime.datetime.fromisoformat(data["expires_at"]).timestamp()  # fromisoformat parses the trailing Z on >=3.11
+# Write 0600 to a temp file, then os.replace() to swap it in atomically — never truncate the live cache.
+tmp = CACHE.with_suffix(f".{os.getpid()}.tmp")
+fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
 with os.fdopen(fd, "w") as f:
     json.dump({"token": data["token"], "exp": exp}, f)
+os.replace(tmp, CACHE)
 print(data["token"])
 ```
 
-Two details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour, and create the cache file with `0600` atomically rather than writing then chmodding.
+Two details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour, and write the cache through a `0600` temp file swapped in with `os.replace()` rather than truncating in place — truncating risks a partial file if the write is interrupted, so the read is also wrapped to treat any parse error as a cache miss and re-mint.
 The request timeout matters too — a hung token mint hangs every `git push` that goes through the credential helper.
 The `uv run` shebang requires `uv` on PATH in non-interactive contexts (credential-helper invocations); use an absolute path to `uv` if needed.
 Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
