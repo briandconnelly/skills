@@ -55,7 +55,9 @@ Never present this setup as a sandbox.
    - **Never Workflows: Read and write** — a prompt-injected agent could rewrite CI; the absence is also a server-side control, because pushes touching `.github/workflows/` get rejected
 5. Note the **App ID** from the settings page (GitHub also issues a client ID and now recommends it as the JWT `iss`; the App ID continues to work).
 6. Generate a private key; store at `~/.config/acme-agent/key.pem`, `chmod 600`.
-   Hardening option: store the PEM in the login keychain (`security add-generic-password`, base64-wrapped). This only works if you also change `bot-token` to read the key from the keychain instead of `KEY.read_text()` — deleting `key.pem` while the script still reads from disk breaks token minting. Either rewrite the read or keep the file; don't delete it on the strength of the keychain copy alone.
+   Hardening option: store the PEM in the login keychain (`security add-generic-password`, base64-wrapped).
+   This only works if you also change `bot-token` to read the key from the keychain instead of `KEY.read_text()` — deleting `key.pem` while the script still reads from disk breaks token minting.
+   Either rewrite the read or keep the file; don't delete it on the strength of the keychain copy alone.
 
 ## Phase 2 — Install the App
 
@@ -81,7 +83,7 @@ Only `session-env.sh` is Claude Code-specific; `bot-token` and `git-credential-b
 # requires-python = ">=3.12"
 # dependencies = ["pyjwt[crypto]", "httpx"]
 # ///
-import datetime, json, os, sys, time
+import datetime, json, os, sys, tempfile, time
 from pathlib import Path
 import httpx, jwt
 
@@ -110,16 +112,15 @@ data = r.json()
 exp = datetime.datetime.fromisoformat(data["expires_at"]).timestamp()  # fromisoformat parses the trailing Z on >=3.11
 # Phase 1 already created this dir for key.pem; ensure it so the script is self-contained.
 CACHE.parent.mkdir(parents=True, exist_ok=True)
-# Write 0600 to a temp file, then os.replace() to swap it in atomically — never truncate the live cache.
-tmp = CACHE.with_suffix(f".{os.getpid()}.tmp")
-fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+# mkstemp = exclusive-create, 0600, random name; os.replace() swaps it in atomically — never truncate the live cache.
+fd, tmp = tempfile.mkstemp(dir=CACHE.parent, suffix=".tmp")
 with os.fdopen(fd, "w") as f:
     json.dump({"token": data["token"], "exp": exp}, f)
 os.replace(tmp, CACHE)
 print(data["token"])
 ```
 
-Details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour; write the cache through a `0600` temp file swapped in with `os.replace()` rather than truncating in place (a truncated write risks a partial file, so the read treats any parse error as a cache miss and re-mints); and set a request timeout, since a hung mint hangs every git push and gh call that waits on it.
+Details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour; write the cache through an exclusively-created `0600` temp file (`mkstemp`) swapped in with `os.replace()` rather than truncating in place (a truncated write risks a partial file, so the read treats any parse error as a cache miss and re-mints; a predictable, non-exclusive temp name could inherit a pre-existing file's broader permissions); and set a request timeout, since a hung mint hangs every git push and gh call that waits on it.
 The `uv run` shebang requires `uv` on PATH where the script is invoked; use an absolute path to `uv` if that is not guaranteed.
 On a cache hit this runs in well under 100 ms, cheap enough to call before every Bash command (Phase 4).
 Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
