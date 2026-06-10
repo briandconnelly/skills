@@ -1,6 +1,6 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent (e.g. Claude Code) a distinct GitHub App bot identity — commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project env isolation, shell activation, verification, and what the isolation does and does not enforce.
+description: Use when giving a local coding agent (e.g. Claude Code) a distinct GitHub App bot identity — commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project credential injection, verification, and what the isolation does and does not enforce.
 ---
 
 # Agent Bot Identity
@@ -8,10 +8,10 @@ description: Use when giving a local coding agent (e.g. Claude Code) a distinct 
 ## Overview
 
 Give a local coding agent its own GitHub App identity so every commit, push, and PR it makes attributes to a bot, while the human's git setup (SSH key, GPG signing, keychain credentials) stays untouched on the same machine.
-The isolation mechanism is environment variables that exist only inside the agent's shell sessions, scoped per-project.
+The isolation mechanism is per-project configuration that injects the bot's credentials only into the agent's sessions in opted-in repos — without editing any shell dotfiles.
 
 Core principle: **this buys attribution, not containment.**
-The env scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list and the server-side rulesets of the repos it touches.
+The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list and the server-side rulesets of the repos it touches.
 Never present this setup as a sandbox.
 
 ## When to Use
@@ -22,7 +22,7 @@ Never present this setup as a sandbox.
 
 ## When Not to Use
 
-- Repo-side configuration — rulesets, CODEOWNERS, required checks, Actions hardening — is the agent-friendly-github skill; this skill is the local-machine implementation of its §4 identity step, and Phase 7 here hands back to that skill's checklist.
+- Repo-side configuration — rulesets, CODEOWNERS, required checks, Actions hardening — is the agent-friendly-github skill; this skill is the local-machine implementation of its §4 identity step, and Phase 6 here hands back to that skill's checklist.
 - CI or hosted runners: mint the App token directly in the workflow (e.g. `actions/create-github-app-token`); there is no personal identity to isolate from.
 - Hard security isolation: run the agent as a separate OS user, container, or VM; this skill does not provide that.
 
@@ -31,10 +31,11 @@ Never present this setup as a sandbox.
 | Layer | Mechanism | What it buys |
 | --- | --- | --- |
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
-| Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if the env leaks |
-| Local routing | Per-project env vars (`.claude/settings.local.json`) | Bot identity activates only in opted-in repos; personal config files never change |
-| Credentials | `insteadOf` SSH→HTTPS rewrite + custom credential helper + `gh` shim | Agent pushes/API calls use the installation token, not the personal SSH key or keychain |
-| Enforcement | Repo rulesets (Phase 7) | The only controls that bind a misbehaving agent |
+| Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if config leaks |
+| Local routing | Per-project `.claude/settings.local.json` (env + SessionStart hook) | Bot identity activates only in opted-in repos; no shell dotfiles change |
+| git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
+| gh auth | `GH_TOKEN` written to `$CLAUDE_ENV_FILE` by a SessionStart hook | `gh` calls use the installation token; sourced before every Bash command |
+| Enforcement | Repo rulesets (Phase 6) | The only controls that bind a misbehaving agent |
 
 ## Phase 1 — Register the GitHub App
 
@@ -59,7 +60,8 @@ Never present this setup as a sandbox.
 ## Phase 2 — Install the App
 
 1. App settings → Install App → choose the org.
-   Installation itself needs an org owner — the App manager role can register Apps but not install them; non-owners file an installation request for an owner to approve.
+   Installation needs an org owner — the App manager role can register Apps but not install them.
+   An org member who is admin of the target repos can install an App that requests no organization permissions (this App requests none); otherwise it files an installation request for an owner to approve.
 2. Choose **"Only select repositories"** and pick the target repos.
    This list is the real blast-radius limit; enrolling a repo in the program means adding it here.
 3. Note the **Installation ID** from the post-install URL (`.../settings/installations/<id>`), via `gh api orgs/{org}/installations` with an org-admin user token, or via app JWT (`gh api /app/installations` — a normal user token will not work on `/app/*` endpoints).
@@ -116,9 +118,9 @@ os.replace(tmp, CACHE)
 print(data["token"])
 ```
 
-Two details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour, and write the cache through a `0600` temp file swapped in with `os.replace()` rather than truncating in place — truncating risks a partial file if the write is interrupted, so the read is also wrapped to treat any parse error as a cache miss and re-mint.
-The request timeout matters too — a hung token mint hangs every `git push` that goes through the credential helper.
-The `uv run` shebang requires `uv` on PATH in non-interactive contexts (credential-helper invocations); use an absolute path to `uv` if needed.
+Details that are easy to get wrong: parse the token expiry from the response's `expires_at` rather than assuming one hour; write the cache through a `0600` temp file swapped in with `os.replace()` rather than truncating in place (a truncated write risks a partial file, so the read treats any parse error as a cache miss and re-mints); and set a request timeout, since a hung mint hangs every git push and gh call that waits on it.
+The `uv run` shebang requires `uv` on PATH where the script is invoked; use an absolute path to `uv` if that is not guaranteed.
+On a cache hit this runs in well under 100 ms, cheap enough to call before every Bash command (Phase 4).
 Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
 
 ### `git-credential-bot` — git credential helper
@@ -132,31 +134,34 @@ echo username=x-access-token
 echo "password=$token"
 ```
 
-Like the `gh` shim, this must fail closed: `set -e` plus capturing the token before printing means a failed mint aborts with no output, rather than emitting an empty `password=`.
-A blank password would either attempt auth that fails confusingly or, if the helper list were not fully cleared, fall through to the personal keychain — the human-as-agent failure this setup prevents.
+This must fail closed: `set -e` plus capturing the token before printing means a failed mint aborts with no output, rather than emitting an empty `password=`.
+A blank password would either attempt auth that fails confusingly or fall through to the personal keychain — the human-as-agent failure this setup prevents.
 
-### `gh` — shim so the gh CLI uses the bot token
+### `session-env.sh` — SessionStart hook that injects `GH_TOKEN`
 
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
-token="$("$HOME/.claude/bot-shims/bot-token")"
-GH_TOKEN="$token" exec /opt/homebrew/bin/gh "$@"
+# SessionStart hook. Claude Code provides $CLAUDE_ENV_FILE and sources it before
+# every Bash command, so writing the GH_TOKEN mint here makes `gh` authenticate as
+# the bot with no PATH shim and no shell-dotfile edits. The command substitution
+# stays UNEVALUATED in the file so it re-runs per command (bot-token caches, <100ms
+# on a hit), keeping the 1h installation token fresh across long sessions.
+[ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
+printf 'export GH_TOKEN="$(%s/.claude/bot-shims/bot-token)"\n' "$HOME" > "$CLAUDE_ENV_FILE"
+exit 0
 ```
 
-Hardcode the real gh path (`/usr/local/bin/gh` on Intel Homebrew) so the shim cannot recurse into itself.
-The shim must fail closed: `set -e` aborts when the token mint fails, because an empty `GH_TOKEN` would silently fall back to the personal keychain auth — the agent acting as the human is the exact failure this setup exists to prevent.
+`printf` writes the literal `$(...)` into the env file (single-quoted format string), so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start.
 
-## Phase 4 — Project-scoped environment
+## Phase 4 — Project-scoped configuration
 
-Create `.claude/settings.local.json` in each target repo; it affects only local agent sessions in that project.
+Create `.claude/settings.local.json` in each target repo; it affects only the agent's sessions in that project, and no shell dotfile is touched.
 Claude Code auto-gitignores this file only when it creates it itself — if you create it by hand, gitignore it yourself so the bot config never lands in the repo.
-Replace `<BOT_UID>` with the user ID from Phase 2.
+Replace `<BOT_UID>` with the user ID from Phase 2 and `acme` with your org.
 
 ```json
 {
   "env": {
-    "CLAUDE_BOT_IDENTITY": "1",
     "GIT_AUTHOR_NAME": "acme-agent[bot]",
     "GIT_AUTHOR_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
     "GIT_COMMITTER_NAME": "acme-agent[bot]",
@@ -170,37 +175,40 @@ Replace `<BOT_UID>` with the user ID from Phase 2.
     "GIT_CONFIG_VALUE_2": "git@github.com:acme/",
     "GIT_CONFIG_KEY_3": "commit.gpgsign",
     "GIT_CONFIG_VALUE_3": "false"
+  },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "/Users/<you>/.claude/bot-shims/session-env.sh" } ] }
+    ]
   }
 }
 ```
 
-What each entry does:
+What each part does:
 
 - `GIT_AUTHOR_*` / `GIT_COMMITTER_*` override global `user.*` so commits attribute to the bot.
 - The empty `credential.helper` resets the inherited helper list (osxkeychain, gh helpers); the next entry installs the bot helper as the only one.
 - `insteadOf` rewrites SSH remotes to HTTPS inside agent sessions only, so pushes use the bot token instead of the personal SSH key; scoping it to the org prefix leaves other remotes alone.
   The colon form covers `git@github.com:acme/` remotes; if any remote uses the `ssh://git@github.com/acme/` form, add a second `insteadOf` pair and bump the count.
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
+- The `SessionStart` hook injects `GH_TOKEN` for `gh` (Phase 3's `session-env.sh`). The first time it runs, Claude Code prompts to approve the hook; approve it.
 
-## Phase 5 — Shell activation for the gh shim
+These env keys are static, so they live in `settings.local.json`. `GH_TOKEN` is dynamic (1h expiry), so it cannot be a static value here — that is why it goes through the hook + `$CLAUDE_ENV_FILE` instead.
 
-Add to `~/.zshenv` — **not** `~/.zshrc` or `~/.zprofile`:
+**Why a hook and not a PATH-shimmed `gh`.**
+The obvious approach — drop a `gh` wrapper on `PATH` via a shell rc file — fails under Claude Code and wastes hours.
+Claude Code builds a *shell snapshot* at session start by sourcing `$HOME/.zshrc` from a **non-login** shell, then **freezes `PATH`** into that snapshot and replays it for every Bash command.
+Consequences that defeat the rc-file approach: `.zprofile` is never sourced (non-login); `ZDOTDIR` is ignored (it hardcodes `$HOME/.zshrc`, not `$ZDOTDIR/.zshrc`); and even a correctly-placed `PATH` prepend is frozen at snapshot time, before the per-project `env` (and any marker it sets) is applied.
+`CLAUDE_ENV_FILE` is the supported escape hatch: Claude Code provides it to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sources the file's contents before every Bash command, *after* the snapshot — so an `export GH_TOKEN=...` there reliably reaches `gh`.
+For a non-Claude-Code agent, use whatever per-command env mechanism that harness provides; only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
 
-```zsh
-[[ -n $CLAUDE_BOT_IDENTITY ]] && path=($HOME/.claude/bot-shims $path)
-```
+## Phase 5 — Verify both directions
 
-Agent shell sessions are typically non-interactive and non-login; non-interactive zsh sources only `~/.zshenv`, so a guard in `.zshrc` (interactive) or `.zprofile` (login) silently never fires.
-Harness shell behavior varies by version, so treat the `which gh` canary as authoritative rather than the file placement.
-Keyed on the settings env var, the shim activates only in agent sessions in opted-in projects; personal terminals get the normal `gh`.
-`which gh` inside an agent session is the canary: the Homebrew path means the guard is not being sourced.
+In a fresh agent session in an opted-in repo (the hook approval prompt appears on first run):
 
-## Phase 6 — Verify both directions
-
-In a fresh agent session in an opted-in repo:
-
+- `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the SessionStart hook injected the installation token via `$CLAUDE_ENV_FILE`.
+- `gh api installation/repositories --jq '.total_count'` → the count of enrolled repos, proving `gh` acts as the bot. Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
-- `which gh` → the shim path.
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
 - Test commit → author `acme-agent[bot]`, unsigned (`git log -1 --format='%an <%ae> %G?'`).
   Once pushed, the commit shows no Verified badge — expected, because local commits pushed with an App token are never auto-verified; only commits created through the App's API path (e.g. GraphQL `createCommitOnBranch`) get the badge.
@@ -209,13 +217,13 @@ In a fresh agent session in an opted-in repo:
 - Negative: `git ls-remote https://github.com/acme/<private-non-enrolled-repo>.git` → fails, proving the installation boundary.
   The probe repo must be private — public repos are readable over unauthenticated HTTPS, so a success there proves nothing.
 
-In a personal terminal in the same repo:
+In a personal terminal (and any agent session outside the opted-in repos):
 
 - `git config credential.helper` → still osxkeychain; `git config commit.gpgsign` → still true.
-- `which gh` → Homebrew path; `gh auth status` → personal account.
-- Commits signed and authored as the human; SSH push works.
+- `gh auth status` → personal account; commits signed and authored as the human; SSH push works.
+- Because no shell dotfile was modified, personal shells are unaffected by construction — there is nothing project-specific on `PATH` or in the rc files to leak.
 
-## Phase 7 — Audit repo-side guardrails
+## Phase 6 — Audit repo-side guardrails
 
 Identity is Step 1 of the agent-friendly-github setup workflow; enforcement lives in each repo's ruleset, not in the App.
 For every repo the App is installed on, walk that skill's checklist §2; the items this setup specifically depends on:
@@ -238,18 +246,20 @@ Enforced, server-side:
 
 Not enforced — the part everyone overstates:
 
-- The agent runs as the human's OS user: it can read `key.pem`, run `bot-token` directly, call the real `gh` by full path, read `~/.ssh`, unset the injected env vars, or simply edit `~/.zshenv` and the shims themselves.
+- The agent runs as the human's OS user: it can read `key.pem`, run `bot-token` directly, call the real `gh` by full path, read `~/.ssh`, or edit the shims and `settings.local.json` themselves.
 - It therefore holds **both identities**, which enables approval laundering: author a PR as the bot, approve it as the human from a non-opted-in session.
   GitHub's block on author self-approval does not close this.
 - A required-review rule binds the **bot token**, not the agent; treat it as enforcement against the bot identity and a convention for the agent.
 - Procedural mitigation: never approve a bot-authored PR from inside an agent session; approvals happen in the GitHub UI or a personal terminal, after reading the diff.
-- If containment is actually required, change the architecture (separate OS user, container, or VM), not the env vars.
+- If containment is actually required, change the architecture (separate OS user, container, or VM), not the config.
 
 ## Common Mistakes
 
 | Mistake | Reality |
 | --- | --- |
-| PATH guard in `~/.zshrc` or `~/.zprofile` | Non-interactive shells never source them; use `~/.zshenv`; `which gh` is the canary |
+| Activating `gh` via a PATH shim in shell dotfiles | Claude Code freezes PATH into a snapshot built from a non-login `$HOME/.zshrc` (ignores `.zprofile` and `ZDOTDIR`); inject `GH_TOKEN` via a SessionStart hook writing `$CLAUDE_ENV_FILE` instead |
+| Putting `GH_TOKEN` directly in `settings.local.json` `env` | It is a static field; the token expires hourly — mint it per command via the hook + `$CLAUDE_ENV_FILE` |
+| Probing identity with `gh api user` | Installation tokens have no user and 403 there; use `gh api installation/repositories` |
 | Granting Checks read without Actions read | Under an App token `gh pr checks` needs both — the status rollup traverses each check suite's workflow run |
 | Granting Workflows: write "to be safe" | Hands a prompt-injected agent the ability to rewrite CI |
 | Write token cache, then chmod | umask window exposes the token; create `0600` atomically |
@@ -261,6 +271,6 @@ Not enforced — the part everyone overstates:
 
 ## Done Criteria
 
-- Phase 6 verification passes in both directions, including the negative tests.
-- Phase 7 audit recorded for every installed repo, with gaps filed rather than bypassed.
+- Phase 5 verification passes in both directions, including the negative tests.
+- Phase 6 audit recorded for every installed repo, with gaps filed rather than bypassed.
 - Any document describing the setup states the attribution-not-containment boundary explicitly.
