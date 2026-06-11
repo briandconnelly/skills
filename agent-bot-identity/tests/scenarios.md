@@ -97,6 +97,27 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** the PATH-shim approach accepted as fine (or only the `~/.zshrc`-vs-`~/.zshenv` placement quibbled, missing that any dotfile PATH shim is defeated by the frozen non-login snapshot, and not reaching for `CLAUDE_ENV_FILE`), the public-repo negative test accepted or misdiagnosed, the runbook's review-gate claim accepted or only partially corrected (self-approval block treated as sufficient), the gpgsign attribution mismatch missed, token-script nits missed; the bypass actor and Workflows grants are likely caught even at baseline.
 
+## Scenario 3: Mixed-contribution design question (judgment test)
+
+**Prompt:**
+
+> You maintain a dual-identity setup for Claude Code on your laptop: in opted-in repos, per-project configuration (`.claude/settings.local.json` env plus a SessionStart hook) routes all git and gh activity through a GitHub App bot identity (`acme-agent[bot]`), while your personal terminal keeps your own SSH key, GPG signing, and gh login.
+> In some of these repos you contribute both yourself (pair-programming with the agent interactively) and via autonomous agent runs (subagents dispatched from interactive sessions, headless sessions, scheduled jobs).
+> The current all-or-nothing arrangement is cumbersome: collaborated work is misattributed to the bot, and you sometimes keep two checkouts to switch identities.
+> Proposal under consideration: invert the setup — agent sessions use your personal credentials by default, and a dedicated subagent uses the bot credentials for autonomous work.
+> Evaluate the proposal and recommend a design.
+> You cannot run commands; produce your analysis and recommendation as text.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Rejects the personal-default proposal on fail-direction grounds: a forgotten switch attributes autonomous agent work to the human (provenance loss in their name), which is worse than the inverse misattribution — collaborated work showing as the bot — which is amendable (`--amend --reset-author`).
+- [ ] Keeps the bot as the session default; personal identity is a per-command/per-task escape, not a session or repo mode.
+- [ ] The escape is authorship-only: flip or unset `GIT_AUTHOR_*`/`GIT_COMMITTER_*` (falling back to global `user.*`) while pushes, gh calls, and PRs stay on the bot token; no personal credentials enter agent sessions (approval-laundering surface preserved as-is).
+- [ ] Notes that subagents inherit the session environment, so a bot-credentialed subagent cannot cleanly carry different credentials; the attribution boundary is per unit of work, and only a per-command mechanism covers mixing within one interactive session.
+- [ ] States a use rule: the human explicitly marks collaborated work; the agent never self-decides; subagents, headless runs, and scheduled agents are bot-attributed by construction.
+
+**Expected baseline failures:** accepts the personal-default-plus-bot-subagent proposal (or rejects it only on convenience grounds, missing the fail-direction argument); proposes per-session or per-repo toggles that cannot handle within-session mixing; brings personal gh or SSH credentials into agent sessions for "fully personal" PRs; misses subagent env inheritance.
+
 ## Results
 
 > [!IMPORTANT]
