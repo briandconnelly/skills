@@ -1,13 +1,14 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project credential injection, verification, and what the isolation does and does not enforce. The App/token/credential-helper core is harness-neutral; the worked per-project wiring is a Claude Code adapter, with an explicit contract for what any other harness's adapter must provide.
+description: Use when giving a local coding agent a distinct GitHub App bot identity — the agent's commits, pushes, and PRs attribute to the bot by default while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute (collaborated work authored as the human, autonomous work as the bot), or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, per-project credential injection, per-task personal authorship, verification, and what the isolation does and does not enforce. The App/token/credential-helper core is harness-neutral; the worked per-project wiring is a Claude Code adapter, with an explicit contract for what any other harness's adapter must provide.
 ---
 
 # Agent Bot Identity
 
 ## Overview
 
-Give a local coding agent its own GitHub App identity so every commit, push, and PR it makes attributes to a bot, while the human's git setup (SSH key, GPG signing, keychain credentials) stays untouched on the same machine.
+Give a local coding agent its own GitHub App identity so the commits, pushes, and PRs it makes attribute to a bot by default, while the human's git setup (SSH key, GPG signing, keychain credentials) stays untouched on the same machine.
+Attribution is per unit of work: autonomous agent work carries the bot identity, and in repos where the human also contributes through the agent, collaborated commits can carry the human's authorship via the `as-me` wrapper (Phase 3) while auth still rides the bot token.
 The isolation mechanism is per-project configuration that injects the bot's credentials only into the agent's sessions in opted-in repos — without editing any shell dotfiles.
 
 Core principle: **this buys attribution, not containment.**
@@ -17,6 +18,7 @@ Never present this setup as a sandbox.
 ## When to Use
 
 - Setting up Claude Code (or a similar local agent) to commit, push, and open PRs as a bot on a developer machine, with personal git operations unchanged.
+- Splitting attribution in a repo where you contribute both directly and via the agent — collaborated work authored as you, autonomous work as the bot, without separate checkouts or settings toggles.
 - Auditing an existing dual-identity setup for over-trust — e.g. a review gate assumed to bind the agent, or local scoping treated as a security boundary.
 - Symptoms: agent commits show the human as author; "have the agent open PRs as a bot"; bot PRs need human approval but the agent runs on the human's laptop.
 
