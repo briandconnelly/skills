@@ -242,6 +242,8 @@ In a fresh agent session in an opted-in repo (the hook approval prompt appears o
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
 - Test commit → author `acme-agent[bot]`, unsigned (`git log -1 --format='%an <%ae> %G?'`).
   Once pushed, the commit shows no Verified badge — expected, because local commits pushed with an App token are never auto-verified; only commits created through the App's API path (e.g. GraphQL `createCommitOnBranch`) get the badge.
+- Collaborated path: `~/.claude/bot-shims/as-me git commit --allow-empty -m "as-me test"` → author is you, unsigned (`git log -1 --format='%an <%ae> %G?'`), while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
+  Once pushed, this commit also shows no Verified badge — App-token pushes are never auto-verified, same as bot commits.
 - Branch push + `gh pr create` → PR and commits authored by the bot on GitHub.
 - `gh pr checks` → returns status (proves Checks and Actions read).
 - Negative: `git ls-remote https://github.com/acme/<private-non-enrolled-repo>.git` → fails, proving the installation boundary.
@@ -252,6 +254,20 @@ In a personal terminal (and any agent session outside the opted-in repos):
 - `git config credential.helper` → still osxkeychain; `git config commit.gpgsign` → still true.
 - `gh auth status` → personal account; commits signed and authored as the human; SSH push works.
 - Because no shell dotfile was modified, personal shells are unaffected by construction — there is nothing project-specific on `PATH` or in the rc files to leak.
+
+## Mixed Contribution — Collaborated Work as You
+
+In repos where the human contributes both directly and through the agent, attribution is per unit of work, not per repo or per process: work the human collaborated on is authored as the human via `as-me` (Phase 3); work the agent did alone stays the bot's.
+
+- **The bot stays the session default.**
+  Do not invert to personal-credentials-by-default with a bot-credentialed subagent for autonomous work: forgetting that switch attributes autonomous agent work to the human — this skill's headline failure mode — whereas forgetting `as-me` merely attributes your work to the bot, recoverable with `as-me git commit --amend --reset-author`.
+  Subagents also inherit the session environment, so a subagent cannot cleanly carry different credentials; per-command wrapping is the granularity that actually exists, and it is also the only granularity that covers mixing within a single interactive session.
+- **Explicit direction only.**
+  The agent uses `as-me` only when the user explicitly marks a piece of work as collaborative; it never self-decides.
+  Subagents, headless runs, and scheduled agents never receive that direction, so their work is bot-attributed by construction.
+- **Authorship only.**
+  Pushes, `gh` calls, and PRs always ride the bot token; never bring personal credentials (SSH key, personal `gh` token) into agent sessions to make PRs "fully yours" — that reintroduces the approval-laundering surface the mitigations below remove.
+- Optional convention: when the agent did substantial work on a collaborated commit, add a `Co-authored-by: acme-agent[bot] <<BOT_UID>+acme-agent[bot]@users.noreply.github.com>` trailer.
 
 ## Phase 6 — Audit repo-side guardrails
 
