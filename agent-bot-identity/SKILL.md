@@ -149,13 +149,17 @@ A blank password would either attempt auth that fails confusingly or fall throug
 # stays UNEVALUATED in the file so it re-runs per command (bot-token caches, <100ms
 # on a hit), keeping the 1h installation token fresh across long sessions.
 set -euo pipefail
-[ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
+if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
+  echo "session-env.sh: CLAUDE_ENV_FILE not provided — GH_TOKEN not injected; gh would fall back to personal auth" >&2
+  exit 1
+fi
 line='export GH_TOKEN="$($HOME/.claude/bot-shims/bot-token || echo BOT-TOKEN-MINT-FAILED)"'
 grep -qxF -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf '%s\n' "$line" >> "$CLAUDE_ENV_FILE"
 ```
 
 The single-quoted `line` keeps both `$HOME` and the `$(...)` substitution unevaluated in the env file, so the token is minted *each* time Claude sources the file — i.e. before every Bash command — not frozen once at session start (and the line stays portable instead of baking in an absolute path).
-`set -euo pipefail` (and no unconditional `exit 0`) makes a failed write loud: an unwritable env file fails the hook, which Claude Code surfaces, instead of silently leaving `GH_TOKEN` unset — which would fall back to the personal stored credentials; Phase 5's `ghs_` check catches the same condition.
+`set -euo pipefail` (and no silent exit path) makes every failure loud: an unwritable env file fails the hook, and a missing `CLAUDE_ENV_FILE` — an unsupported hook event or a harness that does not provide it — exits 1 with a message instead of quietly skipping injection.
+Either way Claude Code surfaces the hook failure rather than silently leaving `GH_TOKEN` unset — which would fall back to the personal stored credentials; Phase 5's `ghs_` check catches the same condition.
 The `|| echo` fallback makes this path fail closed, matching `git-credential-bot`: a failed mint substitutes a non-empty invalid token, so `gh` fails with an auth error instead of silently using the human account — an *empty* `GH_TOKEN` is treated by `gh` as unset, and that fallback to the personal stored credentials is exactly this skill's headline failure mode.
 The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`, and the `grep -qxF` guard makes re-runs idempotent — SessionStart fires on resume and clear as well as startup, and without the guard each duplicated line would mint a token (subprocess, ~100 ms on a cache hit) per Bash command.
 
