@@ -259,7 +259,13 @@ Not enforced — the part everyone overstates:
 - It therefore holds **both identities**, which enables approval laundering: author a PR as the bot, approve it as the human from a non-opted-in session.
   GitHub's block on author self-approval does not close this.
 - A required-review rule binds the **bot token**, not the agent; treat it as enforcement against the bot identity and a convention for the agent.
-- Procedural mitigation: never approve a bot-authored PR from inside an agent session; approvals happen in the GitHub UI or a personal terminal, after reading the diff.
+- Mitigations for approval laundering, strongest first:
+  - Structural: remove approval capability from the human credentials resident on the agent's machine — re-auth the personal `gh` with a fine-grained PAT that lacks Pull requests write (or log it out entirely; agent sessions use the bot's `GH_TOKEN` regardless), and approve in the browser.
+    The agent then cannot run `gh pr review --approve` as the human; it would have to drive the browser or steal its session, a far louder escalation.
+    Personal pushes are unaffected — they ride the SSH key, not `gh`.
+  - Server-side: the agent-friendly-github §2 controls close the adjacent vectors — the human-only-approvals required check keeps the bot's own approval from counting on anyone's PR, and `require_last_push_approval` (small-team/org profiles) closes approve-then-push; neither can tell an agent-driven human approval from a real one.
+  - Detection: on org repos, alert on the audit-log pattern of the App's operator approving the App's PRs, especially within seconds of PR creation.
+  - Procedural: never approve a bot-authored PR from inside an agent session; approvals happen in the GitHub UI or a personal terminal, after reading the diff.
 - If containment is actually required, change the architecture (separate OS user, container, or VM), not the config.
 
 ## Common Mistakes
@@ -278,6 +284,7 @@ Not enforced — the part everyone overstates:
 | Leaving the personal GPG key signing bot commits | Attribution mismatch — human signature on bot-authored work; set `commit.gpgsign false` |
 | Expecting the Verified badge on bot commits | Local commits pushed with an App token are not auto-verified; only API-path commits (e.g. GraphQL `createCommitOnBranch`) get the badge |
 | Calling the review gate "enforced against the agent" | The agent holds both identities; the gate binds the bot token (see approval laundering above) |
+| Leaving the personal `gh` OAuth login on the agent's machine | Its token carries PR write, so the agent can approve bot PRs as the human in one command; auth personal `gh` with a fine-grained PAT lacking Pull requests write and approve in the browser |
 
 ## Done Criteria
 

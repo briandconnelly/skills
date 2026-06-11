@@ -39,6 +39,9 @@ In a solo repo — one human, whose credentials the agent runs on — author and
 (In a small-team or org repo a *different* human can review the agent's PR even if the agent is temporarily on one maintainer's account, so the gate still holds there.)
 The fix is not a review setting but a distinct, non-bypass agent identity (§4); until that exists, the solo interim posture in config-checklist.md (reviews at 0, leaning on strict checks, linear history, and blocked force-push/deletion — controls that bind by actor-independent mechanism, not by counting approvals) is the honest interim: it drops the unenforceable review gate instead of advertising one that does not hold.
 With reviews at 0 there is no approval left to launder, so the T3 gaming vector is closed even though the underlying review requirement cannot be enforced.
+A distinct identity narrows T3 on a developer machine but does not close it: an agent running as the human's OS user holds both identities, so it can author as the bot and approve with the human's stored credentials — and self-approval blocking does not catch this, because the approver differs from the author.
+The same Pull requests write permission that lets the App open PRs also lets it submit approving reviews, which GitHub counts like any write-access reviewer's; close that side with the human-only-approvals required check (§2, worked example in examples.md).
+The agent-as-human side has no repo-side close — GitHub authenticates tokens, not people — so the residual controls are local credential hygiene (no machine-resident human credential carries PR-approval capability; approvals happen in a browser the agent does not drive), audit-log detection of the operator approving the bot's PRs, and OS-level isolation; the local-machine side is the agent-bot-identity skill's scope.
 
 **Operate close:** Never approve, auto-merge, or re-trigger review on your own PR; re-request human review after any post-approval push.
 
