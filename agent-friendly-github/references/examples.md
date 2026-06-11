@@ -719,6 +719,91 @@ jobs:
             core.info("Verified: PR references a real open issue.");
 ```
 
+## Required Check: Human-Only Approvals
+
+Implements: §2 (T3)
+
+GitHub counts an approving review from any write-access actor — including a `[bot]` — toward `required_approving_review_count`, and the agent's App needs Pull requests write to open PRs, so the permission cannot be dropped.
+This check makes the policy enforceable: it stays green while no live bot approval exists, and fails while one does, so combined with reviews >= 1 the counting approval must come from a human.
+Mark it REQUIRED in the §2 ruleset.
+
+It fails on a bot approval even when a human approval is also present — GitHub counts approvals indistinguishably, so the remedy is dismissing the bot review, not outvoting it.
+The `pull_request` triggers keep a required check from sitting PENDING forever on PRs that never receive a review event, and `pull_request_review` (`submitted`, `dismissed`) re-runs it the moment an approval appears or is dismissed; `pull_request_review` runs attach to the PR's head SHA, which is what the ruleset checks.
+Like any review-state check, it reflects the last run, not merge time; a merge queue re-runs checks just before merge if that gap matters.
+The `OPERATORS` list is the org-profile leg: a bot-authored PR whose only human approvals come from the App's registered operators fails, forcing a second human.
+Leave it empty in the solo profile, where the operator is the only human reviewer.
+
+```yaml
+name: human-only-approvals
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - main
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  human-only-approvals:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail while any counting approval comes from a bot
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            // Org profile: App operator logins whose solo approval of a
+            // bot-authored PR must not satisfy review. Solo profile: leave empty.
+            const OPERATORS = [];
+
+            const pr = context.payload.pull_request;
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+            // GitHub counts each reviewer's latest state-changing review; mirror that.
+            const latest = new Map();
+            for (const r of reviews) {
+              if (!["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(r.state)) continue;
+              latest.set(r.user.login, r);
+            }
+            const approvals = [...latest.values()].filter((r) => r.state === "APPROVED");
+
+            const botApprovals = approvals.filter((r) => r.user.type === "Bot");
+            if (botApprovals.length > 0) {
+              core.setFailed(
+                `Approval from bot actor(s) ${botApprovals.map((r) => r.user.login).join(", ")} ` +
+                "must not count toward required review; dismiss the bot review and obtain a human approval."
+              );
+              return;
+            }
+
+            if (OPERATORS.length > 0 && pr.user.type === "Bot") {
+              const humanApprovals = approvals.filter((r) => r.user.type !== "Bot");
+              if (
+                humanApprovals.length > 0 &&
+                humanApprovals.every((r) => OPERATORS.includes(r.user.login))
+              ) {
+                core.setFailed(
+                  "Bot-authored PR is approved only by the bot's operator(s); a second human must review."
+                );
+                return;
+              }
+            }
+
+            core.info("No bot-submitted approvals; review policy satisfied.");
+```
+
 ## Starter .gitignore
 
 Implements: §1 (T5)
