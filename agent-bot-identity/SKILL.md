@@ -322,6 +322,10 @@ Not enforced — the part everyone overstates:
 | Expecting the Verified badge on bot commits | Local commits pushed with an App token are not auto-verified; only API-path commits (e.g. GraphQL `createCommitOnBranch`) get the badge |
 | Calling the review gate "enforced against the agent" | The agent holds both identities; the gate binds the bot token (see approval laundering above) |
 | Leaving the personal `gh` OAuth login on the agent's machine | Its token carries PR write, so the agent can approve bot PRs as the human in one command; auth personal `gh` with a fine-grained PAT lacking Pull requests write and approve in the browser |
+| Defaulting agent sessions to personal credentials, with a bot subagent for autonomous work | Fails open — a forgotten switch attributes agent work to the human, the headline failure mode; keep the bot as the default and escape per task with `as-me` |
+| Letting the agent decide when to use `as-me` | Explicit user direction only; subagents and scheduled runs then stay bot-attributed by construction |
+| Extending `as-me` to pushes and PRs with personal credentials | Reintroduces the approval-laundering surface; the escape is commit authorship only — auth stays the bot token |
+| Expecting `as-me` commits to be signed or Verified | `gpgsign false` stays in effect and App-token pushes are never auto-verified; amend from a personal terminal if a signature is required |
 
 ## Done Criteria
 
