@@ -37,6 +37,7 @@ Never present this setup as a sandbox.
 | Local routing | Per-project env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only in opted-in repos, no shell-dotfile edits"; Claude Code adapter: `.claude/settings.local.json` (env + SessionStart hook) | Bot identity activates only in opted-in repos; no shell dotfiles change |
 | git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | `GH_TOKEN` written to `$CLAUDE_ENV_FILE` by a SessionStart hook | `gh` calls use the installation token; sourced before every Bash command |
+| Collaborated work | `as-me` wrapper unsets the author/committer env per command | Human authorship on collaborated commits; pushes and PRs still ride the bot token |
 | Enforcement | Repo rulesets (Phase 6) | The only controls that bind a misbehaving agent |
 
 ## Phase 1 — Register the GitHub App
@@ -74,8 +75,8 @@ Never present this setup as a sandbox.
 
 ## Phase 3 — Helper scripts
 
-All three live in `~/.claude/bot-shims/`, all `chmod +x`.
-Only `session-env.sh` is Claude Code-specific; `bot-token` and `git-credential-bot` are harness-neutral, and the directory is a convention, not a dependency — a neutral location such as `~/.config/acme-agent/bin/` works identically if the paths below are adjusted to match.
+All four live in `~/.claude/bot-shims/`, all `chmod +x`.
+Only `session-env.sh` is Claude Code-specific; `bot-token`, `git-credential-bot`, and `as-me` are harness-neutral, and the directory is a convention, not a dependency — a neutral location such as `~/.config/acme-agent/bin/` works identically if the paths below are adjusted to match.
 
 ### `bot-token` — mints and caches installation tokens
 
@@ -164,6 +165,20 @@ The single-quoted `line` keeps both `$HOME` and the `$(...)` substitution uneval
 Either way Claude Code surfaces the hook failure rather than silently leaving `GH_TOKEN` unset — which would fall back to the personal stored credentials; Phase 5's `ghs_` check catches the same condition.
 The `|| echo` fallback makes this path fail closed, matching `git-credential-bot`: a failed mint substitutes a non-empty invalid token, so `gh` fails with an auth error instead of silently using the human account — an *empty* `GH_TOKEN` is treated by `gh` as unset, and that fallback to the personal stored credentials is exactly this skill's headline failure mode.
 The `>>` append (not `>`) keeps the line from clobbering anything another hook wrote to `$CLAUDE_ENV_FILE`, and the `grep -qxF` guard makes re-runs idempotent — SessionStart fires on resume and clear as well as startup, and without the guard each duplicated line would mint a token (subprocess, ~100 ms on a cache hit) per Bash command.
+
+### `as-me` — personal authorship for collaborated work
+
+```bash
+#!/usr/bin/env bash
+# as-me — run a command with personal commit authorship (auth stays the bot token)
+exec env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL "$@"
+```
+
+Unsetting the four identity variables lets git fall back to the global `user.*` config, so nothing personal is hardcoded in the shim.
+Everything else in the bot env stays active — credential helper, `insteadOf` rewrite, `gpgsign false`, `GH_TOKEN` — so `as-me git commit -m "..."` authors the commit as the human while pushes and `gh` calls still ride the bot token.
+These commits are unsigned (`gpgsign false` stays in effect) and show no Verified badge once pushed (App-token pushes are never auto-verified) — the two visible differences from terminal-made personal commits; amend from a personal terminal if a signature matters.
+Forgot the wrapper and committed as the bot? `as-me git commit --amend --reset-author` fixes the last commit.
+When to use it is a policy question, not a mechanism question — see Mixed Contribution below.
 
 ## Phase 4 — Project-scoped configuration
 
