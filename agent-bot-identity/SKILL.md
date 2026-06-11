@@ -75,9 +75,8 @@ Never present this setup as a sandbox.
 
 ## Phase 3 — Helper scripts
 
-All four live in `~/.claude/bot-shims/`, all `chmod +x`.
-Only `session-env.sh` is Claude Code-specific; `bot-token`, `git-credential-bot`, and `as-me` are harness-neutral, and the directory is a convention, not a dependency — a neutral location such as `~/.config/acme-agent/bin/` works identically if the paths below are adjusted to match.
-Phase 4's Variant B replaces `session-env.sh` with two further scripts (`bot-env-hook.sh` and `bot-env`), shown there.
+The helper scripts live in `~/.claude/bot-shims/`, all `chmod +x`; the directory is a convention, not a dependency — a neutral location such as `~/.config/acme-agent/bin/` works identically if the paths below are adjusted to match.
+`bot-token`, `git-credential-bot`, and `as-me` are harness-neutral and serve both routing variants; `session-env.sh` is Claude Code glue for Variant A only, and Variant B replaces it with two further Claude Code-glue scripts (`bot-env-hook.sh` and `bot-env`), shown in Phase 4.
 
 ### `bot-token` — mints and caches installation tokens
 
@@ -269,12 +268,12 @@ if [ ! -x "$HOME/.claude/bot-shims/bot-env" ]; then
   echo "bot-env-hook.sh: bot-env missing or not executable — refusing to install a guard that would fail open" >&2
   exit 1
 fi
-line='__bot_env="$("$HOME/.claude/bot-shims/bot-env")" || { echo "bot-env failed — refusing to run with undetermined identity" >&2; exit 1; }; eval "$__bot_env"; unset __bot_env'
+line='__bot_env="$("$HOME/.claude/bot-shims/bot-env")" || { echo "bot-env failed — refusing to run with undetermined identity" >&2; exit 1; }; eval "$__bot_env" || { echo "bot-env emitted invalid shell — refusing to run with undetermined identity" >&2; exit 1; }; unset __bot_env'
 grep -qxF -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf '%s\n' "$line" >> "$CLAUDE_ENV_FILE"
 ```
 
 The capture-then-eval shape of the guard line is load-bearing: a bare `eval "$(bot-env)"` fails **open** — a crashed or missing script substitutes the empty string, the eval succeeds, and the session silently runs personal in an enrolled repo, the headline failure mode.
-Capturing the output lets a script failure abort the command (`exit 1` in the preamble) loudly instead.
+Capturing the output lets a script failure abort the command (`exit 1` in the preamble) loudly instead, and the `eval` carries its own `|| exit 1` so even malformed emitted shell — a partial write, a future editing mistake — aborts rather than continuing with a half-applied identity.
 The `grep -qxF` guard keeps re-fires idempotent (SessionStart fires on resume and clear too), and `>>` preserves other hooks' lines, both as in `session-env.sh` — which this variant replaces; do not also run the per-repo hook.
 
 `bot-env` — the per-command decision, also in `~/.claude/bot-shims/`, `chmod +x`:
