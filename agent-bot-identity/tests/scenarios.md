@@ -100,8 +100,12 @@ An assertion the with-skill run misses is a finding against the skill, not again
 ## Results
 
 > [!IMPORTANT]
-> **Mechanism change (2026-06-10, after real-world deployment).** The original skill activated `gh` with a PATH shim loaded from a shell dotfile (`~/.zshenv`). Deploying it on a real machine proved this fails under Claude Code: the Bash tool replays a *shell snapshot* built from a **non-login** shell sourcing **`$HOME/.zshrc`** (ignoring `ZDOTDIR`), with **PATH frozen** before the per-project env applies — so no dotfile PATH shim activates. Debug logs confirmed the snapshot path; the fix that worked (verified live: `GH_TOKEN` = `ghs_…`, `gh api installation/repositories` = enrolled count) is a **`SessionStart` hook writing `GH_TOKEN` to `$CLAUDE_ENV_FILE`**, the documented per-command env mechanism. The skill and the assertions above were rewritten to match.
-> The first block of rows below scored the **prior PATH-shim skill**; assertion 6 (Scenario 1) and assertion 4 (Scenario 2) have since changed, so those rows are retained as history but **do not reflect the current assertions**. The hook-based skill was then re-validated against the new assertions — see the "Hook-based mechanism (current skill)" block (Scenario 1 baseline 5/10, with-skill 10/10).
+> **Mechanism change (2026-06-10, after real-world deployment).** The original skill activated `gh` with a PATH shim loaded from a shell dotfile (`~/.zshenv`).
+> Deploying it on a real machine proved this fails under Claude Code: the Bash tool replays a *shell snapshot* built from a **non-login** shell sourcing **`$HOME/.zshrc`** (ignoring `ZDOTDIR`), with **PATH frozen** before the per-project env applies — so no dotfile PATH shim activates.
+> Debug logs confirmed the snapshot path; the fix that worked (verified live: `GH_TOKEN` = `ghs_…`, `gh api installation/repositories` = enrolled count) is a **`SessionStart` hook writing `GH_TOKEN` to `$CLAUDE_ENV_FILE`**, the documented per-command env mechanism.
+> The skill and the assertions above were rewritten to match.
+> The first block of rows below scored the **prior PATH-shim skill**; assertion 6 (Scenario 1) and assertion 4 (Scenario 2) have since changed, so those rows are retained as history but **do not reflect the current assertions**.
+> The hook-based skill was then re-validated against the new assertions — see the "Hook-based mechanism (current skill)" block (Scenario 1 baseline 5/10, with-skill 10/10).
 
 Note: Scenario 1's assertion 2 originally treated Actions `read` as optional ("workflow-log access").
 An independent review (2026-06-10, finding H1) established that `gh pr checks` under an App token also requires `actions: read`, and the assertion and skill were corrected together; the first two Scenario 1 rows below were scored against the original wording, and the re-run row against the corrected one.
