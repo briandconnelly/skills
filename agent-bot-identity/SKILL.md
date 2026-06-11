@@ -34,7 +34,7 @@ Never present this setup as a sandbox.
 | --- | --- | --- |
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
 | Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if config leaks |
-| Local routing | Env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only in enrolled repos, no shell-dotfile edits"; Claude Code adapters: per-project `.claude/settings.local.json` (Variant A) or a user-level per-command guard gated on the org remote (Variant B) | Bot identity activates only in enrolled repos; no shell dotfiles change |
+| Local routing | Env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only where the bot belongs, no shell-dotfile edits"; Claude Code adapters: per-project `.claude/settings.local.json` (Variant A) or a user-level per-command guard gated on the org remote (Variant B) | Bot identity activates only where routed — opted-in repos (A) or org repos, ambiguity included (B); no shell dotfiles change |
 | git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | `GH_TOKEN` written to `$CLAUDE_ENV_FILE` by a SessionStart hook | `gh` calls use the installation token; sourced before every Bash command |
 | Collaborated work | `as-me` wrapper unsets the author/committer env per command | Human authorship on collaborated commits; pushes and PRs still ride the bot token |
@@ -290,7 +290,9 @@ BOT_NAME="${ORG}-agent[bot]"
 BOT_EMAIL="<BOT_UID>+${ORG}-agent[bot]@users.noreply.github.com"
 
 verdict=personal
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+rc=0
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 0 ]; then
   if remotes="$(git remote -v 2>/dev/null)"; then
     if printf '%s' "$remotes" | grep -Eq "github\.com[:/]${ORG}/"; then
       verdict=bot
@@ -302,6 +304,9 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     verdict=bot
     echo "bot-env: git remote query failed in $PWD — using the bot identity" >&2
   fi
+elif [ "$rc" -ne 128 ]; then
+  verdict=bot
+  echo "bot-env: git probe failed (exit $rc) in $PWD — ambiguous, using the bot identity" >&2
 fi
 [ "$verdict" = bot ] || exit 0
 
@@ -325,14 +330,15 @@ export GH_TOKEN='${token}'
 EOF
 ```
 
-The emitted block is the Variant A env verbatim (same `insteadOf` nuance: add a pair and bump the count if any remote uses the `ssh://` form), so everything Variant A's bullets explain applies unchanged.
+The emitted block mirrors the Variant A env (same `insteadOf` nuance: add a pair and bump the count if any remote uses the `ssh://` form), so everything Variant A's bullets explain applies unchanged; the one mechanical difference is that `${HOME}` in the helper path is expanded when `bot-env` emits, where Variant A leaves the literal `$HOME` for git's shell — same resulting path.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command — same freshness as Variant A's unevaluated mint line, same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel, same sub-100 ms cache-hit cost; personal-repo commands pay only the two local git queries (milliseconds).
 
 The decision rules and their fail direction:
 
 | Situation | Verdict | Why |
 | --- | --- | --- |
-| Not a git repo | Personal | Unambiguous — nothing to attribute |
+| Not a git repo (probe exits 128, git's definitive answer) | Personal | Unambiguous — nothing to attribute |
+| Probe fails any other way (git missing, broken PATH) | Bot, stderr warning | Ambiguous — cannot rule out org work; only a definitive "not a repository" may resolve personal |
 | Remotes exist, none in the org | Personal | Unambiguous |
 | Any remote in the org | Bot | The remote is the repo-intrinsic signal: travels with clones and worktrees, no per-repo state, no network |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
@@ -378,7 +384,7 @@ Variant B additionally (the gate and its fail direction):
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
 
-In a personal terminal (and any agent session outside the opted-in repos):
+In a personal terminal (and any agent session the routing leaves personal — outside the opted-in repos for Variant A; non-org repos with remotes for Variant B):
 
 - `git config credential.helper` → still osxkeychain; `git config commit.gpgsign` → still true.
 - `gh auth status` → personal account; commits signed and authored as the human; SSH push works.
