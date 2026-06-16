@@ -134,13 +134,28 @@ Optional hardening: pass a `"repositories"` field in the token request to scope 
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "${1:-}" == get ]] || exit 0
+# Refuse to answer for anything but github.com over HTTPS. git invokes the
+# configured helper for every host it authenticates to, so read the request it
+# sends on stdin and bail with no output unless host+protocol match exactly —
+# otherwise a mis-rewritten or hostile remote could coax out the installation token.
+host="" protocol=""
+while IFS='=' read -r key value; do
+  [[ -z "$key" ]] && break          # git terminates its request with a blank line
+  case "$key" in
+    host) host="$value" ;;
+    protocol) protocol="$value" ;;
+  esac
+done
+[[ "$protocol" == https && "$host" == github.com ]] || exit 0
 token="$("$HOME/.claude/bot-shims/bot-token")"  # set -e aborts here if the mint fails — nothing is printed
 echo username=x-access-token
 echo "password=$token"
 ```
 
-This must fail closed: `set -e` plus capturing the token before printing means a failed mint aborts with no output, rather than emitting an empty `password=`.
-A blank password would either attempt auth that fails confusingly or fall through to the personal keychain — the human-as-agent failure this setup prevents.
+This must fail closed two ways.
+On mint failure: `set -e` plus capturing the token before printing means a failed mint aborts with no output, rather than emitting an empty `password=` — a blank password would either attempt auth that fails confusingly or fall through to the personal keychain, the human-as-agent failure this setup prevents.
+On wrong host: the stdin gate answers only `https://github.com` and stays silent (no credentials) for anything else, so the installation token is never handed to a remote that merely reached the helper — a typosquatted host, an `insteadOf` rewrite gone wrong, an attacker-controlled URL.
+This matters most under Variant B, which installs this helper as the *only* credential helper automatically in any org-matching repo, so the helper itself — not a per-repo opt-in — must be the thing that refuses the wrong host.
 
 ### `session-env.sh` — SessionStart hook that injects `GH_TOKEN`
 
@@ -188,6 +203,7 @@ Two Claude Code adapters satisfy the routing contract; pick one, never both (two
   Choose it when enrollment should be an explicit, visible, per-repo act — e.g. the agent also works in org repos that are deliberately not enrolled.
 - **Variant B — user-level, automatic in org repos**: one user-level hook installs a per-command guard that activates the bot in any repo whose remotes match the org.
   Choose it to eliminate the per-repo step entirely — Variant A's failure mode is forgetting the file in an enrolled repo, which silently attributes agent work to the human (the headline failure); Variant B inverts that to a loud push failure in repos not yet on the installation list.
+  The cost of that loudness is a wider blast radius: a broken guard aborts every command in every session machine-wide (detailed under Variant B below), where a broken Variant A hook degrades only the one enrolled repo.
 
 ### Variant A — per-project opt-in
 
@@ -276,13 +292,17 @@ The capture-then-eval shape of the guard line is load-bearing: a bare `eval "$(b
 Capturing the output lets a script failure abort the command (`exit 1` in the preamble) loudly instead, and the `eval` carries its own `|| exit 1` so even malformed emitted shell — a partial write, a future editing mistake — aborts rather than continuing with a half-applied identity.
 The `grep -qxF` guard keeps re-fires idempotent (SessionStart fires on resume and clear too), and `>>` preserves other hooks' lines, both as in `session-env.sh` — which this variant replaces; do not also run the per-repo hook.
 
+That fail-closed loudness has a blast radius worth stating plainly: the guard runs before *every* Bash command in *every* project — org repos, personal repos, and non-git directories alike — so a `bot-env` that is broken (a syntax error, a bad edit, an unexpected non-zero exit) aborts every command in every Claude Code session on the machine until it is fixed, not just bot operations.
+That is the deliberate cost of never failing open; keep `bot-env` small, and re-run the Phase 5 checks after any change to it.
+Variant A's blast radius is narrower — a broken per-repo hook degrades only that enrolled repo — which is one more reason to prefer A when automatic enrollment is not worth this machine-wide coupling.
+
 `bot-env` — the per-command decision, also in `~/.claude/bot-shims/`, `chmod +x`:
 
 ```bash
 #!/usr/bin/env bash
 # bot-env — decide bot vs personal for the current directory and print exports
-# for the guard line to eval. Personal verdict prints nothing. Runs before
-# every Bash command: stay fast and deterministic — no network calls here.
+# for the guard line to eval. Personal verdict emits unsets (clears any inherited
+# bot env). Runs before every Bash command: stay fast — no network calls here.
 set -euo pipefail
 ORG="acme"
 BOT_NAME="${ORG}-agent[bot]"
@@ -293,7 +313,10 @@ rc=0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
 if [ "$rc" -eq 0 ]; then
   if remotes="$(git remote -v 2>/dev/null)"; then
-    if printf '%s' "$remotes" | grep -Eq "github\.com[:/]${ORG}/"; then
+    # Anchor the host on a left boundary (@ for ssh, / for https) so a spoofed
+    # host like notgithub.com:acme/ or evilgithub.com/acme/ cannot match and
+    # wrongly yield a bot verdict — fail direction here is toward leaking nothing.
+    if printf '%s' "$remotes" | grep -Eq "(^|[@/])github\.com[:/]${ORG}/"; then
       verdict=bot
     elif [ -z "$remotes" ]; then
       verdict=bot
@@ -307,7 +330,18 @@ elif [ "$rc" -ne 128 ]; then
   verdict=bot
   echo "bot-env: git probe failed (exit $rc) in $PWD — ambiguous, using the bot identity" >&2
 fi
-[ "$verdict" = bot ] || exit 0
+if [ "$verdict" != bot ]; then
+  # Personal verdict: actively clear any bot env a prior command may have exported.
+  # A no-op when each Bash command starts from a fresh shell (the verified Claude
+  # Code behavior), but the safe default if a harness ever reuses one shell across
+  # commands — emitting nothing there would leave stale bot vars in a personal repo.
+  cat <<'EOF'
+unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0 GIT_CONFIG_KEY_1 GIT_CONFIG_VALUE_1 GIT_CONFIG_KEY_2 GIT_CONFIG_VALUE_2 GIT_CONFIG_KEY_3 GIT_CONFIG_VALUE_3
+unset GH_TOKEN
+EOF
+  exit 0
+fi
 
 token="$("$HOME/.claude/bot-shims/bot-token")" || token="BOT-TOKEN-MINT-FAILED"
 
@@ -345,6 +379,7 @@ The decision rules and their fail direction:
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
 
 Every ambiguous case resolves toward the bot because the two wrong outcomes are not symmetric: wrong-way-bot fails loudly (bot-authored commits are amendable, pushes 403 against the installation boundary) while wrong-way-personal is silent misattribution in the human's name.
+Two expected, harmless quirks of running per command: the ambiguity warnings (`no remotes`, `git probe failed`) print on *every* command in such a directory, not once — that repetition is the signal, kept stateless deliberately; and inside a bare repo or a `.git` directory `--is-inside-work-tree` exits 0 rather than 128, so the decision falls through to the remote check (an org-remoted bare repo still resolves to bot), which is why the table's "exits 128" row is the *definitive* not-a-repo answer rather than the only non-repo state.
 For the same reason, do not gate on a local repo allowlist (an enrolled repo missing from the list silently works as the human) and do not check the installation list per command over the network (slow, flaky, and redundant — the token already enforces it server-side; a not-yet-installed org repo simply fails at first push, which is the "enroll me" signal).
 
 Migrating from Variant A: delete the bot stanza from every per-repo `.claude/settings.local.json` (the whole file if that is all it held) and retire the per-repo `session-env.sh` hook registration — leftovers would pin a stale static identity regardless of what the guard decides.
@@ -378,7 +413,8 @@ In a fresh agent session in an opted-in repo (the hook approval prompt appears o
 
 Variant B additionally (the gate and its fail direction):
 
-- Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted nothing.
+- Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted only `unset`s, so no bot env leaks in.
+- Collaborated path under the guard (the interaction worth proving for Variant B, since the guard re-sets the bot identity every command): in an org repo, `~/.claude/bot-shims/as-me git commit --allow-empty -m 'as-me test'` → author is you, while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`. `as-me` strips the four identity vars for that one command (falling back to global `user.*`) on top of the env the guard just set — authorship escapes, auth stays the bot.
 - Zero-setup enrollment regression (the incident class Variant B exists for): enroll a fresh repo on the App, clone it, and run the bot-identity checks above (GH_TOKEN prefix, credential.helper scope, commit author) in a first-ever session there — they must pass with no per-repo file of any kind.
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
@@ -458,6 +494,8 @@ Not enforced — the part everyone overstates:
 | Leaving the personal `gh` OAuth login on the agent's machine | Its token carries PR write, so the agent can approve bot PRs as the human in one command; auth personal `gh` with a fine-grained PAT lacking Pull requests write and approve in the browser |
 | Centralizing by moving the static env block to user-level `settings.json` | Static env cannot be conditional — the bot activates in every project including other orgs and personal repos; centralize with the per-command guard (Variant B) |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
+| A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
+| Matching the org remote with an unanchored host pattern | `grep github\.com[:/]acme/` also matches `notgithub.com/acme/`, yielding a bot verdict (and bot env) for a spoofed host; anchor the host on a left boundary (`(^\|[@/])github\.com…`) |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |
