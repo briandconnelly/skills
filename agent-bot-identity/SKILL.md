@@ -82,7 +82,7 @@ Use a neutral location such as `~/.config/acme-agent/bin/` if preferred, but adj
 Use these resources:
 
 - `scripts/bot-token` mints and caches installation tokens.
-- `scripts/git-credential-bot` feeds installation tokens to git and answers only `https://github.com`.
+- `scripts/git-credential-bot` feeds installation tokens to git and answers only `https://github.com`, accepting case-insensitive hostnames and an optional `:443` port from git's credential protocol.
 - `scripts/as-me` provides personal authorship for collaborated commits.
 - `scripts/session-env.sh` is Claude Code glue for Variant A.
 - `scripts/bot-env-hook.sh` and `scripts/bot-env` are Claude Code glue for Variant B.
@@ -95,6 +95,7 @@ Optional hardening: pass a `"repositories"` field in the token request to scope 
 
 Keep `git-credential-bot` host-gated.
 On mint failure it must print no credential, and on wrong host it must stay silent so a typosquatted or mis-rewritten remote cannot coax out the installation token.
+Normalize hostnames case-insensitively and strip any credential-protocol port suffix before comparing to `github.com`.
 This matters most under Variant B, which installs the helper automatically in any org-matching repo.
 
 Use `as-me` only for commit authorship.
@@ -331,7 +332,7 @@ Not enforced — the part everyone overstates:
 | Treating a failing `SessionStart` preflight as a blocking control | Claude Code can continue after hook startup failure; install the guard first, and make the guard fail inside each Bash command when `bot-env` is unavailable |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
-| Deciding the org match by pattern-matching the raw remote line | Any boundary char you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host *exactly* to `github.com`, then check the org path segment — don't regex the whole line |
+| Deciding the org match by pattern-matching the raw remote line | Any boundary char you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host case-insensitively to `github.com`, then check the org path segment case-insensitively — don't regex the whole line |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |

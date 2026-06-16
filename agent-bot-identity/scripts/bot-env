@@ -4,6 +4,7 @@ set -euo pipefail
 ORG="acme"
 BOT_NAME="${ORG}-agent[bot]"
 BOT_EMAIL="<BOT_UID>+${ORG}-agent[bot]@users.noreply.github.com"
+ORG_LC="$(printf '%s' "$ORG" | tr '[:upper:]' '[:lower:]')"
 
 verdict=personal
 rc=0
@@ -20,7 +21,9 @@ if [ "$rc" -eq 0 ]; then
           *://*) rest="${url#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"; host="${auth%%:*}"; path="${rest#*/}" ;;
           *)     rest="${url#*@}"; host="${rest%%:*}"; path="${rest#*:}" ;;
         esac
-        if [ "$host" = github.com ] && [ "${path%%/*}" = "$ORG" ]; then
+        host_lc="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+        org_segment_lc="$(printf '%s' "${path%%/*}" | tr '[:upper:]' '[:lower:]')"
+        if [ "$host_lc" = github.com ] && [ "$org_segment_lc" = "$ORG_LC" ]; then
           verdict=bot
           break
         fi
