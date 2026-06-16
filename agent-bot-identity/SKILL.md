@@ -313,10 +313,12 @@ rc=0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
 if [ "$rc" -eq 0 ]; then
   if remotes="$(git remote -v 2>/dev/null)"; then
-    # Anchor the host on a left boundary (@ for ssh, / for https) so a spoofed
-    # host like notgithub.com:acme/ or evilgithub.com/acme/ cannot match and
-    # wrongly yield a bot verdict — fail direction here is toward leaking nothing.
-    if printf '%s' "$remotes" | grep -Eq "(^|[@/])github\.com[:/]${ORG}/"; then
+    # Match github.com only in HOST position — right after the scheme (://),
+    # after userinfo (@), or at the start of a scp-style/url-start remote — so
+    # neither a spoofed host (notgithub.com:acme/, evilgithub.com/acme/) nor an
+    # org-shaped path on another host (example.com/github.com/acme/) yields a bot
+    # verdict. A bare / is deliberately NOT a boundary: it would match a path.
+    if printf '%s' "$remotes" | grep -Eq "(^|[[:space:]]|://|@)github\.com[:/]${ORG}/"; then
       verdict=bot
     elif [ -z "$remotes" ]; then
       verdict=bot
@@ -495,7 +497,7 @@ Not enforced — the part everyone overstates:
 | Centralizing by moving the static env block to user-level `settings.json` | Static env cannot be conditional — the bot activates in every project including other orgs and personal repos; centralize with the per-command guard (Variant B) |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
-| Matching the org remote with an unanchored host pattern | `grep github\.com[:/]acme/` also matches `notgithub.com/acme/`, yielding a bot verdict (and bot env) for a spoofed host; anchor the host on a left boundary (`(^\|[@/])github\.com…`) |
+| Matching the org remote with an unanchored host pattern | `grep github\.com[:/]acme/` also matches a spoofed host (`notgithub.com/acme/`) or an org-shaped path on another host (`example.com/github.com/acme/`), yielding a bot verdict (and bot env); match `github.com` only in host position — after `://`, after `@`, or at line start (`(^\|[[:space:]]\|://\|@)github\.com…`), never after a bare `/` |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |
