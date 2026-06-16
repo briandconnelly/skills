@@ -153,6 +153,53 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** centralizes with a static env block in `~/.claude/settings.json` (ungated — activates everywhere) or a shell-dotfile/PATH mechanism; freezes the verdict at session start (no per-command re-decision, stale across mid-session directory changes); `eval`s the decision script's output without capturing failure (crash = empty eval = silently personal); `GH_TOKEN` evaluated once at hook time (frozen, expires mid-session); appends to `$CLAUDE_ENV_FILE` without an idempotence guard (line accumulation across resume/clear); picks a local allowlist or per-command API lookup without fail-direction analysis; verification misses the non-org-repo session state.
 
+## Scenario 5: Broken Variant B guard setup (regression test)
+
+**Prompt:**
+
+> Review this centralized Variant B bot-identity setup for a local AI coding agent (Claude Code) on a macOS laptop, and report problems with severity and concrete fixes.
+> You cannot run commands; you have only this captured material.
+>
+> Intended design:
+> - A user-level `~/.claude/settings.json` `SessionStart` hook should make Claude Code use the GitHub App bot identity in `acme` org repos and stay personal elsewhere.
+> - `~/.claude/bot-shims/bot-token` and `~/.claude/bot-shims/git-credential-bot` already exist and work.
+> - `~/.claude/bot-shims/bot-env` should decide bot vs personal per Bash command and emit the needed env.
+>
+> Captured hook:
+>
+> ```bash
+> #!/usr/bin/env bash
+> set -euo pipefail
+> if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
+>   echo "missing env file" >&2
+>   exit 1
+> fi
+> if [ ! -x "$HOME/.claude/bot-shims/bot-env" ]; then
+>   echo "bot-env missing or not executable" >&2
+>   exit 1
+> fi
+> line='__bot_env="$("$HOME/.claude/bot-shims/bot-env")" || { echo "bot-env failed" >&2; exit 1; }; eval "$__bot_env"'
+> grep -qxF -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf "%s\n" "$line" >> "$CLAUDE_ENV_FILE"
+> ```
+>
+> Captured incident:
+> - `bot-env` was present but not executable after a permissions mistake.
+> - Claude Code displayed the hook failure during session startup but still allowed Bash commands.
+> - The engineer then ran `git commit` in an enrolled `acme` repo, and the commit used the personal author from global git config.
+>
+> Explain what is wrong, why it is severe, and exactly how to change the hook/guard and verification procedure.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Identifies the top issue as a fail-open Variant B guard installation path, because `SessionStart` failure is non-blocking and can leave later Bash commands without any identity guard.
+- [ ] Rejects hook-time `bot-env` executable preflight as the only protection; the installed `$CLAUDE_ENV_FILE` guard must check missing or non-executable `bot-env` inside every Bash command.
+- [ ] Keeps capture-then-eval for `bot-env` output and says malformed emitted shell or a crashing `bot-env` must abort the Bash command.
+- [ ] States that the failure mode is severe because it silently attributes enrolled org work to the human, which is the headline problem this skill prevents.
+- [ ] Requires verification before git or `gh` work: `GH_TOKEN` starts `ghs_`, `credential.helper` is command-scope bot helper in an org repo, and the broken-guard case aborts instead of running personal.
+- [ ] Preserves the existing routing model: org-remote verdicts still decide bot vs personal, ambiguous repo states still resolve toward bot, and personal repos still emit no bot env.
+
+**Expected baseline failures:** treats `SessionStart` failure as sufficient because the hook printed an error; keeps the executable preflight in the hook instead of moving it into the per-command guard; misses that the incident is silent human attribution, not just hook reliability; verifies only happy-path bot activation and not the broken-guard abort path.
+
 ## Results
 
 > [!IMPORTANT]
@@ -196,6 +243,12 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 > (4) the machine-wide blast radius of a broken `bot-env` (it aborts every Bash command in every session) is now stated as the cost of never failing open;
 > (5) the Variant B verification adds an `as-me` check, since the guard re-sets the bot identity every command.
 > Assertion 4's "emits nothing" was reworded to "emits no bot env" to match (3); the 9/9 row above predates these edits and was not re-scored against the new wording.
+
+### Scenario 5 — broken Variant B guard setup (added 2026-06-16)
+
+| Date | Scenario | Run | Assertions passed | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-06-16 | 5 (broken guard) | not yet run | n/a | Added to cover issue #22: a hook-time executable preflight can fail during non-blocking `SessionStart` before installing the per-command guard, leaving later Bash commands able to run personal. |
 
 ### Hook-based mechanism (current skill) — re-validation 2026-06-10
 
