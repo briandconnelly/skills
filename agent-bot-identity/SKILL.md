@@ -9,7 +9,7 @@ description: Use when giving a local coding agent a distinct GitHub App bot iden
 
 Give a local coding agent its own GitHub App identity so the commits, pushes, and PRs it makes attribute to a bot by default, while the human's git setup (SSH key, GPG signing, keychain credentials) stays untouched on the same machine.
 Attribution is per unit of work: autonomous agent work carries the bot identity, and in repos where the human also contributes through the agent, collaborated commits can carry the human's authorship via the `as-me` wrapper (Phase 3) while auth still rides the bot token.
-The isolation mechanism is per-project configuration that injects the bot's credentials only into the agent's sessions in opted-in repos — without editing any shell dotfiles.
+The isolation mechanism is local routing that injects the bot's credentials only into the agent's sessions where the bot belongs — either per-project, in repos you opt in by hand (Variant A), or user-wide, automatically in your org's repos via a per-command guard (Variant B) — without editing any shell dotfiles.
 
 Core principle: **this buys attribution, not containment.**
 The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list and the server-side rulesets of the repos it touches.
@@ -313,16 +313,29 @@ rc=0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
 if [ "$rc" -eq 0 ]; then
   if remotes="$(git remote -v 2>/dev/null)"; then
-    # Match github.com only in HOST position — right after the scheme (://),
-    # after userinfo (@), or at the start of a scp-style/url-start remote — so
-    # neither a spoofed host (notgithub.com:acme/, evilgithub.com/acme/) nor an
-    # org-shaped path on another host (example.com/github.com/acme/) yields a bot
-    # verdict. A bare / is deliberately NOT a boundary: it would match a path.
-    if printf '%s' "$remotes" | grep -Eq "(^|[[:space:]]|://|@)github\.com[:/]${ORG}/"; then
-      verdict=bot
-    elif [ -z "$remotes" ]; then
+    if [ -z "$remotes" ]; then
       verdict=bot
       echo "bot-env: no remotes in $PWD — ambiguous, using the bot identity" >&2
+    else
+      # Parse each remote down to its HOST and compare it exactly to github.com,
+      # then require the org as the first path segment. Extracting the authority
+      # (scheme://[userinfo@]host[:port]/path, or scp-style [user@]host:path)
+      # instead of pattern-matching the raw line is what stops a crafted remote —
+      # a spoofed host (notgithub.com), a lookalike (github.com.evil.tld), or an
+      # org-shaped path on another host (example.com/@github.com/acme/) — from
+      # spoofing a bot verdict. Fail direction stays toward leaking nothing.
+      while read -r _ url _; do
+        [ -n "$url" ] || continue
+        case "$url" in
+          *://*) rest="${url#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"; host="${auth%%:*}"; path="${rest#*/}" ;;
+          *)     rest="${url#*@}"; host="${rest%%:*}"; path="${rest#*:}" ;;
+        esac
+        if [ "$host" = github.com ] && [ "${path%%/*}" = "$ORG" ]; then
+          verdict=bot; break
+        fi
+      done <<EOF
+$remotes
+EOF
     fi
   else
     verdict=bot
@@ -497,7 +510,7 @@ Not enforced — the part everyone overstates:
 | Centralizing by moving the static env block to user-level `settings.json` | Static env cannot be conditional — the bot activates in every project including other orgs and personal repos; centralize with the per-command guard (Variant B) |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
-| Matching the org remote with an unanchored host pattern | `grep github\.com[:/]acme/` also matches a spoofed host (`notgithub.com/acme/`) or an org-shaped path on another host (`example.com/github.com/acme/`), yielding a bot verdict (and bot env); match `github.com` only in host position — after `://`, after `@`, or at line start (`(^\|[[:space:]]\|://\|@)github\.com…`), never after a bare `/` |
+| Deciding the org match by pattern-matching the raw remote line | Any boundary char you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host *exactly* to `github.com`, then check the org path segment — don't regex the whole line |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |

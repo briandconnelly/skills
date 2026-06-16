@@ -190,7 +190,7 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 
 > [!NOTE]
 > **Hardening after independent review (2026-06-16).** A critical review of the Variant B PR surfaced five fixes, applied to the skill without changing the design:
-> (1) the org-match grep now matches `github.com` only in host position (`(^|[[:space:]]|://|@)github\.com[:/]…` — after the scheme, after userinfo, or at line start, never after a bare path `/`) so neither a spoofed host like `notgithub.com:acme/` nor an org-shaped path on another host like `example.com/github.com/acme/` can yield a bot verdict;
+> (1) the org match no longer pattern-matches the raw remote line at all — it parses each remote down to its authority (`[userinfo@]host[:port]`) and compares the host *exactly* to `github.com`, then checks the org path segment, so a spoofed host (`notgithub.com`), a lookalike (`github.com.evil.tld`), or an org-shaped path on another host (`example.com/@github.com/acme/`) can no longer yield a bot verdict;
 > (2) `git-credential-bot` now reads git's stdin request and answers only `https://github.com`, so the installation token can't be coaxed out by a mis-rewritten or hostile remote — material under Variant B, which installs that helper as the only credential helper automatically;
 > (3) the personal verdict now emits explicit `unset`s instead of nothing, defending against a hypothetical reused per-command shell;
 > (4) the machine-wide blast radius of a broken `bot-env` (it aborts every Bash command in every session) is now stated as the cost of never failing open;
