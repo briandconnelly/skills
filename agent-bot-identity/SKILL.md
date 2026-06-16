@@ -34,7 +34,7 @@ Never present this setup as a sandbox.
 | --- | --- | --- |
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
 | Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if config leaks |
-| Local routing | Env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only where the bot belongs, no shell-dotfile edits"; Claude Code adapters: per-project `.claude/settings.local.json` (Variant A) or a user-level per-command guard gated on the org remote (Variant B) | Bot identity activates only where routed — opted-in repos (A) or org repos, ambiguity included (B); no shell dotfiles change |
+| Local routing | Env/hook adapter — the contract is "inject the git env and a dynamic `GH_TOKEN` only where the bot belongs, no shell-dotfile edits"; Claude Code adapters: per-project `.claude/settings.local.json` (Variant A) or a user-level per-command guard gated on the org remote (Variant B) | Bot identity activates only where routed — opted-in repos (A), or org-remote repos plus ambiguous git states that default to bot, otherwise personal (B); no shell dotfiles change |
 | git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | `GH_TOKEN` written to `$CLAUDE_ENV_FILE` by a SessionStart hook | `gh` calls use the installation token; sourced before every Bash command |
 | Collaborated work | `as-me` wrapper unsets the author/committer env per command | Human authorship on collaborated commits; pushes and PRs still ride the bot token |
@@ -379,7 +379,7 @@ In a fresh agent session in an opted-in repo (the hook approval prompt appears o
 Variant B additionally (the gate and its fail direction):
 
 - Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted nothing.
-- Zero-setup enrollment regression (the incident class Variant B exists for): enroll a fresh repo on the App, clone it, and run the opted-in checks above in a first-ever session there — they must pass with no per-repo file of any kind.
+- Zero-setup enrollment regression (the incident class Variant B exists for): enroll a fresh repo on the App, clone it, and run the bot-identity checks above (GH_TOKEN prefix, credential.helper scope, commit author) in a first-ever session there — they must pass with no per-repo file of any kind.
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
 
