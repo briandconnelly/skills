@@ -378,7 +378,7 @@ export GH_TOKEN='${token}'
 EOF
 ```
 
-The emitted block mirrors the Variant A env (same `insteadOf` nuance: add a pair and bump the count if any remote uses the `ssh://` form), so everything Variant A's bullets explain applies unchanged; the one mechanical difference is that `${HOME}` in the helper path is expanded when `bot-env` emits, where Variant A leaves the literal `$HOME` for git's shell — same resulting path.
+The emitted block mirrors the Variant A env (same `insteadOf` nuance: add a pair and bump the count if any remote uses the `ssh://` form), so everything Variant A's bullets explain applies unchanged; the one mechanical difference is that `${HOME}` in the helper path is expanded when `bot-env` emits — the heredoc is unquoted (`<<EOF`), so the literal single quotes around the value are just text and do not block expansion; the emitted line already carries the absolute path, which the guard's `eval` then assigns verbatim — where Variant A stores the literal `$HOME` string and leaves it for git's own shell to expand when it runs the `!` helper. Same resulting path.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command — same freshness as Variant A's unevaluated mint line, same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel, same sub-100 ms cache-hit cost; personal-repo commands pay only the two local git queries (milliseconds).
 
 The decision rules and their fail direction:
