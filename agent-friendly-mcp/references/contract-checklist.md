@@ -210,7 +210,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 
 - **Resources share the failure-recovery contract.** Missing-credential, not-found, gone, and rate-limit signals must be machine-readable (see §6).
 
-- **Resource failures use JSON-RPC errors.** Put the repair contract in structured `error.data` fields such as `human_message`, `machine_code`, `repair_hints`, and `recoverable`.
+- **Resource failures use JSON-RPC errors.** Put the repair contract in structured `error.data` using the same unified error envelope as tool results (§6) — `machine_code`, `human_message`, `details`, `temporary`, `retry_after_ms`, and a single `repair` object — not a separate vocabulary.
 
 - **Some clients do not expose resources well.** If discoverability matters for a read-oriented capability, provide a tool fallback that reaches the same indexed content.
 
@@ -262,6 +262,7 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 - **Include the offending value when safe.** The agent's repair attempt depends on knowing what it sent. Redact when sensitive; never omit silently.
 
 - **Signal retryability and rate limits explicitly.** Use `retry_after_ms`, `temporary: true|false`, and `rate_limit_remaining` where applicable. Agents need to distinguish "wait and retry" from "stop and reconsider."
+  Define the invariants so servers don't emit incompatible combinations: `temporary: true` means *the same operation, unchanged, may succeed later* (transient condition); `temporary: false` means it will not — repair or escalate instead. `retry_after_ms` is a non-negative integer only when a delay is known, and `null` otherwise; it must be `null` when `temporary: false`. Retryability is independent of repairability: a `temporary: false` error can still carry a `repair` (a *different* corrective call), and a `temporary: true` one may carry none.
 
 - **Include "what to do next" repair hints.** The corrective call, parameter, or filter. The first repair attempt is as important as the first call.
 
@@ -277,11 +278,32 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
   JSON-RPC errors are reserved for transport, protocol, and non-tool RPC methods (such as `resources/read` and `resources/list`); raising a JSON-RPC error from `tools/call` strips the structured-response contract from the failure path.
   See `examples.md` §6 for an actionable tool-result error payload.
 
-- **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the repair fields agents need (`human_message`, `machine_code`, `repair_hints`, and `recoverable`) in structured `error.data`.
+- **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message`.
 
 - **Errors include correlation context.** A `request_id`, the offending parameter, and (where applicable) the resource URI. Agents need to correlate failures with the requests that caused them.
 
-Audit prompt: For each failure mode, does the agent receive enough structured signal to either retry, repair, or escalate — without parsing the message field?
+### One error envelope, two carriers
+
+The failure-recovery contract is **one envelope** with identical field semantics regardless of where it surfaces. Tool-result errors carry it in `structuredContent` (alongside `isError: true`); resource and other non-tool RPC failures carry it in JSON-RPC `error.data`. The *only* permitted divergence is renaming `code`/`message` on the JSON-RPC side, because the native `code`/`message` already occupy those keys — every other field is the same name, shape, and cardinality on both surfaces. Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific flags (e.g. `recoverable`).
+
+| Field | Tool result (`structuredContent`) | JSON-RPC (`error.data`) | Required? | Notes |
+| --- | --- | --- | --- | --- |
+| symbolic code | `code` | `machine_code` | yes | Stable symbolic string; the authoritative branch key. Renamed on JSON-RPC only to avoid shadowing native `code`. |
+| human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on JSON-RPC only to avoid shadowing native `message`. |
+| field detail | `details` | `details` | where applicable | `{field, value, reason}`; redact `value` when sensitive, never omit silently. |
+| transient? | `temporary` | `temporary` | yes | See retryability invariants above. |
+| retry delay | `retry_after_ms` | `retry_after_ms` | yes (nullable) | Always present alongside `temporary`; a non-negative integer when a delay is known, else `null` (and always `null` when `temporary: false`). Always emit the key so agents distinguish `null` from a number without special-casing a missing field. |
+| rate budget | `rate_limit_remaining` | `rate_limit_remaining` | on rate-limit errors | Non-negative integer of remaining calls in the current window, where the surface exposes one. |
+| repair | `repair` | `repair` | where a corrective path exists | A single object `{next_step, tool, arguments, alternative}` — see below. Omit the field entirely when no repair exists (never emit `null` or an empty array). |
+| correlation | `request_id`, `resource_uri`, `fingerprint` | `request_id`, `resource_uri`, `fingerprint` | where applicable | `resource_uri` where the failure is tied to a resource. |
+
+- **Presence convention.** Fields marked *yes* are always emitted on both surfaces — `retry_after_ms` is the one nullable required field (it is bound to the always-present `temporary`, and `null` meaningfully signals "no known delay"). Every other field is omitted entirely when it does not apply; do not send a placeholder `null` or empty array for an absent optional field.
+
+- **`repair` is one object, not an array, on both surfaces.** Its shape is `{next_step, tool, arguments, alternative}`: `next_step` a stable symbolic label, `tool` and `arguments` the single primary corrective call (a real, callable surface), and `alternative` an *optional human-readable* fallback sentence for when the primary call doesn't fit. A single deterministic next action beats a ranked list the agent must choose from; if no corrective call exists, omit `repair` entirely rather than emitting `null` or an empty array. `alternative` is the one prose field in the envelope — it is fallback guidance for a human/agent to interpret, not a second machine-actionable hint (contrast the "real, callable surfaces" rule, which governs `tool`/`arguments`).
+
+- **There is no `recoverable` flag.** Whether the *same* resource or operation can succeed again is already carried by the symbolic `code`/`machine_code` (e.g. `resource_gone`) plus `temporary`; whether recovery is possible by *another* path is carried by the presence of a `repair`. A separate `recoverable` boolean is redundant and was prone to contradicting an accompanying repair.
+
+Audit prompt: For each failure mode, does the agent receive enough structured signal to either retry, repair, or escalate — without parsing the message field? And does the same failure carry the identical envelope whether it surfaces as a tool-result or a JSON-RPC error?
 
 ---
 
