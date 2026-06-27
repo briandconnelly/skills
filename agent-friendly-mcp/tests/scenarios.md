@@ -58,7 +58,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] Flags `send` vs `post_message` overlap as a wrong-tool-selection finding (§3).
 - [ ] Flags `delete_all_messages` missing `destructiveHint` and confirmation boundary (§3 security).
 - [ ] Flags unstructured error strings as Critical or Major against §6 (Critical is defensible when credential failure modes are also collapsed).
-- [ ] Flags 61 tools with no progressive disclosure as Major against §2.
+- [ ] Flags 61 tools with no client-independent surface reduction (and no progressive-disclosure mechanism) as Major against §2 — not by asserting that `search_tools` alone would shrink what a standard preloading client loads.
 - [ ] Flags missing `additionalProperties: false`, ambiguous `channel`/`msg` parameter names (§3).
 - [ ] Produces the §1–§9 coverage table, with `not-checked`/`N/A` reasons for resources (§4) and prompts (§5).
 - [ ] Remediations name real callable surfaces (renamed tools, parameter names), not generic advice.
