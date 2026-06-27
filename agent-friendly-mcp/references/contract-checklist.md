@@ -292,7 +292,7 @@ The failure-recovery contract is **one envelope** with identical field semantics
 | human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on JSON-RPC only to avoid shadowing native `message`. |
 | field detail | `details` | `details` | where applicable | `{field, value, reason}`; redact `value` when sensitive, never omit silently. |
 | transient? | `temporary` | `temporary` | yes | See retryability invariants above. |
-| retry delay | `retry_after_ms` | `retry_after_ms` | with `temporary` | Non-negative integer when a delay is known, else `null`; `null` when `temporary: false`. |
+| retry delay | `retry_after_ms` | `retry_after_ms` | yes (nullable) | Always present alongside `temporary`; a non-negative integer when a delay is known, else `null` (and always `null` when `temporary: false`). Always emit the key so agents distinguish `null` from a number without special-casing a missing field. |
 | rate budget | `rate_limit_remaining` | `rate_limit_remaining` | on rate-limit errors | Non-negative integer of remaining calls in the current window, where the surface exposes one. |
 | repair | `repair` | `repair` | where a corrective path exists | A single object `{next_step, tool, arguments, alternative}` — see below. Omit (or `null`) when no repair exists. |
 | correlation | `request_id`, `resource_uri`, `fingerprint` | `request_id`, `resource_uri`, `fingerprint` | where applicable | `resource_uri` where the failure is tied to a resource. |
