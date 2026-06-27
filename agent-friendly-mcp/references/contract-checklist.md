@@ -132,7 +132,7 @@ Audit prompt: Can an agent find the right tool or resource for a task without lo
   A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is treated as part of the response, not a side effect, so the tool stays `readOnlyHint: true`.
   This is a judgment call, not settled spec: a reviewer who reads "environment" literally may disagree, so document the choice rather than asserting it.
   Prefer returning large results as resources or resource links with TTL metadata where you can, and reserve the response-delivery-artifact pattern for cases where an inline or linked resource does not fit.
-  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, mimeType}`) and the tool description, not by flipping the annotation.
+  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, mime_type}` — a house convention object, so its sub-fields use `snake_case`, not the native `Resource.mimeType`) and the tool description, not by flipping the annotation.
   See `examples.md` §12 for a worked response-delivery artifact.
 
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
@@ -329,7 +329,9 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 
 - **Use cursor-based pagination by default.** Offset-based pagination is acceptable only when ordering is stable and the result set is small enough that pages don't shift between calls.
 
-- **Pagination responses include `has_more`.** If `has_more` is true, include a navigation token (`next_cursor`) and, where available, `estimated_total`.
+- **Native list methods use the protocol pagination shape, not a house convention.** `tools/list`, `resources/list`, `resources/templates/list`, and `prompts/list` accept an optional opaque `cursor` request param and return an optional `nextCursor` in the result; **absence of `nextCursor` signals completion**. There is no native `has_more`, `next_cursor`, `estimated_total`, or `limit` on these methods, and page size is server-selected — do not rename `nextCursor` to snake_case or bolt a house convention onto a native list. See [native-wire-shapes.md](native-wire-shapes.md).
+
+- **A tool's own result payload MAY carry a documented house pagination convention.** When a `tools/call` result paginates domain data (not a native list method), `has_more` is acceptable: if `has_more` is true, include a navigation token (`next_cursor`) and, where available, `estimated_total`. These are declared domain output and belong in `structuredContent` under the tool's `outputSchema` so the agent can observe them — not under `_meta`, which clients may not surface to the model. Label them as convention, never as protocol fields.
 
 - **Provide filters that meaningfully reduce response size.** `since=`, `query=`, `category=`, `field=`. Filters that don't change wire size are noise.
 

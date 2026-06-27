@@ -519,7 +519,7 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `description`, `inputSchema`, `outputSchema`, `annotations`, documented `errors`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented `errors` catalog as a separately labeled convention extension (`errors` is not a native `Tool` field — see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
 Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8a. Roots-aware workspace behavior
@@ -933,7 +933,7 @@ A successful response:
   "row_count": 8472,
   "result_artifact": {
     "path": "/var/cache/warehouse-mcp/results/q_01J9XYZ.csv",
-    "mimeType": "text/csv",
+    "mime_type": "text/csv",
     "size_bytes": 412908,
     "ttl_hours": 24,
     "expires_at": "2026-05-11T18:14:32Z"
@@ -950,7 +950,8 @@ What to notice: this skill treats `readOnlyHint: true` as defensible here — th
 That is a deliberate reading of an ambiguous hint, not settled spec (see contract-checklist §3): a reviewer who reads `readOnlyHint` literally as "does not modify its environment" may count the local write as mutation, so where you can, prefer returning the result as a resource or resource link with TTL metadata rather than a local-file artifact.
 `idempotentHint: true` follows the same framing: repeated calls don't compound state. Each call produces a fresh delivery artifact at a new path, but the artifact is the response, not an effect on the world. (Compare with `slack_send_message` in §1, where `idempotentHint: false` because re-sending compounds — two messages posted, not a no-op. Idempotency tracks compounding effect, not whether the wire response is byte-identical.)
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
-The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mimeType`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
+The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mime_type`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
+Its sub-fields use house `snake_case` (`mime_type`, not the native `Resource.mimeType`) because `result_artifact` is a convention object, not a native `Resource`; if a server instead returns a real native `resource_link`, it carries the native `mimeType` casing (see `contract-checklist.md` §3 and the native-vs-convention rule in `SKILL.md`).
 Flipping `readOnlyHint` to `false` here would gate auto-approval on a call this skill considers read-only and create friction with no safety benefit; a server that takes the literal reading instead should say so and annotate consistently.
 
 ## 13. Tool result with resource link
