@@ -28,7 +28,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] At least two error payloads use stable symbolic codes with field-level detail and a repair hint naming a real callable surface (§6).
 - [ ] Errors return as tool result errors (`isError: true`), not JSON-RPC errors (§6).
 - [ ] A capability summary exists stating what the server does NOT do (§1/§2 negative scope).
-- [ ] List-shaped responses use cursor pagination with `has_more` and a concise default with a `detail` toggle (§8).
+- [ ] Pagination is cursor-based and provenance-correct: a tool's own list-shaped result payload may use the `has_more` house convention, while native list methods (`tools/list`, etc.) use `nextCursor` (omission = done) — not a house convention; responses also have a concise default with a `detail` toggle (§8).
 - [ ] Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) are present and honest — e.g., create-issue is not marked read-only or idempotent (§3).
 
 **Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations.

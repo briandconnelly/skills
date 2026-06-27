@@ -35,7 +35,8 @@ Revisit this skill when 2026-07-28 finalizes.
 This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, a capability `fingerprint`, prompt prerequisites, and detail toggles.
 Keep them — but never let them masquerade as protocol.
 
-- Use native fields with their exact spec names and casing.
+- **Preserve native MCP field names and casing exactly; prefer `snake_case` for house/domain fields.**
+  A field's provenance is determined by the MCP type that contains it, **not** by its casing — native `_meta` carries an underscore, `name`/`code`/`repair` are lowercase on both sides, and a convention object may hold a `mimeType`-style name. So casing is a preference for house fields, never a test for whether a field is protocol.
   Tool: `name`, `title`, `description`, `icons`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`.
   Resource: `uri`, `name`, `title`, `description`, `mimeType`, `size`, `icons`, `annotations`, `_meta`.
   Resource template: `uriTemplate`, `name`, `title`, `description`, `mimeType`, `icons`, `annotations`, `_meta`.
@@ -44,6 +45,7 @@ Keep them — but never let them masquerade as protocol.
 - Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
 - Label every convention extension as such where it appears, so a reader can tell protocol from house style.
 - The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
+- For the exact native request/response envelopes, field names, and casing of the methods most often confused with house conventions — list pagination, completion, the `tools/call` result, and the task lifecycle — see [native-wire-shapes.md](references/native-wire-shapes.md).
 
 ## When To Use
 
@@ -81,7 +83,7 @@ Notation: bare `§N` always means a contract-checklist section; `ex§N` means se
 | §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | ex§5 |
 | §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | ex§6 |
 | §7 | Long-Running Operations | Choose blocking / progress / task-augmented deliberately; declare duration and timeout; recover via the native task lifecycle with a labeled fallback. | ex§11 |
-| §8 | Token Efficiency | Concise default with a `detail` toggle; cursor pagination with `has_more`; explicit truncation with a repair hint; identifiers chosen by role. | ex§2 |
+| §8 | Token Efficiency | Concise default with a `detail` toggle; native list methods paginate with `nextCursor` (omission = done), while a tool's own result payload may use a documented `has_more` convention; explicit truncation with a repair hint; identifiers chosen by role. | ex§2 |
 | §9 | Versioning | Publish a capability fingerprint; deterministic list ordering; native list-changed notifications; discoverable deprecation. | ex§9 |
 
 ## Workflow
