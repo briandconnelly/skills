@@ -27,7 +27,7 @@ Revisit this skill when 2026-07-28 finalizes.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
 - Make side effects, idempotency, rate limits, and agent-actionable prerequisites visible.
 - Default to compact, deterministic, structured output; structured data is authoritative and text or markdown is supplemental rendering for human-facing clients.
-- Provide explicit discovery primitives so agents can load capabilities selectively.
+- Provide explicit discovery primitives, but keep every definition compact: the least-capable realistic client preloads the whole catalog from `tools/list`, so compact schemas and concise descriptions are the universal baseline, and selective on-demand loading is a client-dependent optimization layered on top.
 - Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
 
 ## Native Fields vs Convention Extensions
@@ -77,7 +77,7 @@ Notation: bare `§N` always means a contract-checklist section; `ex§N` means se
 | § | Section | One-line rule | Worked examples |
 | --- | --- | --- | --- |
 | §1 | Server-Level | Identity, transport, auth modes, agent-actionable prerequisites, negotiated capabilities, and roots — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | ex§7, ex§8a |
-| §2 | Discovery | A capability summary plus at least one progressive-disclosure mechanism, so agents load definitions on demand rather than all upfront. | ex§7, ex§8 |
+| §2 | Discovery | A capability summary plus compact definitions as the universal baseline; progressive disclosure is a client-dependent optimization — pick a mechanism by cost axis (host-managed context, server-managed catalog, or client-independent surface reduction). | ex§7, ex§8 |
 | §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | ex§1, ex§2, ex§10, ex§12, ex§13 |
 | §4 | Resources | Stable hierarchical URIs; index before body; stable chunk ids; templates + completion; subscriptions for mutable resources. | ex§3, ex§4, ex§5a, ex§5b |
 | §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | ex§5 |

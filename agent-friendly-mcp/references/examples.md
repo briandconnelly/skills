@@ -499,7 +499,7 @@ This summary is a convention surface, not a native MCP structure — expose it t
 
 ## 8. `search_tools` response shape
 
-Response from `search_tools(query="send message")`. *Demonstrates §2 progressive disclosure.* **One valid pattern; the rule is on-demand definition loading, not this specific shape.**
+Response from `search_tools(query="send message")`. *Demonstrates §2 host/client-managed context disclosure.* **One valid shape for that one cost axis — not a universal requirement.** `search_tools` / `describe_tool` are themselves extra entries in native `tools/list`; they lower an agent's model-visible context **only** on a host that withholds native definitions and injects the schemas these return on demand (or routes execution through a stable generic call tool). On a host that preloads the full catalog, they add tools and round trips with no disclosure benefit — see the client-dependency caveat in §2.
 
 ```json
 {
@@ -532,7 +532,7 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 progressiv
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented `errors` catalog as a separately labeled convention extension (`errors` is not a native `Tool` field — see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other valid shapes: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — the rule is on-demand loading, not this exact response envelope.
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented `errors` catalog as a separately labeled convention extension (`errors` is not a native `Tool` field — see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other shapes on this same axis: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — all custom surfaces layered over native discovery, and all subject to the same host-integration requirement. None of them shrink the native `tools/list` payload a preloading client receives; to lower cost on a client that never lazy-loads, reduce the catalog itself (compact definitions, consolidation, a compact dispatcher, or authorization-scoped catalogs — see §2).
 Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8a. Roots-aware workspace behavior

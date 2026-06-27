@@ -58,14 +58,38 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
-- **Provide at least one progressive-disclosure mechanism.** `search_tools` / `describe_tool` and resource-catalog endpoints are valid patterns. The requirement is that clients can load definitions on demand rather than receiving everything upfront.
+- **Compact definitions are the universal baseline.** Every entry `tools/list` returns is a complete `Tool` record — the protocol has no summary-only or filtered mode — so the one discovery cost you can lower regardless of client is the serialized size of each definition.
+  Use a tight `inputSchema`, no redundant prose, and descriptions precise enough to select and repair but no longer.
+  Measure serialized tokens, not tool count — and do not compress away the selection or safety information an agent needs.
+  Whether a client fetches every page and exposes all of it to the model is client-dependent; compact definitions pay off either way, which is what makes them the baseline.
 
-- **Make discovery selective.** Clients can filter by name, namespace, or topic. A server with 80 tools and no filter is functionally undiscoverable.
+- **Paginate large or unbounded catalogs, but treat it as scalability, not token savings.** Native `tools/list` cursor pagination caps peak response size, improves time-to-first-page, and lets a client stop early.
+  A client that walks every page still pays for every definition plus cursor overhead, so pagination lowers token cost only when a client intentionally declines to fetch or expose later pages.
+  Keep `nextCursor` semantics native (omission = done, see §8) and ordering deterministic so a catalog change mid-walk cannot strand or duplicate tools (see §9).
+
+- **Progressive disclosure of tool definitions is a client-dependent optimization, not a universal guarantee.** The least-capable realistic client preloads the whole catalog and exposes it to the model, and adding discovery tools cannot shrink that for it.
+  Design for that client, then choose a mechanism by which cost axis you can actually move on the clients you target:
+  - **Host/client-managed context disclosure** — `search_tools` / `describe_tool`, or a resource catalog of operation metadata.
+    The agent loads summaries, then pulls the few full definitions it needs.
+    This lowers *model-visible context* only when the host withholds native definitions and injects selected schemas on demand (or routes execution through a stable generic call tool).
+    On a host that still preloads `tools/list`, these are extra tools and round trips with no disclosure benefit, so document the host integration it assumes.
+  - **Server-managed catalog disclosure** — expose a small initial catalog and reveal more as *declared* state changes (authorization, configuration, workspace, or external state), emitting `notifications/tools/list_changed`.
+    `listChanged` is cache *invalidation*, not discovery: it tells a client to refetch, communicates no relevance, and strands tools on clients that ignore it.
+    Tie every reveal to such a declared change rather than to unrelated calls, so the surface still satisfies the stability rule below; a catalog that mutates as a hidden side effect of ordinary calls violates it.
+    Requires verified host refresh behavior, a stable fallback catalog for non-refreshing clients, and deterministic snapshot semantics so a change mid-pagination cannot drop or duplicate tools (see §9).
+  - **Client-independent surface reduction** — shrink the catalog *every* client sees.
+    Options: task-oriented consolidation (fewer, task-completing tools — see §3); a compact dispatcher tool (`{operation, arguments}` plus an on-demand `describe`/catalog operation — **not** a fat union that re-embeds every operation schema, which is consolidation at best and costs the same tokens); narrowly-scoped servers; deployment profiles; or stable authorization-scoped catalogs (§9).
+    This is the only axis that helps a client that preloads and never lazy-loads.
+    Trade-off: a dispatcher collapses per-operation descriptions, annotations, validation, and client approval into one tool, so enforce operation-level validation and policy server-side, and document that native annotations and approval apply to the dispatcher as a whole.
+
+- **Make discovery selective — through the right surface.** A server with 80 tools and no way to narrow them is functionally undiscoverable.
+  But native `tools/list` accepts only an opaque pagination cursor: it has no query, namespace, detail, or summary parameter.
+  Provide filtering and summary/detail modes through a discovery tool, a resource catalog, configuration, or authorization-scoped catalogs, and label them as such — never as a portable `tools/list` capability.
 
 - **Use native completion for hard-to-guess prompt and resource-template arguments.** If the server has prompt arguments or resource-template variables with large, dynamic, or enum-like value sets, advertise `server.capabilities.completions` and implement `completion/complete`.
   Use it proactively to reduce invalid IDs, paths, project keys, channel names, and URI components; keep tool-argument repair in normal tool errors because MCP completion does not complete arbitrary tool arguments.
 
-- **Discovery obeys token-efficiency rules.** Definitions paginate, support filtering, and return concise summaries by default with an opt-in detailed mode (see §8).
+- **Discovery obeys token-efficiency rules.** Keep each definition compact (the baseline above); where a discovery tool or resource catalog returns its own list-shaped payload, paginate it, support filtering, and return concise summaries by default with an opt-in detailed mode (see §8).
 
 - **Design for client variance.** Some clients preload tools, paginate discovery, ignore annotations, or expose resources poorly; keep discovery usable for the least-capable realistic client.
 
@@ -79,7 +103,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **Discovery may vary by authorization context, but never by hidden side effects.** The tool and resource lists an agent sees may legitimately differ across auth scopes — an unauthorized scope simply does not see a capability. They MUST NOT drift as a side effect of unrelated calls within a connection: the same authorized client gets the same surface in the same order (see §9), so a cached client can trust it. Make differences auth-scoped, declared, and stable, not per-request surprises.
 
-Audit prompt: Can an agent find the right tool or resource for a task without loading every definition the server exposes?
+Audit prompt: On the clients this server actually targets, what must an agent load before its first useful call — and is that the smallest surface those clients allow, given that the least-capable realistic client preloads every tool definition?
 
 ---
 
