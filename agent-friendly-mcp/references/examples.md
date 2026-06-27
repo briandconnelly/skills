@@ -380,7 +380,7 @@ A more common first-call failure — an unknown channel name passed where an id 
 
 What to notice: the channel-name-vs-id mistake is the predictable first-call failure for a tool whose `channel_id` is a hard-to-guess `C…` id (see §1), and MCP completion does not cover tool arguments — so the repair carries the agent across the gap by naming `slack_lookup_channel` and the exact argument to pass, with the resource index as a fallback.
 
-A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, with the same repair signal carried in `error.data`.
+A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, but carries the **same error/repair envelope** in `error.data` — the same fields as the tool-result error above (plus `resource_uri`, since this failure is resource-specific), with one deliberate exception: `code`/`message` are renamed to `machine_code`/`human_message` so they do not shadow the native JSON-RPC `code`/`message` that wrap them. Everything else — `details`, `temporary`, `retry_after_ms`, the single `repair` object, and the correlation fields — is the same shape and cardinality across both surfaces (see the unified envelope table in `contract-checklist.md` §6).
 
 ```json
 {
@@ -390,17 +390,30 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
     "code": -32002,
     "message": "Resource not found.",
     "data": {
-      "human_message": "Message thread was deleted or is no longer visible.",
       "machine_code": "resource_gone",
-      "recoverable": false,
-      "repair_hints": [
-        {"tool": "slack_search_messages", "arguments": {"query": "Deploy started for api@v2.4.1"}}
-      ],
-      "resource_uri": "slack://channels/C0123ABCD/messages/1714600000.001200"
+      "human_message": "Message thread was deleted or is no longer visible.",
+      "details": {
+        "field": "resource_uri",
+        "value": "slack://channels/C0123ABCD/messages/1714600000.001200",
+        "reason": "Thread was deleted on 2026-04-12T09:00:00Z."
+      },
+      "temporary": false,
+      "retry_after_ms": null,
+      "repair": {
+        "next_step": "search_then_read",
+        "tool": "slack_search_messages",
+        "arguments": {"query": "Deploy started for api@v2.4.1"},
+        "alternative": "Browse the `slack://channels/C0123ABCD/messages` index and pick a current thread."
+      },
+      "resource_uri": "slack://channels/C0123ABCD/messages/1714600000.001200",
+      "request_id": "req_01HXYZ7K3M9ABCDEG",
+      "fingerprint": "slack-mcp@1.4.0+s7ab21c"
     }
   }
 }
 ```
+
+What to notice: the `data` block carries the same error envelope as the tool-result error's `structuredContent`, adding `resource_uri` because this failure is resource-specific. `machine_code: resource_gone` with `temporary: false` and `retry_after_ms: null` tells the agent the exact resource is permanently gone — don't back off and retry the same read — while `repair` still routes it to a real next call (`slack_search_messages`) to recover the underlying information a different way. (This is why no separate `recoverable` flag is needed: `machine_code` + `temporary` already say whether *this* resource can return, and a non-empty `repair` already says recovery is possible by another path.) `request_id` here mirrors the envelope `id`, and `fingerprint` ties the failure to the server contract version — the same correlation context the tool surface carries.
 
 `-32002` is MCP's resource-not-found JSON-RPC code under the 2025-11-25 baseline; the `data` block carries the repair contract. (The 2026-07-28 RC is expected — not yet confirmed final text — to fold this into the standard `-32602` *Invalid params*; see the spec-baseline note in `SKILL.md`. Either way, branch on `machine_code`, not the numeric code, to stay portable across that change.)
 
