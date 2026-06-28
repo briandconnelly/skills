@@ -319,6 +319,7 @@ Not enforced — the part everyone overstates:
 | Putting `GH_TOKEN` directly in `settings.local.json` `env` | It is a static field; the token expires hourly — mint it per command via the hook + `$CLAUDE_ENV_FILE` |
 | Letting a failed mint leave `GH_TOKEN` empty | `gh` treats empty as unset and silently falls back to the personal stored credentials; substitute a non-empty invalid token so the failure surfaces as an auth error |
 | Probing identity with `gh api user` | Installation tokens have no user and 403 there; use `gh api installation/repositories` |
+| Self-assigning issues to signal the bot is working them | A GitHub App bot actor is not a valid assignee, so `gh issue edit --add-assignee` with the bot as target fails — and `Issues: write` is already the max grant, so no wider permission exists; signal work-in-progress with a claim label (e.g. `agent:in-progress`) via `--add-label` instead |
 | Granting Checks read without Actions read | Under an App token `gh pr checks` needs both — the status rollup traverses each check suite's workflow run |
 | Granting Workflows: write "to be safe" | Hands a prompt-injected agent the ability to rewrite CI |
 | Write token cache, then chmod | umask window exposes the token; create `0600` atomically |
