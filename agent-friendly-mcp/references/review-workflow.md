@@ -7,7 +7,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
 ## Severity Scale
 
 - **Critical** — agent will reliably fail to use the server correctly, or there is a security or data-integrity risk. Examples: a tool that mutates shared or persistent state advertised `readOnlyHint: true` (§3), `idempotentHint: true` on a tool that creates duplicates on retry, undocumented destructive side effects, secrets leaked in error payloads, a `stdio` server logging to stdout, an auth model collapsed to "credential failure" with no distinction between missing / wrong / insufficient scope. Blocks merge.
-- **Major** — agent will frequently choose the wrong primitive, waste tokens, or hit avoidable errors. Examples: overlapping tool descriptions, bloated definitions or a 50-tool catalog with no client-independent surface reduction (and no progressive-disclosure mechanism matched to the target clients), unstructured error strings with no symbolic codes, no capability fingerprint, resource lists that inline bodies.
+- **Major** — agent will frequently choose the wrong primitive, waste tokens, or hit avoidable errors. Examples: overlapping tool descriptions, bloated definitions or a 50-tool catalog with no client-independent surface reduction (and no progressive-disclosure mechanism matched to the target clients), unstructured error strings with no symbolic codes, no capability fingerprint for a target client that caches or pins the server surface, resource lists that inline bodies.
 - **Minor** — degrades agent experience but recoverable. Examples: verbose default responses with no detail toggle, missing `request_id` correlation, ambiguous parameter names whose schema types still constrain shape, summaries longer than three sentences.
 - **Nit** — style, naming, or doc improvement. Examples: inconsistent verb usage across tools, capitalization drift, a prompt that could be one sentence shorter.
 
@@ -77,7 +77,7 @@ After the findings list, include a **checklist coverage table**. One row per sec
 | §6 Failure Recovery | finding F4 | error responses are unstructured strings |
 | §7 Long-Running Operations | not-checked | no long-running operations identified |
 | §8 Token Efficiency | OK | cursor pagination present; `detail` toggle on every tool |
-| §9 Versioning | finding F5 | no capability fingerprint published |
+| §9 Versioning | finding F5 | no capability fingerprint despite a caching client |
 
 End the report with open questions or assumptions, and an optional remediation summary if the findings cluster around a theme (e.g., "most Critical findings concentrate in §6 — invest there first").
 
