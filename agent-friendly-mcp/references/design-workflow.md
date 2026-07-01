@@ -49,7 +49,7 @@ Checkpoint: §3 granularity rule.
 
 Treat the schema as the authoritative contract. Write it before behavior.
 
-- Required vs optional discipline: required parameters are necessary; optional ones have meaningful defaults declared in schema.
+- Required vs optional discipline: required parameters are necessary; optional ones declare their omission semantics in the schema description, with `default` only where the server actually applies that value (§3).
 - Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
 - Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
 - Outputs: Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them.
@@ -63,13 +63,12 @@ Checkpoint: §3, §4. See `examples.md` §1 for a worked tool schema and §5 for
 
 ## Step 5: Design the discovery surface
 
-Decide how an agent finds the right primitive at the lowest cost its clients allow — remembering that the least-capable realistic client preloads every definition from `tools/list`.
+Decide how an agent finds the right primitive at the lowest cost its clients allow (§2 defines the client-dependence rules).
 
 - Write the server capability summary: what it does, what it does NOT do, and any prerequisites that affect whether or how an agent should use it.
 - Expose the summary through a resource, discovery tool, or instructions field, whichever the client honors.
   Treat `instructions` as supplemental because some clients do not surface it to the model.
-- Make compact definitions your baseline: tight schemas and concise-but-sufficient descriptions lower cost on every client, including the ones that preload the whole catalog.
-- Then, if you need progressive disclosure, pick a mechanism by cost axis (§2): host-managed context disclosure (`search_tools` / `describe_tool`, resource catalog — client-dependent), server-managed catalog disclosure (`listChanged` with a fallback — client-dependent), or client-independent surface reduction (consolidation, a compact dispatcher, narrowly-scoped servers, authorization-scoped catalogs). Only the last helps a client that preloads and never lazy-loads.
+- Make compact definitions your baseline (§2), then, if you need progressive disclosure, pick a mechanism by cost axis: host-managed context disclosure, server-managed catalog disclosure, or client-independent surface reduction — only the last helps a client that preloads and never lazy-loads.
 - Make discovery selective, but through a discovery tool, resource catalog, or authorization-scoped catalog — native `tools/list` takes only a pagination cursor and has no filter parameters. A flat list of 80 tools is undiscoverable.
 - Index resources; do not inline bodies. Catalog entries carry triage metadata only.
 - Publish `resources/templates/list` for URI-shaped resources that cannot or should not be fully enumerated.
@@ -105,7 +104,7 @@ For each operation that may outlive a normal request/response turn, decide how t
 - Choose blocking `tools/call`, progress notifications, or task-augmented requests.
 - Declare expected duration, timeout behavior, and whether partial progress is observable.
 - Support `progressToken` and recover through native task operations where applicable — poll `tasks/get` (respect `pollInterval`), fetch with `tasks/result`, cancel with `tasks/cancel` — using the spec's task fields and statuses (`working`, `input_required`, `completed`, `failed`, `cancelled`).
-- For `input_required`, say whether the task resumes through elicitation, URL-mode elicitation, or a domain-specific status/repair tool.
+- For `input_required`, design around the native path — the requestor preemptively calls `tasks/result`, which blocks and carries the pending input request — and say whether the input mechanism is elicitation, URL-mode elicitation, or a domain-specific status/repair tool (§7).
 - Enable tasks at both levels: declare the server `server.capabilities.tasks.requests.tools.call` and the tool's `execution.taskSupport` (`optional`, `required`, or `forbidden`).
   Tasks are experimental, so add a domain-specific status/cancel fallback only as a labeled stand-in for clients without task support.
 
@@ -133,7 +132,7 @@ A worked fixture for one task makes the metrics runnable rather than aspirationa
     {
       "type": "cold_start",
       "given": "fresh connection, no prior discovery",
-      "assert": "agent reads the capability summary (or search_tools) before its first slack_send_message call, not the full tool list"
+      "assert": "parameterized by host mode: on a preloading host, the serialized definitions the host injects stay within the token budget (the agent cannot avoid the load); on a lazy-loading host, the agent reads the capability summary or search_tools before loading full definitions"
     },
     {
       "type": "first_repair",
