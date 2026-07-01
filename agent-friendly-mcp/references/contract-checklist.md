@@ -369,7 +369,7 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
   The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
-  `tasks/result` blocks until the task reaches a terminal status, so an agent may keep polling `tasks/get` in parallel while it waits.
+  `tasks/result` blocks until the task reaches a terminal status and its response is always the underlying result, never an intermediate payload; an agent may keep polling `tasks/get` in parallel while it waits.
   Task objects use the spec's fields and casing — `taskId`, `status`, optional `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`.
   A `CreateTaskResult` may carry `io.modelcontextprotocol/model-immediate-response` in `_meta` — a string the host can hand the model immediately while the task runs; provide it so task-accepting calls do not go silent.
   Carry `io.modelcontextprotocol/related-task` in `_meta` on task-associated messages whose payload does not already name the task: `tasks/result` responses MUST include it, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT, because the `taskId` already travels in the message itself.
@@ -377,7 +377,8 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 - **Treat `notifications/tasks/status` as optional push, not contract.** Receivers MAY emit it on status changes with the full task state; requestors MUST NOT rely on receiving it.
   Keep polling `tasks/get` as the authoritative status path, and use the notification only to poll sooner.
 
-- **Define `input_required` recovery.** The native path is fixed: when polling shows `input_required`, the requestor SHOULD preemptively call `tasks/result` — the blocking call is the channel over which the receiver delivers the task's pending messages (an elicitation request carries the related-task `_meta`), and the task transitions back to `working` once input arrives.
+- **Define `input_required` recovery.** The native path is fixed: when polling shows `input_required`, the requestor SHOULD preemptively call `tasks/result` and hold it open.
+  The pending input request is not the `tasks/result` response — it arrives as a separate receiver-to-requestor request (an `elicitation/create` carrying the related-task `_meta`) while the call is pending; once input arrives the task returns to `working`, and the same held call completes with the terminal result (re-call only if the call itself fails).
   Say which input mechanism rides that channel — native elicitation (`elicitation/create`), URL-mode elicitation, or a domain-specific fallback for clients without the negotiated capability.
   The task status alone is not enough; the agent needs the next operation and the capabilities required to perform it.
 

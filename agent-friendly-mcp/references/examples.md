@@ -878,7 +878,7 @@ Response:
 
 **Retrieve** the result with `tasks/result` (`params: {"taskId": "task_01J9EXPORT"}`); it blocks until the task is terminal, then returns exactly what the original `tools/call` would have, including the related-task `_meta`.
 Domain payload (export location, counts) rides in `structuredContent`.
-If polling shows `input_required`, call `tasks/result` preemptively — the blocking call is the channel the server uses to deliver the pending input request (which carries the related-task `_meta`), and the task returns to `working` once input arrives.
+If polling shows `input_required`, call `tasks/result` preemptively and hold it open: the pending input request arrives as a separate server-to-client request (an `elicitation/create` carrying the related-task `_meta`) while the call is pending — not as the `tasks/result` response — and once input arrives the task returns to `working` and the same held call completes with the terminal result (re-call only if the call itself fails).
 
 Response:
 

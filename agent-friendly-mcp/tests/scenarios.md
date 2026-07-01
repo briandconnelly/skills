@@ -79,7 +79,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] Native task fields use spec casing (`taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval`) and statuses are exactly `working`/`input_required`/`completed`/`failed`/`cancelled` (§7).
 - [ ] The `CreateTaskResult` nests the `Task` under `result.task`, while `tasks/get` returns it directly — the shapes are not collapsed into one envelope (§7, native-wire-shapes).
 - [ ] Any `progressToken` originates in the request's `_meta`, not minted by the server (§7).
-- [ ] The watermark pause is handled via `input_required` with the native recovery path: the agent preemptively calls `tasks/result`, which blocks and carries the pending input request (§7).
+- [ ] The watermark pause is handled via `input_required` with the native recovery path: the agent preemptively calls `tasks/result` and holds it open, the pending input request arrives as a separate server-to-client request while the call is pending, and the held call returns the terminal result once input is supplied (§7).
 - [ ] The fallback status/cancel tools are labeled as convention, mirror the native signals (state, when to poll, result location, expiry), and do not replace `tasks/*` (§7).
 - [ ] Native fields and house conventions are not mixed: convention metadata is namespaced or labeled, and native casing is never snake_cased (native-vs-convention rule).
 
