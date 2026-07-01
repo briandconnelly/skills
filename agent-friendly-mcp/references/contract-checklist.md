@@ -8,7 +8,7 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 *Worked shapes: `examples.md` §7 (server capability summary), §8a (roots-aware workspace behavior).*
 
-- **Name with a service prefix.** Use a descriptive, agent-facing name with no version numbers, not a host-language convention. The name shows up in tool selection across multi-server contexts and is part of the discovery surface.
+- **Name the server distinctively.** Use a descriptive, agent-facing name with no version numbers, not a host-language convention. The name shows up in tool selection across multi-server contexts and is part of the discovery surface.
 
 - **Avoid generic service names.** Names like `api`, `data`, or `tools` collide silently in multiplexed clients. Pick a name a human could disambiguate at a glance.
 
@@ -36,11 +36,11 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
 
 - **Record negotiated capabilities as part of the contract.** During initialization, client and server exchange protocol versions and capabilities; optional features are usable only if negotiated.
   A design or audit must say which fully qualified paths it depends on (for example, `server.capabilities.completions`, `server.capabilities.resources.subscribe`, `client.capabilities.roots`, `client.capabilities.elicitation`, or `server.capabilities.tasks.requests.tools.call`) and what fallback weaker clients receive.
-  *Forward-compat (see `SKILL.md` Spec Baseline):* the 2026-07-28 RC is expected to make negotiation per-request rather than init-time and to express optional features as a reverse-DNS `extensions` map. The contract obligation — declare what you depend on and what weaker clients get — is stable; the carrier mechanism is a likely migration point.
+  *Forward-compat:* the negotiation carrier is a likely migration point in the 2026-07-28 RC (see `SKILL.md` Spec Baseline); the obligation itself — declare what you depend on and what weaker clients get — is stable.
 
 - **Handle roots deliberately for workspace-scoped servers.** If a server reads or writes local project content, request `roots/list` from clients that advertise `roots`, stay within those declared roots unless the tool contract explicitly says otherwise, and handle `notifications/roots/list_changed`.
   Roots guide server behavior and reduce path ambiguity; they are not access control, so still enforce filesystem permissions independently.
-  *Forward-compat:* roots is slated for deprecation in the 2026-07-28 RC on a long retention window, with explicit tool-minted/model-returned handles taking over scope declaration. Keep workspace scope expressible as ordinary tool arguments so it survives roots' removal.
+  *Forward-compat:* roots is slated for deprecation in the 2026-07-28 RC (see `SKILL.md` Spec Baseline); keep workspace scope expressible as ordinary tool arguments so it survives roots' removal.
 
 - **Expose auth mechanics that affect repair.** For HTTP authorization, document the canonical server URI and resource indicator used for token audience binding, never pass through tokens issued for a different resource, and surface incremental or step-up scope challenges as structured repair (`required_scopes`, `resource`, `authorization_url` or elicitation URL where appropriate).
   For stdio, document where credentials come from only when the agent can act on it.
@@ -119,7 +119,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - **Disambiguate parameter names.** Use `user_id`, not `user`; `channel_id`, not `channel`; `started_after`, not `since`. Ambiguous names cause wrong-shape arguments on the first call.
 
-- **Apply required-vs-optional discipline strictly.** Required parameters must be necessary; optional parameters must have meaningful defaults declared in schema.
+- **Apply required-vs-optional discipline strictly.** Required parameters must be necessary; every optional parameter declares its omission semantics — what the server does when the field is absent — in its schema description.
+  Use JSON Schema `default` only when the server actually applies that value; `default` is annotation, not behavior, and no validator injects it into the call.
+  Omission need not mean a substituted value: "omit `thread_ts` to post a new top-level message" is complete omission semantics with no default at all.
 
 - **Use strict types.** Enums where the value set is fixed; formats (`date-time`, `uri`, `email`) where the shape is conventional; `integer` vs `number` chosen deliberately.
 
@@ -150,6 +152,10 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
 
+- **Know the annotation defaults and gates.** An omitted annotation is not neutral: the spec defaults are `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: true`, so an unannotated tool already reads as a possibly-destructive mutator.
+  Declare annotations explicitly anyway so the contract is visible rather than inherited — but never report a missing `destructiveHint` as if omission declared the tool safe.
+  `destructiveHint` and `idempotentHint` are meaningful only when `readOnlyHint` is `false`; omit them on read-only tools rather than asserting semantics the protocol does not assign there.
+
 - **Define mutation by observable scope, not by I/O — a deliberate reading of an ambiguous hint.** The MCP spec glosses `readOnlyHint` only as "the tool does not modify its environment," which is broad enough to read either way for a local write.
   This skill takes the position that `readOnlyHint` should track whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
   Under that reading it is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
@@ -163,6 +169,18 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
   Enforcement lives in the implementation.
 
 - **Do not rely on annotation visibility.** Some clients do not surface annotations to the model, so annotations are advisory and cannot be the only safety prompt.
+
+- **Give unsafe mutations an idempotency key.** For create/send/pay-style tools where a duplicate is costly, accept a client-supplied `idempotency_key`, and declare its deduplication window and scope.
+  Without one, an agent that retries after a timeout cannot avoid double-posting.
+
+- **Define ambiguous-outcome recovery.** When a mutating call times out or the transport drops, the agent cannot know whether the mutation committed.
+  Name the lookup or status surface that resolves the ambiguity (in the tool description and in timeout-adjacent repair hints) so the agent can reconcile instead of blind-retrying.
+
+- **Declare partial-success semantics for multi-item operations.** Say whether the operation is atomic or per-item.
+  Per-item results carry a stable item id, outcome, and retryability, and the retry surface accepts just the failed items — never force the agent to re-run completed effects to recover the failures.
+
+- **Protect read-modify-write with version preconditions.** Where concurrent edits are possible, accept an optional `expected_version` (or `if_match`) input, fail with a stable `conflict` error code when it mismatches, and make the repair path re-read-then-reapply.
+  Without it, an agent can silently overwrite changes made by users or other agents between its read and its update.
 
 - **Prefer task-completing tools over endpoint mirrors.** Tool granularity follows user/agent tasks, not the underlying API's resource map.
   Valid split exceptions are recorded in `design-workflow.md` Step 3.
@@ -218,6 +236,9 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 - **Make body content chunkable with stable identifiers.** Agents need to fetch chunk N+1 without re-fetching N, and to cite a chunk back to a tool.
 
 - **Chunk identifiers are stable across reads of the same resource version.** If the resource changes, identifiers may change — but the change is observable via the resource's modification metadata.
+
+- **Every chunk needs a callable fetch path.** Native `resources/read` takes only a URI, so give each chunk its own URI (and publish the pattern as a resource template) or provide a labeled tool fallback that accepts the chunk id.
+  A chunk catalog under `_meta` is auxiliary metadata some clients never surface to the model; the in-band next-chunk pointer in the body (`next_chunk_id`/`next_chunk_uri`) and the chunk URIs are what the agent can actually act on.
 
 - **Include the metadata fields agents use to triage.** Use native `Resource` fields: `title`, `description`, `mimeType`, `size`, and `annotations.lastModified`. Missing metadata pushes the agent into fetching bodies blindly; custom triage fields with no native home go under a namespaced `_meta` key, not a new top-level field.
 
@@ -276,7 +297,8 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Use stable, machine-readable error codes.** Codes are symbolic strings (e.g., `not_found`, `rate_limited`, `invalid_field`), not numeric exit codes. The symbolic code is the authoritative branch key for agents.
 
-- **Document every error code per tool.** An undocumented code is an undiscoverable code; agents cannot branch on it reliably. List the codes a tool can return in its schema.
+- **Document every error code per tool — without bloating every definition.** An undocumented code is an undiscoverable code; agents cannot branch on it reliably.
+  But a full error catalog embedded in every `tools/list` entry inflates the definition each preloading client pays for (see §2), so choose placement by cost: keep only selection- and repair-critical codes inline in the definition, and serve the complete per-tool catalog through an on-demand surface (`describe_tool`, a resource, or the capability summary) that repair hints can reference.
 
 - **Code semantic changes are breaking.** Introducing a new additive code is safe; changing or renaming an existing code's meaning is a breaking change.
   Both are recorded in the fingerprint (see §9).
@@ -347,17 +369,23 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
   The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
-  Task objects use the spec's fields and casing — `taskId`, `status`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`.
+  `tasks/result` blocks until the task reaches a terminal status and its response is always the underlying result, never an intermediate payload; an agent may keep polling `tasks/get` in parallel while it waits.
+  Task objects use the spec's fields and casing — `taskId`, `status`, optional `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`.
+  A `CreateTaskResult` may carry `io.modelcontextprotocol/model-immediate-response` in `_meta` — a string the host can hand the model immediately while the task runs; provide it so task-accepting calls do not go silent.
   Carry `io.modelcontextprotocol/related-task` in `_meta` on task-associated messages whose payload does not already name the task: `tasks/result` responses MUST include it, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT, because the `taskId` already travels in the message itself.
 
 - **Treat `notifications/tasks/status` as optional push, not contract.** Receivers MAY emit it on status changes with the full task state; requestors MUST NOT rely on receiving it.
   Keep polling `tasks/get` as the authoritative status path, and use the notification only to poll sooner.
 
-- **Define `input_required` recovery.** If a task can pause for user input or authorization, say whether the recovery path is native elicitation (`elicitation/create`), URL-mode elicitation, or a domain-specific fallback.
+- **Define `input_required` recovery.** The native path is fixed: when polling shows `input_required`, the requestor SHOULD preemptively call `tasks/result` and hold it open.
+  The pending input request is not the `tasks/result` response — it arrives as a separate receiver-to-requestor request (an `elicitation/create` carrying the related-task `_meta`) while the call is pending; once input arrives the task returns to `working`, and the same held call completes with the terminal result (re-call only if the call itself fails).
+  Say which input mechanism rides that channel — native elicitation (`elicitation/create`), URL-mode elicitation, or a domain-specific fallback for clients without the negotiated capability.
   The task status alone is not enough; the agent needs the next operation and the capabilities required to perform it.
 
+- **Task handles are state handles.** Apply the §1 state-handle discipline to `taskId`s: high-entropy opaque ids, authorization checked on every `tasks/get`, `tasks/result`, and `tasks/cancel`, bounded retention via `ttl` — and do not advertise `tasks/list` where requestor isolation cannot be enforced, because it enumerates other requestors' handles.
+
 - **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
-  *Forward-compat (see `SKILL.md` Spec Baseline):* the 2026-07-28 RC is expected to move tasks out of core into a negotiated extension — server-directed task creation, `tasks/update` added, `tasks/list` removed. The labeled domain-specific fallback this checklist already requires is the hedge that survives that move; keep status/result/cancel expressible as ordinary tools so recovery does not depend on the task surface staying core.
+  *Forward-compat:* the 2026-07-28 RC is expected to move tasks out of core into a negotiated extension (see `SKILL.md` Spec Baseline); this labeled fallback is the hedge that survives that move — keep status/result/cancel expressible as ordinary tools.
 
 - **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
 
@@ -372,8 +400,11 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 - **Default to a concise response.** Offer richer variants via an explicit detail toggle (e.g., `detail: "summary" | "full"`), not a free `response_format` parameter. See `examples.md` §2 for the concise-vs-detailed response pattern.
 
 - **Detail is orthogonal to format.** Changing detail level changes the density of fields included, not the schema's shape. The same parser handles both modes.
+  Make the concise fields a strict subset of the detailed fields — never rename a field between modes (a `preview` that becomes `text` in detail mode is two contracts, not one).
 
 - **Use cursor-based pagination by default.** Offset-based pagination is acceptable only when ordering is stable and the result set is small enough that pages don't shift between calls.
+
+- **Declare cursor lifetime and expiry recovery.** Cursors are state handles (§1): declare how long they stay valid, return a stable `cursor_expired` error with restart guidance when one lapses, and say whether a paginated walk sees a consistent snapshot or best-effort consistency — silent skips and duplicates mid-walk break agent planning.
 
 - **Native list methods use the protocol pagination shape, not a house convention.** `tools/list`, `resources/list`, `resources/templates/list`, and `prompts/list` accept an optional opaque `cursor` request param and return an optional `nextCursor` in the result; **absence of `nextCursor` signals completion**. There is no native `has_more`, `next_cursor`, `estimated_total`, or `limit` on these methods, and page size is server-selected — do not rename `nextCursor` to snake_case or bolt a house convention onto a native list. See [native-wire-shapes.md](native-wire-shapes.md).
 
@@ -382,6 +413,7 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 - **Provide filters that meaningfully reduce response size.** `since=`, `query=`, `category=`, `field=`. Filters that don't change wire size are noise.
 
 - **Truncate explicitly with a repair hint.** `"truncated": true, "truncation_hint": "hit cap of 200; narrow with since= or query="`. Silent truncation breaks agent planning.
+  Truncation bounds the result set; pagination continues it: `truncated` means items beyond a cap will never be returned by paging, so it is not a synonym for `has_more` — a response may legitimately carry both (more pages exist, and the set they page through is capped).
 
 - **Choose identifiers by role.** Domain IDs with natural meaning can stay readable; state handles use opaque stable IDs with labels or summaries; security-sensitive references are opaque and never leak structure.
 

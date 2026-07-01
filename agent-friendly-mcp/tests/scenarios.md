@@ -24,7 +24,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 - [ ] Tools are task-completing, not one-per-endpoint: the 11 endpoints collapse to roughly 4–7 tools (§3 granularity rule; e.g., label add/remove folded into update, lock/unlock folded or justified as a named split exception).
 - [ ] Tool names are `snake_case`, service-prefixed, verb+noun (§3).
-- [ ] Input schemas use `additionalProperties: false`, disambiguated parameter names (`issue_number` not `issue`), and declared defaults for optional parameters (§3).
+- [ ] Input schemas use `additionalProperties: false`, disambiguated parameter names (`issue_number` not `issue`), and declared omission semantics for optional parameters — `default` only where the server applies it (§3).
 - [ ] At least two error payloads use stable symbolic codes with field-level detail and a repair hint naming a real callable surface (§6).
 - [ ] Errors return as tool result errors (`isError: true`), not JSON-RPC errors (§6).
 - [ ] A capability summary exists stating what the server does NOT do (§1/§2 negative scope).
@@ -56,7 +56,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] Uses the severity scale (Critical/Major/Minor/Nit) and the five-line finding format from `review-workflow.md`.
 - [ ] Flags `readOnlyHint: true` on `send` (a mutating tool) as **Critical** (§3 annotation honesty).
 - [ ] Flags `send` vs `post_message` overlap as a wrong-tool-selection finding (§3).
-- [ ] Flags `delete_all_messages` missing `destructiveHint` and confirmation boundary (§3 security).
+- [ ] Flags `delete_all_messages` as needing an explicit `destructiveHint: true` and a confirmation boundary (§3 security) — without claiming omission declared it safe, since the spec default for an omitted `destructiveHint` is already `true`.
 - [ ] Flags unstructured error strings as Critical or Major against §6 (Critical is defensible when credential failure modes are also collapsed).
 - [ ] Flags 61 tools with no client-independent surface reduction (and no progressive-disclosure mechanism) as Major against §2 — not by asserting that `search_tools` alone would shrink what a standard preloading client loads.
 - [ ] Flags missing `additionalProperties: false`, ambiguous `channel`/`msg` parameter names (§3).
@@ -65,6 +65,26 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** unstructured prose review, no severity scale, no coverage table, misses the `readOnlyHint` lie or rates it as minor, no checklist-section anchoring.
 
+## Scenario 3: Long-running contract (application test)
+
+**Prompt:**
+
+> Design the agent-facing MCP contract for a `video_render` tool whose renders take 1–10 minutes and can pause waiting for the user to approve a watermark.
+> Target MCP 2025-11-25.
+> Produce: the capability declarations, the tool definition, the wire shapes an agent sees when creating, polling, and recovering the render, and whatever fallback you think clients without task support need.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Task support is declared at both levels: `server.capabilities.tasks.requests.tools.call` AND the tool's `execution.taskSupport` — not the per-tool flag alone (§7).
+- [ ] Native task fields use spec casing (`taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval`) and statuses are exactly `working`/`input_required`/`completed`/`failed`/`cancelled` (§7).
+- [ ] The `CreateTaskResult` nests the `Task` under `result.task`, while `tasks/get` returns it directly — the shapes are not collapsed into one envelope (§7, native-wire-shapes).
+- [ ] Any `progressToken` originates in the request's `_meta`, not minted by the server (§7).
+- [ ] The watermark pause is handled via `input_required` with the native recovery path: the agent preemptively calls `tasks/result` and holds it open, the pending input request arrives as a separate server-to-client request while the call is pending, and the held call returns the terminal result once input is supplied (§7).
+- [ ] The fallback status/cancel tools are labeled as convention, mirror the native signals (state, when to poll, result location, expiry), and do not replace `tasks/*` (§7).
+- [ ] Native fields and house conventions are not mixed: convention metadata is namespaced or labeled, and native casing is never snake_cased (native-vs-convention rule).
+
+**Expected baseline failures:** per-tool `taskSupport` without the server capability, invented snake_case task fields or statuses (`running`, `succeeded`), one collapsed envelope for all task methods, server-minted progress tokens, `input_required` handled by polling alone with no `tasks/result` channel, fallback tools presented as protocol.
+
 ## Results
 
 | Date | Scenario | Run | Assertions passed | Notes |
@@ -72,3 +92,4 @@ An assertion the with-skill run misses is a finding against the skill, not again
 | 2026-06-09 | 2 (audit) | baseline | 5/9 | Caught readOnlyHint lie, duplication, error strings, tool count, naming — but no severity scale (used Critical/High/Medium), no five-line format, no §-anchoring, no coverage table, no N/A entries for resources/prompts. |
 | 2026-06-09 | 2 (audit) | with-skill | 9/9 | Five-line findings F1–F7 anchored to §N; coverage table with not-checked reasons; six probes run, three skipped with reasons; remediations name `chat_send_message`, `channel_id`, `search_tools`. Errors rated Critical (within loosened assertion). |
 | 2026-06-09 | 1 (design) | _not yet run_ | | |
+| 2026-07-01 | 3 (long-running) | _not yet run_ | | |
