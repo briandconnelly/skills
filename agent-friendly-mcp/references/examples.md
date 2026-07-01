@@ -38,6 +38,7 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
       },
       "idempotency_key": {
         "type": "string",
+        "minLength": 1,
         "maxLength": 128,
         "description": "Optional client-supplied key; re-sends with the same key within 10 minutes are deduplicated to one post. Omitted means no deduplication — each call posts."
       }
