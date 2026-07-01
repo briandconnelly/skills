@@ -85,7 +85,7 @@ Notation: bare `§N` always means a contract-checklist section; `ex§N` means se
 | §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | ex§6 |
 | §7 | Long-Running Operations | Choose blocking / progress / task-augmented deliberately; declare duration and timeout; recover via the native task lifecycle with a labeled fallback. | ex§11 |
 | §8 | Token Efficiency | Concise default with a `detail` toggle; native list methods paginate with `nextCursor` (omission = done), while a tool's own result payload may use a documented `has_more` convention; explicit truncation with a repair hint; identifiers chosen by role. | ex§2 |
-| §9 | Versioning | Publish a capability fingerprint where clients cache or pin the surface; deterministic list ordering; native list-changed notifications; discoverable deprecation. | ex§9 |
+| §9 | Versioning | Publish a capability fingerprint where target clients cache or pin the surface; deterministic list ordering; native list-changed notifications; discoverable deprecation. | ex§9 |
 
 ## Workflow
 

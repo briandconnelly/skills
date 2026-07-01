@@ -203,7 +203,7 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Burying side effects, idempotency, or rate limits in description prose.** Agents do not reliably read prose for safety-relevant signals. If a tool mutates state, say so via `destructiveHint`; if it can be retried safely, say so via `idempotentHint`; if it has a per-minute call limit, surface that in the response, not the description.
 
 - **Using `readOnlyHint` as a substitute for artifact disclosure.** Disclose transient response artifacts through the structured response and the tool description — flipping the annotation is not disclosure.
-  Under this skill's observable-scope reading the tool stays `readOnlyHint: true`, because clients use `false` to gate auto-approval and a semantically read-only call gains friction without safety.
+  Under this skill's observable-scope reading, the tool stays `readOnlyHint: true`, because clients use `false` to gate auto-approval and a semantically read-only call gains friction without safety.
   A server adopting the literal reading may set `false` instead — but it must document that reading and apply it consistently across tools (see the mutation-scope rule above); the anti-pattern is undocumented flipping or mixing the two readings, not the literal reading itself.
 
 ### Security
