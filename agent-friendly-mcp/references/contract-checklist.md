@@ -442,9 +442,10 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
 
 ## 9. Versioning and Compatibility
 
-- **Publish a capability fingerprint when a target client caches or pins the server surface.** A versioned identity for the server's surface lets such a client detect drift cheaply, without re-walking discovery.
+- **Publish a capability fingerprint when a target client caches or pins the server surface.**
+  A versioned identity for the server's surface lets such a client detect drift cheaply, without re-walking discovery.
   It is a house convention whose value tracks the consumer: long-lived clients, caching clients, and code-execution clients that pin against the surface justify it; a server whose target clients always rediscover and never compare surface identity may omit it.
-  The native obligations in this section — list-changed notifications, deterministic ordering, discoverable deprecation — are mandatory either way.
+  The native obligations in this section — list-changed notifications, deterministic ordering, discoverable deprecation — are mandatory either way, and the remaining fingerprint rules below bind any server that does publish one.
   See `examples.md` §9 for fingerprint evolution across deprecation and removal.
 
 - **Advertise and emit protocol-native list-changed notifications.** Declare the `listChanged` capability where supported, and emit `notifications/tools/list_changed`, `notifications/resources/list_changed`, and `notifications/prompts/list_changed` when the corresponding list changes.
