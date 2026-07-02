@@ -85,6 +85,31 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** per-tool `taskSupport` without the server capability, invented snake_case task fields or statuses (`running`, `succeeded`), one collapsed envelope for all task methods, server-minted progress tokens, `input_required` handled by polling alone with no `tasks/result` channel, fallback tools presented as protocol.
 
+## Scenario 4: Instructions and description prose (application test)
+
+**Prompt:**
+
+> You are writing the prose surfaces of an MCP server called `deployctl` that wraps an internal deployment service. The tool schemas already exist; your job is ONLY the prose:
+>
+> 1. The server-level `instructions` string (the capability summary agents see at initialization).
+> 2. The `description` field text for two tools: `deployctl_deploy_service` and `deployctl_rollback_service`.
+>
+> Base them on the ops team's notes below (verbatim):
+>
+> "Deploys go through Spinnaker under the hood, which we adopted back in 2021 after the Jenkins fiasco. You generally want to run a dry-run first — it catches most config drift. Production deploys need a change ticket, that's an SRE policy thing, and honestly try to avoid deploying on Fridays. Rollbacks are pretty safe, they just repoint the release symlink, though if the previous release is more than 30 days old it's been garbage collected so rollback won't work, and you should probably check that first. The staging environment sometimes gets wedged; a redeploy usually fixes it. Also be careful with the `force` flag — it skips the pre-deploy health checks."
+>
+> Return exactly: the `instructions` string, then the two description strings, each clearly labeled.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Binding rules (change-ticket requirement for production, dry-run expectation, 30-day rollback window, `force` constraint) are structurally distinguishable from background context — imperative sentences or list items, not clauses buried mid-narrative (§2/§3 prose rules).
+- [ ] Every rule's strength is explicit: mandatory ("requires `change_ticket` when `environment=production`") vs default with override ("prefer `dry_run: true` unless re-running a config already dry-run-validated"); the source hedges ("generally", "try to", "probably", "honestly") are resolved to one or the other — a resolution the notes don't determine may be marked as an author decision to confirm with the ops team, but is never reproduced as a hedge.
+- [ ] Every directive is checkable against observable behavior: "be careful with `force`" is replaced by the sourced fact (it skips the pre-deploy health checks) plus either a permitted-use condition or an explicit note that the permitted-use policy is an open author decision — not a fabricated policy presented as sourced; "rollbacks are pretty safe" is replaced by the observable condition (release older than 30 days is garbage-collected and cannot be rolled back).
+- [ ] Compound notes are split into atomic obligations — the rollback sentence yields separate statements for the symlink mechanics (context) and the 30-day limit (rule).
+- [ ] Discretionary background (Spinnaker/Jenkins history, "adopted in 2021") is dropped or kept clearly apart from the rules, never interleaved with them; soft norms (Friday deploys) are either stated as an explicit default with override or dropped, not echoed as vibes.
+
+**Expected baseline failures:** narrative paragraphs that reproduce the ops notes' structure, hedges carried through verbatim ("generally", "be careful"), rules embedded mid-sentence next to Spinnaker trivia, compound sentences bundling mechanics with constraints.
+
 ## Results
 
 | Date | Scenario | Run | Assertions passed | Notes |
@@ -93,3 +118,5 @@ An assertion the with-skill run misses is a finding against the skill, not again
 | 2026-06-09 | 2 (audit) | with-skill | 9/9 | Five-line findings F1–F7 anchored to §N; coverage table with not-checked reasons; six probes run, three skipped with reasons; remediations name `chat_send_message`, `channel_id`, `search_tools`. Errors rated Critical (within loosened assertion). |
 | 2026-06-09 | 1 (design) | _not yet run_ | | |
 | 2026-07-01 | 3 (long-running) | _not yet run_ | | |
+| 2026-07-02 | 4 (prose) | baseline (skill pre-§2/§3/§4 prose rules) | 1/5 | `force` fact and 30-day condition checkable (A3 pass), but description rules buried mid-narrative and the dry-run rule left in a workflow paragraph (A1 fail), "Recommended workflow" dry-run carries no override condition (A2 fail), one bullet bundles previous-release-only + 30-day GC + recovery action (A4 fail), rollback mechanics interleaved with eligibility rules (A5 fail). |
+| 2026-07-02 | 4 (prose) | with-skill | 5/5 | Labeled `Rules:`/`Background:` sections; every rule mandatory or default-with-override; `force` carries the sourced fact plus an explicit permitted-use condition. Two earlier iterations were discarded: the first with-skill run echoed the guidance's then-deploy-domain examples (checklist examples moved to a messaging domain in response), and Codex review flagged that the prompt omitted `force` semantics so a pass could reward invented policy (sourced fact added to the notes). The scores above are the final runs against the corrected prompt. |

@@ -59,6 +59,11 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
+- **Write the capability summary and `instructions` prose as rules-then-context.** Lead with what the server does and does not do.
+  Then state each binding rule — prerequisite, ordering requirement, safety constraint — as its own imperative sentence or list item whose strength is explicit: mandatory ("external sends require an approved `sender_id`") or a default with its override condition ("prefer `detail: \"summary\"` unless the task needs full field density").
+  A hedge that leaves bindingness unclear ("generally", "try to", "be careful") is not a rule; replace it with the observable condition it stands for, or drop it.
+  Background — implementation history, rationale, folklore — comes after the rules or not at all, never interleaved with them.
+
 - **Compact definitions are the universal baseline.** Every entry `tools/list` returns is a complete `Tool` record — the protocol has no summary-only or filtered mode — so the one discovery cost you can lower regardless of client is the serialized size of each definition.
   Use a tight `inputSchema`, no redundant prose, and descriptions precise enough to select and repair but no longer.
   Measure serialized tokens, not tool count — and do not compress away the selection or safety information an agent needs.
@@ -119,6 +124,10 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Reuse verbs consistently.** `list`, `get`, `create`, `update`, `delete`, `send`, `search` should mean the same thing across tools. Inconsistent verbs make the agent second-guess otherwise-obvious calls.
 
 - **Write descriptions that are narrow and unambiguous.** Cover when to use, edge cases, and an example invocation. Descriptions are the primary input to tool selection.
+
+- **Separate binding constraints from background in description prose.** Each constraint is its own sentence with explicit strength — mandatory or default-with-override — phrased against observable behavior: "set `purge: true` only for messages the user explicitly asked to hard-delete", not "be careful with `purge`".
+  Mechanics, rationale, and history stay out of the constraint sentences, so a reader can extract every rule without parsing narrative.
+  The same rules-then-context discipline as the §2 capability summary applies here in compact form.
 
 - **Disambiguate parameter names.** Use `user_id`, not `user`; `channel_id`, not `channel`; `started_after`, not `since`. Ambiguous names cause wrong-shape arguments on the first call.
 
@@ -257,6 +266,8 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
   This gives agents a proactive way to build valid URIs instead of learning the value space through failed reads.
 
 - **Keep summaries short.** Resource summaries are at most three sentences, never paragraphs. They appear in lists of dozens; long summaries defeat the index.
+
+- **Resource `description` prose follows the §3 constraint-separation rule.** Any binding constraint in a resource or resource-template description is its own explicit-strength sentence, kept apart from background — same discipline, compact form.
 
 - **Support resource subscriptions for mutable resources.** If a resource can change during a long-lived agent session and stale reads matter, advertise `resources.subscribe`, accept `resources/subscribe`, and emit `notifications/resources/updated` for subscribed URIs.
   Use `notifications/resources/list_changed` for catalog membership changes; use per-resource updates for body changes.

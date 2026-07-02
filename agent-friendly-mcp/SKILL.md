@@ -94,7 +94,8 @@ Notation: bare `§N` always means a contract-checklist section; `ex§N` means se
 3. For an audit, follow [review-workflow.md](references/review-workflow.md); severity scale and report format live there.
 4. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
 5. Use [mcp-vs-cli.md](references/mcp-vs-cli.md) if deciding which surface to expose; use [examples.md](references/examples.md) for concrete schema, response, error, and discovery shapes.
-6. Once the contract is designed, implement it with an MCP SDK — e.g. FastMCP for Python or the official TypeScript SDK. This skill defines the agent-facing wire contract, not the framework; if a FastMCP (or equivalent SDK) skill is available in your environment, use it for implementation specifics.
+6. When writing or auditing prose surfaces — server `instructions`, the capability summary, tool and resource descriptions — apply the rules-then-context discipline in [contract-checklist.md](references/contract-checklist.md) §2/§3/§4; if a separating-context-from-constraints skill is available in your environment, use it as the audit lens for those surfaces.
+7. Once the contract is designed, implement it with an MCP SDK — e.g. FastMCP for Python or the official TypeScript SDK. This skill defines the agent-facing wire contract, not the framework; if a FastMCP (or equivalent SDK) skill is available in your environment, use it for implementation specifics.
 
 ## Done Criteria
 
