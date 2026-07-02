@@ -60,7 +60,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 - **State negative scope explicitly.** What the server does NOT do is as important as what it does. Negative scope prevents wasted exploration and wrong-tool selection.
 
 - **Write the capability summary and `instructions` prose as rules-then-context.** Lead with what the server does and does not do.
-  Then state each binding rule — prerequisite, ordering requirement, safety constraint — as its own imperative sentence or list item whose strength is explicit: mandatory ("external sends require an approved `sender_id`") or a default with its override condition ("prefer `detail: \"summary\"` unless the task needs full field density").
+  Then state each binding rule — prerequisite, ordering requirement, safety constraint — as its own imperative sentence or list item whose strength is explicit: mandatory ("external sends require an approved `sender_id`") or a default with its override condition ("prefer `detail: "summary"` unless the task needs full field density").
   A hedge that leaves bindingness unclear ("generally", "try to", "be careful") is not a rule; replace it with the observable condition it stands for, or drop it.
   Background — implementation history, rationale, folklore — comes after the rules or not at all, never interleaved with them.
 
