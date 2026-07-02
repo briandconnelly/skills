@@ -26,7 +26,7 @@ Revisit this skill when 2026-07-28 finalizes.
   Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
 - First-call and first-repair success from a cold start are first-class quality metrics: measure both per design-workflow Step 8, and treat a design change that regresses either as wrong.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
-- Declare side effects and idempotency via tool annotations where MCP assigns them meaning (contract-checklist §3), surface rate limits in structured response fields (§1/§6), and declare agent-actionable prerequisites in the capability summary (§1).
+- Declare side effects and idempotency via tool annotations where MCP assigns them meaning (contract-checklist §3), surface rate limits in structured response fields (§3/§6), and declare agent-actionable prerequisites in the capability summary (§1).
 - Default to compact, deterministic, structured output; structured data is authoritative and text or markdown is supplemental rendering for human-facing clients.
 - Provide explicit discovery primitives, but keep every definition compact: the least-capable realistic client preloads the whole catalog from `tools/list`, so compact schemas and concise descriptions are the universal baseline, and selective on-demand loading is a client-dependent optimization layered on top.
 - Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
