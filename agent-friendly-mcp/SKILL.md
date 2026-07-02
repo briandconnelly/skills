@@ -14,7 +14,7 @@ This skill is written against the stable **MCP 2025-11-25** specification; the f
 A **2026-07-28 release candidate** is in flight — not yet ratified, and still subject to change before it finalizes.
 It is expected to make the protocol stateless (removing the `initialize`/`initialized` handshake and per-session ids, with client info and capabilities traveling per request), move **tasks** from experimental core to a negotiated **extension** (server-directed task creation, `tasks/update` added, `tasks/list` removed), deprecate **roots**, **sampling**, and **logging** on long retention windows, formalize a reverse-DNS **extensions framework** that gives the convention metadata below an official home, and fold the resource-not-found JSON-RPC code `-32002` into the standard `-32602`.
 This section is the single home for RC expectations; forward-compat notes elsewhere in this skill point here rather than restating them.
-Treat init-time capability negotiation, native tasks, and roots as **likely migration points**: design against them today, but keep server logic able to absorb their restructuring, and branch on stable symbolic codes rather than numeric or transport-level details where you have the choice.
+Treat init-time capability negotiation, native tasks, and roots as **likely migration points** — design against them today, and hedge concretely: branch on stable symbolic codes rather than numeric or transport-level details where you have the choice, keep workspace scope expressible as ordinary tool arguments (contract-checklist §1 forward-compat), and keep task status/result/cancel expressible as ordinary tools (§7 forward-compat).
 Revisit this skill when 2026-07-28 finalizes.
 
 ## Core Standard
@@ -24,9 +24,9 @@ Revisit this skill when 2026-07-28 finalizes.
   Do not put essential selection, prerequisite, safety, or repair behavior only in `instructions`.
 - Optional MCP features only exist for an agent after protocol version and capability negotiation.
   Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
-- Optimize for the first successful tool call **and** the first successful repair from a cold start.
+- First-call and first-repair success from a cold start are first-class quality metrics: measure both per design-workflow Step 8, and treat a design change that regresses either as wrong.
 - Design around user/agent tasks, not the underlying API's endpoint surface.
-- Make side effects, idempotency, rate limits, and agent-actionable prerequisites visible.
+- Declare side effects and idempotency via tool annotations where MCP assigns them meaning (contract-checklist §3), surface rate limits in structured response fields (§1/§6), and declare agent-actionable prerequisites in the capability summary (§1).
 - Default to compact, deterministic, structured output; structured data is authoritative and text or markdown is supplemental rendering for human-facing clients.
 - Provide explicit discovery primitives, but keep every definition compact: the least-capable realistic client preloads the whole catalog from `tools/list`, so compact schemas and concise descriptions are the universal baseline, and selective on-demand loading is a client-dependent optimization layered on top.
 - Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
@@ -62,7 +62,7 @@ Keep them — but never let them masquerade as protocol.
 - Library or SDK design that is not exposed via MCP — this skill is MCP-specific.
 - Trivial schema additions to an already agent-friendly server; just follow the existing contract.
 - Out of scope: sampling, server logging streams, server-operator dashboards, packaging/deployment, and skills-over-MCP (experimental at https://github.com/modelcontextprotocol/experimental-ext-skills — revisit when stable).
-  Elicitation is in scope only as an agent-facing contract boundary: when a server needs missing user input, confirmation, or sensitive external interaction, declare whether it supports MCP elicitation and how non-elicitation clients recover.
+  Elicitation is in scope only as an agent-facing contract boundary; the binding rules live in [contract-checklist.md](references/contract-checklist.md) §1 (declare the `client.capabilities.elicitation` dependency) and §6 (elicitation use and the non-elicitation fallback).
   Do not use this skill for designing full user-experience flows.
 
 ## Vocabulary

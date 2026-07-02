@@ -163,9 +163,12 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
   This skill takes the position that `readOnlyHint` should track whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
   Under that reading it is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
   A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is treated as part of the response, not a side effect, so the tool stays `readOnlyHint: true`.
-  This is a judgment call, not settled spec: a reviewer who reads "environment" literally may disagree, so document the choice rather than asserting it.
-  Prefer returning large results as resources or resource links with TTL metadata where you can, and reserve the response-delivery-artifact pattern for cases where an inline or linked resource does not fit.
-  Disclose the artifact through a structured response field (e.g., `result_artifact: {path, ttl_hours, mime_type}` — a house convention object, so its sub-fields use `snake_case`, not the native `Resource.mimeType`) and the tool description, not by flipping the annotation.
+
+- **Document which `readOnlyHint` reading the server uses.** The observable-scope reading is a judgment call, not settled spec: a reviewer who reads "environment" literally may disagree, so document the choice rather than asserting it, and apply one reading consistently across tools.
+
+- **Prefer resource or resource-link delivery for large results.** Return large results as resources or resource links with TTL metadata where you can; reserve the response-delivery-artifact pattern for cases where an inline or linked resource does not fit.
+
+- **Disclose response-delivery artifacts through the structured response and the description.** Use a structured response field (e.g., `result_artifact: {path, ttl_hours, mime_type}` — a house convention object, so its sub-fields use `snake_case`, not the native `Resource.mimeType`) and the tool description, never annotation flipping.
   See `examples.md` §12 for a worked response-delivery artifact.
 
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.
@@ -253,7 +256,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 - **Pair resource templates with completion where values are dynamic.** For template variables such as `{project}`, `{channel_id}`, `{schema}`, or `{path}`, implement `completion/complete` when clients negotiate `completions`.
   This gives agents a proactive way to build valid URIs instead of learning the value space through failed reads.
 
-- **Keep summaries short.** Typically 1–3 sentences, not paragraphs. Resource summaries appear in lists of dozens; long summaries defeat the index.
+- **Keep summaries short.** Resource summaries are at most three sentences, never paragraphs. They appear in lists of dozens; long summaries defeat the index.
 
 - **Support resource subscriptions for mutable resources.** If a resource can change during a long-lived agent session and stale reads matter, advertise `resources.subscribe`, accept `resources/subscribe`, and emit `notifications/resources/updated` for subscribed URIs.
   Use `notifications/resources/list_changed` for catalog membership changes; use per-resource updates for body changes.
@@ -392,8 +395,6 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 - **Tasks are experimental; degrade deliberately.** Tasks were introduced in MCP 2025-11-25 and are still experimental, so a server MAY also expose a domain-specific status/cancel tool as a labeled fallback for clients without task support — but it should mirror the native signals (current status, when to poll again, result location, expiry), not replace `tasks/*`.
   *Forward-compat:* the 2026-07-28 RC is expected to move tasks out of core into a negotiated extension (see `SKILL.md` Spec Baseline); this labeled fallback is the hedge that survives that move — keep status/result/cancel expressible as ordinary tools.
 
-- **Make recovery auditable.** A 2-minute operation should provide useful progress, and a client should be able to cancel or recover the result later.
-
 Audit prompt: Can an agent monitor, cancel, and recover a long-running operation without guessing at server state?
 
 ---
@@ -424,7 +425,8 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 
 - **Support per-capability detail levels.** Progressive disclosure applies to both definitions (in discovery, see §2) and responses. The agent should be able to ask for "summary" before "full" at every level.
 
-- **Strip null and default-valued fields from concise responses.** Where they add no information, they cost tokens and clutter parsing. Detail mode may include them for completeness.
+- **Strip null and default-valued fields from concise responses.** Where they add no information, they cost tokens and clutter parsing; detail mode may include them for completeness.
+  Exception: fields a contract marks always-present — such as the §6 error envelope's `retry_after_ms` — are emitted even when `null`.
 
 - **Use locale-independent wire values.** Timestamps are RFC3339 UTC, currency uses ISO-4217 plus minor units, sort keys are stable, and display localization stays out of machine fields.
 

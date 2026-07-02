@@ -160,7 +160,7 @@ Run the eval with an agent and read the transcripts; do not trust aggregate scor
 - Look for contradictions between description prose and schema; the schema wins, so fix the prose or the schema.
 - Look for ambiguity in tool selection — two tools the agent confuses, or descriptions that overlap.
 - Look for ineffective discovery: agents loading every definition, agents missing a tool that exists, agents picking the wrong namespace.
-- Each iteration should produce a measurable improvement in first-call correctness, first-repair correctness, or token consumption — if it doesn't, the change wasn't grounded.
+- Each iteration should produce a measurable improvement in first-call correctness, first-repair correctness, or token consumption, without regressing first-call or first-repair correctness — if it doesn't, the change wasn't grounded.
 
 Output: revised schemas, descriptions, and discovery surface, with eval-measured improvement against the prior baseline.
 Checkpoint: §1–§9 — walk the full checklist; iteration is the moment to catch contradictions any earlier checkpoint missed.

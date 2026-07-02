@@ -14,7 +14,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
 ## Audit Procedure
 
 1. **Read or generate the server capability summary.** If the server publishes one, start there.
-   If it does not, that absence is usually a Major finding against §2 and §1; make it Critical only when the server surface is broad or ambiguous enough that agents predictably fail without it.
+   If it does not, record that absence as a Major finding against §2 and §1 by default; escalate to Critical when the server surface is broad or ambiguous enough that agents predictably fail without it.
    Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
    Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
 2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** For each section (§1 through §9), record exactly one of:
