@@ -73,6 +73,7 @@ Not flagged (false-positive guard): line 20, the `DEPLOY_ENV` sentence, is a loa
 
 Counts per rule: R1 1, R2 1, R3 1, R4 1, R5 1.
 Counts per severity: material 4 (R1, R2, R3, R5), minor 1 (R4).
+
 This document buries one rule in narrative prose, states one rule with ambiguous strength, states one untestable rule, bundles three obligations into one compound rule, and leaves a realistic branch-selection conflict without stated precedence.
 The migration-history background and the `DEPLOY_ENV` tool-semantics note are both correctly placed outside `## Rules` and require no changes.
 Restructuring the `## Rules` section to contain only atomic, unambiguous, testable, precedence-complete rules — as shown in the rewritten document below — resolves all five findings without changing the skill's intended behavior.
