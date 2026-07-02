@@ -61,7 +61,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - **Write the capability summary and `instructions` prose as rules-then-context.** Lead with what the server does and does not do.
   Then state each binding rule — prerequisite, ordering requirement, safety constraint — as its own imperative sentence or list item whose strength is explicit: mandatory (e.g. external sends require an approved `sender_id`) or a default with its override condition (e.g. prefer `detail: "summary"` unless the task needs full field density).
-  A hedge that leaves bindingness unclear ("generally", "try to", "be careful") is not a rule; replace it with the observable condition it stands for, or drop it.
+  A hedge that leaves a statement's strength unclear ("generally", "try to", "be careful") is not a rule; replace it with the observable condition it stands for, or drop it.
   Background — implementation history, rationale, folklore — comes after the rules or not at all, never interleaved with them.
 
 - **Compact definitions are the universal baseline.** Every entry `tools/list` returns is a complete `Tool` record — the protocol has no summary-only or filtered mode — so the one discovery cost you can lower regardless of client is the serialized size of each definition.
