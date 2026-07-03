@@ -418,7 +418,7 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
       "machine_code": "resource_gone",
       "human_message": "Message thread was deleted or is no longer visible.",
       "details": {
-        "field": "resource_uri",
+        "field": "uri",
         "value": "slack://channels/C0123ABCD/messages/1714600000.001200",
         "reason": "Thread was deleted on 2026-04-12T09:00:00Z."
       },
@@ -470,7 +470,7 @@ The capability summary exposed via a resource, discovery tool, or instructions f
   ],
   "error_carriers": {
     "tool_errors": "structuredContent",
-    "resource_errors": "json_rpc_error_data"
+    "non_tool_rpc_errors": "json_rpc_error_data"
   },
   "prerequisites": {
     "workspace_scope": "One Slack workspace per server instance.",
