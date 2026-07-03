@@ -418,7 +418,7 @@ A resource read failure (e.g., `resources/read` against a deleted thread) uses a
       "machine_code": "resource_gone",
       "human_message": "Message thread was deleted or is no longer visible.",
       "details": {
-        "field": "resource_uri",
+        "field": "uri",
         "value": "slack://channels/C0123ABCD/messages/1714600000.001200",
         "reason": "Thread was deleted on 2026-04-12T09:00:00Z."
       },
@@ -468,6 +468,10 @@ The capability summary exposed via a resource, discovery tool, or instructions f
     "File uploads larger than 5MB (use Slack's web client).",
     "Real-time event subscriptions (this is a request/response server)."
   ],
+  "error_carriers": {
+    "tool_errors": "structuredContent",
+    "non_tool_rpc_errors": "error.data"
+  },
   "prerequisites": {
     "workspace_scope": "One Slack workspace per server instance.",
     "required_scopes": ["chat:write", "channels:read", "users:read"],
@@ -520,6 +524,7 @@ Capability strings use fully qualified `server.capabilities.*` and `client.capab
 The auth block separates stdio credential sourcing from the optional HTTP variant.
 The `http_variant` fields apply only if the same contract is also exposed over streamable HTTP; stdio-only servers should omit that object.
 It does not ask the model to handle bearer tokens directly.
+The `error_carriers` block names where the §6 error envelope travels on each surface; a server whose framework forces a `content[0].text` mirror on error results would declare that degraded mode here, with its trigger (§6).
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
 This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
 

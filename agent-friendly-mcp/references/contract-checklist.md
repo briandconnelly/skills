@@ -24,6 +24,7 @@ This is the normative standard for the skill, used by both `design-workflow.md` 
   Hidden deployment details belong in operator docs, not the first-read surface.
 
 - **Declare state-handle discipline.** Handles for jobs, cursors, sessions, or server-side state are opaque IDs with readable labels where useful, declared lifetime, expiry behavior, auth checked on every use, and bounded retention.
+  Opaque means client-opaque; the §3 security rule defines the two permitted handle modes (server-side reference or integrity-protected stateless token).
 
 - **Surface observability in responses, not dashboards.** Rate limits, timeouts, retry hints, deprecation notices, and the capability fingerprint (where published, §9) belong in the response payload an agent reads.
   Operator dashboards are out of scope here.
@@ -67,6 +68,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 - **Compact definitions are the universal baseline.** Every entry `tools/list` returns is a complete `Tool` record — the protocol has no summary-only or filtered mode — so the one discovery cost you can lower regardless of client is the serialized size of each definition.
   Use a tight `inputSchema`, no redundant prose, and descriptions precise enough to select and repair but no longer.
   Measure serialized tokens, not tool count — and do not compress away the selection or safety information an agent needs.
+  Measure the serialized wire response — `tools/list` as a client receives it — not your source models: generated output schemas and per-entry `$defs` expansion often dominate the bytes.
   Whether a client fetches every page and exposes all of it to the model is client-dependent; compact definitions pay off either way, which is what makes them the baseline.
 
 - **Paginate large or unbounded catalogs, but treat it as scalability, not token savings.** Native `tools/list` cursor pagination caps peak response size, improves time-to-first-page, and lets a client stop early.
@@ -151,6 +153,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Default to structured output.** Structured data is authoritative; text or markdown is supplemental rendering for human-facing clients.
   Token-efficiency rules for responses live in §8.
 
+- **Advertise only response fields you populate.** Every required field and every documented always-present field appears on the wire; conditional fields document and satisfy their appearance conditions.
+  An advertised field that never appears — an `outputSchema` property or an "every response carries it" claim the implementation cannot populate — is a contract violation, not schema slack.
+
 - **Use rich content types deliberately.** Tool results may include `text`, `image`, `audio`, `resource_link`, embedded `resource`, and `structuredContent`.
   Put machine-contract fields in `structuredContent`; use `content` for human rendering, linked artifacts, and compatibility fallbacks.
 
@@ -230,7 +235,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - **Define confirmation boundaries.** Destructive, paid, external-send, or broad-read operations need clear preconditions before execution.
 
-- **Keep state handles opaque.** Handles must not embed credentials or internal record IDs; they are references to server-side state, not encoded payloads.
+- **Keep state handles client-opaque, in one of two modes.** Either a handle is a high-entropy reference to server-side state, or — where statelessness is required, typically cursors — it is an integrity-protected token authenticated with deployment-managed key material that survives multi-process routing and restarts.
+  Tokens never contain credentials and never expose internal record IDs; encrypt token payloads that carry sensitive state.
+  Every continuation re-applies authorization, expiry, and budget checks — integrity protection is not authorization.
 
 - **Keep this subsection bounded.** These are agent-facing contract rules only; full threat modeling (trust boundaries, attack trees, data-flow analysis) is out of scope here — route it to a dedicated security review.
 
@@ -277,6 +284,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 - **Resource failures use JSON-RPC errors.** Put the repair contract in structured `error.data` using the same unified error envelope as tool results (§6) — `machine_code`, `human_message`, `details`, `temporary`, `retry_after_ms`, and a single `repair` object — not a separate vocabulary.
 
 - **Some clients do not expose resources well.** If discoverability matters for a read-oriented capability, provide a tool fallback that reaches the same indexed content.
+  The fallback must be self-sufficient from `tools/list` alone: callable without values learnable only from resources — for example, omitting an optional selector returns the index — and every required, non-obvious constrained value space has a tool-reachable lookup or enumeration.
 
 - **Pagination, filtering, and truncation rules live in §8.** Reference them; do not duplicate.
 
@@ -331,7 +339,11 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Include "what to do next" repair hints.** The corrective call, parameter, or filter. The first repair attempt is as important as the first call.
 
+- **Repair preserves caller intent.** When corrected arguments are already known, `repair.tool` names the failing tool and `repair.arguments` carries every still-valid, non-sensitive original argument plus the minimal correction; route to a different tool only when the correction must first be discovered or performed there.
+  Forcing the agent to re-orchestrate a task that one corrected argument would have completed wastes the repair.
+
 - **Repair hints reference real, callable surfaces.** Tool names, parameter names, valid enum values — not free-form prose.
+  `repair.arguments` holds literally callable values, never placeholders such as `"<one of the listed slugs>"`; when a required value must be discovered first, make the primary repair call the lookup or enumeration tool that returns it.
 
 - **Surface capability-missing failures explicitly.** If a path needs an optional feature the client did not negotiate, return a structured error such as `capability_not_negotiated` with `required_capability`, the affected operation, and the fallback tool/resource/prompt when one exists.
 
@@ -345,6 +357,8 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message`.
 
+- **Name the error carrier in the capability summary.** State where the envelope travels — `structuredContent` on the tool result, JSON-RPC `error.data`, and any disclosed degraded mode (below) — so agents know where to parse a failure before the first one occurs.
+
 - **Errors include correlation context.** A `request_id`, the offending parameter, and (where applicable) the resource URI. Agents need to correlate failures with the requests that caused them.
 
 ### One error envelope, two carriers
@@ -355,16 +369,25 @@ The failure-recovery contract is **one envelope** with identical field semantics
 | --- | --- | --- | --- | --- |
 | symbolic code | `code` | `machine_code` | yes | Stable symbolic string; the authoritative branch key. Renamed on JSON-RPC only to avoid shadowing native `code`. |
 | human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on JSON-RPC only to avoid shadowing native `message`. |
-| field detail | `details` | `details` | where applicable | `{field, value, reason}`; redact `value` when sensitive, never omit silently. |
+| field detail | `details` | `details` | where applicable | `{field, value, reason}` for one parameter, `{fields, reason}` for a cross-parameter constraint (see below); redact `value` when sensitive, never omit silently. |
 | transient? | `temporary` | `temporary` | yes | See retryability invariants above. |
 | retry delay | `retry_after_ms` | `retry_after_ms` | yes (nullable) | Always present alongside `temporary`; a non-negative integer when a delay is known, else `null` (and always `null` when `temporary: false`). Always emit the key so agents distinguish `null` from a number without special-casing a missing field. |
 | rate budget | `rate_limit_remaining` | `rate_limit_remaining` | on rate-limit errors | Non-negative integer of remaining calls in the current window, where the surface exposes one. |
 | repair | `repair` | `repair` | where a corrective path exists | A single object `{next_step, tool, arguments, alternative}` — see below. Omit the field entirely when no repair exists (never emit `null` or an empty array). |
 | correlation | `request_id`, `resource_uri`, `fingerprint` | `request_id`, `resource_uri`, `fingerprint` | where applicable | `resource_uri` where the failure is tied to a resource. |
 
+- **`details.field` names a published parameter.** For a tool argument-validation failure, `field` is a single property path from the failing tool's published `inputSchema` (dotted for nested properties); for a constraint spanning several parameters, use `fields` — a non-empty array of unique published property paths — and emit exactly one of `field` or `fields`, never both.
+  For a non-tool RPC failure, `field` names the offending request parameter of that method (`uri` for `resources/read`), under the same one-of rule.
+  Translate internal names at the MCP boundary; never expose internal or synthetic names the surface does not accept (an internal `office_id` for a tool that takes `office`, a synthetic `bbox` for tools that take `south`/`west`/`north`/`east`).
+  Include `value` only when safe and meaningful; error-code-specific detail keys (such as `required_scopes` on an `insufficient_scope` error) are permitted alongside `reason` when documented with the code.
+
 - **Presence convention.** Fields marked *yes* are always emitted on both surfaces — `retry_after_ms` is the one nullable required field (it is bound to the always-present `temporary`, and `null` meaningfully signals "no known delay"). Every other field is omitted entirely when it does not apply; do not send a placeholder `null` or empty array for an absent optional field.
 
 - **`repair` is one object, not an array, on both surfaces.** Its shape is `{next_step, tool, arguments, alternative}`: `next_step` a stable symbolic label, `tool` and `arguments` the single primary corrective call (a real, callable surface), and `alternative` an *optional human-readable* fallback sentence for when the primary call doesn't fit. A single deterministic next action beats a ranked list the agent must choose from; if no corrective call exists, omit `repair` entirely rather than emitting `null` or an empty array. `alternative` is the one prose field in the envelope — it is fallback guidance for a human/agent to interpret, not a second machine-actionable hint (contrast the "real, callable surfaces" rule, which governs `tool`/`arguments`).
+
+- **A degraded carrier is disclosed, never silent.** The two carriers above are the only contract carriers.
+  As a disclosed degraded mode only — when a framework cannot place `structuredContent` on an `isError: true` result — `content[0].text` MAY carry the serialized envelope JSON: the capability summary names the limitation and its trigger, the envelope shape stays identical, and the mirror is removed once the framework supports the native carrier.
+  An undisclosed text-only envelope is a third contract, not a fallback.
 
 - **There is no `recoverable` flag.** Whether the *same* resource or operation can succeed again is already carried by the symbolic `code`/`machine_code` (e.g. `resource_gone`) plus `temporary`; whether recovery is possible by *another* path is carried by the presence of a `repair`. A separate `recoverable` boolean is redundant and was prone to contradicting an accompanying repair.
 
@@ -419,9 +442,12 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
 - **Detail is orthogonal to format.** Changing detail level changes the density of fields included, not the schema's shape. The same parser handles both modes.
   Make the concise fields a strict subset of the detailed fields — never rename a field between modes (a `preview` that becomes `text` in detail mode is two contracts, not one).
 
+- **Detail toggles change field density, never row count.** A result that scales with a requested window or range needs its own default bound, independent of the detail level: a server-side cap with `truncated: true` and a hint naming a callable narrowing or aggregation parameter, or an aggregate default whose explicit raw mode is itself bounded or paginated.
+
 - **Use cursor-based pagination by default.** Offset-based pagination is acceptable only when ordering is stable and the result set is small enough that pages don't shift between calls.
 
 - **Declare cursor lifetime and expiry recovery.** Cursors are state handles (§1): declare how long they stay valid, return a stable `cursor_expired` error with restart guidance when one lapses, and say whether a paginated walk sees a consistent snapshot or best-effort consistency — silent skips and duplicates mid-walk break agent planning.
+  A cursor that encodes state rather than referencing it follows the §3 two-mode handle rule: integrity-protected, with authorization, expiry, and budget checks re-applied on every continuation.
 
 - **Native list methods use the protocol pagination shape, not a house convention.** `tools/list`, `resources/list`, `resources/templates/list`, and `prompts/list` accept an optional opaque `cursor` request param and return an optional `nextCursor` in the result; **absence of `nextCursor` signals completion**. There is no native `has_more`, `next_cursor`, `estimated_total`, or `limit` on these methods, and page size is server-selected — do not rename `nextCursor` to snake_case or bolt a house convention onto a native list. See [native-wire-shapes.md](native-wire-shapes.md).
 
@@ -471,7 +497,9 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
 - **Treat fingerprints as additive signals.** A capability fingerprint helps clients short-circuit discovery, but it does not replace native change notifications or stable list ordering.
 
 - **The fingerprint covers the full agent-visible surface.** Tool definitions, resource catalogs, resource templates, prompt scaffolds, completion support, subscription behavior, negotiated-capability expectations, error codes, and the server capability summary.
-  Anything an agent can plan against is part of the fingerprint input.
+  Anything an agent can plan against is part of the fingerprint input — tool descriptions included, because they are the primary input to tool selection (§3).
+  Where a fingerprint is published, disclose its coverage in documented agent-readable metadata such as a `covers` field (see `examples.md` §9); the disclosure does not permit excluding any agent-visible surface.
+  A separately named schema-only hash, if published, is per-capability diagnostic metadata; it must not be used to decide that discovery can be skipped, and it never narrows or replaces the fingerprint.
 
 - **Define deprecation semantics.** How a tool, resource, or prompt is marked deprecated, how long it remains available, and what replaces it. Deprecation is a contract, not a sticky note.
 
@@ -480,6 +508,7 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
 - **Adding optional fields is safe.** Removing or renaming fields, codes, or tools is a breaking change — bump the fingerprint where you publish one. Document the migration in the deprecation marker.
 
 - **Treat tool rename as remove-plus-add.** Renaming a tool is a discovery-surface change (see §2) — clients that cached the old surface will break silently otherwise. Keep the old name with a deprecation pointer for the documented window.
+  A rename sweeps every agent-visible reference atomically with the alias window: repair hints (`repair.tool`), server `instructions`, the capability summary, prompts, and other tools' descriptions.
 
 - **Declare stability tiers if used.** `stable`, `preview`, `experimental`. Mixing tiers without labels makes every capability look stable, which is worse than labeling some as risky.
 

@@ -75,7 +75,8 @@ Decide how an agent finds the right primitive at the lowest cost its clients all
 - Implement `completion/complete` for prompt arguments and resource-template variables with dynamic value sets when `server.capabilities.completions` is negotiated.
   Document that completion does not cover arbitrary tool arguments.
 - For workspace-scoped servers, request `roots/list` from clients that negotiate roots and declare how root changes are handled.
-- If resource discoverability matters, provide a tool fallback for clients that do not expose resources well.
+- If resource discoverability matters, provide a tool fallback for clients that do not expose resources well — self-sufficient from `tools/list` alone (§4).
+- Set a serialized-size budget for `tools/list` — the wire response as a client receives it — and enforce it in CI (Step 8).
 
 Output: server capability summary, discovery primitives implemented, resource catalog shape.
 Checkpoint: §1, §2, §4. See `examples.md` §7 for a server capability summary and §8 for a `search_tools` response.
@@ -120,6 +121,8 @@ Build an eval suite from the Step 1 task list before iterating further.
 - Measure first-repair correctness: given a structured error, did the agent's next call succeed?
 - Measure token consumption and tool-call count per completed task — both are first-class quality signals.
 - Include fixture types for cold-start/tool discovery, wrong-tool selection, invalid-argument, auth-failure, pagination, upgrade/version-change, and long-running progress plus cancel/recover.
+- Add a `forced_error` fixture per tool asserting `isError: true`, carrier location, and envelope shape on the serialized wire result — unit-level error objects can pass while framework serialization is broken.
+- Add a `discovery_size_budget` fixture asserting the exact serialized `tools/list` response against a deterministic byte budget, runnable in CI; pin the tokenizer if the budget is stated in tokens.
 
 A worked fixture for one task makes the metrics runnable rather than aspirational. Each fixture pairs a prompt with an assertion the harness can check against the transcript:
 

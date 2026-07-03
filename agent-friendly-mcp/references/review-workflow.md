@@ -30,12 +30,17 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 ## Transcript Probes
 
-Nine questions to ask while reading code and transcripts. Each should be answerable from concrete evidence — schema text, response payloads, or transcript excerpts — not intuition.
+Ten questions to ask while reading code and transcripts. Each should be answerable from concrete evidence — schema text, response payloads, or transcript excerpts — not intuition.
 
 - **Cold start.** What does an agent see when it first connects? Can it learn what the server does, what it does NOT do, and what prerequisites affect use in one read? Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
 - **Tool selection.** Given two adjacent tools (same verb, overlapping nouns, or similar surface), can an agent pick the right one without invoking both? Are descriptions narrow enough that the schema alone disambiguates? Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
 - **First repair.** When the agent makes an invalid call, does the error response tell it specifically how to retry — which field, which allowed values, which tool to call instead? Force one invalid call per error code documented for the tool and read the payload, not just the message. *(maps to §6; see `examples.md` §6 for the target payload shape)*
-- **Discovery cost.** How many tokens does the agent spend learning the server's surface before its first useful call? Count, do not estimate — and measure serialized definition tokens, not tool count. Credit `search_tools` / `describe_tool` only against clients that actually withhold native definitions; on a preloading client they add cost (§2). A bloated definition or an inflated catalog with no client-independent reduction is the finding. *(maps to §2, §8; see `examples.md` §8 for one host-managed-disclosure shape)*
+- **Advertised vs. actual.** Inspect captured responses or isolated fixtures for at least one success and one forced error per tool; use live calls only where the Safety rule permits.
+  Verify that every required and claimed-always-present field is populated, that conditional fields appear under their documented conditions, and that the error carrier matches the wire — `isError: true`, envelope location, envelope shape.
+  Prefer schema-invalid requests known to fail before handler execution; do not probe mutating tools with guessed placeholder values.
+  Absence of an optional field is a finding only when the contract claims presence. *(maps to §1, §3, §6)*
+- **Discovery cost.** How many tokens does the agent spend learning the server's surface before its first useful call? Count, do not estimate — and measure the serialized `tools/list` wire response, not tool count or source models. Credit `search_tools` / `describe_tool` only against clients that actually withhold native definitions; on a preloading client they add cost (§2). A bloated definition or an inflated catalog with no client-independent reduction is the finding.
+  Common bloat mechanisms to check: generated output schemas dominating bytes, framework `$defs` inlining that duplicates shared envelopes per tool, echo field descriptions that restate the field name, and identical boilerplate blocks repeated across docstrings. *(maps to §2, §8; see `examples.md` §8 for one host-managed-disclosure shape)*
 - **Capability gating.** Which optional MCP capabilities does the server rely on after initialization?
   Verify that roots, completions, resource subscriptions, elicitation, tasks, and list-change notifications are advertised before use, and that weaker clients get a structured fallback instead of a mysterious method failure.
   *(maps to §1, §2, §4, §6, §7, §9)*
