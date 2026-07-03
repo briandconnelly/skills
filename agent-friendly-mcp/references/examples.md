@@ -470,7 +470,7 @@ The capability summary exposed via a resource, discovery tool, or instructions f
   ],
   "error_carriers": {
     "tool_errors": "structuredContent",
-    "non_tool_rpc_errors": "json_rpc_error_data"
+    "non_tool_rpc_errors": "error.data"
   },
   "prerequisites": {
     "workspace_scope": "One Slack workspace per server instance.",
