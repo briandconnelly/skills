@@ -71,7 +71,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 **Assertions (with-skill run must satisfy):**
 
 - [ ] Findings use the `P0`-`P3` severity scale and the finding format from `review-workflow.md`: severity, type (`impl-bug`/`schema-gap`/`design-issue`), location, impact, fix direction.
-- [ ] Evidence labels are applied: `observed` for session behavior, `absence-of-evidence` for the missing schema/machine profile.
+- [ ] Evidence labels are applied: `observed` for session behavior, `inferred` for deduced behavior such as the non-TTY hang mechanism, `absence-of-evidence` for the missing schema/machine profile.
 - [ ] `sync` prompting for confirmation is flagged as a hang risk in automation, severity `P0`, with the documented prompt labeled `observed` and the actual non-TTY hang behavior labeled `inferred` (Invocation Safety, Evidence).
 - [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged at `P1` or higher (Output).
 - [ ] The unstructured error plus generic exit `1` is flagged: no symbolic code to branch on (Errors And Exit Codes).
