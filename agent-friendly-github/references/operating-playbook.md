@@ -7,7 +7,7 @@ These rules are advisory conventions — where a rule matters for safety it is a
 ## Always-Follow Rules
 
 - Read the canonical instruction file (`AGENTS.md`) first, and respect any nested `AGENTS.md` in the subtree you are touching. (T1)
-- Open or claim an issue before starting any work that will produce a PR, unless the repo's `AGENTS.md` exempts the change type (e.g. typo-level fixes) (e.g. `gh issue create`, `gh issue develop`).
+- Open or claim an issue before starting any work that will produce a PR (`gh issue create`, `gh issue develop`), unless the repo's `AGENTS.md` exempts the change type (e.g. typo-level fixes).
   To signal "I am working this" to other agents, add a claim label (e.g. `agent:in-progress`) rather than assigning the issue to the agent — a GitHub App bot actor is not a valid assignee, so `--add-assignee` with the bot as target fails even with `Issues: write`; `--add-label` works on the same scope and is queryable (`gh issue list --search '-label:"agent:in-progress"'` finds unclaimed work). Label-adds are not atomic, so if double-claims matter, re-read the issue and confirm your bot added the label first before proceeding.
 - Keep one logical change per PR.
 - Branch off the protected base; never commit directly to it (e.g. `git switch -c feature/x origin/main`). (T4)
