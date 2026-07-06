@@ -30,7 +30,7 @@ The security boundary is human-vs-agent, not author-vs-reviewer.
 
 **Baseline — all profiles:**
 - Agent identity is least-privilege and is NOT a bypass actor. (§2, §4; T4, T9)
-- Protected-branch ruleset: a PR is required, self-approval not counted, and force-push and deletion blocked — so the agent can never push past the ruleset and its own approval never counts toward a review.
+- Protected-branch ruleset: a PR is required and force-push and deletion blocked — so the agent can never push past the ruleset; GitHub itself never counts a PR author's own approval toward the required review count (a platform invariant every profile relies on), so the agent's approval of its own PR never counts.
   Set `required_approving_review_count` to >= 1 in any profile that has a second human who can review (small-team, org) — and in the solo profile once a distinct agent identity exists — which bars self-merge because the agent then needs an approval from a human who is not its author.
   The sole exception is the solo profile before that identity exists, where a required review is **illusory**: set it to `0` and lean on the actor-independent gates, per the solo interim posture below. (§2; T3, T4)
 - Least-privilege `GITHUB_TOKEN`; no privileged `pull_request_target`/`workflow_run` on untrusted code; third-party actions pinned to a full commit SHA. (§3; T2, T5, T6)
@@ -53,7 +53,7 @@ Phrase the `AGENTS.md` rule affirmatively ("agents never merge; the maintainer m
 This exception does not reach the small-team/org profiles, where a different human supplies the review. (T3, T4)
 
 **small-team** — 2+ active humans, low-to-moderate risk.
-Routine changes get real human review with no bypass; CODEOWNERS by path; `dismiss_stale_reviews` on; `require_last_push_approval` recommended; signing opt-in.
+Routine changes get real human review with no bypass; CODEOWNERS by path; `dismiss_stale_reviews` on; `require_last_push_approval` on; signing opt-in.
 
 **org / high-risk** — production, regulated, or many contributors.
 All of the above plus merge queue, environment gates with required deployments, GitHub Code Security and Secret Protection (code scanning, dependency review, secret scanning with push protection), `require_last_push_approval`, CODEOWNERS teams, and `required_signatures` if the org mandates it.
@@ -65,7 +65,7 @@ All of the above plus merge queue, environment gates with required deployments, 
 - `CODEOWNERS` uses explicit path prefixes, never a catch-all-only rule; owners on protected paths must be human users or teams, kept bot-free by membership hygiene — GitHub has no native "owners must be human" enforcement, so this is a repository policy you maintain.
   The goal is that a required CODEOWNERS review can never be satisfied by an agent.
   Monorepo: one prefix per owned subtree.
-  A human-owned last-resort catch-all is acceptable only after explicit path rules.
+  A human-owned last-resort catch-all is acceptable only when it is the FIRST rule in the file: CODEOWNERS is last-match-wins (the last matching pattern takes precedence), so a trailing catch-all would silently override every explicit owner above it.
   Solo: a single-user owner (`* @maintainer`) is fine, but a solo owner cannot satisfy their own required CODEOWNERS review, so either rely on the §2 human bypass to merge their own owned-path PRs or do not enable "require review from code owners" in a single-maintainer repo.
   Rulesets also offer a path-scoped `required_reviewers` rule (GA February 2026) that requires review from a named team by file pattern, independent of CODEOWNERS; the same human-only membership hygiene applies to those teams. (closes T3)
 - Required reviews are enabled on protected branches and enforced through CODEOWNERS — except in the solo interim posture, where reviews are intentionally 0 (see Repository Profiles).
@@ -96,27 +96,34 @@ All of the above plus merge queue, environment gates with required deployments, 
 - Linear history is required; restricting `allowed_merge_methods` to `squash` and `rebase` is an optional clarity tightening that matches it — required linear history already blocks merge-commit merges on the protected branch, so leaving the `merge` method enabled is not a functional contradiction, just a misleading dead-end option (the button is offered but the merge is refused) worth removing to reduce confusion. (closes T8)
 - Signed commits are strongly recommended and enforced (`required_signatures`) only when the maintainer opts in AND every committer — humans and the agent — has a working signing path; define the accepted mechanism (GitHub App commit signing, GPG, or SSH) so audits know what evidence to check.
   Do not enable `required_signatures` by default: it rejects every unsigned push, an agent that commits locally and pushes with a GitHub App token is NOT auto-signed, and required signing can block a non-author from squash-merging a PR through the web UI. Attribution itself rests on a distinct identity, preserved trailers, and linear history (§4), not on signing. (closes T8)
-- Merge queue is configured where serialized merges matter. (productivity; closes T4)
+- Merge queue is configured when the protected branch takes concurrent merge traffic — multiple PRs routinely in flight, or recurring stale-base check failures; it is part of the org profile and opt-in for solo (see Repository Profiles).
+  When a merge queue is enabled, every required check's workflow must also trigger on `merge_group` — a workflow that triggers only on `pull_request` never reports on the merge-group ref, and every queued merge stalls. (productivity; closes T4)
 - Force-push and branch deletion are blocked on protected refs. (closes T4)
-- Auto-merge safety is a combination, not a single setting: required approving review count >= 1, self-approval not counted, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these three settings plus the human-only-approvals required check below.
+- Auto-merge safety is a combination, not a single setting: required approving review count >= 1, the platform invariant that a PR author's own approval never counts, and a CODEOWNERS-required human review — GitHub has no native "human-only approver" flag, so you assemble it from these two settings, that invariant, plus the human-only-approvals required check below.
   This presumes a distinct agent identity excluded from bypass; in the solo interim before that identity (the agent runs on the maintainer's credentials) reviews are intentionally 0 and this combination does not apply — rely on the actor-independent gates per the solo interim posture above.
   Once the distinct identity exists, the solo-profile human bypass actor does not weaken this: it lets the human merge their own work, while the agent (excluded from bypass) still cannot approve or merge its own PR.
-  In the post-identity solo profile the CODEOWNERS leg is usually absent ("require review from code owners" is off per the solo profile), so the combination runs on two legs — reviews >= 1 plus self-approval-not-counted still block agent self-merge; the human approval is simply not CODEOWNERS-scoped. (closes T3)
+  In the post-identity solo profile the CODEOWNERS leg is usually absent ("require review from code owners" is off per the solo profile), so the combination runs on two legs — reviews >= 1 plus the author-approval invariant still block agent self-merge; the human approval is simply not CODEOWNERS-scoped. (closes T3)
 - No `[bot]` approval counts toward the required review threshold: an App with Pull requests write can submit approving reviews, and GitHub counts them like any write-access reviewer's — and the agent's App needs that permission to open PRs, so the grant cannot be dropped.
   There is no setting that excludes bots from counting, so enforce it as the human-only-approvals required status check (worked example in examples.md): triggered on `pull_request` and `pull_request_review`, failing while any live approving review on the PR comes from a `[bot]` actor.
-  Org profile: configure the check's operator list so a bot-authored PR approved only by the App's registered operator also fails; leave the list empty in the solo profile, where the operator is the only human reviewer. (closes T3)
+  Org profile: configure the check's operator list so a bot-authored PR approved only by the App's registered operator also fails; leave the list empty in the solo profile, where the operator is the only human reviewer.
+  The check natively catches `[bot]` actors only; a PAT-backed machine user is API type `User`, so list any such identity's login in the check's machine-user list or its approvals pass as human.
+  Residual: like any policy enforced by a `pull_request`-triggered workflow, this check runs the PR head's version of its own workflow file, so the actor it polices can edit the workflow in the same PR to make it pass — bind it by keeping `.github/workflows/` CODEOWNERS-owned under "require review from code owners" where the profile enables it, or by an org-level ruleset required workflow pinned to a protected ref; in profiles without a CODEOWNERS gate, the human reviewer treats any workflow edit in an agent PR as requiring explicit scrutiny. (closes T3)
 - Environment or deployment protection rules gate production via required reviewers or a wait timer on the environment.
+  Enable `prevent_self_review` where a second human exists (small-team, org); in the solo profile set it to `false` — it locks the lone maintainer out of approving their own deployments.
   Caveat: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they are Enterprise-only — Pro/Team private repos get environments, secrets, and deployment-branch policies, not these protection rules; if the plan does not provide them, use an external deployment-approval mechanism and mark this item N/A with the plan reason. (closes T5)
 
 ## §3 Actions & Supply Chain
 
 - `GITHUB_TOKEN` permissions are least-privilege at both layers: the repository/org Actions "Workflow permissions" setting sets the DEFAULT `GITHUB_TOKEN` permission — set it to read-only so workflows that declare nothing start least-privilege; it is a default, not a hard ceiling, because a workflow can still elevate permissions via its own top-level or job `permissions:` block, so the per-workflow least-privilege `permissions:` declaration is the actual control — declare it in every workflow.
-  Additionally, for workflows triggered by fork PRs the `GITHUB_TOKEN` is read-only with no repository secrets by default unless explicitly enabled. (closes T5)
+  Additionally, for workflows triggered by fork PRs the `GITHUB_TOKEN` is read-only with no repository secrets by default unless explicitly enabled.
+  Set `persist-credentials: false` on `actions/checkout` in any job whose later steps run untrusted or third-party code — checkout persists the job's token into the local git config by default, where those steps can read it. (closes T5)
 - Untrusted `github.event.*` strings are never interpolated directly into `run:` steps; bind them through `env:` and reference it as a quoted shell variable (e.g. `"$PR_TITLE"`), never via `eval`. (closes T2)
 - `pull_request_target` and `workflow_run` discipline: both run privileged with repository secrets and a write-capable token even when the triggering workflow could not, so prefer plain `pull_request` for untrusted fork PRs because it is read-only with no repository secrets by default.
   If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with human approval.
-  For `workflow_run`, do not trust artifacts, caches, or other inputs downloaded from the triggering run (they are attacker-controlled when the triggering run came from a fork), and do not check out untrusted head code in any `workflow_run` job that holds secrets or write scope. (closes T2)
+  For `workflow_run`, do not trust artifacts, caches, or other inputs downloaded from the triggering run (they are attacker-controlled when the triggering run came from a fork), and do not check out untrusted head code in any `workflow_run` job that holds secrets or write scope.
+  `issue_comment`, `issues`, and other default-branch-context triggers (the ChatOps pattern) also run with repository secrets available and a token whose write scope depends on the workflow and repository `permissions:` defaults, while processing untrusted comment or issue text — apply the same `env:`-binding and least-privilege discipline, and never take a privileged action based on unvalidated comment text. (closes T2)
 - Third-party actions are pinned to a full commit SHA, not a mutable tag. (closes T6)
+- On public repos, the Actions fork-PR approval policy (Settings → Actions → Fork pull request workflows) requires approval for outside collaborators — at minimum first-time contributors — so fork PRs do not auto-run CI on attacker-chosen code; defense-in-depth, since fork-PR tokens are read-only with no secrets by default. (closes T2, T6)
 - OIDC is used for cloud authentication instead of stored long-lived secrets. (closes T5, T9)
 - Secret handling: `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` are not enabled in production (registered secrets stay masked even in debug logs, but verbose debug output widens the leak surface for unregistered or derived sensitive values). (closes T5)
 - Dependabot is enabled for both version updates and security updates. (closes T6)
@@ -128,8 +135,8 @@ All of the above plus merge queue, environment gates with required deployments, 
 ## §4 Auditability & Identity
 
 - Distinct agent identity is provisioned, in preference order: GitHub App > fine-grained bot PAT > shared user account. (closes T8, T9)
-- PATs, where used at all, are fine-grained and short-lived; classic broad PATs are never used; the token inventory is reviewed periodically and stale tokens are revoked. (closes T9)
+- PATs, where used at all, are fine-grained with an expiry of 90 days or less; classic broad PATs are never used; the token inventory is reviewed on a recorded cadence (quarterly or tighter), and any token past expiry or unused for a full review period is revoked. (closes T9)
 - Commits are authored with attribution preserved through squash and rebase — when squash-merging, verify the `Co-authored-by:` trailers survive into the final squash commit message, since squash builds a new message and drops trailers not carried into it; humans are co-authored when pairing; commits are signed when the repo opts into required signing (recommended, not required by default — see §2). (closes T8)
-- Audit-log coverage is explicitly considered: the organization audit log is a fixed 180-day window on GitHub.com (not configurable), longer retention requires Enterprise audit-log streaming, and there is no repository-level audit log. (closes T8)
+- Audit-log coverage is explicitly considered: the organization audit log is a fixed 180-day window on GitHub.com (not configurable), Git events within it are retained only 7 days — the binding constraint for commit-level forensics — longer retention requires Enterprise audit-log streaming, and there is no repository-level audit log. (closes T8)
 - No mid-session privilege escalation: token scopes are provisioned up front; widening scope requires a human action. (closes T9)
 - Private vulnerability reporting is enabled and `SECURITY.md` is present for public repos (see §1). (closes T1)
