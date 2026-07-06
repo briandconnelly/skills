@@ -31,7 +31,8 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 ## Vocabulary
 
-- **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode (e.g., `--json --machine --no-progress`). Declared in the schema.
+- **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode. Declared in the schema.
+  Prefer a single flag that implies the rest (e.g., `--machine` implying JSON output and suppressed progress); when the profile names several flags, the schema must define what each flag adds.
 - **Machine mode**: the runtime state the machine profile produces — no prompts, no color, no progress, no pager, no browser, structured output only.
 - **Isolation profile**: an optional flag bundle that disables ambient config, credentials, caches, and other implicit state when the CLI can support that safely (e.g., `--isolated` or `--no-config`).
   Distinct from the machine profile.
@@ -55,7 +56,8 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
    For a contract the user does not own, follow [review-workflow.md](references/review-workflow.md) only.
 5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
 6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
-7. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
+7. When writing or auditing prose surfaces — `--help` text, command summaries, schema `description` fields — apply the rules-then-context discipline in [contract-checklist.md](references/contract-checklist.md); if a separating-context-from-constraints skill is available in your environment, use it as the audit lens for those surfaces.
+8. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
 
 ## Done Criteria
 

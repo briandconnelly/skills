@@ -11,6 +11,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt.
 3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the transcript.
    Record results in the table at the bottom.
+   Assertion lists may be tightened over time; a results row reflects the assertions as of its date.
 
 ## Scenario 1: Design (application test)
 
@@ -71,7 +72,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 - [ ] Findings use the `P0`-`P3` severity scale and the finding format from `review-workflow.md`: severity, type (`impl-bug`/`schema-gap`/`design-issue`), location, impact, fix direction.
 - [ ] Evidence labels are applied: `observed` for session behavior, `absence-of-evidence` for the missing schema/machine profile.
-- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation, severity `P0` (Invocation Safety).
+- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation, severity `P0`, with the documented prompt labeled `observed` and the actual non-TTY hang behavior labeled `inferred` (Invocation Safety, Evidence).
 - [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged at `P1` or higher (Output).
 - [ ] The unstructured error plus generic exit `1` is flagged: no symbolic code to branch on (Errors And Exit Codes).
 - [ ] The implicit update check on a read path is flagged as a hidden side effect / phone-home finding (Side Effects And Telemetry).
@@ -80,6 +81,26 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] A checklist coverage table is produced with `not-checked` reasons for sections the captured material cannot answer (e.g., stdin contract, tests).
 
 **Expected baseline failures:** ad-hoc severity labels or none, no finding format, no evidence labels, no coverage table, misses the update-check side effect or the prompt hang risk.
+
+## Scenario 3: Diagnosis (routing test)
+
+**Prompt:**
+
+> Our CI pipeline calls `depman sync --quiet` in a non-interactive job, and the job hangs until the 60-minute timeout kills it.
+> I'm an SRE on the platform team; another team owns depman, so we can't change it, but we control the pipeline.
+> The `--help` output says: `sync    Sync the lockfile (asks for confirmation first)` and lists a `--yes  Assume yes` option.
+> What's going on and what should we do?
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Names the confirmation prompt blocking on stdin in a non-TTY job as the most likely failure path, with evidence labels: the documented prompt `observed`, the hang mechanism `inferred` (Review Workflow §0-1).
+- [ ] Leads with the smallest caller-side mitigation available today (e.g., `--yes`, stdin closed via `</dev/null` to fail fast, a short job-level timeout) rather than tool redesign (SKILL.md Workflow §1, internal operator).
+- [ ] Separates operator-side workarounds from owner-side fixes, and frames owner-side fixes as escalation items to the owning team.
+- [ ] Notes that `--yes` bypasses the confirmation safety check and states what that confirmation was protecting.
+- [ ] Offers one or two safe confirmation probes with permission requested first, or states why probing isn't useful (Review Workflow §1).
+- [ ] Stays diagnosis-sized: no full audit checklist coverage table (SKILL.md Done Criteria).
+
+**Expected baseline failures:** jumps to auditing or redesigning depman, no evidence labels, no operator-vs-owner split, recommends `--yes` without noting the bypassed safety check.
 
 ## Results
 

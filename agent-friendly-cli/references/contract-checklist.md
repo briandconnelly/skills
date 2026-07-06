@@ -23,12 +23,13 @@ It should include:
 - arguments, flags, types, defaults, enums, cardinality, and examples
 - global flags, including every flag named in the machine profile
 - units for duration and size flags, declared in the flag name (`--timeout-ms`) or a `unit` field; undeclared units are a contract gap
-- canonical machine profile
+- canonical machine profile; prefer a single flag that implies the rest, and define what each flag adds when the profile names several
 - optional isolation profile, when ambient state can be disabled
 - stdin contract
 - read-only vs mutating classification
 - auth, role, scope, environment, config, cache, and credential requirements
 - output class, shape, format, examples, and size mode
+- shape dialect: the named notation used for output and error shapes (JSON Schema or an equivalently precise named notation), including how it marks required vs optional fields
 - numeric exit codes and symbolic error codes (declared at tool level)
 - per-command error catalog: which symbolic codes that command can return, which exit code they map to, and which flags suppress them (e.g., `--if-exists`)
 - side effects
@@ -60,6 +61,15 @@ For every command, declare:
 Reading explicitly piped stdin is fine when declared.
 Waiting for terminal input in machine mode is not.
 
+## Shell Safety
+
+Agents typically build shell command lines, so the contract must survive hostile argument values:
+
+- Support `--` end-of-options so operands beginning with `-` cannot be parsed as flags, and declare that support in the schema.
+- Treat resource names, filenames, and query values as untrusted data: never pass them to a subshell, `eval`, or a generated shell string.
+- Quote arguments in canonical examples wherever values can contain spaces or shell metacharacters.
+- Error `hint` fields must not embed executable shell strings built from caller input; express repairs as flag and argument values.
+
 ## Agent-Safe Invocation
 
 - Define one canonical machine profile.
@@ -75,6 +85,7 @@ Waiting for terminal input in machine mode is not.
 - stdout is success payload only.
 - stderr carries diagnostics and machine-readable failures.
 - Machine-mode stderr framing is declared in the schema: on failure, the structured error object is the only stderr content, or stderr is NDJSON records with a `type` field (`progress`, `warning`, `error`) so agents can separate diagnostics from the failure payload.
+- The framing is declared as a closed enum value — `single-error-object` or `ndjson-typed` — with any explanatory prose in a separate description field, never as a free-form sentence agents must parse.
 - Free-form diagnostics must never interleave with the structured failure payload on machine-mode stderr.
 - Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
@@ -83,9 +94,11 @@ Waiting for terminal input in machine mode is not.
 - In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
 - In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code` and never parse `message`.
 - Each command declares one output class; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
+- When class-switching or shape-changing flags can combine (e.g., `--from-file --dry-run`), the schema declares the combined output shape or an explicit precedence rule.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
 - Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`, plus `limit` and `estimated_total` when available.
+- Cursor contracts declare opacity, lifetime, the error code an expired cursor returns, the restart action, and whether a page walk is snapshot-consistent or best-effort.
 - Truncation, omitted fields, and size caps are explicit.
 - `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
 - Default sort is deterministic.
@@ -105,12 +118,13 @@ Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` foll
 - `6`: rate limited
 - `7`: timeout
 - `8`: conflict
-- `9`: transient or retryable
+- `9`: transient, not otherwise classified
 - `10`-`125`: domain-specific, declared in schema
 
 Avoid `126` and `127` (shell launch failures) and `128+n` (signal exits); shells already assign those meanings.
 
 The symbolic JSON `code` is the authoritative branch key for agents; the numeric exit code is the shell-branching fallback.
+Codes `6`, `7`, and `9` can all be retryable; the payload's `retryable`/`temporary` field is authoritative for retry decisions, never the exit code alone.
 
 Structured errors:
 
@@ -118,6 +132,8 @@ Structured errors:
 - Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.
 - In JSON mode, `code` is symbolic and stable across platforms.
 - Numeric codes are only the shell-branching fallback.
+- `field` must name a published flag or argument, never an internal identifier.
+- `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
 - Retryability is explicit.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
@@ -143,9 +159,17 @@ Document:
 
 Required inspection affordances for tools that read ambient state (config files, env vars, credentials, caches — not the tool's own primary data store):
 
-- `whoami`
-- `config show --resolved`
-- `env`
+- identity inspection such as `whoami`, only when the tool has an identity or account concept
+- resolved configuration such as `config show --resolved`
+- credential- and environment-source inspection named for the domain, never a raw dump of the process environment
+
+The literal names are conventions, not requirements; equivalent inspection capabilities under domain-appropriate names satisfy this section.
+
+Secret intake:
+
+- Accept secrets via environment variables, credential files, keychains, or stdin.
+- Do not accept secrets as flag or argument values by default; argv leaks into process listings, shell history, and agent transcripts.
+- If a `--token`-style flag exists for compatibility, document the exposure and prefer the safer channels in canonical examples.
 
 Provide `--no-config` or `--isolated` for tools that read ambient config, credentials, or caches.
 If state cannot be disabled, expose that fact in schema and machine output.
@@ -153,13 +177,17 @@ If state cannot be disabled, expose that fact in schema and machine output.
 ## Mutations And Long-Running Work
 
 - Mutations require explicit action triggers such as `create`, `apply`, `delete`, or `--yes`.
-- Every mutating command should support `--dry-run`.
+- Every mutating command should support `--dry-run`; when a dry run cannot establish anything meaningful, mark this item not-applicable with a justification (per the Done Criteria) and lean on confirmation and idempotency controls instead.
 - Dry runs must avoid externally visible mutations.
 - Dry runs exit `0` when the planned mutation is valid and use the command's declared error contract otherwise.
 - Dry-run output includes `dry_run: true` and describes the planned effect; it must never be byte-identical to real mutation output.
 - Internal effects during dry runs, such as cache warming or token refresh, must be documented and suppressible in isolated mode.
 - Replay-sensitive mutations should support `--if-not-exists`, `--if-exists`, or idempotency keys.
-- Long-running operations need job IDs, machine-readable status, polling, and `wait --timeout`.
+- A mutation that times out or is interrupted has an unknown outcome; declare the reconciliation path — an idempotency key that makes retry safe, or a lookup/status command that confirms whether the mutation committed before retrying.
+- Declare which mutations are safe to retry automatically and which require reconciliation first.
+- Declare signal semantics for mutating and long-running commands: what an interrupt (SIGINT/SIGTERM) leaves behind, whether local writes are atomic, and whether remote work continues after the process dies.
+- Local state writes (config, cache, lockfiles) must be safe under concurrent invocations: atomic replacement, locking, or documented last-writer-wins.
+- Long-running operations need job IDs, machine-readable status, polling, `wait --timeout`, and a cancel operation.
 
 ## Side Effects And Telemetry
 
@@ -168,6 +196,14 @@ If state cannot be disabled, expose that fact in schema and machine output.
 - No network calls beyond the command's declared purpose.
 - No telemetry, update checks, or phone-home behavior by default.
 - Telemetry and update checks must be opt-in, suppressed in machine mode, and never prepended to stdout.
+
+## Prose Surfaces
+
+`--help` text, command summaries, and schema `description` fields are contract surfaces:
+
+- Write them rules-then-context: binding constraints, defaults, and prerequisites first; background and rationale after.
+- Keep command summaries task-selective: enough for an agent to pick between sibling commands without reading examples.
+- If a separating-context-from-constraints skill is available in your environment, use it as the audit lens for these surfaces.
 
 ## Tests
 
@@ -184,5 +220,7 @@ Ship tests for:
 - config/env precedence and isolation flags
 - deprecations and replacements
 - dry-run behavior for mutations
+- interrupt behavior for mutating commands
+- concurrent invocations against local state
 
 If behavior matters to an agent, cover it with an automated test.
