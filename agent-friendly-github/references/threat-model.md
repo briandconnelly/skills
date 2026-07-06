@@ -24,6 +24,7 @@ Avoid `pull_request_target` for untrusted PRs entirely.
 If it is unavoidable, no job may check out or execute untrusted head code, and any job with secrets or write scopes must sit behind a protected environment with a human reviewer.
 `workflow_run` is a second privileged-trigger vector: it runs with repository secrets and a write-capable token even when the triggering workflow (e.g., a fork PR workflow) could not — and it is exploitable when the `workflow_run` job downloads artifacts or caches from the triggering run or checks out untrusted head code, because those artifacts are attacker-controlled.
 Do not download artifacts or caches from the triggering run, and do not check out untrusted head code, in any `workflow_run` job that holds secrets or write scope.
+`issue_comment`, `issues`, and other default-branch-context triggers (the ChatOps pattern) are a third vector: they process untrusted comment or issue text with repository secrets available and a token whose write scope depends on the `permissions:` defaults — the same binding and least-privilege discipline applies (§3).
 
 **Operate close:** Never interpolate untrusted `github.event.*` values directly into `run:` steps — bind them via `env:` and reference the environment variable instead.
 
@@ -33,7 +34,7 @@ Do not download artifacts or caches from the triggering run, and do not check ou
 
 **Why agents amplify it:** An agent acting as both author and approver can satisfy a required-review rule without any human judgment ever entering the loop.
 
-**Config close:** §2 (required reviews enforced through CODEOWNERS files owned by humans; self-approval not counted toward the required threshold; auto-merge requires at least one human approver; `dismiss_stale_reviews` enabled so a post-approval push invalidates the existing approval; `require_last_push_approval` enabled so the most recent push must be approved by someone other than its author, defeating the "approve then sneak a commit" pattern).
+**Config close:** §2 (required reviews enforced through CODEOWNERS files owned by humans; the platform invariant that a PR author's own approval never counts toward the required threshold; auto-merge requires at least one human approver; `dismiss_stale_reviews` enabled so a post-approval push invalidates the existing approval; `require_last_push_approval` enabled so the most recent push must be approved by someone other than its author, defeating the "approve then sneak a commit" pattern).
 Every one of these review controls presumes the approver is a human distinct from the agent's author identity (T8, T9).
 In a solo repo — one human, whose credentials the agent runs on — author and approver collapse into one actor, and a required-review rule is illusory: the agent inherits whatever bypass lets the human merge, or, with no bypass, the lone human is locked out.
 (In a small-team or org repo a *different* human can review the agent's PR even if the agent is temporarily on one maintainer's account, so the gate still holds there.)
@@ -42,6 +43,7 @@ With reviews at 0 there is no approval left to launder, so the approval-launderi
 The adjacent residual stays open, though: nothing in the configuration stops the shared-credential agent from *merging* its own green PR, so interim merge authority rests on the operate rule below (never merge a PR you authored without explicit delegation) and optionally an agent-runtime command restriction, not on any GitHub control.
 A distinct identity narrows T3 on a developer machine but does not close it: an agent running as the human's OS user holds both identities, so it can author as the bot and approve with the human's stored credentials — and self-approval blocking does not catch this, because the approver differs from the author.
 The same Pull requests write permission that lets the App open PRs also lets it submit approving reviews, which GitHub counts like any write-access reviewer's; close that side with the human-only-approvals required check (§2, worked example in examples.md).
+That check is itself a `pull_request`-triggered workflow the agent's PR can edit, so it binds only alongside the §2 workflow-file protections (CODEOWNERS-owned `.github/workflows/`, or an org-ruleset required workflow pinned to a protected ref).
 The agent-as-human side has no repo-side close — GitHub authenticates tokens, not people — so the residual controls are local credential hygiene (no machine-resident human credential carries PR-approval capability; approvals happen in a browser the agent does not drive), audit-log detection of the operator approving the bot's PRs, and OS-level isolation; the local-machine side is the agent-bot-identity skill's scope.
 
 **Operate close:** Never approve, auto-merge, or re-trigger review on your own PR; never merge a PR you authored unless merge authority was explicitly delegated; re-request human review after any post-approval push.
@@ -100,7 +102,7 @@ Treat dependency-update PRs as real code changes — review the diff and changel
 **Why agents amplify it:** Agent commits can flood history quickly, and a single shared bot identity collapses accountability across many automated actions into one indistinguishable actor.
 
 **Config close:** §2 and §4.
-The load-bearing attribution controls are a distinct per-agent identity with a meaningful name and email, preserved author and `Co-authored-by` metadata, linear history (which prevents force-rewrite loops), and organization audit-log coverage (a fixed 180-day window on GitHub.com; Enterprise audit-log streaming for longer retention).
+The load-bearing attribution controls are a distinct per-agent identity with a meaningful name and email, preserved author and `Co-authored-by` metadata, linear history (which prevents force-rewrite loops), and organization audit-log coverage (a fixed 180-day window on GitHub.com, within which Git events are retained only 7 days; Enterprise audit-log streaming for longer retention).
 Signed commits add tamper-evidence on top and are strongly recommended, but are opt-in rather than required by default: mandatory `required_signatures` blocks every committer who has not provisioned a key (including an agent committing locally with a GitHub App token, which is not auto-signed) and can block a non-author from squash-merging via the web UI — so the maintainer decides when to enforce it.
 
 **Operate close:** Use conventional, correctly-authored commits with attribution preserved; sign them when the repo enforces required signing or you have signing configured (recommended); preserve co-authorship metadata; add a `Co-authored-by:` trailer when pairing with a human.

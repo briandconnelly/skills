@@ -63,7 +63,7 @@ In the solo profile, once a distinct agent identity exists and reviews are >= 1,
 Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds.
 In the pre-identity solo interim (reviews 0) keep the bypass list empty, per the solo interim posture in [config-checklist.md](config-checklist.md).
 In the small-team and org/high-risk profiles the list stays empty too — a second human provides the review, so there is no lone maintainer to unblock.
-Merge queues operate through the normal ruleset flow and need no bypass entry in the common case (see §2 for the `gh-readonly-queue/**` caveat) (closes T4).
+Merge queues operate through the normal ruleset flow and need no bypass entry in the common case (see §2 for the `gh-readonly-queue/**` caveat); if you enable one, every required check's workflow must also trigger on `merge_group`, or queued merges stall (§2) (closes T4).
 
 Required ruleset conditions:
 
@@ -75,11 +75,11 @@ Required ruleset conditions:
 - Linear history required (closes T8).
 - Force-push and branch deletion blocked on protected refs (closes T4).
 
-Assemble auto-merge safety as a combination of three settings (GitHub has no single "human-only approver" flag):
-required approving review count ≥ 1 + self-approval not counted + CODEOWNERS-required human review on protected paths (closes T3).
+Assemble auto-merge safety as a combination (GitHub has no single "human-only approver" flag):
+required approving review count ≥ 1 + CODEOWNERS-required human review on protected paths, resting on the platform invariant that a PR author's own approval never counts (closes T3).
 This presumes a distinct agent identity exists; in the solo interim before that identity (the agent runs on the maintainer's own credentials) a required review is illusory — set the count to 0 and rely on the actor-independent gates per the solo interim posture in [config-checklist.md](config-checklist.md), then flip it to ≥ 1 once the distinct identity is provisioned.
 
-Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds (closes T5).
+Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds; enable `prevent_self_review` where a second human exists, and set it to `false` in the solo profile, where it locks the lone maintainer out of their own deployments (§2) (closes T5).
 Note: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they are Enterprise-only — Pro/Team private repos get environments, secrets, and deployment-branch policies, not these protection rules; if the plan does not provide them, use an external deployment-approval mechanism and mark this step N/A with the plan reason.
 If the default branch ruleset must require successful production deployment before merge, add a `required_deployments` rule for that environment.
 See the **production environment gate** artifact in [examples.md](examples.md).
@@ -106,10 +106,13 @@ These are two distinct layers: the repository or organization "Workflow permissi
 
 Pin every third-party action to a full commit SHA, not a mutable tag or `@main` (closes T6).
 Enable OIDC for cloud authentication in place of stored long-lived secrets (closes T5, T9).
+Set `persist-credentials: false` on `actions/checkout` in jobs whose later steps run untrusted or third-party code (§3) (closes T5).
 
 Ensure no untrusted `github.event.*` strings flow directly into `run:` steps — bind them through `env:` and reference the environment variable in shell (closes T2).
 Audit `pull_request_target` usage: prefer replacing it with plain `pull_request`, which gets a read-only token and no repository secrets for fork workflows (closes T2).
 If `pull_request_target` is unavoidable, no job checks out or executes untrusted head code, and any job with secrets or write scopes is gated behind a protected environment with a human reviewer.
+Apply the same discipline to `issue_comment`, `issues`, and other default-branch-context triggers, which process untrusted text with repository secrets available (§3) (closes T2).
+On public repos, set the Actions fork-PR approval policy to require approval for outside collaborators — at minimum first-time contributors (§3) (closes T2, T6).
 
 Enable GitHub-native security features:
 
@@ -153,7 +156,7 @@ See the **draft-first convention** note in [examples.md](examples.md).
 Create a canonical `AGENTS.md` at the repo root covering branching strategy, commit format, review expectations, label use, test commands, and off-limits paths.
 Per-tool files (`CLAUDE.md`, `GEMINI.md`, etc.) are thin pointers — for Claude Code, the full content of `CLAUDE.md` is a single line: `@AGENTS.md`.
 Reusable procedures belong as committed artifacts, not pasted into instruction files.
-In a monorepo, add a nested `AGENTS.md` per subtree with meaningfully different rules.
+In a monorepo, add a nested `AGENTS.md` per subtree whose build or test commands, ownership, review expectations, or off-limits paths differ from the root file's.
 See the **Agent Instruction File Pattern** artifact in [examples.md](examples.md).
 
 **`.gitignore` and `.gitattributes`.**
@@ -174,7 +177,7 @@ Confirm an always-running monorepo gate check is configured (not `paths:`-filter
 Confirm nested `AGENTS.md` files exist for subtrees with different rules (§1).
 Confirm `scope/<area>` labels cover all major subtrees (§1).
 Confirm CODEOWNERS has one prefix per owned subtree and is never catch-all-only (§1).
-If a last-resort catch-all exists, confirm it is human-owned and appears after explicit path rules.
+If a last-resort catch-all exists, confirm it is human-owned and appears BEFORE the explicit path rules — CODEOWNERS is last-match-wins, so a trailing catch-all silently overrides every explicit owner (§1).
 
 **Public repos.**
 Enable private vulnerability reporting (GitHub Security → Private vulnerability reporting) and verify `SECURITY.md` references it (§4, §1).
@@ -200,11 +203,11 @@ Checklist walkthrough by section:
 
 **§1 Issues & PRs** — verify issue templates present, PR template present, label taxonomy defined (including `scope/<area>` if monorepo), CODEOWNERS with explicit prefixes and human-only owners on protected paths, required reviews enabled (or intentionally 0 in the solo pre-identity interim — see the profiles in config-checklist.md), draft-first convention documented, safety-relevant template metadata verified by a required CI check, `.gitignore` covering secret-bearing paths, `.gitattributes` normalization in place, `AGENTS.md` present with thin per-tool adapter files, `CONTRIBUTING` present, `SECURITY.md` present.
 
-**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list contains no automation identity (and only the human maintainer in the solo profile once reviews are >= 1; empty in the solo pre-identity interim and in small-team and org), required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, `require_last_push_approval` set per profile (omitted for solo), linear history required, signed commits required only if signing was opted into, merge queue configured if needed, force-push and deletion blocked, auto-merge safety assembled from the three-part combination, environment protection rules in place for production targets.
+**§2 Branch / Repo Guardrails** — verify ruleset targets default and release branches, bypass-actors list contains no automation identity (and only the human maintainer in the solo profile once reviews are >= 1; empty in the solo pre-identity interim and in small-team and org), required status checks configured (always-running gate check if monorepo, not `paths:`-filtered), `dismiss_stale_reviews_on_push` set in ruleset, `require_last_push_approval` set per profile (omitted for solo), linear history required, signed commits required only if signing was opted into, merge queue configured if needed (with every required check's workflow triggering on `merge_group`), force-push and deletion blocked, auto-merge safety assembled from the review-count and CODEOWNERS settings plus the author-approval invariant, environment protection rules in place for production targets with `prevent_self_review` set per profile.
 
-**§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, no `workflow_run` job with secrets or write scope downloads triggering-run artifacts or caches or checks out untrusted head code, all third-party actions pinned to full commit SHAs, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, dependency-update PRs subject to the same required reviews and checks (auto-merge limited to non-major updates with green checks), CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
+**§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, no `workflow_run` job with secrets or write scope downloads triggering-run artifacts or caches or checks out untrusted head code, `issue_comment`/`issues`-triggered workflows apply the same untrusted-text discipline, all third-party actions pinned to full commit SHAs, `persist-credentials: false` set where later steps run untrusted code, the fork-PR approval policy set on public repos, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, dependency-update PRs subject to the same required reviews and checks (auto-merge limited to non-major updates with green checks), CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
-**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
+**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com with its 7-day Git-event subset; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
 Emitted artifacts (confirm each is in place or pointed to in [examples.md](examples.md)):
 

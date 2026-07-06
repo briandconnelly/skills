@@ -19,9 +19,9 @@ Agents err, and they can be prompt-injected; the repo must stay safe regardless.
 - The agent cannot launder its own approval — an agent that authored a PR must not approve it, trigger auto-merge to satisfy a human-review requirement, or manipulate review requests to make its own work look approved.
   After a post-approval push, the agent requests fresh human review rather than treating stale approval as sufficient.
 - Merge authority defaults to the human — an agent does not merge a PR it authored unless the human has explicitly authorized the agent to merge it (a standing grant in `AGENTS.md` or an in-session instruction that specifically says the agent may merge); green required checks and a zero-review configuration are gate outcomes, not delegation.
-- Constrain blast radius by default — use the least-privilege `GITHUB_TOKEN`, pin third-party actions to a full commit SHA, prefer OIDC over long-lived PATs, enforce protected branches that no automation identity can bypass, use environment gates for production deployments, and enable dismiss-stale-reviews-on-push.
+- Constrain blast radius by default — a summary of controls that are each an atomic item in [config-checklist.md](references/config-checklist.md): the least-privilege `GITHUB_TOKEN`, third-party actions pinned to a full commit SHA, OIDC over long-lived PATs, protected branches that no automation identity can bypass, environment gates for production deployments, and dismiss-stale-reviews-on-push.
 - Right-size to the repo's team and risk — the security boundary is human-vs-agent, not author-vs-reviewer, so never configure a repo such that the legitimate human maintainer cannot merge their own work; a single-maintainer repo keeps the agent fully gated while leaving the lone human an escape hatch. Match controls to a repository profile (solo, small-team, org/high-risk) rather than applying every control everywhere.
-- Keep the green path fast and deterministic so agents do not route around guardrails — flaky required checks create pressure to retry, skip, or override; fix them before they become a bypass habit.
+- Fix flaky or slow required checks before they become a bypass habit — an unreliable green path creates pressure to retry, skip, or override, which is how agents learn to route around guardrails.
 - Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check (never `paths:`-filter a required check, because a skipped required check stays pending and blocks merge forever), and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
 
 ## Agent-Instruction-File Strategy
@@ -37,11 +37,11 @@ Tool-specific overrides — a tool's own invocation flags, permission scopes, or
 Reusable procedures (release workflows, audit checklists, operating playbooks) belong as committed artifacts rather than pasted into instruction files; instruction files cross-link to them instead.
 
 **Monorepo scoping.**
-In a monorepo, nest an `AGENTS.md` in each package or subtree that has meaningfully different rules; the root `AGENTS.md` covers cross-cutting norms.
+In a monorepo, nest an `AGENTS.md` in each package or subtree whose rules differ from the root file's — different build or test commands, ownership, review expectations, or off-limits paths; the root `AGENTS.md` covers cross-cutting norms.
 This mirrors CODEOWNERS path scoping: both files answer "who owns this path and what rules apply here?"
 
 **Drift control.**
-Keep instruction files short, authoritative, and CODEOWNERS-owned so changes go through review.
+Keep instruction files CODEOWNERS-owned so changes go through review, and limit their content to repo-wide norms plus cross-links — reusable procedures live as committed artifacts (see What goes where above).
 Cross-link rather than duplicate; duplicate content drifts and creates conflicting instructions.
 Treat the canonical file as a first-class repository artifact, not an afterthought.
 
@@ -67,15 +67,15 @@ Treat the canonical file as a first-class repository artifact, not an afterthoug
 - **Ruleset**: the current GitHub mechanism for branch and tag rules — supports bypass-actors lists, multiple target patterns, and org-level inheritance; prefer over classic branch protection.
 - **Required check**: a status check (CI job, code-quality gate) that must pass before a PR can merge; declared as a `required_status_checks` rule in the ruleset.
 - **CODEOWNERS path ownership**: a `CODEOWNERS` file entry that maps a glob path to one or more required reviewers; ownership is enforced when "Require review from code owners" is enabled in the ruleset.
-- **Agent identity**: how the agent is identified as the actor — a GitHub App installation (preferred: fine-grained permissions, short-lived tokens, clear audit trail), a bot PAT (broader scope, longer-lived, less auditable), or a user account (avoid for automated work).
+- **Agent identity**: how the agent is identified as the actor — a GitHub App installation (fine-grained permissions, short-lived tokens, clear audit trail), a bot PAT (broader scope, longer-lived, less auditable), or a user account; [config-checklist.md](references/config-checklist.md) §4 ranks these, with user accounts last.
 - **Least-privilege token**: a `GITHUB_TOKEN` or PAT scoped to only the permissions the current job requires; declared per-job in `permissions:` in the workflow file.
 - **Untrusted input / injection surface**: any repo-resident text the agent reads and acts on — issue titles, PR bodies, commit messages, code files, comments — that an adversary could craft to alter agent or CI behavior.
 - **Green path**: the end-to-end flow where the agent opens a branch, pushes commits, opens a PR, required checks pass, a human approves, and the PR merges without manual intervention.
 - **Blast radius**: the scope of damage if an agent is compromised or makes an error — limited by least-privilege tokens, pinned actions, protected branches, and environment gates.
-- **Attribution / audit trail**: the verifiable record of who authored each commit and triggered each action — preserved by a distinct agent identity, retained author and co-author metadata, linear history, and no squash-without-author-preservation; signed commits add tamper-evidence on top but are a recommended opt-in, not the load-bearing attribution control.
+- **Attribution / audit trail**: the verifiable record of who authored each commit and triggered each action — preserved by a distinct agent identity, retained author and co-author metadata, linear history, and no squash-without-author-preservation; signed commits add tamper-evidence on top (their opt-in status is governed by [config-checklist.md](references/config-checklist.md) §2).
 - **Approval laundering**: a pattern where the agent that authored a PR also satisfies the human-review requirement, either by self-approving or by manipulating the review state.
 - **Dependency confusion / namespace hijacking**: a supply-chain attack where a public package with a higher version number shadows a private internal package; mitigated by explicit registry pinning and private package namespacing.
-- **Bypass-actors list**: the set of identities (individual users, teams, roles, or apps) that may bypass ruleset conditions on a protected branch; it must contain no automation identity the agent can act as (the agent, a bot PAT, a deploy key, or a CI app the agent uses), and is otherwise kept minimal and audited — a human maintainer may appear here in the solo profile once reviews are >= 1, as the documented escape hatch (in the solo interim with reviews 0, and in small-team and org repos, the list is empty).
+- **Bypass-actors list**: the set of identities (individual users, teams, roles, or apps) that may bypass ruleset conditions on a protected branch; its required contents — no automation identity the agent can act as, and the profile-scoped human escape hatch — are governed by [config-checklist.md](references/config-checklist.md) §2.
 - **Monorepo path scoping**: restricting rules, ownership, and required checks to specific directory prefixes so unrelated packages do not block each other.
 - **Canonical instructions file**: the single authoritative file (conventionally `AGENTS.md`) that all agents and per-tool adapter files defer to for repo-wide norms.
 

@@ -173,6 +173,14 @@ The explicit-prefix pattern applies to any repo; the monorepo example below show
 # A required CODEOWNERS review can only be satisfied by a listed owner;
 # if a bot or agent account were listed, it could satisfy its own review (T3).
 
+# ORDER MATTERS: CODEOWNERS is last-match-wins — the LAST matching pattern takes
+# precedence. The catch-all therefore comes FIRST, so every explicit rule below
+# overrides it; a trailing catch-all would silently override every explicit owner.
+
+# Last-resort catch-all: any path not matched by a later rule goes to platform-team.
+# Must be a human team, not a bot.
+*                        @org/platform-team
+
 # Per-package ownership — explicit path prefixes, never catch-all-only
 /packages/auth/          @org/auth-team
 /packages/billing/       @org/billing-team
@@ -184,10 +192,6 @@ The explicit-prefix pattern applies to any repo; the monorepo example below show
 
 # Documentation owned by docs team
 /docs/                   @org/docs-team
-
-# Last-resort catch-all: any path not matched above goes to platform-team.
-# Must be a human team, not a bot.
-*                        @org/platform-team
 ```
 
 **Solo variant.** A single-maintainer repo uses one user owner and usually does NOT enable "require review from code owners," because the maintainer cannot approve their own PR:
@@ -287,6 +291,8 @@ Key points enforced in this workflow:
 - `github.event.pull_request.title` (untrusted input) is bound to an `env:` variable `PR_TITLE`; the `run:` step references `"$PR_TITLE"` — never `${{ github.event.pull_request.title }}` directly in a shell command (T2).
 - The third-party action is pinned to a 40-hex commit SHA with a version comment (T6).
 - `pull_request_target` is not used; this workflow uses `pull_request` which runs with a read-only token and no repository secrets for fork PRs (T2).
+- Checkout sets `persist-credentials: false` so later steps that run project code (tests, builds) cannot read the job's token from the local git config (T5).
+- The workflow also triggers on `merge_group`, so the required `test` check reports on merge-queue refs — a required check that triggers only on `pull_request` stalls every queued merge (§2).
 
 ```yaml
 # WARNING: never use pull_request_target for workflows that check out untrusted code
@@ -304,6 +310,9 @@ on:
   push:
     branches:
       - main
+  # Required for merge queues: required checks must report on the merge-group ref,
+  # or every queued merge stalls (§2). Harmless when no queue is configured.
+  merge_group:
 
 # Default token is read-only for all jobs in this workflow.
 permissions:
@@ -317,6 +326,10 @@ jobs:
       - name: Checkout
         # Third-party action pinned to a full 40-hex commit SHA, not a mutable tag (T6).
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          # Do not persist the job token into .git/config, where later steps
+          # running project code could read it (T5).
+          persist-credentials: false
 
       - name: Log PR title safely
         # Bind the untrusted PR title via env: — NEVER interpolate ${{ github.event.* }}
@@ -356,6 +369,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          # The deploy job authenticates via OIDC, not the job token (T5).
+          persist-credentials: false
 
       - name: Authenticate to cloud via OIDC
         # Replace with your cloud provider's OIDC action (AWS, GCP, Azure, etc.).
@@ -467,6 +483,10 @@ labels:
   - name: "priority/p2"
     color: "f9d0c4"
     description: "Normal — backlog"
+  # Workflow labels
+  - name: "agent:in-progress"
+    color: "ededed"
+    description: "An agent has claimed this issue (see the operating playbook's claim rule)"
   # Scope labels (monorepo — add one per major subtree)
   - name: "scope/auth"
     color: "c5def5"
@@ -541,7 +561,7 @@ If that workflow's job is listed as a required status check in the ruleset, the 
 There is no way to merge a PR that has a required check stuck in PENDING.
 
 **The correct pattern: one always-running gate check.**
-Use a single workflow that triggers on every `pull_request` (no `paths:` filter), detects which paths changed internally, runs per-package work conditionally, and always exits with a clear pass/fail status.
+Use a single workflow that triggers on every `pull_request` (no `paths:` filter) — and on `merge_group`, so the required check also reports on merge-queue refs (§2) — detects which paths changed internally, runs per-package work conditionally, and always exits with a clear pass/fail status.
 When nothing relevant changed, the gate exits 0 (pass) immediately.
 The required-check context is the job name `gate` — that is what you add to the ruleset's `required_status_checks`.
 
@@ -561,6 +581,9 @@ on:
   pull_request:
     branches:
       - main
+  # Required for merge queues: without this trigger the required `gate` check
+  # never reports on the merge-group ref and every queued merge stalls (§2).
+  merge_group:
 
 permissions:
   contents: read
@@ -574,12 +597,15 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 0
+          # Later steps run package tests; they must not see the job token (T5).
+          persist-credentials: false
 
       - name: Detect changed packages
         id: changed
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # merge_group payloads carry the SHAs under different keys than pull_request.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           changed_files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")
           echo "Changed files:"
@@ -646,12 +672,14 @@ Implements: §1, §2 (T3)
 This is the worked example of the principle in §1: template-prompted metadata that matters (the linked issue) is CI-verified, not trusted.
 Mark this check REQUIRED in the §2 ruleset ONLY in repos whose workflow mandates issue-backed PRs.
 
-Escape hatch: a `no-issue-required` label, applied through a maintainer/CODEOWNERS-gated process, exempts hotfixes, reverts, release PRs, and dependency-bump PRs.
+Escape hatch: a `no-issue-required` label exempts hotfixes, reverts, release PRs, and dependency-bump PRs — and because the agent's own `issues: write` scope can apply labels to PRs (PRs are issues to the labels API), the check verifies WHO applied the label and fails if it was a bot or a listed machine user, so the agent cannot clear its own required check by self-applying the exemption.
 
 Scope limitations and failure modes: only same-repo numeric `#N` references are verified — cross-repo `owner/repo#N` and private-repo references are not (they would 404); an issue can be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
-This check verifies the issue state at the last workflow run, not at merge time, so an issue closed after the last run will not be caught; if that matters, gate merges through a merge queue (which re-runs checks just before merge) or a check that runs close to merge.
+This check verifies the issue state at the last workflow run, not at merge time, so an issue closed after the last run will not be caught; the `merge_group` leg below deliberately reports success without re-verifying (a merge-group payload carries no PR context), so a merge queue does not close this gap either — if it matters, use an external check app that re-validates near merge.
+The `merge_group` trigger itself is still required whenever a merge queue is enabled: a required check that never reports on the merge-group ref stalls every queued merge (config-checklist.md §2).
 The workflow also triggers on `labeled` and `unlabeled` events so that applying or removing the `no-issue-required` escape-hatch label immediately re-runs the check and clears or sets the status — without those triggers, adding the label after a failed run leaves the check permanently red.
-When the label makes the job-level `if:` skip the job, GitHub reports the skipped job as success, so the required check clears; keep the job id stable, since `require-issue` is the check-run name the ruleset matches.
+Keep the job id stable, since `require-issue` is the check-run name the ruleset matches.
+Residual: like the human-only-approvals check, this is a `pull_request`-triggered workflow the PR under review can edit — see the §2 mitigation (CODEOWNERS-owned `.github/workflows/`, or an org-ruleset required workflow pinned to a protected ref).
 
 ```yaml
 name: require-issue-link
@@ -667,6 +695,9 @@ on:
       - unlabeled
     branches:
       - main
+  # Required for merge queues (config-checklist.md §2). The script reports success
+  # on merge_group without re-verifying — a merge-group payload has no PR context.
+  merge_group:
 
 permissions:
   contents: read
@@ -676,16 +707,48 @@ permissions:
 jobs:
   require-issue:
     runs-on: ubuntu-24.04
-    # Escape hatch: a maintainer or CODEOWNERS-listed reviewer applies `no-issue-required` for hotfixes,
-    # reverts, release, or dependency-bump PRs. Gate who can add that label through
-    # your process — the label is the documented exception, not a free bypass.
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-issue-required') }}
     steps:
       - name: Verify the PR closes a real open issue
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
         with:
           script: |
-            const body = context.payload.pull_request.body || "";
+            const LABEL = "no-issue-required";
+            // PAT-backed machine users are API type "User"; list their logins here
+            // so a label they apply is rejected like a bot's (config-checklist.md §4).
+            const MACHINE_USERS = [];
+
+            if (context.eventName === "merge_group") {
+              core.info("merge_group run: the PR-level run gated queue entry; reporting success.");
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+
+            // Escape hatch: `no-issue-required` exempts hotfixes, reverts, release,
+            // and dependency-bump PRs — but only when a HUMAN applied it. The agent's
+            // own issues:write token can label its own PR, so verify the labeler.
+            if (pr.labels.some((l) => l.name === LABEL)) {
+              const events = await github.paginate(github.rest.issues.listEvents, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+              });
+              const applied = events
+                .filter((e) => e.event === "labeled" && e.label && e.label.name === LABEL)
+                .pop();
+              const actor = applied ? applied.actor : null;
+              if (!actor || actor.type === "Bot" || MACHINE_USERS.includes(actor.login)) {
+                core.setFailed(
+                  `'${LABEL}' must be applied by a human; it was applied by ` +
+                  `${actor ? actor.login : "an unknown actor"}. Have a maintainer re-apply it.`
+                );
+                return;
+              }
+              core.info(`'${LABEL}' applied by human ${actor.login}; issue link not required.`);
+              return;
+            }
+
+            const body = pr.body || "";
             // Match explicit closing keywords only — not incidental "#123" mentions.
             const re = /\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
             const nums = [...body.matchAll(re)].map((m) => Number(m[3]));
@@ -729,9 +792,11 @@ Mark it REQUIRED in the §2 ruleset.
 
 It fails on a bot approval even when a human approval is also present — GitHub counts approvals indistinguishably, so the remedy is dismissing the bot review, not outvoting it.
 The `pull_request` triggers keep a required check from sitting PENDING forever on PRs that never receive a review event, and `pull_request_review` (`submitted`, `dismissed`) re-runs it the moment an approval appears or is dismissed; `pull_request_review` runs attach to the PR's head SHA, which is what the ruleset checks.
-Like any review-state check, it reflects the last run, not merge time; a merge queue re-runs checks just before merge if that gap matters.
+Like any review-state check, it reflects the last run, not merge time; the `merge_group` leg reports success without re-checking (a merge-group payload has no PR context), so treat queue-time re-validation as out of this check's scope — the trigger is still required whenever a merge queue is enabled, or queued merges stall (config-checklist.md §2).
 The `OPERATORS` list is the org-profile leg: a bot-authored PR whose only human approvals come from the App's registered operators fails, forcing a second human.
 Leave it empty in the solo profile, where the operator is the only human reviewer.
+The check natively catches API type `Bot` only; a PAT-backed machine user is type `User`, so list any such login in `MACHINE_USERS` or its approvals pass as human (config-checklist.md §2, §4).
+Residual: this is a `pull_request`-triggered workflow, so the PR under review can edit the check itself — bind it per §2 (CODEOWNERS-owned `.github/workflows/`, or an org-ruleset required workflow pinned to a protected ref).
 
 ```yaml
 name: human-only-approvals
@@ -748,6 +813,9 @@ on:
     types:
       - submitted
       - dismissed
+  # Required for merge queues (config-checklist.md §2). The script reports success
+  # on merge_group without re-checking — a merge-group payload has no PR context.
+  merge_group:
 
 permissions:
   contents: read
@@ -764,8 +832,18 @@ jobs:
             // Org profile: App operator logins whose solo approval of a
             // bot-authored PR must not satisfy review. Solo profile: leave empty.
             const OPERATORS = [];
+            // PAT-backed machine users are API type "User", not "Bot"; list their
+            // logins here so their approvals are treated like bot approvals
+            // (config-checklist.md §2, §4).
+            const MACHINE_USERS = [];
+
+            if (context.eventName === "merge_group") {
+              core.info("merge_group run: approval state was validated on the PR before queue entry; reporting success.");
+              return;
+            }
 
             const pr = context.payload.pull_request;
+            const isMachine = (u) => u.type === "Bot" || MACHINE_USERS.includes(u.login);
             const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -774,22 +852,23 @@ jobs:
             // GitHub counts each reviewer's latest state-changing review; mirror that.
             const latest = new Map();
             for (const r of reviews) {
+              if (!r.user) continue; // reviewer account deleted — cannot be counted either way
               if (!["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(r.state)) continue;
               latest.set(r.user.login, r);
             }
             const approvals = [...latest.values()].filter((r) => r.state === "APPROVED");
 
-            const botApprovals = approvals.filter((r) => r.user.type === "Bot");
+            const botApprovals = approvals.filter((r) => isMachine(r.user));
             if (botApprovals.length > 0) {
               core.setFailed(
-                `Approval from bot actor(s) ${botApprovals.map((r) => r.user.login).join(", ")} ` +
-                "must not count toward required review; dismiss the bot review and obtain a human approval."
+                `Approval from bot or machine-user actor(s) ${botApprovals.map((r) => r.user.login).join(", ")} ` +
+                "must not count toward required review; dismiss that review and obtain a human approval."
               );
               return;
             }
 
-            if (OPERATORS.length > 0 && pr.user.type === "Bot") {
-              const humanApprovals = approvals.filter((r) => r.user.type !== "Bot");
+            if (OPERATORS.length > 0 && isMachine(pr.user)) {
+              const humanApprovals = approvals.filter((r) => !isMachine(r.user));
               if (
                 humanApprovals.length > 0 &&
                 humanApprovals.every((r) => OPERATORS.includes(r.user.login))
@@ -801,7 +880,7 @@ jobs:
               }
             }
 
-            core.info("No bot-submitted approvals; review policy satisfied.");
+            core.info("No bot or machine-user approvals; review policy satisfied.");
 ```
 
 ## Starter .gitignore
