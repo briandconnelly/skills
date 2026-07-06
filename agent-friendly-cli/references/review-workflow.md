@@ -72,6 +72,7 @@ Findings are likely when:
 - existing tools expose no stable machine-readable substitute for `tool schema`, such as `--help --json`, a generated schema file, completion metadata, manpage metadata, or an upstream API contract
 - aliases or synonyms obscure the canonical command
 - examples are required to learn flags
+- help text buries constraints and defaults under marketing or background prose (rules-then-context violations)
 - default output changes by TTY without a declared contract
 - schema is generated after implementation and drifts from reality
 
@@ -85,7 +86,11 @@ Check for automation hazards:
 - machine mode conflated with isolated mode, causing credentials, endpoints, or workspace defaults to disappear from the first non-interactive call
 - mutations without `--dry-run`, confirmation bypass, or idempotency
 - dry-run output indistinguishable from real mutation output (no `dry_run: true` marker)
-- long-running operations without async polling or timeout controls
+- mutations with no reconciliation path after a timeout or interrupt (no idempotency key and no lookup/status command)
+- undeclared signal semantics, or local state writes that are unsafe under concurrent invocations
+- secrets accepted as flag or argument values, leaking into process listings, shell history, and transcripts
+- missing `--` end-of-options support, so option-like operands are misparsed
+- long-running operations without async polling, timeout controls, or a cancel operation
 - networked commands without explicit `--timeout` and retry behavior
 - commands that depend on ambient config, credentials, or caches without inspection or isolation flags
 
@@ -99,9 +104,10 @@ Check:
 
 - stdout success payload only
 - diagnostics and structured failures on stderr
-- machine-mode stderr framing is declared and parseable: the failure payload is either the only stderr content or arrives as typed NDJSON records, never interleaved with free-form diagnostics
+- machine-mode stderr framing is declared as a closed enum value and parseable: the failure payload is either the only stderr content or arrives as typed NDJSON records, never interleaved with free-form diagnostics
 - shallow stable JSON in machine mode
 - explicit pagination, truncation, omitted fields, partial failure, and artifact pointers
+- cursor contracts declare lifetime, expiry error, restart action, and page-walk consistency
 - no banners, summaries, warnings, debug logs, progress, or prose mixed into stdout
 - NDJSON for streaming or large per-record output
 - deterministic sort order and stable JSON fields
@@ -114,6 +120,8 @@ Check:
 - reserved numeric exit codes are not overloaded
 - symbolic error code exists in JSON mode
 - required fields include `code` and `message`
+- `field` names a published flag or argument, never an internal identifier
+- `hint` is the smallest concrete correction, with machine-usable repair data in structured fields such as `details`
 - retryability is explicit
 - rate limits include `retry_after_ms`
 - stack traces and raw dumps are opt-in and redact secrets
@@ -133,6 +141,7 @@ Look for tests that pin the contract:
 - pagination, truncation, streaming, and artifact behavior
 - config/env precedence and isolation flags
 - deprecation warnings and replacement metadata
+- interrupt behavior for mutations, concurrent local-state writes, and long-running cancellation
 
 Release should block when:
 
@@ -141,6 +150,7 @@ Release should block when:
 - the tool prompts unless the caller remembers a special flag
 - output shape changes significantly due to result size or TTY alone
 - errors are mostly unstable English paragraphs
+- a mutation's outcome after a timeout or interrupt cannot be reconciled
 - important config, auth, or cache behavior is not inspectable
 - schema regularly drifts from runtime behavior
 

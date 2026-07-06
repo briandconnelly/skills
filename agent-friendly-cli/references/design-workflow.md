@@ -31,6 +31,9 @@ Keep argument shapes uniform:
 - Use consistent flags such as `--format`, `--limit`, `--filter`, `--timeout`, `--output`.
 - Prefer named flags; reserve positional arguments for one obvious primary selector.
 - Do not let the same flag mean different things across commands.
+- Support `--` end-of-options so operands beginning with `-` parse as data, and never pass argument values to a subshell or generated shell string.
+
+Write `--help` text and command summaries rules-then-context: binding constraints, defaults, and prerequisites first; background after.
 
 ## 3. Write The Schema Before Behavior
 
@@ -39,17 +42,20 @@ The schema should declare:
 
 - command tree, canonical invocation path, aliases, and deprecations
 - arguments, flags, types, defaults, enums, cardinality, and examples
-- canonical machine profile
+- canonical machine profile, preferring a single flag that implies the rest
 - optional isolation profile, kept separate from machine mode unless the CLI can still complete normal authenticated reads without ambient state
 - read-only vs mutating classification
 - stdin contract: read behavior, formats, size limits, blocking, empty input, and exclusivity
 - output class, output format, field shape, and example payloads
+- shape dialect for output and error shapes: JSON Schema or an equivalently precise named notation
 - numeric exit codes and symbolic error codes
 - structured error fields and retryability
 - auth, environment, config, cache, and credential requirements
 - side effects, including dry-run semantics for mutations
 - expected latency class and timeout/retry defaults
+- reconciliation path for unknown-outcome mutations: an idempotency key or a lookup/status command
 - async, streaming, pagination, truncation, artifact, and version-negotiation behavior
+- cursor lifetime, expiry error, restart action, and page-walk consistency for paginated commands
 
 Expose:
 
@@ -66,12 +72,15 @@ Make the safe path the default path.
 - Mutating commands should require explicit action verbs and support `--dry-run`; dry-run output carries `dry_run: true` and the planned effect, never a payload identical to a real mutation result.
 - Replay-sensitive mutations should support idempotency: `--if-not-exists`, `--if-exists`, or idempotency keys.
 - Reads should avoid side effects by default and declare any unavoidable network, cache, or token-refresh effects.
-- Long-running operations need a pollable async pattern with job ID, status, and `wait --timeout`.
+- Accept secrets via environment variables, credential files, or stdin; do not accept them as flag values by default, because argv leaks into process listings, shell history, and agent transcripts.
+- A mutation that times out has an unknown outcome; give callers a reconciliation path (idempotency key or lookup command) before they retry.
+- Declare signal semantics for mutations and keep local state writes atomic under concurrent invocations.
+- Long-running operations need a pollable async pattern with job ID, status, `wait --timeout`, and a cancel operation.
 
 Design for partial information:
 
 - Provide `find` or `search` when exact identifiers are unrealistic.
-- Provide cheap inspection commands such as `whoami`, `config show --resolved`, and `env`.
+- Provide cheap inspection commands for identity (when the tool has an identity concept), resolved configuration, and credential/environment sources; `whoami` and `config show --resolved` are conventional names, not requirements.
 - Return enough IDs, names, and disambiguating fields for the next refinement step.
 
 ## 5. Design Output And Errors Up Front
@@ -92,7 +101,7 @@ Output rules:
 
 - stdout contains only the success payload.
 - stderr contains diagnostics, warnings, progress, debug detail, and structured failures.
-- Declare machine-mode stderr framing: on failure the structured error object is the only stderr content, or stderr is NDJSON records typed `progress`, `warning`, or `error`, so agents never fish a JSON payload out of free-form text.
+- Declare machine-mode stderr framing as a closed enum value (`single-error-object` or `ndjson-typed`): on failure the structured error object is the only stderr content, or stderr is NDJSON records typed `progress`, `warning`, or `error`, so agents never fish a JSON payload out of free-form text.
 - JSON should be shallow, stable, deterministic, and free of human summaries.
 - In machine-mode success payloads, avoid prose `message` fields that duplicate structured payload data; if a `message` field exists, it should add non-duplicative context only.
 - In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code`.
@@ -107,6 +116,8 @@ Error rules:
 - Use symbolic JSON error codes as the authoritative branch key.
 - Include required error fields `code` and `message`.
 - Prefer useful optional fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.
+- `field` names a published flag or argument, never an internal identifier.
+- `hint` names the smallest concrete correction; put machine-usable repair data such as allowed values in structured fields like `details`.
 - Stack traces and raw request/response dumps are opt-in under `--debug` and must redact secrets.
 - Secrets must not appear in stdout, stderr, schema examples, request/response dumps, or artifact metadata unless the command's explicit purpose is to return a secret.
 
@@ -136,3 +147,4 @@ Ship contract tests:
 - Test truncation, pagination, artifact output, and streaming.
 - Test config/env precedence and isolation flags.
 - Test deprecated paths and replacements.
+- Test interrupt behavior for mutations and concurrent invocations against local state.
