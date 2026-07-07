@@ -68,6 +68,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 > ├── .github/copilot-instructions.md
 > ├── docs/
 > │   ├── adr/0003-postgres-over-dynamo.md
+> │   ├── api.md              — canonical REST endpoint reference
 > │   └── testing.md
 > ├── test/
 > │   └── unit/test_reconcile.py
@@ -156,7 +157,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged `degrading` under Comment-Vs-Doc Placement: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc.
 - [ ] The missing release read path is flagged `degrading` under Task-To-Doc Routing, evidence labeled `absence-of-evidence`.
 - [ ] A section-by-section coverage table is produced covering all ten docs-checklist.md sections, with `not-checked` and a reason for any section the captured material cannot answer (e.g., Discoverability And Read Path beyond what the tree shows, Generated-Doc Provenance).
-- [ ] Findings are ordered blocking first, then degrading, per Report Format, and each uses the five-part finding format: severity, checklist section, location, evidence label, impact/remediation.
+- [ ] Findings are ordered blocking first, then degrading, per Report Format, and each uses the six-part finding format: severity, checklist section, location, evidence label, impact, remediation.
 
 **Expected baseline failures:** ad-hoc or no severity scale, no distinction between the three blocking findings and the three degrading ones (or all six flattened to one tier), no evidence labels, the adapter drift and the stale-ADR-as-policy finding conflated or missed entirely, the `test/unit` vs. `tests/unit` path mismatch missed because the command "looks fine" without cross-checking the tree, no coverage table.
 
