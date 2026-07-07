@@ -182,7 +182,8 @@ The checklist line makes the expectation visible on every PR; the CODEOWNERS lin
 As of 2026-07.
 Include and reference syntax for coding-agent instruction files changes across tools without much notice — verify the current syntax against your harness's own documentation before relying on the specifics below.
 
-This is the only section in this skill's references where harness-specific syntax appears; everywhere else, "canonical instruction file" and "per-harness adapter" are used generically (see [SKILL.md](../SKILL.md) Vocabulary), and the strategy behind the pattern belongs to the agent-friendly-github skill, not here.
+This is the only section in this skill's references where harness-specific syntax appears; everywhere else, "canonical instruction file" and "per-harness adapter" are used generically (see [SKILL.md](../SKILL.md) Vocabulary).
+The authoritative home for the adapter pattern — including the `CLAUDE.md` include shape below — is the agent-friendly-github skill's Agent-Instruction-File Strategy section; this section is a dated illustration for doc-surface design, and if the two ever disagree, that skill wins.
 
 For Claude Code, the entire content of `CLAUDE.md` is a single line, and Claude Code resolves the reference automatically at load time:
 
