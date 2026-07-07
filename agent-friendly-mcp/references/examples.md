@@ -132,7 +132,8 @@ On clients that support it, deliver this payload as `structuredContent` paired w
 
 ## 2a. Dispatched-but-unconfirmed mutation result
 
-A success result from `hvac_set_zone_temperature` where the command was dispatched but its effect is not yet confirmed. *Demonstrates the §3 dispatched-vs-applied rule: the dispatch fact, a confirmation status, and a `follow_up` that reuses the §6 `repair` object shape on the success carrier.*
+A success result from `hvac_set_zone_temperature` where the command was dispatched but its effect is not yet confirmed.
+*Demonstrates the §3 dispatched-vs-applied rule: the dispatch fact, a confirmation status, and a `follow_up` that reuses the §6 `repair` object shape on the success carrier.*
 
 ```json
 {
