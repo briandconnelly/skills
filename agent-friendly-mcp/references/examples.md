@@ -149,7 +149,7 @@ A success result from `hvac_set_zone_temperature` where the command was dispatch
 ```
 
 What to notice: `command_sent` and `status` make dispatch and application separately observable, so a verification timeout can return this same shape rather than a plain failure — "never landed" and "unconfirmed" stay distinguishable, and the agent reconciles via `follow_up` instead of blind-retrying a non-idempotent action.
-`follow_up.tool` is a registered `tools/list` name with literally callable `arguments` — the same `{next_step, tool, arguments, alternative}` shape as §6 `repair`, not a second convention.
+`follow_up.tool` is a registered `tools/list` name with literally callable `arguments` — the same `{next_step, tool, arguments, alternative}` shape as §6 `repair` (`alternative` is optional and, per the §6 presence convention, omitted here rather than sent as `null`), not a second convention.
 
 ## 3. Resource index entry
 
