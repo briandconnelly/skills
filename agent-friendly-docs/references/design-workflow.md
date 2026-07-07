@@ -41,7 +41,6 @@ This stage produces Discoverability And Read Path and Task-To-Doc Routing: an en
 For each fact that appears in more than one doc, pick one authoritative home and replace every other copy with a link to it.
 
 - Where two docs could plausibly conflict despite consolidation, record a stated precedence order that resolves which one wins.
-- A duplicated fact is a symptom; the fix is a link, not a synchronized rewrite in both places.
 - Decision history is never itself the authoritative home for current policy: if an ADR's content is still binding, promote it into a current-policy doc and link the ADR forward to that doc.
 
 This stage produces Authority And Precedence.
@@ -54,7 +53,7 @@ Freshness is a mechanism, not a claim, so give each doc one.
 - Add a PR expectation: changes to behavior a doc describes carry a stated expectation to update that doc.
 - Mark every generated doc with its source and regeneration command.
 - Give every ADR a status (proposed, accepted, superseded, rejected) and a forward link from any superseded ADR to what replaced it.
-- Do not rely on a timestamp or "last updated" date alone; a timestamp records when a doc was touched, not whether it is still correct.
+- Do not rely on a timestamp or "last updated" date alone; see Freshness Mechanisms for why that isn't sufficient on its own.
 
 This stage produces Freshness Mechanisms, Generated-Doc Provenance, and ADR Status And Supersession.
 
@@ -65,10 +64,8 @@ Walk every section of docs-checklist.md against the structure you designed: Laye
 Design Done Criteria: every section is answered in the produced structure, or is explicitly marked not applicable with a one-line justification.
 A section with no answer and no justification is unfinished work, not a pass.
 
-Two sections deserve a fresh look here even where earlier stages already touched them:
-
-- Token Economy: confirm the instruction layer still carries only binding norms after all five stages, since a design pass tends to accumulate convenience additions.
-- Runnable Examples And Commands: confirm every command and path in the new structure runs as written from the repo root, or states its precondition.
+Two sections deserve a fresh look here even where earlier stages already touched them: Token Economy and Runnable Examples And Commands.
+Re-run their checks from docs-checklist.md against the finished structure rather than trusting earlier-stage answers; a design pass tends to accumulate exactly the convenience additions and unstated preconditions those two sections check for.
 
 ## Delegate, Don't Restate
 
