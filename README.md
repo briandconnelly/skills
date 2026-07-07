@@ -11,6 +11,7 @@ Agent harnesses load a skill when its description matches the task at hand.
 | --- | --- |
 | [agent-bot-identity](agent-bot-identity/) | Give a local coding agent a distinct GitHub App bot identity — commits and PRs attribute to the bot while personal git operations stay untouched. |
 | [agent-friendly-cli](agent-friendly-cli/) | Best practices for designing CLIs that AI agents invoke directly. |
+| [agent-friendly-docs](agent-friendly-docs/) | Design and audit the repo documentation surface AI agents read — layering, read paths, one authoritative home per fact, token economy, freshness, runnable examples. |
 | [agent-friendly-github](agent-friendly-github/) | Configure GitHub repos so AI agents can track issues and manage PRs while humans keep confidence through enforced guardrails and auditability. |
 | [agent-friendly-mcp](agent-friendly-mcp/) | Best practices for designing MCP (Model Context Protocol) servers that AI agents invoke directly. |
 | [bundle-uv-mcp-server](bundle-uv-mcp-server/) | Package an existing uv + Python MCP server as an MCPB bundle (.mcpb) using the uv runtime. |
