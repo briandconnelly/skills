@@ -31,7 +31,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 > ├── DEPLOY.md               — how to cut and ship a release
 > ├── STYLE.md                — naming and formatting conventions
 > ├── ADR-001-database.md     — why Postgres was chosen (no status field)
-> ├── ADR-002-queue.md        — why the team moved off the original queue choice
+> ├── ADR-002-queue.md        — the original queue choice, later abandoned (no status field)
 > └── API.md                  — full REST endpoint reference
 > ```
 >
@@ -41,7 +41,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 **Assertions (with-skill run must satisfy):**
 
 - [ ] Every listed doc is assigned to exactly one layer — instruction, orientation, reference, or decision history — with `CLAUDE.md`/`copilot-instructions.md` in the instruction layer and `ADR-001`/`ADR-002` in decision history (Layer Placement).
-- [ ] `copilot-instructions.md` is treated as a thin adapter pointing at `CLAUDE.md` rather than a second copy of the build/lint/test commands (Layer Placement, Authority And Precedence).
+- [ ] The build/lint/test commands duplicated between `CLAUDE.md` and `copilot-instructions.md` are flagged as an authority problem: exactly one authoritative home is named and the duplicate is reduced to a reference rather than a second copy, with the choice of adapter shape routed to agent-friendly-github rather than restated (Layer Placement, Authority And Precedence).
 - [ ] A named, ordered read path is produced for each of the four tasks — add a feature, fix a bug, run the tests, cut a release — reachable from an entry point rather than left implicit (Task-To-Doc Routing).
 - [ ] The database choice and the queue choice each get exactly one authoritative home, with `ADR-001`/`ADR-002` reduced to historical record plus a forward pointer if either decision is still binding (Authority And Precedence, ADR Status And Supersession).
 - [ ] `ADR-001` and `ADR-002` are each assigned a status field, and `ADR-002` (superseded by the later queue move) links forward to whatever replaced it (ADR Status And Supersession).
@@ -122,11 +122,11 @@ An assertion the with-skill run misses is a finding against the skill, not again
 >
 > We will model ledger entries as rows in our existing Postgres instance rather than
 > standing up DynamoDB, to avoid operating a second datastore.
->
-> (Note added by the platform team, six months later, in a Slack thread — never folded
-> into this file: "we migrated ledger storage to DynamoDB in v2 for the throughput; this
-> doc is now historical.")
 > ```
+>
+> Separately captured context — a note from the platform team, six months after the ADR above was written, in a Slack thread never folded into the ADR file itself:
+>
+> > "we migrated ledger storage to DynamoDB in v2 for the throughput; this doc is now historical."
 >
 > `docs/testing.md` (excerpt):
 >

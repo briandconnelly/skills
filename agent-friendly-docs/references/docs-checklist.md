@@ -43,6 +43,7 @@ Duplication is the symptom; the fix is a link, not a rewrite in both places.
 - The instruction layer is minimal: it does not carry material that only some tasks need.
 - Heavy or task-specific material sits behind an explicit pointer from the instruction layer, not inline in it.
 - No bulk content is duplicated across layers (e.g., reference material copied into the instruction file for convenience).
+- Orientation-layer docs stay lean; bulk reference or historical material (full API detail, changelogs) moves behind a pointer to its own layer.
 
 Every always-loaded token is a token spent on every single turn; the instruction layer's size is a standing cost, not a one-time one.
 

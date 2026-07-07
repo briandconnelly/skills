@@ -19,7 +19,7 @@ If the user is asking for a general audit of the documentation surface, continue
 
 Prefer direct evidence over inferred behavior.
 
-Label every finding as one of:
+Label each piece of evidence within a finding as one of:
 
 - `observed` — you read the doc, followed the link, or ran the command yourself
 - `inferred` — deduced from related material without reading the doc directly
@@ -33,7 +33,7 @@ Read the repo's actual doc tree rather than trusting an index or a prior summary
 
 Walk every section of [docs-checklist.md](docs-checklist.md) in order: Layer Placement, Discoverability And Read Path, Task-To-Doc Routing, Authority And Precedence, Token Economy, Freshness Mechanisms, Runnable Examples And Commands, Comment-Vs-Doc Placement, Generated-Doc Provenance, and ADR Status And Supersession.
 
-For each section, produce exactly one of:
+For each section, produce at least one of:
 
 - a finding (see Finding Format below)
 - `OK` with the brief evidence that grounds it (the doc, link, or command you checked)
@@ -57,7 +57,7 @@ Each finding includes:
 - severity: `blocking`, `degrading`, or `polish`
 - checklist section: the docs-checklist.md section it violates
 - location: file and section cited
-- evidence label: `observed`, `inferred`, or `absence-of-evidence`
+- evidence labels: one per evidence item — `observed`, `inferred`, or `absence-of-evidence`
 - impact: one line, stated in terms of what an agent does wrong or pays for
 - remediation: the smallest fix first, with a larger restructuring noted separately if one is warranted
 

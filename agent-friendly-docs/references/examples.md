@@ -57,7 +57,7 @@ What belongs at which level: cross-cutting norms (commit format, review expectat
 An agent working in `packages/api/` reads both files: the root file for what's always true, the nested file for what's true here.
 
 This example shows the resulting shape only.
-The strategy question — why nest per-package instruction files at all, what belongs in root versus nested, and how the `CLAUDE.md` adapter mechanics work — is owned by the agent-friendly-github skill's Agent-Instruction-File Strategy section; this skill does not restate those rules.
+The strategy question — why nest per-package instruction files at all, and how the `CLAUDE.md` adapter mechanics work — is owned by the agent-friendly-github skill's Agent-Instruction-File Strategy section; this skill does not restate those rules.
 
 ## 3. README de-bloat before/after
 

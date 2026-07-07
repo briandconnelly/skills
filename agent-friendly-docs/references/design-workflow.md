@@ -22,7 +22,7 @@ Layer definitions live in SKILL.md Vocabulary; this stage only places docs, it d
 
 - A doc that reads as two layers at once — most often an instruction file carrying reference-depth material — is a signal to split it, not to leave it ambiguous.
 - Reference-depth material found in the instruction layer is a Token Economy problem: flag it now, move it behind a pointer when you consolidate authority.
-- A repo-wide claim sitting only in a code comment is a Comment-Vs-Doc Placement problem: give the fact a doc-level authoritative home and let the comment stay as the code-adjacent copy.
+- A repo-wide claim sitting only in a code comment is a Comment-Vs-Doc Placement problem: give the fact a doc-level authoritative home and reduce the comment to a pointer to that doc, or to a narrowly code-local note — not a retained repo-wide copy.
 
 Record every straddling or misplaced doc as you go; later stages resolve the split, this stage only finds it.
 
