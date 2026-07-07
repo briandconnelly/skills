@@ -18,8 +18,9 @@ lighthouse/
 │   ├── api-reference.md         # reference layer — loaded only when a task touches the API
 │   └── testing.md               # reference layer — loaded only when running or writing tests
 ├── adr/
-│   ├── 0001-use-postgres.md     # decision history — why, not current policy
-│   └── 0002-async-job-queue.md  # decision history
+│   ├── 0001-use-postgres.md               # decision history — why, not current policy
+│   ├── 0002-async-job-queue.md            # decision history — superseded by 0003 (see section 4)
+│   └── 0003-replace-rabbitmq-with-kafka.md # decision history — supersedes 0002
 └── src/
     └── billing/
         └── invoice.py           # code-adjacent context — comments here carry constraints coupled to this file, not repo-wide claims
@@ -121,36 +122,36 @@ The fact didn't move to a worse home — it moved to the layer that matches how 
 
 ## 4. ADR header with status and supersession
 
-`lighthouse` chose RabbitMQ for its async job queue in ADR 0003, then replaced it with Kafka in ADR 0007.
+`lighthouse` chose RabbitMQ for its async job queue in ADR 0002, then replaced it with Kafka in ADR 0003.
 Both headers carry a `Status` line an agent can read before the surrounding prose.
 
-`adr/0003-use-rabbitmq.md`:
+`adr/0002-async-job-queue.md`:
 
 ```markdown
-# ADR 0003: Use RabbitMQ for the async job queue
+# ADR 0002: Use RabbitMQ for the async job queue
 
-Status: Superseded by [ADR 0007](0007-use-kafka.md)
+Status: Superseded by [ADR 0003](0003-replace-rabbitmq-with-kafka.md)
 
 ## Context
 
 ...
 ```
 
-`adr/0007-use-kafka.md`:
+`adr/0003-replace-rabbitmq-with-kafka.md`:
 
 ```markdown
-# ADR 0007: Replace RabbitMQ with Kafka for the async job queue
+# ADR 0003: Replace RabbitMQ with Kafka for the async job queue
 
 Status: Accepted
-Supersedes: [ADR 0003](0003-use-rabbitmq.md)
+Supersedes: [ADR 0002](0002-async-job-queue.md)
 
 ## Context
 
 ...
 ```
 
-How an agent should read this: on opening `0003-use-rabbitmq.md`, the `Status` line is the first fact after the title, before any context or rationale prose.
-`Superseded by` means the decision in this ADR is historical, not current policy; the agent follows the forward link to `0007-use-kafka.md` and treats that ADR's decision as live instead.
+How an agent should read this: on opening `0002-async-job-queue.md`, the `Status` line is the first fact after the title, before any context or rationale prose.
+`Superseded by` means the decision in this ADR is historical, not current policy; the agent follows the forward link to `0003-replace-rabbitmq-with-kafka.md` and treats that ADR's decision as live instead.
 If current code or a current-policy doc (e.g., `docs/architecture.md`) still describes RabbitMQ, that is itself a finding — the ADR's content was never promoted forward when the decision changed.
 
 ## 5. PR doc-update convention
