@@ -123,6 +123,8 @@ Build an eval suite from the Step 1 task list before iterating further.
 - Include fixture types for cold-start/tool discovery, wrong-tool selection, invalid-argument, auth-failure, pagination, upgrade/version-change, and long-running progress plus cancel/recover.
 - Add a `forced_error` fixture per tool asserting `isError: true`, carrier location, and envelope shape on the serialized wire result — unit-level error objects can pass while framework serialization is broken.
 - Add a `discovery_size_budget` fixture asserting the exact serialized `tools/list` response against a deterministic byte budget, runnable in CI; pin the tokenizer if the budget is stated in tokens.
+- Add a `host_capture` fixture per target client: record the serialized `tools/list` payload as that client receives it and real `tools/call` arguments as observed at the server, and treat what hosts actually do — stringify containers, truncate descriptions, hide annotations, cache stale schemas, expose resources poorly — as compatibility constraints on the design, not protocol facts.
+  Captures gate the §3 stringified-argument shim and the §2 retrieval-phrasing note: neither applies without observed evidence.
 
 A worked fixture for one task makes the metrics runnable rather than aspirational. Each fixture pairs a prompt with an assertion the harness can check against the transcript:
 
