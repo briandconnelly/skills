@@ -81,6 +81,8 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
     The agent loads summaries, then pulls the few full definitions it needs.
     This lowers *model-visible context* only when the host withholds native definitions and injects selected schemas on demand (or routes execution through a stable generic call tool).
     On a host that still preloads `tools/list`, these are extra tools and round trips with no disclosure benefit, so document the host integration it assumes.
+    On hosts that retrieve tools by lexical search over names and descriptions before the model sees any definitions, each description doubles as a retrieval document: include the natural-language task phrases an agent would plausibly query, as readable prose rather than keyword dumps.
+    Add retrieval phrasing only where captured evidence and evals show retrieval improves (design-workflow Step 8), and charge it against the compact-definition budget — retrieval text inflates every `tools/list` byte a preloading client pays.
   - **Server-managed catalog disclosure** — expose a small initial catalog and reveal more as *declared* state changes (authorization, configuration, workspace, or external state), emitting `notifications/tools/list_changed`.
     `listChanged` is cache *invalidation*, not discovery: it tells a client to refetch, communicates no relevance, and strands tools on clients that ignore it.
     Tie every reveal to such a declared change rather than to unrelated calls, so the surface still satisfies the stability rule below; a catalog that mutates as a hidden side effect of ordinary calls violates it.
@@ -118,7 +120,7 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 ## 3. Tools
 
-*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §10 (worked task: API mirroring vs. task completion), §12 (response-delivery artifact), §13 (tool result with resource link).*
+*Worked shapes: `examples.md` §1 (namespaced tool schema), §2 (structured tool response), §2a (dispatched-but-unconfirmed mutation result), §10 (worked task: API mirroring vs. task completion), §12 (response-delivery artifact), §13 (tool result with resource link).*
 
 - **Name with `snake_case`, prefix, verb, noun.** `slack_send_message`, not `send_message`. Generic verbs collide across servers in multi-server contexts.
   Omit the service prefix only when every target host — including code-execution surfaces that flatten tools into one module namespace — preserves a per-server namespace, and document that host assumption if you do.
@@ -136,12 +138,23 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Apply required-vs-optional discipline strictly.** Required parameters must be necessary; every optional parameter declares its omission semantics — what the server does when the field is absent — in its schema description.
   Use JSON Schema `default` only when the server actually applies that value; `default` is annotation, not behavior, and no validator injects it into the call.
   Omission need not mean a substituted value: "omit `thread_ts` to post a new top-level message" is complete omission semantics with no default at all.
+  For partial-update tools, omission semantics extend to a three-way distinction defined per optional field: absent (leave unchanged) vs `null` vs empty string/list.
+  If clearing a field is supported, make the clearing form explicit — a documented `null`-clears semantic or a dedicated sentinel — and test it.
+  Agents commonly guess that `null` clears, so an undefined convention silently drops intended clears or silently clobbers.
 
 - **Use strict types.** Enums where the value set is fixed; formats (`date-time`, `uri`, `email`) where the shape is conventional; `integer` vs `number` chosen deliberately.
 
 - **Declare schema dialect where supported.** A schema without a dialect forces clients and validators to infer semantics.
 
+- **Prefer simple, portable schema constructs.** Prefer flat closed objects, enums, and discriminated modes over deep `anyOf`/`oneOf` unions, recursive `$ref`s, `patternProperties`, and dependent constraints — clients, validators, and model planners mishandle these, producing validation drift, broken argument forms, and wrong-shape first calls.
+  When a parameter's shape genuinely varies by mode, use a discriminator field with per-mode documentation, or split tools per the granularity rule — not a union.
+  Use a complex construct only when every target host's handling of it is verified by captured evidence (design-workflow Step 8 `host_capture` fixture, or equivalent captured responses in a review).
+
 - **Close object schemas.** Use `additionalProperties: false` on all object schemas unless unknown extension fields are an intentional, documented contract.
+
+- **Tolerate stringified container arguments only as a measured compatibility shim.** When captured host evidence (a design-workflow Step 8 `host_capture` fixture, or captured tool-call arguments in a review) shows a target client serializing object or array arguments to JSON strings, coerce the string before validation: parse once, bound size and depth, and let a malformed string fail as an ordinary field-level validation error naming the parameter (§6).
+  Never widen the published schema — advertising `string | object` teaches every client a false contract; the shim is server-side leniency, not contract.
+  Log each coercion so the shim stays a measured, droppable workaround rather than a permanent invisible layer.
 
 - **Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them.** This is the normative target, not an optional nicety: when a tool declares an `outputSchema`, servers MUST return conforming `structuredContent` on success results, and clients SHOULD validate against it (the `isError: true` carve-out is the next item).
   Keep parser-compatible JSON in `content` as a fallback for older or weaker clients; support varies across MCP versions, so the fallback stays useful — but it is the fallback, not the contract.
@@ -172,6 +185,8 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Know the annotation defaults and gates.** An omitted annotation is not neutral: the spec defaults are `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: true`, so an unannotated tool already reads as a possibly-destructive mutator.
   Declare annotations explicitly anyway so the contract is visible rather than inherited — but never report a missing `destructiveHint` as if omission declared the tool safe.
   `destructiveHint` and `idempotentHint` are meaningful only when `readOnlyHint` is `false`; omit them on read-only tools rather than asserting semantics the protocol does not assign there.
+  Because omission still carries the spec defaults, annotate semantically equivalent sibling tools identically: one omitted annotation in a family whose peers declare non-default values silently asserts the *default* — different semantics — and even where the omitted value happens to match, the visible inconsistency teaches an agent to distrust the hint across the whole server.
+  Where siblings genuinely differ (a parameter changes idempotency), keep the differing annotation and state the reason in that tool's description.
 
 - **Define mutation by observable scope, not by I/O — a deliberate reading of an ambiguous hint.** The MCP spec glosses `readOnlyHint` only as "the tool does not modify its environment," which is broad enough to read either way for a local write.
   This skill takes the position that `readOnlyHint` should track whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
@@ -193,14 +208,23 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Give unsafe mutations an idempotency key.** For create/send/pay-style tools where a duplicate is costly, accept a client-supplied `idempotency_key`, and declare its deduplication window and scope.
   Without one, an agent that retries after a timeout cannot avoid double-posting.
 
-- **Define ambiguous-outcome recovery.** When a mutating call times out or the transport drops, the agent cannot know whether the mutation committed.
-  Name the lookup or status surface that resolves the ambiguity (in the tool description and in timeout-adjacent repair hints) so the agent can reconcile instead of blind-retrying.
+- **Distinguish dispatched from applied, and define ambiguous-outcome recovery.** When a mutating tool returns before its effect is confirmed, the structured result carries the dispatch fact and a confirmation status (e.g. `command_sent: true`, `status: "applied" | "pending_verification"`), plus a `follow_up` object naming the verification surface (see `examples.md` §2a).
+  `follow_up` reuses the §6 `repair` object shape exactly — `{next_step, tool, arguments, alternative}` with `alternative` optional, `tool` a registered `tools/list` name, `arguments` literally callable — the same next-step vocabulary on the success carrier, not a second convention.
+  The dispatch fact must survive onto the timeout path: report a verification timeout as a dispatched-but-unconfirmed success result with a reconcile `follow_up`, never as a plain failure, or agents blind-retry non-idempotent actions.
+  The same obligation covers transport drops the server never sees: the tool description and timeout-adjacent repair hints name the lookup or status surface that resolves the ambiguity, so the agent reconciles instead of blind-retrying.
 
 - **Declare partial-success semantics for multi-item operations.** Say whether the operation is atomic or per-item.
   Per-item results carry a stable item id, outcome, and retryability, and the retry surface accepts just the failed items — never force the agent to re-run completed effects to recover the failures.
 
 - **Protect read-modify-write with version preconditions.** Where concurrent edits are possible, accept an optional `expected_version` (or `if_match`) input, fail with a stable `conflict` error code when it mismatches, and make the repair path re-read-then-reapply.
   Without it, an agent can silently overwrite changes made by users or other agents between its read and its update.
+  Where the backing store has no version counter, the token may be a content-derived hash computed over a canonicalized serialization, returned by every read surface and compared on write.
+  Document the canonicalization (key and list ordering) and the collision assumptions, and keep the conflict repair path re-read-then-reapply — the re-read returns the fresh token.
+  A content-derived token keeps optimistic locking stateless.
+
+- **Mutate large documents through bounded patch operations, not round-trips.** For tools that edit large mutable documents (dashboards, configuration trees, long structured records), offer targeted server-side patch or field operations guarded by the version precondition above, so the agent need not read the full body, rewrite it in context, and send it back — two full-document round-trips per edit is a token-efficiency failure (§8) as well as a concurrency hazard.
+  Offer a dry-run or diff preview where a wrong patch is costly, surface post-write validation results in the structured response, and give patch failures the same field-level repair as any other error (§6).
+  Executable transform expressions are never the default edit path; their sandboxing and resource limits are implementation security, out of scope here — route them to a dedicated security review (§3 Security).
 
 - **Prefer task-completing tools over endpoint mirrors.** Tool granularity follows user/agent tasks, not the underlying API's resource map.
   Valid split exceptions are recorded in `design-workflow.md` Step 3.
@@ -222,6 +246,11 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Using `readOnlyHint` as a substitute for artifact disclosure.** Disclose transient response artifacts through the structured response and the tool description — flipping the annotation is not disclosure.
   Under this skill's observable-scope reading, the tool stays `readOnlyHint: true`, because clients use `false` to gate auto-approval and a semantically read-only call gains friction without safety.
   A server adopting the literal reading may set `false` instead — but it must document that reading and apply it consistently across tools (see the mutation-scope rule above); the anti-pattern is undocumented flipping or mixing the two readings, not the literal reading itself.
+
+- **Mode-dependent side effects under one static annotation.** A multi-modal tool whose discriminator argument (`action`, `mode`) spans read and mutating modes cannot be honestly described by one static annotation set.
+  Prefer splitting the read modes into a separate `readOnlyHint: true` tool — this is granularity pressure, the same force as the §2 dispatcher trade-off, which already requires per-operation policy server-side.
+  If the tool stays combined, annotate for its worst mode, state in the description that annotations describe the whole tool rather than the selected mode, and enforce per-mode authorization server-side regardless.
+  Failure shape: a manage-style tool combined a common pure-read default action with mutating modes under one honest worst-mode annotation (`destructiveHint: true`), so its most common call paid mutation-grade confirmation friction — the annotation was right; the granularity was wrong.
 
 ### Security
 
@@ -383,7 +412,7 @@ The failure-recovery contract is **one envelope** with identical field semantics
 
 - **Presence convention.** Fields marked *yes* are always emitted on both surfaces — `retry_after_ms` is the one nullable required field (it is bound to the always-present `temporary`, and `null` meaningfully signals "no known delay"). Every other field is omitted entirely when it does not apply; do not send a placeholder `null` or empty array for an absent optional field.
 
-- **`repair` is one object, not an array, on both surfaces.** Its shape is `{next_step, tool, arguments, alternative}`: `next_step` a stable symbolic label, `tool` and `arguments` the single primary corrective call (a real, callable surface), and `alternative` an *optional human-readable* fallback sentence for when the primary call doesn't fit. A single deterministic next action beats a ranked list the agent must choose from; if no corrective call exists, omit `repair` entirely rather than emitting `null` or an empty array. `alternative` is the one prose field in the envelope — it is fallback guidance for a human/agent to interpret, not a second machine-actionable hint (contrast the "real, callable surfaces" rule, which governs `tool`/`arguments`).
+- **`repair` is one object, not an array, on both surfaces.** Its shape is `{next_step, tool, arguments, alternative}`: `next_step` a stable symbolic label, `tool` and `arguments` the single primary corrective call (a real, callable surface), and `alternative` an *optional human-readable* fallback sentence for when the primary call doesn't fit. A single deterministic next action beats a ranked list the agent must choose from; if no corrective call exists, omit `repair` entirely rather than emitting `null` or an empty array. `alternative` is the one prose field in the envelope — it is fallback guidance for a human/agent to interpret, not a second machine-actionable hint (contrast the "real, callable surfaces" rule, which governs `tool`/`arguments`). The §3 dispatched-vs-applied rule reuses this exact `{next_step, tool, arguments, alternative}` object as a success-side `follow_up`; only the carrying field name differs, so there is one next-step vocabulary, not two.
 
 - **A degraded carrier is disclosed, never silent.** The two carriers above are the only contract carriers.
   As a disclosed degraded mode only — when a framework cannot place `structuredContent` on an `isError: true` result — `content[0].text` MAY carry the serialized envelope JSON: the capability summary names the limitation and its trigger, the envelope shape stays identical, and the mirror is removed once the framework supports the native carrier.
@@ -400,6 +429,7 @@ Audit prompt: For each failure mode, does the agent receive enough structured si
 *(Cross-cutting; rules apply when an operation may outlive a normal request/response turn.)*
 
 - **Choose the execution mode deliberately.** Use blocking `tools/call` for short operations, progress notifications for bounded multi-step work, and task-augmented requests when clients need later status or result recovery.
+  A blocking call that returns dispatched-but-unconfirmed follows the §3 dispatched-vs-applied rule; escalate to progress or tasks only when confirmation itself is long-running.
 
 - **Declare long-running behavior in the tool contract.** Tool descriptions or schemas include expected duration, timeout behavior, and whether partial progress is observable.
 
@@ -474,6 +504,11 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
   Which one carries error signals?
   Which gets versioned when the schema changes?
   Prefer one structured default with optional supplemental text or markdown rendering.
+
+- **Fixed prose attached to every response.** Never attach a constant explanatory block (usage notes, timezone conventions, format explanations) to every response envelope; state invariants once, in the capability summary or an `outputSchema` field description.
+  Per-call metadata is compact, machine-readable, and present only when it varies per response or changes this response's interpretation.
+  This does not touch contract-mandated always-present fields (such as the §6 envelope's `retry_after_ms`) — the anti-pattern is repeated prose, not required machine fields.
+  Failure shape: a server wrapped every result in `{data, metadata}` with ~250 characters of identical prose, paid on every call of every wrapped tool.
 
 Audit prompt: Could an agent complete a typical task on this server in a single context window, including discovery, calls, and one round of repair?
 

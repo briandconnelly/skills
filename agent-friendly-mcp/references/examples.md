@@ -130,6 +130,27 @@ What to notice: the concise fields are a strict subset of the detailed fields �
 Pagination and truncation are distinct signals carried together: `has_more`/`next_cursor` continue the walk page by page, while `truncated: true` says the walk will stop at the 500-item cap even though ~3210 messages match — and the `truncation_hint` names the repair (`since=` or `query=`) so the agent doesn't have to guess.
 On clients that support it, deliver this payload as `structuredContent` paired with a published `outputSchema`; the same JSON shape goes in `content` as a textual fallback for clients that do not.
 
+## 2a. Dispatched-but-unconfirmed mutation result
+
+A success result from `hvac_set_zone_temperature` where the command was dispatched but its effect is not yet confirmed.
+*Demonstrates the §3 dispatched-vs-applied rule: the dispatch fact, a confirmation status, and a `follow_up` that reuses the §6 `repair` object shape on the success carrier.*
+
+```json
+{
+  "command_sent": true,
+  "status": "pending_verification",
+  "zone_id": "z-12",
+  "follow_up": {
+    "next_step": "verify_setpoint_applied",
+    "tool": "hvac_get_zone_state",
+    "arguments": {"zone_id": "z-12"}
+  }
+}
+```
+
+What to notice: `command_sent` and `status` make dispatch and application separately observable, so a verification timeout can return this same shape rather than a plain failure — "never landed" and "unconfirmed" stay distinguishable, and the agent reconciles via `follow_up` instead of blind-retrying a non-idempotent action.
+`follow_up.tool` is a registered `tools/list` name with literally callable `arguments` — the same `{next_step, tool, arguments, alternative}` shape as §6 `repair` (`alternative` is optional and, per the §6 presence convention, omitted here rather than sent as `null`), not a second convention.
+
 ## 3. Resource index entry
 
 A single entry from a `slack://channels/C0123ABCD/messages` index listing. *Demonstrates §4 resource indexing.*

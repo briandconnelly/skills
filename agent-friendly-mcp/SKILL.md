@@ -79,7 +79,7 @@ Notation: bare `§N` always means a contract-checklist section; `ex§N` means se
 | --- | --- | --- | --- |
 | §1 | Server-Level | Identity, transport, auth modes, agent-actionable prerequisites, negotiated capabilities, and roots — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | ex§7, ex§8a |
 | §2 | Discovery | A capability summary plus compact definitions as the universal baseline; progressive disclosure is a client-dependent optimization — pick a mechanism by cost axis (host-managed context, server-managed catalog, or client-independent surface reduction). | ex§7, ex§8 |
-| §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | ex§1, ex§2, ex§10, ex§12, ex§13 |
+| §3 | Tools | Task-completing tools over endpoint mirrors; strict closed schemas; honest annotations; failure paths are contract, not prose. | ex§1, ex§2, ex§2a, ex§10, ex§12, ex§13 |
 | §4 | Resources | Stable hierarchical URIs; index before body; stable chunk ids; templates + completion; subscriptions for mutable resources. | ex§3, ex§4, ex§5a, ex§5b |
 | §5 | Prompts | Advisory orchestration scaffolding only — reference tools by name, never redefine their contract. | ex§5 |
 | §6 | Failure Recovery | Stable symbolic codes, field-level feedback, explicit retryability, repair hints naming real callable surfaces. | ex§6 |
