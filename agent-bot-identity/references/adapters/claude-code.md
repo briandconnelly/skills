@@ -64,10 +64,12 @@ What each part does:
   Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url origin git@github.com:acme/<repo>.git`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
   The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
-- The `SessionStart` hook injects `GH_TOKEN` for `gh` (the adapter's `session-env.sh`). The first time it runs, Claude Code prompts to approve the hook; approve it.
+- The `SessionStart` hook injects `GH_TOKEN` for `gh` (the adapter's `session-env.sh`).
+  The first time it runs, Claude Code prompts to approve the hook; approve it.
   The hook entry uses exec form (`args: []`) so the absolute script path is passed directly instead of shell-tokenized.
 
-These env keys are static, so they live in `settings.local.json`. `GH_TOKEN` is dynamic (1h expiry), so it cannot be a static value here — that is why it goes through the hook + `$CLAUDE_ENV_FILE` instead.
+These env keys are static, so they live in `settings.local.json`.
+`GH_TOKEN` is dynamic (1h expiry), so it cannot be a static value here — that is why it goes through the hook + `$CLAUDE_ENV_FILE` instead.
 
 Static also means the env follows the session, not the directory: commands that leave the project mid-session (a scratch clone, an unrelated repo) still carry the bot author env, so commits there are bot-attributed until the work moves to its own session.
 That is the recoverable direction (amendable, and the org-scoped rewrite and host-gated helper do not activate elsewhere), but know it is Variant A behavior; Variant B re-decides per command instead.
@@ -169,7 +171,8 @@ In a fresh agent session in an opted-in repo, the hook approval prompt appears o
 Variant B additionally (the gate and its fail direction):
 
 - Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted only `unset`s, so no bot env leaks in.
-- Collaborated path under the guard (the interaction worth proving for Variant B, since the guard re-sets the bot identity every command): in an org repo, `~/.config/acme-agent/bin/as-me git commit --allow-empty -m 'as-me test'` → author is you, while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`. `as-me` strips the four identity vars for that one command (falling back to global `user.*`) on top of the env the guard just set — authorship escapes, auth stays the bot.
+- Collaborated path under the guard (the interaction worth proving for Variant B, since the guard re-sets the bot identity every command): in an org repo, `~/.config/acme-agent/bin/as-me git commit --allow-empty -m 'as-me test'` → author is you, while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
+  `as-me` strips the four identity vars for that one command (falling back to global `user.*`) on top of the env the guard just set — authorship escapes, auth stays the bot.
 - Zero-setup enrollment regression (the incident class Variant B exists for): enroll a fresh repo on the App, clone it, and run the bot-identity checks above (GH_TOKEN prefix, credential.helper scope, commit author) in a first-ever session there — they must pass with no per-repo file of any kind.
 - Broken-guard regression: temporarily move or chmod away `~/.config/acme-agent/bin/bot-env`; the next Bash command in a Claude Code session must abort with the guard error instead of running with personal credentials.
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.

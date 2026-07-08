@@ -111,7 +111,8 @@ Scope of the claim: this covers **well-behaved `gh` resolution through the Codex
 It does not cover anything that goes around the shim: an absolute path to the real `gh` (`/opt/homebrew/bin/gh`), a shell alias, or calling `bot-token` / the real `gh` directly all bypass it and reach the personal credentials (Check 10 confirmed the absolute-path bypass returns the personal account).
 
 **This buys attribution, not containment.**
-The adapter is a PATH-routing convention, not an OS- or sandbox-enforced restriction — the hard boundaries are the App's installation list (Check 7) and the server-side rulesets of the repos it touches (SKILL Phase 6). Never present it as a sandbox.
+The adapter is a PATH-routing convention, not an OS- or sandbox-enforced restriction — the hard boundaries are the App's installation list (Check 7) and the server-side rulesets of the repos it touches (SKILL Phase 6).
+Never present it as a sandbox.
 
 ## `as-me` limitation
 
