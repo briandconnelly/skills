@@ -166,6 +166,8 @@ Do **not** make the bot *config* directory (`~/.config/acme-agent`) writable: un
 A `workspace-write` Codex session with that root could rewrite the App private key and the routing that is supposed to bind it.
 Codex's sandbox is the one real boundary in this design; do not punch through it for a cache path.
 Verified under the narrowed roots above: the cold and warm mints both succeed, `key.pem` stays readable so minting works, and writes to `~/.config/acme-agent` — including to `key.pem` itself — are denied (`Operation not permitted`).
+`writable_roots` is not the whole write surface, though: `workspace-write` also grants writes to the workspace itself and to `/tmp`, verified on 0.143.0.
+Narrowing the roots keeps the key and the shims read-only; it does not make the session a sandbox in the containment sense the core skill disclaims.
 
 **Recorded quirk — `--profile bot` does not apply the profile's top-level `sandbox_mode` by itself.**
 `--profile bot` reliably applies `shell_environment_policy.set` (PATH and all identity vars), but under `codex sandbox` the profile's top-level `sandbox_mode = "workspace-write"` key is **not** honored on its own — the run stays effectively read-only and the `uv` cache write is denied.
