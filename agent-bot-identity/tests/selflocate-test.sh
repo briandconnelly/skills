@@ -48,5 +48,20 @@ fi
 chmod +x "$DIR/bot-env"
 rm -f "$ENVF"
 
+# 5. Glue metachar guard: an install path with $ or " must be refused, not installed.
+EVIL="$DIR/evil\$dir"
+mkdir -p "$EVIL"
+cp "$DIR/session-env.sh" "$DIR/bot-env-hook.sh" "$EVIL/"
+chmod +x "$EVIL"/session-env.sh "$EVIL"/bot-env-hook.sh
+ENVF="$(mktemp)"
+if CLAUDE_ENV_FILE="$ENVF" "$EVIL/session-env.sh" 2>/dev/null; then
+  echo "FAIL: session-env.sh accepted a \$-bearing install path"; FAIL=1
+fi
+if CLAUDE_ENV_FILE="$ENVF" "$EVIL/bot-env-hook.sh" 2>/dev/null; then
+  echo "FAIL: bot-env-hook.sh accepted a \$-bearing install path"; FAIL=1
+fi
+[ -s "$ENVF" ] && { echo "FAIL: refused install still wrote to the env file"; FAIL=1; }
+rm -f "$ENVF"
+
 [ "$FAIL" -eq 0 ] && echo "selflocate-test: PASS"
 exit "$FAIL"
