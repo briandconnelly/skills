@@ -1,6 +1,6 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — the agent's commits, pushes, and PRs attribute to the bot by default while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute (collaborated work authored as the human, autonomous work as the bot), or when auditing such a dual-identity setup. Covers App registration and scopes, installation tokens, credential injection per project or user-wide (automatic across all org repos via a per-command guard), per-task personal authorship, verification, and what the isolation does and does not enforce. The App/token/credential-helper core is harness-neutral; the worked per-project wiring is a Claude Code adapter, with an explicit contract for what any other harness's adapter must provide.
+description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The worked local wiring targets Claude Code; the App/token/credential-helper core is harness-neutral.
 ---
 
 # Agent Bot Identity
@@ -91,6 +91,7 @@ Customize `bot-token` with the App ID, installation ID, key path, and cache path
 It parses `expires_at`, writes the token cache through a `0600` temp file swapped in with `os.replace()`, and sets a request timeout so a hung mint does not hang git or `gh` indefinitely.
 The `uv run` shebang requires `uv` on PATH where the script is invoked; use an absolute path to `uv` if that is not guaranteed.
 On a cache hit this runs in well under 100 ms, cheap enough to call before every Bash command.
+There is no lock around the mint: concurrent cold-cache invocations may each mint a token — duplicate API work, not a correctness problem, since both tokens are valid and the last cache write wins.
 Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
 
 Keep `git-credential-bot` host-gated.
@@ -98,7 +99,7 @@ On mint failure it must print no credential, and on wrong host it must stay sile
 Normalize hostnames case-insensitively and strip any credential-protocol port suffix before comparing to `github.com`.
 This matters most under Variant B, which installs the helper automatically in any org-matching repo.
 
-Use `as-me` only for commit authorship.
+Use `as-me` only for commit authorship, always with a command — the script refuses zero arguments, because bare `env` would print the entire environment, `GH_TOKEN` included.
 Unsetting the four identity variables lets git fall back to the global `user.*` config while pushes, `gh` calls, and PRs still ride the bot token.
 These commits are unsigned because `gpgsign false` stays in effect, and they show no Verified badge once pushed.
 Forgot the wrapper and committed as the bot? `as-me git commit --amend --reset-author` fixes the last commit.
@@ -151,15 +152,19 @@ What each part does:
 - The empty `credential.helper` resets the inherited helper list (osxkeychain, gh helpers); the next entry installs the bot helper as the only one.
 - `insteadOf` rewrites SSH remotes to HTTPS inside agent sessions only, so pushes use the bot token instead of the personal SSH key; scoping it to the org prefix leaves other remotes alone.
   The colon form covers `git@github.com:acme/` remotes; if any remote uses the `ssh://git@github.com/acme/` form, add a second `insteadOf` pair and bump the count.
+  `insteadOf` matching is literal and case-sensitive while GitHub accepts any case in the host and org, so a remote spelled `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author; normalize enrolled repos' remotes (`git remote set-url`) — the Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
 - The `SessionStart` hook injects `GH_TOKEN` for `gh` (Phase 3's `session-env.sh`). The first time it runs, Claude Code prompts to approve the hook; approve it.
   The hook entry uses exec form (`args: []`) so the absolute script path is passed directly instead of shell-tokenized.
 
 These env keys are static, so they live in `settings.local.json`. `GH_TOKEN` is dynamic (1h expiry), so it cannot be a static value here — that is why it goes through the hook + `$CLAUDE_ENV_FILE` instead.
 
+Static also means the env follows the session, not the directory: commands that leave the project mid-session (a scratch clone, an unrelated repo) still carry the bot author env, so commits there are bot-attributed until the work moves to its own session.
+That is the recoverable direction (amendable, and the org-scoped rewrite and host-gated helper do not activate elsewhere), but know it is Variant A behavior; Variant B re-decides per command instead.
+
 ### Variant B — user-level guard, automatic in org repos
 
-One mechanism fact makes this variant work, verified on Claude Code 2.1.172 (probe: an env file exporting `"$PWD"` matched each command's own `pwd`): **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
+One mechanism fact makes this variant work, now documented in the Claude Code hooks reference ("Persist environment variables") and originally verified empirically on 2.1.172: **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
 So instead of static per-repo env, a user-level SessionStart hook installs a single *unevaluated* guard line, and the guard re-decides bot-vs-personal per command from the directory the command actually runs in.
 Mid-session directory changes flip identity on the next command; there is no session-level verdict to go stale, and no `CwdChanged` plumbing is needed.
 
@@ -191,11 +196,13 @@ Do not also run the per-repo `session-env.sh` hook.
 
 That fail-closed loudness has a blast radius worth stating plainly: the guard runs before *every* Bash command in *every* project, so a broken `bot-env` aborts every command in every Claude Code session on the machine until it is fixed.
 That is the deliberate cost of never failing open; keep `bot-env` small, and re-run the Phase 5 checks after any change to it.
+The guard also owns the identity env wholesale inside agent Bash commands: a personal verdict unsets `GH_TOKEN`, the `GIT_AUTHOR_*`/`GIT_COMMITTER_*` vars, and command-scope `GIT_CONFIG_*` even where you exported them yourself for unrelated purposes — user-set values of those variables do not survive into agent commands.
 Variant A's blast radius is narrower, which is one more reason to prefer A when automatic enrollment is not worth this machine-wide coupling.
 
 `bot-env` emits the complete Variant A-style bot env on a bot verdict.
 It emits explicit `unset`s on a personal verdict so no bot env leaks if a harness ever reuses a shell across commands.
-The emitted block mirrors the Variant A env, including the same `insteadOf` nuance: add a pair and bump the count if any remote uses the `ssh://` form.
+The emitted block mirrors the Variant A env, with one improvement over the static block: `bot-env` derives extra `insteadOf` pairs from the matched remotes themselves, so `ssh://` forms and case variants are rewritten without manual pairs.
+That derivation is load-bearing, not cosmetic — git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the canonical pair alone would take the bot verdict (the org match is deliberately case-insensitive) yet let the push silently ride the personal SSH key.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
 
@@ -216,17 +223,19 @@ Every ambiguous case resolves toward the bot because the two wrong outcomes are 
 Two expected, harmless quirks of running per command: the ambiguity warnings (`no remotes`, `git probe failed`) print on *every* command in such a directory, not once — that repetition is the signal, kept stateless deliberately; and inside a bare repo or a `.git` directory `--is-inside-work-tree` exits 0 rather than 128, so the decision falls through to the remote check (an org-remoted bare repo still resolves to bot), which is why the table's "exits 128" row is the *definitive* not-a-repo answer rather than the only non-repo state.
 For the same reason, do not gate on a local repo allowlist (an enrolled repo missing from the list silently works as the human) and do not check the installation list per command over the network (slow, flaky, and redundant — the token already enforces it server-side; a not-yet-installed org repo simply fails at first push, which is the "enroll me" signal).
 
+One gap the guard cannot see: the verdict binds to the directory a command *starts* in, so a compound command that crosses repos — `cd <org-repo> && git commit` from a personal directory, or `git -C <org-repo> ...` — carries the starting directory's identity into the target repo, and the personal→org direction of that is silent human attribution.
+Keep cross-repo git commands out of agent sessions: change directory in one command, commit in the next, and the per-command re-decision covers it.
+
 Migrating from Variant A: delete the bot stanza from every per-repo `.claude/settings.local.json` (the whole file if that is all it held) and retire the per-repo `session-env.sh` hook registration — leftovers would pin a stale static identity regardless of what the guard decides.
+The idempotence check matches the exact guard-line text, so after changing `bot-env-hook.sh` start fresh sessions: a resumed session appends the new line while the old one still runs.
 
 **Why a hook and not a PATH-shimmed `gh`.**
-The obvious approach — drop a `gh` wrapper on `PATH` via a shell rc file — fails under Claude Code and wastes hours.
-Claude Code builds a *shell snapshot* at session start by sourcing `$HOME/.zshrc` from a **non-login** shell, then **freezes `PATH`** into that snapshot and replays it for every Bash command.
-Consequences that defeat the rc-file approach: `.zprofile` is never sourced (non-login); `ZDOTDIR` is ignored (it hardcodes `$HOME/.zshrc`, not `$ZDOTDIR/.zshrc`); and even a correctly-placed `PATH` prepend is frozen at snapshot time, before the per-project `env` (and any marker it sets) is applied.
-`CLAUDE_ENV_FILE` is the supported escape hatch: Claude Code provides it to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sources the file's contents before every Bash command, *after* the snapshot — so an `export GH_TOKEN=...` there reliably reaches `gh`.
+A `gh` wrapper on `PATH` via a shell rc file fails under Claude Code: the Bash tool replays a *shell snapshot* built from a **non-login** `$HOME/.zshrc` (`.zprofile` never sourced, `ZDOTDIR` ignored) with **`PATH` frozen** before the per-project env applies, so no dotfile PATH shim activates.
+`CLAUDE_ENV_FILE` is the supported escape hatch: provided to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sourced before every Bash command, *after* the snapshot, so an `export GH_TOKEN=...` there reliably reaches `gh`.
 **Adapter contract for other harnesses.**
-Phases 1–3's App, token, and credential-helper layers are harness-neutral (the Claude Code glue is the activation layer: `session-env.sh` in Variant A, `bot-env-hook.sh` plus the `bot-env` guard in Variant B); what an adapter for another local agent (e.g. Codex) must supply is this phase's routing, without editing shell dotfiles: per-repo activation (explicit opt-in or a gated automatic equivalent), the static git identity env, command-scope `GIT_CONFIG_*`, a dynamic `GH_TOKEN` re-minted across hour-plus sessions, and a fail-closed substitute when minting fails.
-This skill ships only the Claude Code adapter; if a harness lacks one of these capabilities, treat its support as pending rather than approximating with the steps above — a half-wired adapter fails open to the personal identity.
-Only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
+Phases 1–3 are harness-neutral; an adapter for another local agent (e.g. Codex) must supply this phase's routing without editing shell dotfiles — per-repo activation, the static identity env, command-scope `GIT_CONFIG_*`, a dynamic re-minted `GH_TOKEN`, and a fail-closed substitute when minting fails.
+This skill ships only the Claude Code adapter; a harness missing one of these capabilities is pending, not approximated — a half-wired adapter fails open to the personal identity.
+Mechanism detail and the full contract: [references/harness-adapters.md](references/harness-adapters.md).
 
 ## Phase 5 — Verify both directions
 
@@ -254,6 +263,7 @@ Variant B additionally (the gate and its fail direction):
 - Broken-guard regression: temporarily move or chmod away `~/.claude/bot-shims/bot-env`; the next Bash command in a Claude Code session must abort with the guard error instead of running with personal credentials.
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
+- Mixed-case remote regression: in an org repo whose remote spells the host or org with different case (`git@github.com:Acme/x.git`), `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` still succeeds — `bot-env` emitted a literal rewrite pair for that remote, covering git's case-sensitive `insteadOf` match.
 
 In a personal terminal (and any agent session the routing leaves personal — outside the opted-in repos for Variant A; non-org repos with remotes for Variant B):
 
@@ -302,13 +312,8 @@ Not enforced — the part everyone overstates:
 - It therefore holds **both identities**, which enables approval laundering: author a PR as the bot, approve it as the human from a non-opted-in session.
   GitHub's block on author self-approval does not close this.
 - A required-review rule binds the **bot token**, not the agent; treat it as enforcement against the bot identity and a convention for the agent.
-- Mitigations for approval laundering, strongest first:
-  - Structural: remove approval capability from the human credentials resident on the agent's machine — re-auth the personal `gh` with a fine-grained PAT that lacks Pull requests write (or log it out entirely; agent sessions use the bot's `GH_TOKEN` regardless), and approve in the browser.
-    The agent then cannot run `gh pr review --approve` as the human; it would have to drive the browser or steal its session, a far louder escalation.
-    Personal pushes are unaffected — they ride the SSH key, not `gh`.
-  - Server-side: the agent-friendly-github §2 controls close the adjacent vectors — the human-only-approvals required check keeps the bot's own approval from counting on anyone's PR, and `require_last_push_approval` (small-team/org profiles) closes approve-then-push; neither can tell an agent-driven human approval from a real one.
-  - Detection: on org repos, alert on the audit-log pattern of the App's operator approving the App's PRs, especially within seconds of PR creation.
-  - Procedural: never approve a bot-authored PR from inside an agent session; approvals happen in the GitHub UI or a personal terminal, after reading the diff.
+- Mitigations for approval laundering, strongest first: structural — strip Pull requests write from the personal `gh` credentials resident on the machine (fine-grained PAT, approve in the browser); server-side — agent-friendly-github §2's human-only-approvals check and `require_last_push_approval`; detection — audit-log alerts on the App's operator approving the App's PRs; procedural — never approve from inside an agent session.
+  The worked list with rationale: [references/approval-laundering.md](references/approval-laundering.md).
 - If containment is actually required, change the architecture (separate OS user, container, or VM), not the config.
 
 ## Common Mistakes
@@ -335,6 +340,8 @@ Not enforced — the part everyone overstates:
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
 | Deciding the org match by pattern-matching the raw remote line | Any boundary char you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host case-insensitively to `github.com`, then check the org path segment case-insensitively — don't regex the whole line |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
+| Trusting the canonical `insteadOf` pair against mixed-case SSH remotes | git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the repo gets the bot verdict but pushes ride the personal SSH key; normalize remotes in Variant A, and in Variant B `bot-env` derives literal pairs from the matched remotes |
+| Compound agent commands that cross repos (`cd <org-repo> && git commit`, `git -C <org-repo>`) | The Variant B verdict binds to the directory the command starts in, so the personal→org direction is silent human attribution; change directory in one command and commit in the next |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |
 | Defaulting agent sessions to personal credentials, with a bot subagent for autonomous work | Fails open — a forgotten switch attributes agent work to the human, the headline failure mode; keep the bot as the default and escape per task with `as-me` |
