@@ -2,7 +2,7 @@
 # Verifies shared scripts resolve siblings from an arbitrary install dir.
 set -euo pipefail
 FAIL=0
-DIR="$(mktemp -d)"
+DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 trap 'rm -rf "$DIR"' EXIT
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 
