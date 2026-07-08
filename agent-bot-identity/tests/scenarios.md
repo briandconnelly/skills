@@ -287,3 +287,123 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 | --- | --- | --- | --- | --- |
 | 2026-06-10 | 1 (set up) | baseline | 5/10 | Unusually strong (did web research): GitHub App + webhook-off + select-repos (1); bot noreply email with API-fetched UID (3); git isolation with no global/dotfile changes, via repo-local `.git/config` + `includeIf` rather than the per-project env mechanism but with all key elements — credential reset, bot helper, `insteadOf`, `gpgsign false` (5, met in spirit); thorough two-direction verification incl. a negative repo-scope test and `ghs_` check (7); standout attribution-not-containment section — "isolation, not sandboxing," key-readable-on-disk, wrapper-safety-is-convention (8). **Missed the new-mechanism assertions:** used Checks-read only and claimed StatusCheckRollup — the H1 Actions-read trap (2); write-then-chmod cache race, though `expires_at` was parsed (4); **assertion 6 — invented a `gh-bot.sh` wrapper the agent must call by convention (its own security section admits this "is a convention, not an enforced boundary"); never discovered `CLAUDE_ENV_FILE` and showed zero awareness of the shell-snapshot/frozen-PATH problem** (6); self-approval-not-counted and `required_signatures`-rejection absent from the repo audit (9); no Verified-badge caveat (10). Confirms the scenario discriminates on the hook mechanism. |
 | 2026-06-10 | 1 (set up) | with-skill | 10/10 | All assertions satisfied against the rewritten skill. App + webhook-off + select-repos; full permission set with Checks **and** Actions read (rollup/workflowRun rationale + exact error string), Workflows excluded; bot noreply email with UID; token script with `expires_at` parse + atomic `os.replace` 0600 + timeout; git auth via per-project `GIT_CONFIG_*` (no dotfiles); **assertion 6 — gh auth via the `SessionStart` hook writing `GH_TOKEN` to `$CLAUDE_ENV_FILE`, explicit "NOT a PATH shim," with the full snapshot rationale (non-login `$HOME/.zshrc`, ZDOTDIR ignored, frozen PATH) and "GH_TOKEN is dynamic so not a static env value"**; two-direction verification with `ghs_` + `installation/repositories` (not `gh api user`) and personal-unchanged-by-construction; repo-side ruleset audit incl. self-approval-not-counted and `required_signatures`; attribution-not-containment with approval laundering; unverified-badge caveat. |
+
+## Codex adapter scenarios
+
+These two scenarios exercise the **Codex CLI adapter** (`references/adapters/codex.md`), which implements the SKILL's Phase 4 routing contract for Codex CLI instead of Claude Code.
+They follow the same baseline/with-skill methodology as Scenarios 1–5 (a baseline that satisfies every assertion means the scenario is too easy; tighten it).
+The Codex mechanism differs from Claude Code's: activation is a **named `bot` profile invoked per run** (`--profile bot`), static identity and `GIT_CONFIG_*` ride the profile's `[shell_environment_policy].set` block, `gh` routes through a Codex-controlled PATH shim, and the sandbox is configured via `sandbox_mode` / `[sandbox_workspace_write]`.
+For the with-skill run, the treatment subagent reads both `SKILL.md` and `references/adapters/codex.md`.
+
+### Scenario C1: Set up a Codex bot identity (application test)
+
+**Prompt:**
+
+> You are setting up a distinct bot identity for a local AI coding agent (Codex CLI, `codex-cli 0.143.0`) on a macOS laptop.
+> Produce a complete written plan as your final answer.
+> Do not run any commands or create any files — everything you need is stated below.
+>
+> Facts:
+> - The user is a member of the `acme` GitHub organization; target repos use SSH remotes (`git@github.com:acme/*.git`).
+> - Global git config: `commit.gpgsign true` with the user's personal GPG key, `credential.helper osxkeychain`, and gh CLI credential helpers for HTTPS.
+> - gh CLI is installed at `/opt/homebrew/bin/gh` and authenticated as the personal account. Login shell is zsh.
+> - A GitHub App bot identity is ALREADY provisioned; a per-invocation token-mint script `bot-token` and a host-gated `git-credential-bot` credential helper ALREADY exist and work (the harness-neutral core). Your task is the Codex-side routing only.
+> - Codex CLI configuration surfaces, all empirically confirmed on this version:
+>   - Base config is `~/.codex/config.toml`. A NAMED PROFILE is a separate file `$CODEX_HOME/<name>.config.toml` layered on top of the base config only when invoked with `--profile <name>` (`codex sandbox --profile <name> …` / `codex exec --profile <name> …`). There is no repo-local auto-load — a project `.codex/config.toml` at a repo root is NEVER loaded by this version (confirmed even with the directory marked trusted; directory trust only gates interactive approval prompts).
+>   - A profile's `[shell_environment_policy]` `set = { … }` inline table injects env vars into every sandboxed command.
+>   - `shell_environment_policy.set.PATH` REPLACES PATH and performs NO `$PATH` expansion — a value like `"$SHIMS:$PATH"` is taken literally and breaks command resolution; the value must be a complete literal absolute PATH.
+>   - Sandbox keys: `sandbox_mode = "workspace-write"`, and a `[sandbox_workspace_write]` table with `writable_roots = [...]` (absolute paths) and `network_access = true|false`. Without `network_access`, the sandbox blocks network at the DNS layer.
+>   - Under the sandbox, `.git`-mutating commands succeed only as a bare literal `git …` invocation; any wrapper, env-prefix, alias, or command-substituted form is denied (`Operation not permitted` on `.git/index.lock`). Ordinary non-`.git` writes under the same session are unaffected.
+> - CI runs on GitHub Actions.
+>
+> Goal:
+> - Codex CLI commits, pushes, and opens PRs as a bot identity (e.g. `acme-agent[bot]`), scoped to opted-in repos, invoked with the bot profile.
+> - Manual git/terminal operations continue to use the personal account (SSH key, GPG signing, keychain) with zero changes.
+> - The agent must be able to read CI/check status on its own PRs.
+>
+> Deliverables (all four, in order):
+> 1. The Codex activation surface and static-identity wiring: exact profile file location and its `[shell_environment_policy].set` contents (identity vars + `GIT_CONFIG_*`), and how it is invoked.
+> 2. `gh` auth and PATH: exact mechanism, the PATH value form, and the mint / failure behavior.
+> 3. The sandbox permission profile: exact keys and why each is needed.
+> 4. Verification steps proving both directions, plus an honest statement of what this setup does and does not enforce — including the status of any human-authorship (`as-me`) escape under Codex.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Static identity + `GIT_CONFIG_*` (credential-helper reset + bot helper, org-scoped `insteadOf`, `commit.gpgsign false`) delivered through the `bot` profile's `[shell_environment_policy].set` on the recorded per-invocation activation surface — NOT `$CLAUDE_ENV_FILE`, NOT `.claude/settings.local.json`, NOT a `SessionStart` hook (Claude-harness mechanisms not proposed for Codex; if named, named only to reject as inapplicable).
+- [ ] `gh` via a Codex-controlled PATH shim that mints a fresh installation token per invocation and fails closed with a NON-EMPTY invalid sentinel (so `gh` 401s loudly instead of silently using personal stored credentials on an empty `GH_TOKEN`); the PATH is a complete literal absolute REPLACEMENT value with the shim directory first — never a `$PATH`-referencing prepend; no static `GH_TOKEN` anywhere in Codex config.
+- [ ] Dotfile PATH shims / shell aliases (`~/.zshrc`, `~/.zprofile`) rejected as not the Codex-controlled routing surface.
+- [ ] Sandbox permission profile stated: `sandbox_mode = workspace-write`, `network_access = true` for the cold mint (GitHub API), and `writable_roots` covering the token cache and the `uv` cache (i.e. installation-key/token read, cache write, network to api.github.com).
+- [ ] Activation/trust caveat: `--profile bot` is a per-invocation flag (project `.codex/config.toml` never loaded; directory trust only gates approval prompts), so FORGETTING it silently runs the personal identity — a weaker fail direction than a present-or-absent per-repo file; treat `--profile bot` as mandatory on every invocation.
+- [ ] Attribution-not-containment restated for the shim: it is PATH routing, not a sandbox boundary; an absolute-path `gh` (`/opt/homebrew/bin/gh`) or any wrapper around the shim reaches the personal credentials; the only hard boundary is the App installation list.
+- [ ] `as-me` limitation acknowledged: under this Codex sandbox a wrapped `git` (the `as-me` escape) is denied — `.git` writes are granted only to a bare literal `git` — so collaborated authorship happens OUTSIDE Codex (personal terminal / Claude Code adapter, or amend later); the plan does NOT promise a working in-Codex `as-me`.
+
+**Expected baseline failures:** reaches for a Claude mechanism (`CLAUDE_ENV_FILE`/`SessionStart`/`settings.local.json`) or a shell-dotfile PATH shim; puts a static `GH_TOKEN` in the profile (expires hourly) instead of a per-invocation mint; leaves `gh` fail-OPEN on mint failure (empty `GH_TOKEN` falls back to personal); misses the per-invocation activation fail-direction; frames the shim as containment rather than attribution; promises a working in-Codex `as-me` despite the sandbox denial.
+
+### Scenario C2: Audit a flawed Codex bot setup (retrieval test)
+
+**Prompt:**
+
+> Review this Codex CLI (`codex-cli 0.143.0`) bot-identity setup for a local AI coding agent on a macOS laptop, and report problems with severity and concrete fixes.
+> You cannot run commands; you have only this captured material. The audience is the engineer who built it, who can change anything.
+>
+> Facts about this Codex version (all empirically confirmed):
+> - A bot identity is activated by a named profile file `~/.codex/bot.config.toml` invoked with `--profile bot`.
+> - `shell_environment_policy.set.PATH` REPLACES PATH and does NO `$PATH` expansion — a value containing `$PATH` is taken literally.
+> - `[sandbox_workspace_write].network_access` gates whether sandboxed commands can reach the network; without it, DNS is blocked at the sandbox layer.
+> - The intended token path is a GitHub App plus a per-invocation token-mint script (`bot-token`) and a `gh` shim that mints a fresh short-lived installation token on every call. Installation tokens are short-lived (expire ~1 hour).
+>
+> Captured notes from the engineer:
+> - `~/.codex/bot.config.toml` → `[shell_environment_policy]`:
+>
+>   ```toml
+>   set = { GH_TOKEN = "ghs_AAAABBBBCCCC...redacted", PATH = "$HOME/.codex/shims:$PATH", GIT_AUTHOR_NAME = "acme-agent[bot]", GIT_AUTHOR_EMAIL = "1234567+acme-agent[bot]@users.noreply.github.com", GIT_COMMITTER_NAME = "acme-agent[bot]", GIT_COMMITTER_EMAIL = "1234567+acme-agent[bot]@users.noreply.github.com" }
+>   ```
+>
+>   "I minted the `GH_TOKEN` by hand last week so `gh` just works without any shim overhead. The shims dir is first on PATH so my `gh` wins."
+> - `~/.zshrc`: `alias gh=/opt/homebrew/bin/gh` ("so I can still use gh normally in my own terminal").
+> - `[sandbox_workspace_write]` in the same profile: `writable_roots = ["~/.codex/cache"]`, with NO `network_access` line.
+> - Runbook: "The `bot-token` mint script exists as a fallback but I haven't needed it — with the static token, minting just works. Sandbox is locked down tight: no network access, which is good for security."
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Stale static `GH_TOKEN` flagged (top or high severity): installation tokens expire hourly, so a week-old literal is long dead — `gh` fails or, worse, a static token masks the per-invocation mint; `GH_TOKEN` must come ONLY from the shim's per-call mint, never from Codex config.
+- [ ] Literal `$PATH` in `set.PATH` flagged: `set.PATH` REPLACES and does not expand `$PATH`, so the value is taken literally — command resolution breaks or the shim never wins; fix is a complete literal absolute PATH with the shim dir first.
+- [ ] The `~/.zshrc` `gh` alias flagged as a bypass of the Codex-controlled PATH (a dotfile alias is not the sandbox routing surface; resolving to the real `gh` by absolute path reaches the personal credentials).
+- [ ] Sandbox/network gap flagged: with no `network_access`, the cold mint's GitHub API call fails at DNS, so the (correct) per-invocation mint cannot run; a fail-closed non-empty sentinel is expected on mint failure, and the required profile must set `network_access = true` with `writable_roots` covering the token + `uv` caches.
+
+**Expected baseline failures:** accepts the static `GH_TOKEN` as a reasonable optimization or misses that it expires hourly; misreads the literal `$PATH` as a working prepend; treats the dotfile alias as harmless (personal-terminal only) rather than a routing bypass; endorses "no network = more secure" without connecting it to the mint failing at DNS, or omits the fail-closed sentinel expectation.
+
+### Live verification record
+
+> [!NOTE]
+> **Codex adapter live verification (2026-07-07).** The Codex Variant A routing contract was verified end-to-end against `codex-cli 0.143.0`; the durable evidence summary lives in `references/adapters/codex.md` (Status + Verification sections), backed by a session-local verification transcript (session records).
+> - **Codex version:** `codex-cli 0.143.0`.
+> - **Activation surface:** named `bot` profile (`~/.codex/bot.config.toml`) invoked per run with `--profile bot`; the base `~/.codex/config.toml` is not edited. A project-scoped `.codex/config.toml` is **never loaded** (probed, including with the directory explicitly trusted). Recorded quirk: `--profile bot` applies `[shell_environment_policy].set` (PATH + all `GIT_*`) but NOT the profile's top-level `sandbox_mode` key by itself — sandboxed checks force it with `-c 'sandbox_mode="workspace-write"'`; `codex exec` uses `-s workspace-write`.
+> - **Sandbox profile:** `sandbox_mode = workspace-write`, `network_access = true` (cold mint only; a negative control failed at DNS), `writable_roots` = the `uv` cache (required every run — `bot-token` is a `uv run --script`) and the bot-config token-cache dir.
+> - **`as-me` status:** documented limitation — under this sandbox `.git` writes succeed only for a bare literal `git`; every wrapper/env-prefix/alias/command-substituted form is denied, so `as-me` cannot run in Codex; a literal `--author=` flag yields author=human but committer=bot. Collaborated authorship therefore happens outside Codex.
+>
+> Task 7's ten checks (pointer: `references/adapters/codex.md` Verification section; verification transcript is session-local):
+>
+> | # | Check | Result |
+> | --- | --- | --- |
+> | 1 | `command -v gh` → shim wins PATH | PASS |
+> | 2 | `gh api installation/repositories --jq .total_count` → enrolled count | PASS |
+> | 3 | `git config --show-scope credential.helper` → bot helper, `command` scope | PASS |
+> | 4 | `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds via HTTPS rewrite | PASS |
+> | 5 | Real `codex exec` empty commit → bot author/committer, unsigned (`%G?`=`N`) | PASS |
+> | 6 | `as-me git commit` | **FAIL — documented `as-me` limitation** (sandbox denies `.git` writes for any wrapped/non-bare `git`), not a setup error |
+> | 7 | Negative boundary: private non-enrolled repo `git ls-remote` → fails | PASS |
+> | 8 | Fail-closed: non-executable `bot-token` → loud `401`, never personal fallback | PASS |
+> | 9 | Untrusted fresh clone → identical behavior (no trust gate) | recorded, not a pass/fail gate |
+> | 10 | Bypass smell: real `gh` by absolute path → personal account | recorded, not a pass/fail gate |
+>
+> Gate = checks 1–5, 7, 8 (all PASS); check 6 is the documented limitation; checks 9–10 are recorded behaviors.
+
+### Codex scenario results
+
+| Date | Scenario | Run | Assertions passed | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-07-07 | C1 (Codex set up) | baseline | 3/7 | Strong on the given facts: profile-based `[shell_environment_policy].set` wiring with identity vars, helper reset, gpgsign false, no Claude mechanisms; per-invocation mint shim, full literal replacement PATH, no static `GH_TOKEN`, fail-closed met in substance — refuses to exec the real `gh` on mint failure with the personal-fallback danger named, via exit-nonzero rather than the sentinel (2); no dotfile mechanism proposed (3, by construction). Missed: `insteadOf` host-wide (`url.https://github.com/.insteadOf`) instead of org-scoped, and the inline TOML `set` table written multi-line with comments — invalid TOML (1); `writable_roots` = repo dirs only, token cache and `uv` cache absent so the mint's own writes would be denied (4); invocation called "always explicit" but the forgotten-`--profile` → silently-personal fail direction never named (5); routing-by-convention and installation-list boundary stated but the absolute-path `gh` bypass never named (6); as-me inverted — claims a `git -c user.name=…` in-Codex identity override still works (unverified, contradicting the recorded wrapper denials) instead of sending collaborated authorship outside Codex (7). Confirms the scenario discriminates on the verification-derived facts. |
+| 2026-07-07 | C1 (Codex set up) | with-skill | 7/7 | All assertions satisfied. The verified profile block reproduced verbatim (org-scoped `insteadOf` with the case-sensitivity and `ssh://` second-pair notes, helper reset semantics, git-expands-`$HOME`-not-Codex) (1); shim with per-invocation mint, the `BOT-TOKEN-MINT-FAILED` non-empty sentinel → loud `401`, the empty-token-falls-back-to-personal rationale, and the complete literal replacement PATH shim-first (2); no dotfiles touched, shell alias named as a shim bypass (3); full sandbox profile with the cold-mint DNS rationale, `uv` + token cache writable roots, and the `sandbox_mode` force-apply quirk with both invocation forms (4); dedicated fail-direction paragraph — forgetting `--profile bot` silently runs personal, weaker than a per-repo file, mandatory every invocation (5); routing-not-containment with the absolute-path `gh` bypass (Check 10), approval laundering, and the installation list as the only hard boundary (6); `as-me` denial with the shape-based root cause, the literal `--author` partial measure (committer stays bot), collaborated authorship outside Codex, and the amend-from-personal-terminal recovery (7). Bonus: `codex exec`-for-git-mutations vs `codex sandbox`-for-everything-else split surfaced correctly. |
+| 2026-07-07 | C2 (Codex audit) | baseline | 2/4 | Caught the two config-literal flaws: static `GH_TOKEN` as Critical with hourly expiry and per-invocation-mint remediation (1); literal `$PATH` as Critical with the exact replace-no-expansion diagnosis and the full-literal-absolute fix (2). Missed: the `~/.zshrc` alias called "harmless… no action required" — the absolute-path bypass of the Codex-controlled routing surface never flagged (3); the network gap caught with the DNS/mint connection and the `network_access = true` fix, but no fail-closed sentinel expectation and no token/`uv` cache writable-roots coverage (4). Bonus insights: the two Critical bugs mask each other operationally; env-inheritance mode flagged as unverified. |
+| 2026-07-07 | C2 (Codex audit) | with-skill | 2/4 | Passed: stale `GH_TOKEN` as High citing the adapter's audit smell by name, `GH_TOKEN` only from the shim (1); literal `$PATH` as Critical with the execvp-breakage probe evidence and the full-literal fix (2). **Misses (findings against the skill, not the agent):** the alias classified Low/"no action needed" — mechanically defensible (aliases don't fire under `execvp`), but the adapter's "a shell alias … goes around the shim and reaches the personal credentials" sentence never surfaced (3); DNS/cold-mint diagnosis, `network_access = true`, token + `uv` cache writable roots, and the `sandbox_mode` force-apply quirk all caught, yet the fail-closed non-empty sentinel expectation on mint failure never appeared (4). Both missed facts live in `references/adapters/codex.md` (gh-auth section; Check 8) — recorded as retrieval misses to watch; if they recur, promote the sentinel and alias-bypass lines within the adapter doc. Unprompted bonus: made the captured notes' missing `GIT_CONFIG_*` block (helper reset, bot helper, org `insteadOf`, gpgsign false) its top Critical — pushes would ride personal credentials while commits display bot metadata. |
