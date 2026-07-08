@@ -39,7 +39,7 @@ if [ "$rc" -eq 0 ]; then
           case "$prefix" in
             "") ;;
             "git@github.com:${ORG}/") ;;
-            *"'"*) echo "bot-env: skipping unquotable remote prefix in $PWD" >&2 ;;
+            *"'"*) echo "bot-env: matched remote prefix contains a single quote in $PWD; refusing to run with undetermined identity" >&2; exit 1 ;;
             *)
               case "$ssh_prefixes" in
                 *"|${prefix}|"*) ;;

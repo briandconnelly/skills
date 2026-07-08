@@ -197,7 +197,7 @@ Do not also run the per-repo `session-env.sh` hook.
 
 That fail-closed loudness has a blast radius worth stating plainly: the guard runs before *every* Bash command in *every* project, so a broken `bot-env` aborts every command in every Claude Code session on the machine until it is fixed.
 That is the deliberate cost of never failing open.
-`bot-env`'s decision path makes no network calls and shells out only to `git` and `bot-token`; keep it that way.
+`bot-env` makes no network calls of its own — the only network step is the token mint delegated to `bot-token`; keep it that way.
 Re-run the Phase 5 Variant B checks after any change to `bot-env` before further agent work.
 The guard also owns the identity env wholesale inside agent Bash commands: a personal verdict unsets `GH_TOKEN`, the `GIT_AUTHOR_*`/`GIT_COMMITTER_*` vars, and command-scope `GIT_CONFIG_*` even where you exported them yourself for unrelated purposes — user-set values of those variables do not survive into agent commands.
 Variant A's blast radius is narrower, which is one more reason to prefer A when automatic enrollment is not worth this machine-wide coupling.
