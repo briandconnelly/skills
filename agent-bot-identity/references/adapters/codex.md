@@ -188,6 +188,10 @@ Checks 1–5, 7, and 8 are the pass/fail gate and all pass; Check 6's failure is
 
 Audit smells — any of these means the adapter is mis-wired:
 
-- A stale static `GH_TOKEN` anywhere in Codex config (base `config.toml`, the `bot` profile, or a `-c` override): the token expires hourly and a static one silently rots into `gh` failures or, worse, masks the per-invocation mint. `GH_TOKEN` must come only from the `gh` shim.
-- An absolute-path `gh` invocation (`/opt/homebrew/bin/gh …`) in agent workflows: it bypasses the shim and reaches the personal credentials (Check 10).
+- A stale static `GH_TOKEN` anywhere in Codex config (base `config.toml`, the `bot` profile, or a `-c` override): the token expires hourly and a static one silently rots into `gh` failures or, worse, masks the per-invocation mint.
+  `GH_TOKEN` must come only from the `gh` shim.
+- A `gh` alias or an absolute-path `gh` invocation (`alias gh=/opt/homebrew/bin/gh`, `/opt/homebrew/bin/gh …`) anywhere — shell config, dotfile, runbook, or agent workflow: each is a shim bypass that reaches the personal credentials (Check 10).
+  Flag the alias even in an interactive-only file: it defeats the shim wherever it fires, and its presence signals `gh` routing outside the Codex-controlled PATH.
+- Silent mint failure: the shim must fail closed with the non-empty `BOT-TOKEN-MINT-FAILED` sentinel so `gh` errors loudly (`Bad credentials (HTTP 401)`, Check 8) — an empty `GH_TOKEN` is treated as unset and falls back to the personal login.
+  A setup with no visible mint-failure mode — or a runbook claiming minting "just works" without the sandbox prerequisites (`network_access = true` for the cold mint; `writable_roots` covering the `uv` and token caches) — is a smell.
 - PATH shims installed via shell dotfiles (`.zshrc`, `.zprofile`) instead of the profile's `shell_environment_policy.set.PATH`: dotfile PATH order is not the Codex-controlled routing surface and leaks into personal shells.
