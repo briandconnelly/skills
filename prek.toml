@@ -23,4 +23,5 @@ hooks = [
 repo = "local"
 hooks = [
   { id = "check-skill-frontmatter", name = "Validate SKILL.md frontmatter against agentskills.io spec", language = "python", language_version = "python3", additional_dependencies = ["pyyaml>=6"], entry = "python scripts/check-skill-frontmatter.py", files = "(?:^|/)SKILL\\.md$", pass_filenames = true },
+  { id = "agent-bot-identity-selflocate", name = "agent-bot-identity: shared scripts self-locate and fail closed", language = "system", entry = "bash agent-bot-identity/tests/selflocate-test.sh", files = "^agent-bot-identity/scripts/", pass_filenames = false },
 ]

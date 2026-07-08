@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+# GIT_CONFIG_VALUE_1 below is a `!`-prefixed credential.helper, which git
+# re-parses through `sh -c`: a space in the install path breaks the command and
+# a `$(...)` in it executes. Quoting is not enough — allowlist the characters.
+case "$SCRIPT_DIR" in
+  *[!A-Za-z0-9._/-]*) echo "bot-env: install path contains an unsafe character; refusing to emit a shell-evaluated credential helper" >&2; exit 1 ;;
+esac
 
 ORG="acme"
 BOT_NAME="${ORG}-agent[bot]"
@@ -75,7 +82,10 @@ EOF
   exit 0
 fi
 
-token="$("$HOME/.claude/bot-shims/bot-token")" || token="BOT-TOKEN-MINT-FAILED"
+# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
+# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
+token="$("$SCRIPT_DIR/bot-token")" || token=""
+[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
 
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'
@@ -85,7 +95,7 @@ export GIT_COMMITTER_EMAIL='${BOT_EMAIL}'
 export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
-export GIT_CONFIG_VALUE_1='!${HOME}/.claude/bot-shims/git-credential-bot'
+export GIT_CONFIG_VALUE_1='!${SCRIPT_DIR}/git-credential-bot'
 export GIT_CONFIG_KEY_2='url.https://github.com/${ORG}/.insteadOf'
 export GIT_CONFIG_VALUE_2='git@github.com:${ORG}/'
 export GIT_CONFIG_KEY_3='commit.gpgsign'
