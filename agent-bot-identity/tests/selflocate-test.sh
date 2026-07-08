@@ -63,5 +63,19 @@ fi
 [ -s "$ENVF" ] && { echo "FAIL: refused install still wrote to the env file"; FAIL=1; }
 rm -f "$ENVF"
 
+# 6. codex gh shim: sibling mint, fail-closed sentinel, exec of the real gh.
+mkdir -p "$DIR/real"
+printf '#!/usr/bin/env bash\necho "REAL_GH_SAW_TOKEN=$GH_TOKEN args=$*"\n' > "$DIR/real/gh"
+chmod +x "$DIR/real/gh"
+sed "s|^REAL_GH=.*|REAL_GH=\"$DIR/real/gh\"|" "$SRC/codex/gh" > "$DIR/gh"
+chmod +x "$DIR/gh"
+out="$("$DIR/gh" pr status)"
+echo "$out" | grep -qF 'REAL_GH_SAW_TOKEN=ghs_stubtoken args=pr status' || { echo "FAIL: codex gh shim did not mint via sibling and exec real gh"; FAIL=1; }
+# Fail-closed: crash the sibling bot-token; shim must pass the sentinel, not empty.
+printf '#!/usr/bin/env bash\nexit 1\n' > "$DIR/bot-token"
+out="$("$DIR/gh" api user)"
+echo "$out" | grep -qF 'REAL_GH_SAW_TOKEN=BOT-TOKEN-MINT-FAILED' || { echo "FAIL: codex gh shim fell open on mint failure"; FAIL=1; }
+printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
+
 [ "$FAIL" -eq 0 ] && echo "selflocate-test: PASS"
 exit "$FAIL"
