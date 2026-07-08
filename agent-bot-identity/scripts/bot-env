@@ -79,7 +79,10 @@ EOF
   exit 0
 fi
 
-token="$("$SCRIPT_DIR/bot-token")" || token="BOT-TOKEN-MINT-FAILED"
+# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
+# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
+token="$("$SCRIPT_DIR/bot-token")" || token=""
+[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
 
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'

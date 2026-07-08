@@ -77,5 +77,40 @@ out="$("$DIR/gh" api user)"
 echo "$out" | grep -qF 'REAL_GH_SAW_TOKEN=BOT-TOKEN-MINT-FAILED' || { echo "FAIL: codex gh shim fell open on mint failure"; FAIL=1; }
 printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
 
+# 7. An empty-but-successful mint is as dangerous as a crash: gh reads an empty
+#    GH_TOKEN as unset and falls back to the personal stored credentials.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$DIR/bot-token"
+out="$("$DIR/gh" api user)"
+echo "$out" | grep -qF 'REAL_GH_SAW_TOKEN=BOT-TOKEN-MINT-FAILED' || { echo "FAIL: codex gh shim fell open on an empty successful mint"; FAIL=1; }
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:acme/scratch.git
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -qF "GH_TOKEN='BOT-TOKEN-MINT-FAILED'" || { echo "FAIL: bot-env fell open on an empty successful mint"; FAIL=1; }
+echo "$out" | grep -qF "GH_TOKEN=''" && { echo "FAIL: bot-env emitted an empty GH_TOKEN"; FAIL=1; }
+rm -rf "$REPO"
+printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
+
+# 8. git-credential-bot: silent on a wrong host, and no credential on a bad mint.
+out="$(printf 'protocol=https\nhost=evil.com\n\n' | "$DIR/git-credential-bot" get)"
+[ -z "$out" ] || { echo "FAIL: git-credential-bot answered for a non-github.com host"; FAIL=1; }
+printf '#!/usr/bin/env bash\nexit 1\n' > "$DIR/bot-token"
+out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get || true)"
+[ -z "$out" ] || { echo "FAIL: git-credential-bot printed a credential after a crashed mint"; FAIL=1; }
+printf '#!/usr/bin/env bash\nexit 0\n' > "$DIR/bot-token"
+out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get || true)"
+[ -z "$out" ] || { echo "FAIL: git-credential-bot printed a credential from an empty mint"; FAIL=1; }
+printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
+
+# 9. bot-env personal verdict: explicit unsets, and never an exported GH_TOKEN.
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:notacme/scratch.git
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -q '^unset GH_TOKEN$' || { echo "FAIL: bot-env personal verdict did not unset GH_TOKEN"; FAIL=1; }
+echo "$out" | grep -q '^unset GIT_AUTHOR_NAME ' || { echo "FAIL: bot-env personal verdict did not unset the identity vars"; FAIL=1; }
+echo "$out" | grep -q 'export GH_TOKEN' && { echo "FAIL: bot-env personal verdict exported GH_TOKEN"; FAIL=1; }
+rm -rf "$REPO"
+
 [ "$FAIL" -eq 0 ] && echo "selflocate-test: PASS"
 exit "$FAIL"
