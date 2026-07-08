@@ -24,5 +24,29 @@ echo "$out" | grep -qF "GIT_CONFIG_VALUE_1='!$DIR/git-credential-bot'" || { echo
 echo "$out" | grep -qF "GH_TOKEN='ghs_stubtoken'" || { echo "FAIL: bot-env did not mint via sibling bot-token"; FAIL=1; }
 rm -rf "$REPO"
 
+# 3. session-env.sh must embed its own dir's bot-token in the env-file line.
+cp "$SRC/claude/session-env.sh" "$SRC/claude/bot-env-hook.sh" "$DIR/"
+chmod +x "$DIR"/session-env.sh "$DIR"/bot-env-hook.sh
+ENVF="$(mktemp)"
+CLAUDE_ENV_FILE="$ENVF" "$DIR/session-env.sh"
+grep -qF "$DIR/bot-token" "$ENVF" || { echo "FAIL: session-env.sh line not self-located"; FAIL=1; }
+# The installed line must actually work: eval it and check the stub token landed.
+unset GH_TOKEN || true
+eval "$(cat "$ENVF")"
+[ "${GH_TOKEN:-}" = "ghs_stubtoken" ] || { echo "FAIL: session-env.sh installed line did not mint"; FAIL=1; }
+rm -f "$ENVF"
+
+# 4. bot-env-hook.sh must embed its own dir's bot-env; the guard must fail closed.
+ENVF="$(mktemp)"
+CLAUDE_ENV_FILE="$ENVF" "$DIR/bot-env-hook.sh"
+grep -qF "$DIR/bot-env" "$ENVF" || { echo "FAIL: bot-env-hook.sh guard not self-located"; FAIL=1; }
+# Fail-closed: with bot-env made non-executable, running the guard must abort.
+chmod -x "$DIR/bot-env"
+if bash -c "$(cat "$ENVF"); echo reached"; then
+  echo "FAIL: guard did not abort with non-executable bot-env"; FAIL=1
+fi
+chmod +x "$DIR/bot-env"
+rm -f "$ENVF"
+
 [ "$FAIL" -eq 0 ] && echo "selflocate-test: PASS"
 exit "$FAIL"
