@@ -11,6 +11,9 @@ Variant A verified (core routing contract) against `codex-cli 0.143.0` on 2026-0
 Checks 1–5, 7, and 8 of the verification list below all pass end-to-end: PATH takeover, static identity env, per-invocation `gh` minting, the credential-helper rewrite, sandbox minting, fail-closed token handling, and the installation access boundary all hold under live testing.
 The one gap is `as-me` — see the `as-me` limitation section: under this Codex version's sandbox the human-authorship override cannot run, so collaborated authorship happens outside Codex.
 
+Scope of the live verification, stated honestly: no branch was pushed and no `gh pr create` was run under Codex.
+Check 4 proved the authenticated HTTPS-rewrite path with `git ls-remote` and check 5 made a local commit; the write path to GitHub (push, PR creation) rides the same token and credential helper but was not exercised end-to-end here.
+
 Variant B (a user-level, automatic, per-command re-decision like Claude Code's) is **pending**, not shipped.
 It would require a mechanism that re-decides bot-vs-personal before every command with the same fail-closed properties, and no `$CLAUDE_ENV_FILE` equivalent — a file whose contents are evaluated in each command's own shell and working directory — was found in Codex 0.143.0.
 The profile mechanism Variant A uses is decided once per invocation, not per command, so it cannot back Variant B.
@@ -108,7 +111,7 @@ Scope of the claim: this covers **well-behaved `gh` resolution through the Codex
 It does not cover anything that goes around the shim: an absolute path to the real `gh` (`/opt/homebrew/bin/gh`), a shell alias, or calling `bot-token` / the real `gh` directly all bypass it and reach the personal credentials (Check 10 confirmed the absolute-path bypass returns the personal account).
 
 **This buys attribution, not containment.**
-The adapter is a PATH-routing convention, not an OS- or sandbox-enforced restriction — the only hard boundary is the App's installation list (Check 7). Never present it as a sandbox.
+The adapter is a PATH-routing convention, not an OS- or sandbox-enforced restriction — the hard boundaries are the App's installation list (Check 7) and the server-side rulesets of the repos it touches (SKILL Phase 6). Never present it as a sandbox.
 
 ## `as-me` limitation
 
@@ -182,6 +185,8 @@ Verified in Check 4: `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` succe
 ## Verification
 
 Run these together with the SKILL's Phase 5 checks, from a fresh Codex invocation with `--profile bot`.
+Skip the SKILL's `GH_TOKEN`-prefix and `as-me` bullets; checks 2 and 6 below replace them.
+(A session-level `GH_TOKEN` is an audit smell here, not a pass: the shim exports it per invocation.)
 Sandboxed checks use `codex sandbox --profile bot -c 'sandbox_mode="workspace-write"' sh -c '<cmd>'`; the commit checks use `codex exec --profile bot -s workspace-write --skip-git-repo-check '<prompt>'`.
 Ten checks were run live; each is one line with its expected result.
 

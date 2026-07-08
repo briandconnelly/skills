@@ -89,7 +89,7 @@ Keep the install path free of spaces and shell metacharacters: `bot-env` emits a
 Use these resources:
 
 - `scripts/bot-token` mints and caches installation tokens.
-- `scripts/git-credential-bot` feeds installation tokens to git and answers only `https://github.com`, accepting case-insensitive hostnames and an optional `:443` port from git's credential protocol.
+- `scripts/git-credential-bot` feeds installation tokens to git and answers only `https://github.com`, accepting case-insensitive hostnames and an optional port suffix from git's credential protocol.
 - `scripts/as-me` provides personal authorship for collaborated commits.
 
 Each harness adapter (Phase 4) adds its own glue scripts on top of these; see the adapter doc.
@@ -141,7 +141,7 @@ Implemented adapters:
 | Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) |
 | Automatic user-level routing | ✅ Variant B | ❌ pending |
 | `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) |
-| Tested | ✅ scenarios 1–5 | ✅ live verification (see tests/scenarios.md) |
+| Tested | ✅ scenarios 1–5 | ✅ live verification + scenarios C1–C2 |
 
 ("Fail-closed" is scoped to routing, never containment.)
 
@@ -150,14 +150,16 @@ Implemented adapters:
 In a fresh agent session in an opted-in repo:
 
 - Run your adapter's activation checks first — see the adapter doc.
-- Do not begin git or `gh` work until the `GH_TOKEN` prefix and command-scope credential-helper checks below pass.
-- `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected the installation token.
+- Do not begin git or `gh` work until your adapter's token check and the command-scope credential-helper check pass — see the adapter doc for which token check applies.
+- If the adapter injects `GH_TOKEN` into the session env (Claude Code): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected the installation token.
+  This check does not port: under a per-invocation shim adapter (Codex CLI) a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
 - `gh api installation/repositories --jq '.total_count'` → the count of enrolled repos, proving `gh` acts as the bot. Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
+  This is the harness-neutral token check both adapters share; prefer it when writing adapter-agnostic runbooks.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
 - Test commit → author `acme-agent[bot]`, unsigned (`git log -1 --format='%an <%ae> %G?'`).
   Once pushed, the commit shows no Verified badge — expected, because local commits pushed with an App token are never auto-verified; only commits created through the App's API path (e.g. GraphQL `createCommitOnBranch`) get the badge.
-- Collaborated path: `~/.config/acme-agent/bin/as-me git commit --allow-empty -m "as-me test"` → author is you, unsigned (`git log -1 --format='%an <%ae> %G?'`), while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
+- If the adapter supports `as-me` (see the Phase 4 support matrix) — collaborated path: `~/.config/acme-agent/bin/as-me git commit --allow-empty -m "as-me test"` → author is you, unsigned (`git log -1 --format='%an <%ae> %G?'`), while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
   Once pushed, this commit also shows no Verified badge — App-token pushes are never auto-verified, same as bot commits.
 - Branch push + `gh pr create` → PR and commits authored by the bot on GitHub.
 - `gh pr checks` → returns status (proves Checks and Actions read).
@@ -247,6 +249,6 @@ Harness-mechanism-specific pitfalls (PATH-shim snapshots, `settings.local.json` 
 
 ## Done Criteria
 
-- Phase 5 verification passes in both directions, including the negative tests.
+- Phase 5 verification passes in both directions, including the negative tests, minus any check the adapter's support matrix marks unavailable.
 - Phase 6 audit recorded for every installed repo, with gaps filed rather than bypassed.
 - Any document describing the setup states the attribution-not-containment boundary explicitly.
