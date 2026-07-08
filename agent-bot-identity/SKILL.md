@@ -152,7 +152,8 @@ What each part does:
 - The empty `credential.helper` resets the inherited helper list (osxkeychain, gh helpers); the next entry installs the bot helper as the only one.
 - `insteadOf` rewrites SSH remotes to HTTPS inside agent sessions only, so pushes use the bot token instead of the personal SSH key; scoping it to the org prefix leaves other remotes alone.
   The colon form covers `git@github.com:acme/` remotes; if any remote uses the `ssh://git@github.com/acme/` form, add a second `insteadOf` pair and bump the count.
-  `insteadOf` matching is literal and case-sensitive while GitHub accepts any case in the host and org, so a remote spelled `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author; normalize enrolled repos' remotes (`git remote set-url`) — the Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
+  Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
+  The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
 - The `SessionStart` hook injects `GH_TOKEN` for `gh` (Phase 3's `session-env.sh`). The first time it runs, Claude Code prompts to approve the hook; approve it.
   The hook entry uses exec form (`args: []`) so the absolute script path is passed directly instead of shell-tokenized.
@@ -195,7 +196,9 @@ The `grep -qxF` guard keeps re-fires idempotent, and `>>` preserves other hooks'
 Do not also run the per-repo `session-env.sh` hook.
 
 That fail-closed loudness has a blast radius worth stating plainly: the guard runs before *every* Bash command in *every* project, so a broken `bot-env` aborts every command in every Claude Code session on the machine until it is fixed.
-That is the deliberate cost of never failing open; keep `bot-env` small, and re-run the Phase 5 checks after any change to it.
+That is the deliberate cost of never failing open.
+`bot-env`'s decision path makes no network calls and shells out only to `git` and `bot-token`; keep it that way.
+Re-run the Phase 5 Variant B checks after any change to `bot-env` before further agent work.
 The guard also owns the identity env wholesale inside agent Bash commands: a personal verdict unsets `GH_TOKEN`, the `GIT_AUTHOR_*`/`GIT_COMMITTER_*` vars, and command-scope `GIT_CONFIG_*` even where you exported them yourself for unrelated purposes — user-set values of those variables do not survive into agent commands.
 Variant A's blast radius is narrower, which is one more reason to prefer A when automatic enrollment is not worth this machine-wide coupling.
 
@@ -221,7 +224,8 @@ The decision rules and their fail direction:
 
 Every ambiguous case resolves toward the bot because the two wrong outcomes are not symmetric: wrong-way-bot fails loudly (bot-authored commits are amendable, pushes 403 against the installation boundary) while wrong-way-personal is silent misattribution in the human's name.
 Two expected, harmless quirks of running per command: the ambiguity warnings (`no remotes`, `git probe failed`) print on *every* command in such a directory, not once — that repetition is the signal, kept stateless deliberately; and inside a bare repo or a `.git` directory `--is-inside-work-tree` exits 0 rather than 128, so the decision falls through to the remote check (an org-remoted bare repo still resolves to bot), which is why the table's "exits 128" row is the *definitive* not-a-repo answer rather than the only non-repo state.
-For the same reason, do not gate on a local repo allowlist (an enrolled repo missing from the list silently works as the human) and do not check the installation list per command over the network (slow, flaky, and redundant — the token already enforces it server-side; a not-yet-installed org repo simply fails at first push, which is the "enroll me" signal).
+For the same reason, do not gate on a local repo allowlist: an enrolled repo missing from the list silently works as the human.
+Do not check the installation list per command over the network: slow, flaky, and redundant — the token already enforces it server-side, and a not-yet-installed org repo simply fails at first push, which is the "enroll me" signal.
 
 One gap the guard cannot see: the verdict binds to the directory a command *starts* in, so a compound command that crosses repos — `cd <org-repo> && git commit` from a personal directory, or `git -C <org-repo> ...` — carries the starting directory's identity into the target repo, and the personal→org direction of that is silent human attribution.
 Keep cross-repo git commands out of agent sessions: change directory in one command, commit in the next, and the per-command re-decision covers it.
@@ -296,7 +300,9 @@ For every repo the App is installed on, walk that skill's checklist §2; the ite
 - Bypass-actors list contains no automation identity — including this App and any other bot App already installed (verify; never assume an existing bot's posture is clean).
 - No `required_signatures` rule, or a dedicated bot signing key is provisioned first — `gpgsign false` plus an App-token push means every bot commit is unsigned, and a `required_signatures` ruleset rejects the push outright.
 
-Run the audit from a personal terminal — never through the bot token, and note that some checks (Actions settings, secret scanning) need admin access — and file gaps with the repo's admins rather than working around them.
+Run the audit from a personal terminal, never through the bot token.
+Some checks (Actions settings, secret scanning) need admin access.
+File gaps with the repo's admins rather than working around them.
 
 ## What This Enforces — and What It Does Not
 

@@ -270,6 +270,10 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 | 2026-07-07 | 4 (user-level) | with-skill | 9/9 | All assertions satisfied; the design additionally carried the new material — remote-derived `insteadOf` pairs for mixed-case/`ssh://` forms, the compound-command starting-directory quirk with split-the-commands guidance, the personal-verdict env-clobbering cost, the fresh-sessions-after-guard-change migration note, and the selective in-org opt-out → stay-on-Variant-A trade-off. |
 | 2026-07-07 | 5 (broken guard) | with-skill | 6/6 | All assertions satisfied; also derived the fixed-chmod-recovers-next-command contrast, the mixed-old-and-new guard-line convergence behavior, and the incident-remediation path (`--amend --reset-author` mirror image, force-push ruleset coordination). |
 
+> [!NOTE]
+> **Context/constraints separation pass (2026-07-07, separating-context-from-constraints audit).** Four semantic-preserving rewrites: the Variant A normalize-remotes directive now leads its bullet as an imperative instead of trailing an explainer sentence (R1); "keep `bot-env` small" became the testable "decision path makes no network calls and shells out only to `git` and `bot-token`", with the Phase 5 re-run obligation split into its own sentence (R3); the allowlist and per-command-network prohibitions split into separate sentences (R4); the Phase 6 closing sentence unbundled into three (R4).
+> Spot-check re-runs of scenarios 1 and 4 (the assertions exercising the rewritten passages): 10/10 and 9/9; the normalize-remotes rule and the no-network-calls constraint both surfaced in the outputs.
+
 ### Scenario 3 — mixed contribution (first run 2026-07-07)
 
 | Date | Scenario | Run | Assertions passed | Notes |
