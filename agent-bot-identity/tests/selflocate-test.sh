@@ -48,20 +48,39 @@ fi
 chmod +x "$DIR/bot-env"
 rm -f "$ENVF"
 
-# 5. Glue metachar guard: an install path with $ or " must be refused, not installed.
-EVIL="$DIR/evil\$dir"
-mkdir -p "$EVIL"
-cp "$DIR/session-env.sh" "$DIR/bot-env-hook.sh" "$EVIL/"
-chmod +x "$EVIL"/session-env.sh "$EVIL"/bot-env-hook.sh
-ENVF="$(mktemp)"
-if CLAUDE_ENV_FILE="$ENVF" "$EVIL/session-env.sh" 2>/dev/null; then
-  echo "FAIL: session-env.sh accepted a \$-bearing install path"; FAIL=1
-fi
-if CLAUDE_ENV_FILE="$ENVF" "$EVIL/bot-env-hook.sh" 2>/dev/null; then
-  echo "FAIL: bot-env-hook.sh accepted a \$-bearing install path"; FAIL=1
-fi
-[ -s "$ENVF" ] && { echo "FAIL: refused install still wrote to the env file"; FAIL=1; }
-rm -f "$ENVF"
+# 5. Glue metachar guard: every metacharacter the guard names must be refused,
+#    with the refusal on stderr, and nothing written to the env file.
+for meta in '"' '$' '`' '\'; do
+  EVIL="$DIR/evil${meta}dir"
+  mkdir -p "$EVIL"
+  cp "$DIR/session-env.sh" "$DIR/bot-env-hook.sh" "$EVIL/"
+  chmod +x "$EVIL"/session-env.sh "$EVIL"/bot-env-hook.sh
+  ENVF="$(mktemp)"
+  for glue in session-env.sh bot-env-hook.sh; do
+    err="$(CLAUDE_ENV_FILE="$ENVF" "$EVIL/$glue" 2>&1 1>/dev/null)" && { echo "FAIL: $glue accepted an install path containing [$meta]"; FAIL=1; }
+    case "$err" in
+      *"shell metacharacter"*) ;;
+      *) echo "FAIL: $glue gave no metacharacter refusal for [$meta]: $err"; FAIL=1 ;;
+    esac
+  done
+  [ -s "$ENVF" ] && { echo "FAIL: refused install still wrote to the env file ([$meta])"; FAIL=1; }
+  rm -f "$ENVF"
+done
+
+# 5b. bot-env's install-path allowlist: the GIT_CONFIG_VALUE_1 it emits is a
+#     `!`-prefixed credential.helper that git re-parses through `sh -c`, so a
+#     space breaks the command and `$(...)` in the path executes.
+for bad in 'space dir' 'inj$(id -un)' "quote'dir"; do
+  BAD="$DIR/$bad"
+  mkdir -p "$BAD"
+  cp "$SRC/bot-env" "$BAD/"
+  chmod +x "$BAD/bot-env"
+  err="$("$BAD/bot-env" 2>&1 1>/dev/null)" && { echo "FAIL: bot-env accepted install path [$bad]"; FAIL=1; }
+  case "$err" in
+    *"unsafe character"*) ;;
+    *) echo "FAIL: bot-env gave no unsafe-character refusal for [$bad]: $err"; FAIL=1 ;;
+  esac
+done
 
 # 6. codex gh shim: sibling mint, fail-closed sentinel, exec of the real gh.
 mkdir -p "$DIR/real"

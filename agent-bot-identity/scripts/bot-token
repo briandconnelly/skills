@@ -10,7 +10,9 @@ import httpx, jwt
 APP_ID = "REPLACE"
 INSTALL_ID = "REPLACE"
 KEY = Path.home() / ".config/acme-agent/key.pem"
-CACHE = Path.home() / ".config/acme-agent/token.json"
+# The cache lives apart from the key and the scripts so a sandboxed harness can
+# grant write access to it without also granting write access to key.pem.
+CACHE = Path.home() / ".cache/acme-agent/token.json"
 
 if CACHE.exists():
     try:

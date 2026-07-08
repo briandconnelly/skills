@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+# GIT_CONFIG_VALUE_1 below is a `!`-prefixed credential.helper, which git
+# re-parses through `sh -c`: a space in the install path breaks the command and
+# a `$(...)` in it executes. Quoting is not enough — allowlist the characters.
 case "$SCRIPT_DIR" in
-  *"'"*) echo "bot-env: install path contains a single quote; refusing to emit unquotable config" >&2; exit 1 ;;
+  *[!A-Za-z0-9._/-]*) echo "bot-env: install path contains an unsafe character; refusing to emit a shell-evaluated credential helper" >&2; exit 1 ;;
 esac
 
 ORG="acme"

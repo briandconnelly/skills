@@ -79,6 +79,11 @@ sandbox-exec: execvp() of 'sh' failed: No such file or directory
 So keep every core system directory in the value; the shim dir goes first only so its `gh` shadows the real `gh`.
 Do not use `~` or `$HOME` in the PATH value — the OS uses PATH directly for `execvp` with no shell expansion; write the fully-resolved absolute path.
 
+`uv` **must** be on the replacement PATH.
+`bot-token` is a `uv run --script` shebang, invoked by the `gh` shim and — through git's `sh -c` — by `git-credential-bot`, so every mint dies without it.
+A Homebrew `uv` is already covered by `/opt/homebrew/bin`; the standalone installer puts `uv` in `~/.local/bin`, which the minimal PATH above omits, and a missing `uv` breaks `gh` and every push.
+Run `command -v uv` in a personal shell and make sure that directory is in the value.
+
 Per-repo dev tooling may need the PATH extended.
 A repo's own pre-commit hook runner (e.g. `prek`, installed via `uv tool install` under `~/.local/bin`) is not on the minimal PATH above; during verification `~/.local/bin` had to be appended for a repo whose `commit-msg`/pre-commit hooks required it (Check 5).
 Extend the PATH value with such directories as needed — appended after the core dirs — but keep the shim directory first.
@@ -136,9 +141,11 @@ The profile ships the minimal sandbox settings needed for the `gh` mint to succe
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-writable_roots = ["~/.cache/uv", "~/.config/acme-agent"]
+writable_roots = ["/Users/<you>/.cache/uv", "/Users/<you>/.cache/acme-agent"]
 network_access = true
 ```
+
+Write the roots as fully-resolved **absolute** paths, as shown — Codex may not expand `~` in `writable_roots`, and a `~`-prefixed root silently grants nothing.
 
 What each is for, from the minting probes:
 
@@ -147,9 +154,14 @@ What each is for, from the minting probes:
   A cache hit needs no network, but the profile keeps it enabled because the invocation cannot know cold-vs-warm in advance.
 - The `~/.cache/uv` writable root is required on **every** run, cold or warm — the `bot-token` script is a `uv run --script` shebang, and `uv` must write to its own cache (`sdists-v9/.git`) just to resolve the script's environment before the token-cache logic runs.
   Omitting it fails immediately: `failed to open file .../uv/sdists-v9/.git: Operation not permitted`.
-- The bot config writable root (`~/.config/acme-agent`, placeholder path) is where `bot-token` writes its `token.json` cache.
+- The `~/.cache/acme-agent` writable root is the single leaf directory `bot-token` writes its `token.json` cache into.
+  It need not exist beforehand: a cold mint with the directory absent creates it and succeeds (verified).
 
-Note: the verified profile listed these writable roots as fully-resolved **absolute** paths; Codex may not expand `~` in `writable_roots`, so if writes are denied, substitute your absolute home path.
+**Grant these two roots and nothing else.**
+Do **not** make the bot *config* directory (`~/.config/acme-agent`) writable: under the SKILL's flat-install recommendation it holds `key.pem` **and** every fail-closed script — `bot-token`, `git-credential-bot`, and this `gh` shim.
+A `workspace-write` Codex session with that root could rewrite the App private key and the routing that is supposed to bind it.
+Codex's sandbox is the one real boundary in this design; do not punch through it for a cache path.
+Verified under the narrowed roots above: the cold and warm mints both succeed, `key.pem` stays readable so minting works, and writes to `~/.config/acme-agent` — including to `key.pem` itself — are denied (`Operation not permitted`).
 
 **Recorded quirk — `--profile bot` does not apply the profile's top-level `sandbox_mode` by itself.**
 `--profile bot` reliably applies `shell_environment_policy.set` (PATH and all identity vars), but under `codex sandbox` the profile's top-level `sandbox_mode = "workspace-write"` key is **not** honored on its own — the run stays effectively read-only and the `uv` cache write is denied.

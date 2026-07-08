@@ -80,7 +80,11 @@ Never present this setup as a sandbox.
 The helper scripts are bundled under `scripts/`; copy the needed files into a single flat directory, customize their placeholders, and `chmod +x` each copied file.
 `~/.config/acme-agent/bin/` is the recommended neutral location.
 Install everything flat in that one directory — including each harness adapter's glue scripts, which live under `scripts/claude/` (and `scripts/codex/`) in this repo but sit next to the shared scripts once installed.
+Install only the glue for the adapter(s) you actually use; an unused adapter's scripts are extra attack surface with no benefit.
+**Never put the install directory on your personal `PATH`.**
+It contains a `gh` shim (the Codex adapter's) that would route your own terminal through the bot token, and the whole design rests on your personal shells never resolving it.
 The scripts self-locate, so existing `~/.claude/bot-shims/` installs keep working unchanged; for a new install prefer the neutral directory, and adjust every path in the settings examples consistently.
+Keep the install path free of spaces and shell metacharacters: `bot-env` emits a `!`-prefixed credential helper that git re-parses through `sh -c`, and both it and the Claude glue refuse to install from an unsafe path rather than emit a line that breaks or executes.
 
 Use these resources:
 
@@ -91,7 +95,9 @@ Use these resources:
 Each harness adapter (Phase 4) adds its own glue scripts on top of these; see the adapter doc.
 
 Customize `bot-token` with the App ID, installation ID, key path, and cache path.
+Its cache defaults to `~/.cache/acme-agent/token.json`, deliberately outside the key-and-scripts directory: a sandboxed harness can then grant write access to the cache without also granting it to `key.pem` and the fail-closed scripts (see the Codex adapter's sandbox profile).
 It parses `expires_at`, writes the token cache through a `0600` temp file swapped in with `os.replace()`, and sets a request timeout so a hung mint does not hang git or `gh` indefinitely.
+It refuses to print an empty token — from the cache or from the API — because an empty `GH_TOKEN` is the fail-open case every caller here guards against.
 The `uv run` shebang requires `uv` on PATH where the script is invoked; use an absolute path to `uv` if that is not guaranteed.
 On a cache hit this runs in well under 100 ms, cheap enough to call before every Bash command.
 There is no lock around the mint: concurrent cold-cache invocations may each mint a token — duplicate API work, not a correctness problem, since both tokens are valid and the last cache write wins.
@@ -165,6 +171,7 @@ In a personal terminal (and any agent session the routing leaves personal — se
 - `git config credential.helper` → still osxkeychain; `git config commit.gpgsign` → still true.
 - `gh auth status` → personal account; commits signed and authored as the human; SSH push works.
 - Because no shell dotfile was modified, personal shells are unaffected by construction — there is nothing project-specific on `PATH` or in the rc files to leak.
+  This holds only while the install directory stays off your personal `PATH` (Phase 3); adding it there puts the Codex adapter's `gh` shim in front of the real `gh` in your own terminal.
 
 ## Mixed Contribution — Collaborated Work as You
 
