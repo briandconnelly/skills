@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+case "$SCRIPT_DIR" in
+  *"'"*) echo "bot-env: install path contains a single quote; refusing to emit unquotable config" >&2; exit 1 ;;
+esac
 
 ORG="acme"
 BOT_NAME="${ORG}-agent[bot]"
@@ -75,7 +79,7 @@ EOF
   exit 0
 fi
 
-token="$("$HOME/.claude/bot-shims/bot-token")" || token="BOT-TOKEN-MINT-FAILED"
+token="$("$SCRIPT_DIR/bot-token")" || token="BOT-TOKEN-MINT-FAILED"
 
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'
@@ -85,7 +89,7 @@ export GIT_COMMITTER_EMAIL='${BOT_EMAIL}'
 export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
-export GIT_CONFIG_VALUE_1='!${HOME}/.claude/bot-shims/git-credential-bot'
+export GIT_CONFIG_VALUE_1='!${SCRIPT_DIR}/git-credential-bot'
 export GIT_CONFIG_KEY_2='url.https://github.com/${ORG}/.insteadOf'
 export GIT_CONFIG_VALUE_2='git@github.com:${ORG}/'
 export GIT_CONFIG_KEY_3='commit.gpgsign'
