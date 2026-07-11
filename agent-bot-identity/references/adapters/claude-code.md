@@ -135,6 +135,7 @@ The decision rules and their fail direction:
 | Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
 | Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
+| Any raw local remote URL or push URL is empty | Bot, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |

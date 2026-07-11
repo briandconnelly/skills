@@ -178,6 +178,17 @@ out="$(cd "$REPO" && "$DIR/bot-env" 2>/dev/null)"
 echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: missing raw remotes did not fail toward the bot verdict"; FAIL=1; }
 rm -rf "$REPO"
 
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" config --add remote.origin.url ""
+git -C "$REPO" config --add remote.origin.pushurl ""
+ERR="$(mktemp)"
+out="$(cd "$REPO" && "$DIR/bot-env" 2>"$ERR")"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: empty raw remote values did not fail toward the bot verdict"; FAIL=1; }
+[ "$(grep -c 'empty raw remote URL' "$ERR")" -eq 1 ] || { echo "FAIL: empty raw remote values did not emit exactly one warning"; FAIL=1; }
+rm -rf "$REPO"
+rm -f "$ERR"
+
 # Force only the raw-config query to fail while leaving the work-tree probe
 # intact; an undetermined affiliation must resolve toward the bot.
 mkdir -p "$DIR/git-fail-bin"

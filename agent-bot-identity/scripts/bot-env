@@ -27,9 +27,13 @@ if [ "$rc" -eq 0 ]; then
       verdict=bot
       echo "bot-env: no raw remote URLs in $PWD; ambiguous, using the bot identity" >&2
     else
+      empty_remote=0
       while IFS= read -r -d '' remote_record; do
         url="${remote_record#*$'\n'}"
-        [ -n "$url" ] || continue
+        if [ -z "$url" ]; then
+          empty_remote=1
+          continue
+        fi
         prefix=""
         case "$url" in
           *://*)
@@ -61,6 +65,10 @@ if [ "$rc" -eq 0 ]; then
           esac
         fi
       done <"$raw_remotes"
+      if [ "$empty_remote" -eq 1 ]; then
+        verdict=bot
+        echo "bot-env: empty raw remote URL in $PWD; ambiguous, using the bot identity" >&2
+      fi
     fi
   elif [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
     verdict=bot
