@@ -90,14 +90,20 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Prompt:**
 
-> You are writing the prose surfaces of an MCP server called `deployctl` that wraps an internal deployment service. The tool schemas already exist; your job is ONLY the prose:
+> You are writing the prose surfaces of an MCP server called `deployctl` that wraps an internal deployment service.
+> The tool schemas already exist; your job is ONLY the prose:
 >
 > 1. The server-level `instructions` string (the capability summary agents see at initialization).
 > 2. The `description` field text for two tools: `deployctl_deploy_service` and `deployctl_rollback_service`.
 >
 > Base them on the ops team's notes below (verbatim):
 >
-> "Deploys go through Spinnaker under the hood, which we adopted back in 2021 after the Jenkins fiasco. You generally want to run a dry-run first — it catches most config drift. Production deploys need a change ticket, that's an SRE policy thing, and honestly try to avoid deploying on Fridays. Rollbacks are pretty safe, they just repoint the release symlink, though if the previous release is more than 30 days old it's been garbage collected so rollback won't work, and you should probably check that first. The staging environment sometimes gets wedged; a redeploy usually fixes it. Also be careful with the `force` flag — it skips the pre-deploy health checks."
+> "Deploys go through Spinnaker under the hood, which we adopted back in 2021 after the Jenkins fiasco.
+> You generally want to run a dry-run first — it catches most config drift.
+> Production deploys need a change ticket, that's an SRE policy thing, and honestly try to avoid deploying on Fridays.
+> Rollbacks are pretty safe, they just repoint the release symlink, though if the previous release is more than 30 days old it's been garbage collected so rollback won't work, and you should probably check that first.
+> The staging environment sometimes gets wedged; a redeploy usually fixes it.
+> Also be careful with the `force` flag — it skips the pre-deploy health checks."
 >
 > Return exactly: the `instructions` string, then the two description strings, each clearly labeled.
 

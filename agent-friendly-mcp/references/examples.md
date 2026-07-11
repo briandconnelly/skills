@@ -1,6 +1,8 @@
 # MCP Server Examples
 
-Worked examples for a fictional MCP server, `slack-mcp`, that exposes Slack messaging, channels, and users to an agent. Every example is tagged with the [contract-checklist.md](contract-checklist.md) section(s) it demonstrates; decorative examples are not allowed. Use these as concrete shapes to mimic — not as schemas to copy verbatim.
+Worked examples for a fictional MCP server, `slack-mcp`, that exposes Slack messaging, channels, and users to an agent.
+Every example is tagged with the [contract-checklist.md](contract-checklist.md) section(s) it demonstrates; decorative examples are not allowed.
+Use these as concrete shapes to mimic — not as schemas to copy verbatim.
 
 **On this page:**
 
@@ -462,7 +464,8 @@ A more common first-call failure — an unknown channel name passed where an id 
 
 What to notice: the channel-name-vs-id mistake is the predictable first-call failure for a tool whose `channel_id` is a hard-to-guess `C…` id (see §1), and MCP completion does not cover tool arguments — so the repair carries the agent across the gap by naming `slack_lookup_channel` and the exact argument to pass, with the resource index as a fallback.
 
-A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, but carries the **same error/repair envelope** in `error.data`, with one deliberate exception: `code`/`message` are renamed to `machine_code`/`human_message` so they do not shadow the native JSON-RPC `code`/`message` that wrap them. Every other field — `temporary`, `retry_after_ms`, and (where applicable) `details`, the single `repair` object, and the correlation fields — uses the same name, shape, and cardinality on both surfaces. `resource_uri` is one of those optional correlation fields, shared by both surfaces; it is populated here because this failure is tied to a specific resource (see the unified envelope table in `contract-checklist.md` §6).
+A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, but carries the **same error/repair envelope** in `error.data`, with one deliberate exception: `code`/`message` are renamed to `machine_code`/`human_message` so they do not shadow the native JSON-RPC `code`/`message` that wrap them.
+Every other field — `temporary`, `retry_after_ms`, and (where applicable) `details`, the single `repair` object, and the correlation fields — uses the same name, shape, and cardinality on both surfaces. `resource_uri` is one of those optional correlation fields, shared by both surfaces; it is populated here because this failure is tied to a specific resource (see the unified envelope table in `contract-checklist.md` §6).
 
 ```json
 {
@@ -587,7 +590,8 @@ This summary is a convention surface, not a native MCP structure — expose it t
 
 ## 8. `search_tools` response shape
 
-Response from `search_tools(query="send message")`. *Demonstrates §2 host/client-managed context disclosure.* **One valid shape for that one cost axis — not a universal requirement.** `search_tools` / `describe_tool` are themselves extra entries in native `tools/list`; they lower an agent's model-visible context **only** on a host that withholds native definitions and injects the schemas these return on demand (or routes execution through a stable generic call tool). On a host that preloads the full catalog, they add tools and round trips with no disclosure benefit — see the client-dependency caveat in §2.
+Response from `search_tools(query="send message")`. *Demonstrates §2 host/client-managed context disclosure.* **One valid shape for that one cost axis — not a universal requirement.** `search_tools` / `describe_tool` are themselves extra entries in native `tools/list`; they lower an agent's model-visible context **only** on a host that withholds native definitions and injects the schemas these return on demand (or routes execution through a stable generic call tool).
+On a host that preloads the full catalog, they add tools and round trips with no disclosure benefit — see the client-dependency caveat in §2.
 
 ```json
 {
@@ -620,7 +624,10 @@ Response from `search_tools(query="send message")`. *Demonstrates §2 host/clien
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending. The fingerprint travels with the response so a cached client can detect drift. Other shapes on this same axis: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — all custom surfaces layered over native discovery, and all subject to the same host-integration requirement. None of them shrink the native `tools/list` payload a preloading client receives; to lower cost on a client that never lazy-loads, reduce the catalog itself (compact definitions, consolidation, a compact dispatcher, or authorization-scoped catalogs — see §2).
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending.
+The fingerprint travels with the response so a cached client can detect drift.
+Other shapes on this same axis: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — all custom surfaces layered over native discovery, and all subject to the same host-integration requirement.
+None of them shrink the native `tools/list` payload a preloading client receives; to lower cost on a client that never lazy-loads, reduce the catalog itself (compact definitions, consolidation, a compact dispatcher, or authorization-scoped catalogs — see §2).
 Fields like `summary`, `stability`, `score`, and `load_definition_with` are convention, not native; native `tools/list` returns `Tool` records, so a server layering search on top documents this envelope (see the native-vs-convention rule in `SKILL.md`).
 
 ## 8a. Roots-aware workspace behavior
@@ -728,7 +735,8 @@ When tool, resource, or prompt lists change, emit the corresponding native `noti
 
 ## 10. Worked task: API mirroring vs. task completion
 
-The same user task — "schedule a 30-minute meeting with Alice and Bob next Tuesday afternoon and send the invite" — expressed two ways. *Demonstrates §3 tool granularity and §2 discovery impact. The failure mode of (a) is shown via transcript, not narrated.*
+The same user task — "schedule a 30-minute meeting with Alice and Bob next Tuesday afternoon and send the invite" — expressed two ways. *Demonstrates §3 tool granularity and §2 discovery impact.
+The failure mode of (a) is shown via transcript, not narrated.*
 
 ### (a) Endpoint-mirroring tools
 
@@ -831,9 +839,12 @@ tool:  {
 }
 ```
 
-One tool call. The agent never sees a near-name collision because the task is the unit, not the endpoint. Internal steps (find availability, create event, send invites) are hidden behind the task contract.
+One tool call.
+The agent never sees a near-name collision because the task is the unit, not the endpoint.
+Internal steps (find availability, create event, send invites) are hidden behind the task contract.
 
-What to notice: (a) costs five round-trips and two failed attempts because endpoint-mirroring tools force the agent to re-invent the workflow on every task and to disambiguate near-name overlaps from summary text; (b) costs one. The same Slack server with 60 endpoint-mirror tools typically expresses 6–10 actual user tasks (see §3 anti-patterns).
+What to notice: (a) costs five round-trips and two failed attempts because endpoint-mirroring tools force the agent to re-invent the workflow on every task and to disambiguate near-name overlaps from summary text; (b) costs one.
+The same Slack server with 60 endpoint-mirror tools typically expresses 6–10 actual user tasks (see §3 anti-patterns).
 
 ## 11. Long-running operation
 
@@ -841,7 +852,8 @@ Exporting a wide date range can take minutes, so `slack_export_history` declares
 
 Tasks are **experimental** in MCP 2025-11-25, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for servers or clients that do not implement tasks.
 
-**Capability negotiation.** Native task recovery requires two declarations, not one — the server advertises the `tasks` capability, and the tool advertises `execution.taskSupport`. The per-tool flag alone is insufficient.
+**Capability negotiation.** Native task recovery requires two declarations, not one — the server advertises the `tasks` capability, and the tool advertises `execution.taskSupport`.
+The per-tool flag alone is insufficient.
 
 ```json
 {
@@ -988,7 +1000,8 @@ Response:
 }
 ```
 
-**Cancel** task-augmented work with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT"}`) — not `notifications/cancelled`, which cancels request-bound non-task calls. The receiver transitions the task to the terminal `cancelled` status before responding.
+**Cancel** task-augmented work with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT"}`) — not `notifications/cancelled`, which cancels request-bound non-task calls.
+The receiver transitions the task to the terminal `cancelled` status before responding.
 
 Response:
 
@@ -1007,7 +1020,8 @@ Response:
 }
 ```
 
-**Fallback for clients without task support** (convention, not native). When the server cannot rely on the experimental task capability, expose a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
+**Fallback for clients without task support** (convention, not native).
+When the server cannot rely on the experimental task capability, expose a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
 
 ```json
 {
