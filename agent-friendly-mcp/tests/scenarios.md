@@ -46,8 +46,9 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 - [ ] Pagination is cursor-based and provenance-correct: a tool's own list-shaped result payload may use the `has_more` house convention, while native list methods (`tools/list`, etc.) use `nextCursor` (omission = done) — not a house convention; responses also have a concise default with a `detail` toggle (§8).
 - [ ] Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) are present and honest — e.g., create-issue is not marked read-only or idempotent (§3).
 - [ ] Tool definitions publish an `outputSchema`, and success results are described as `structuredContent` conforming to it, with `content` kept as a textual fallback (§3 output contract).
+- [ ] **(Scored.)** The error path is contract-correct and distinct from the success shape: `isError: true` results carry the §6 error envelope in `structuredContent` (with a `content` textual fallback), and `outputSchema` is scoped to **success** results — stated as this skill's reading of an unsettled spec point, not as settled MCP law (`contract-checklist.md:190`). The design does one of: documents a success-only `outputSchema` with the error envelope validated separately, or unions success and error branches into `outputSchema`. A text-only error carrier counts only when disclosed as a degraded mode (`contract-checklist.md:471`).
 
-**Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations, no output schema / free-text results.
+**Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations, no output schema / free-text results, and error results that reuse the success `structuredContent` shape or omit the structured error envelope entirely.
 
 ## Scenario 2: Audit (retrieval test)
 
