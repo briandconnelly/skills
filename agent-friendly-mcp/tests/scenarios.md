@@ -30,8 +30,9 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] A capability summary exists stating what the server does NOT do (§1/§2 negative scope).
 - [ ] Pagination is cursor-based and provenance-correct: a tool's own list-shaped result payload may use the `has_more` house convention, while native list methods (`tools/list`, etc.) use `nextCursor` (omission = done) — not a house convention; responses also have a concise default with a `detail` toggle (§8).
 - [ ] Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) are present and honest — e.g., create-issue is not marked read-only or idempotent (§3).
+- [ ] Tool definitions publish an `outputSchema`, and success results are described as `structuredContent` conforming to it, with `content` kept as a textual fallback (§3 output contract).
 
-**Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations.
+**Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations, no output schema / free-text results.
 
 ## Scenario 2: Audit (retrieval test)
 

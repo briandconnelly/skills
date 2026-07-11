@@ -45,6 +45,17 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
     },
     "additionalProperties": false
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["ts", "channel_id", "permalink"],
+    "properties": {
+      "ts": {"type": "string", "description": "Timestamp id of the posted message."},
+      "channel_id": {"type": "string"},
+      "permalink": {"type": "string", "format": "uri"}
+    },
+    "additionalProperties": false
+  },
   "annotations": {
     "readOnlyHint": false,
     "destructiveHint": false,
@@ -63,6 +74,7 @@ Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*
 ```
 
 What to notice: the description orients the agent (when-to-use, usage notes, example invocation) but does **not** carry failure semantics — those live in the structured error catalog under `_meta` (`com.slack-mcp/errors`), where each code has a `temporary` flag and a concrete repair direction.
+The tool publishes an `outputSchema`; a success result returns `structuredContent` conforming to it, while an `isError: true` result carries the §6 error envelope instead and is not validated against `outputSchema` (per `contract-checklist.md:162-164`).
 Parameter names are disambiguated (`channel_id`, `thread_ts`); `required` lists only what's truly necessary.
 Every optional parameter declares its omission semantics: `thread_ts` omitted means a top-level post (omission semantics with no `default` at all), while `broadcast_to_channel` declares both the `default` and that the server applies it (per §3).
 Annotations are honest — `idempotentHint: false` because re-sending creates a duplicate post, not a no-op — which is exactly why the schema offers `idempotency_key` with a declared deduplication window and the description names the ambiguous-timeout recovery path (`slack_list_messages`), per the §3 mutation-safety rules.
@@ -766,7 +778,22 @@ Abbreviated for the comparison — `summary` stands in for the native `descripti
       "send_invites": {"type": "boolean", "default": true}
     },
     "additionalProperties": false
-  }
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["event_id", "scheduled_at", "duration_minutes", "attendees", "invites_sent", "permalink"],
+    "properties": {
+      "event_id": {"type": "string"},
+      "scheduled_at": {"type": "string", "format": "date-time"},
+      "duration_minutes": {"type": "integer"},
+      "attendees": {"type": "array", "items": {"type": "string", "format": "email"}},
+      "invites_sent": {"type": "boolean"},
+      "permalink": {"type": "string", "format": "uri"}
+    },
+    "additionalProperties": false
+  },
+  "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true}
 }
 ```
 
@@ -822,6 +849,16 @@ Tasks are **experimental** in MCP 2025-11-25, so this example leads with native 
       "channel_ids": {"type": "array", "items": {"type": "string", "pattern": "^C[A-Z0-9]{8,}$"}},
       "started_after": {"type": "string", "format": "date-time"},
       "ended_before": {"type": "string", "format": "date-time"}
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["result_resource_uri", "message_count"],
+    "properties": {
+      "result_resource_uri": {"type": "string", "format": "uri"},
+      "message_count": {"type": "integer"}
     },
     "additionalProperties": false
   },
