@@ -6,6 +6,18 @@ The steps are deliberately re-entrant: a later step often surfaces a flaw in an 
 Re-entering Step N from Step N+3 is normal — treat earlier outputs as drafts until the eval at Step 8 holds.
 The checkpoint links at each step point at the relevant `contract-checklist.md` sections; consult them as you work, not only at the end.
 
+**On this page:**
+
+- [Step 1: Enumerate user/agent tasks](#step-1-enumerate-useragent-tasks)
+- [Step 2: Choose the right primitive per task](#step-2-choose-the-right-primitive-per-task)
+- [Step 3: Decide tool granularity](#step-3-decide-tool-granularity)
+- [Step 4: Write input schemas](#step-4-write-input-schemas)
+- [Step 5: Design the discovery surface](#step-5-design-the-discovery-surface)
+- [Step 6: Design failure recovery](#step-6-design-failure-recovery)
+- [Step 7: Design long-running behavior](#step-7-design-long-running-behavior)
+- [Step 8: Build evaluations grounded in real tasks](#step-8-build-evaluations-grounded-in-real-tasks)
+- [Step 9: Iterate against the eval, including transcript review](#step-9-iterate-against-the-eval-including-transcript-review)
+
 ## Step 1: Enumerate user/agent tasks
 
 List the real tasks an agent should be able to complete with this server.

@@ -2,6 +2,26 @@
 
 Worked examples for a fictional MCP server, `slack-mcp`, that exposes Slack messaging, channels, and users to an agent. Every example is tagged with the [contract-checklist.md](contract-checklist.md) section(s) it demonstrates; decorative examples are not allowed. Use these as concrete shapes to mimic — not as schemas to copy verbatim.
 
+**On this page:**
+
+- [1. Namespaced tool schema](#1-namespaced-tool-schema)
+- [2. Structured tool response](#2-structured-tool-response)
+- [2a. Dispatched-but-unconfirmed mutation result](#2a-dispatched-but-unconfirmed-mutation-result)
+- [3. Resource index entry](#3-resource-index-entry)
+- [4. Resource body with chunking](#4-resource-body-with-chunking)
+- [5. Prompt scaffold](#5-prompt-scaffold)
+- [5a. Resource template with completion](#5a-resource-template-with-completion)
+- [5b. Resource subscription](#5b-resource-subscription)
+- [6. Actionable error payload](#6-actionable-error-payload)
+- [7. Server capability summary](#7-server-capability-summary)
+- [8. `search_tools` response shape](#8-search_tools-response-shape)
+- [8a. Roots-aware workspace behavior](#8a-roots-aware-workspace-behavior)
+- [9. Capability fingerprint with deprecation](#9-capability-fingerprint-with-deprecation)
+- [10. Worked task: API mirroring vs. task completion](#10-worked-task-api-mirroring-vs-task-completion)
+- [11. Long-running operation](#11-long-running-operation)
+- [12. Response-delivery artifact](#12-response-delivery-artifact)
+- [13. Tool result with resource link](#13-tool-result-with-resource-link)
+
 ## 1. Namespaced tool schema
 
 Tool definition for `slack_send_message`. *Demonstrates §3 tool-shape rules.*

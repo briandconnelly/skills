@@ -2,6 +2,18 @@
 
 This is the normative standard for the skill, used by both `design-workflow.md` and `review-workflow.md`. The section order serves audit walks: discovery first (what an agent sees first), then the primitives that get invoked, then the cross-cutting concerns that span all primitives, then versioning. Walk it top to bottom when designing or reviewing a server.
 
+**On this page:**
+
+- [1. Server-Level](#1-server-level)
+- [2. Discovery Primitives](#2-discovery-primitives)
+- [3. Tools](#3-tools)
+- [4. Resources](#4-resources)
+- [5. Prompts](#5-prompts)
+- [6. Failure Recovery](#6-failure-recovery)
+- [7. Long-Running Operations](#7-long-running-operations)
+- [8. Token Efficiency](#8-token-efficiency)
+- [9. Versioning and Compatibility](#9-versioning-and-compatibility)
+
 ---
 
 ## 1. Server-Level
