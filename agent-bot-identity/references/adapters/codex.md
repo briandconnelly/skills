@@ -2,14 +2,14 @@
 
 Core setup — App registration, token minting, the credential helper, and `as-me` (Phases 1–3) — is harness-neutral and lives in the [agent-bot-identity SKILL](../../SKILL.md).
 This reference is the Codex CLI implementation of the SKILL's Phase 4 routing contract.
-Every mechanism claim below traces to a recorded probe or live-verification result against `codex-cli 0.143.0`; where the evidence says something is impossible or untested, this doc says so plainly.
+Most mechanism claims below trace to recorded probes against `codex-cli 0.143.0`, the profile-selection caveats include focused `0.144.1` probes, and the launcher behavior has automated shell coverage; where the evidence says something is impossible or untested, this doc says so plainly.
 
 ## Status
 
-Variant A verified (core routing contract) against `codex-cli 0.143.0` on 2026-07-07, with a documented `as-me` limitation; Variant B pending.
+Variant A is **partially verified; the GitHub write path was not exercised**, and it has a documented `as-me` limitation; Variant B is pending.
 
-Checks 1–5, 7, and 8 of the verification list below all pass end-to-end: PATH takeover, static identity env, per-invocation `gh` minting, the credential-helper rewrite, sandbox minting, fail-closed token handling, and the installation access boundary all hold under live testing.
-The one gap is `as-me` — see the `as-me` limitation section: under this Codex version's sandbox the human-authorship override cannot run, so collaborated authorship happens outside Codex.
+Checks 1–5, 7, and 8 of the verification list below passed for PATH takeover, static identity env, per-invocation `gh` minting, the credential-helper rewrite, sandbox minting, fail-closed token handling, and the installation access boundary.
+One known capability limitation is `as-me` — see the `as-me` limitation section: under this Codex version's sandbox the human-authorship override cannot run, so collaborated authorship happens outside Codex.
 
 Scope of the live verification, stated honestly: no branch was pushed and no `gh pr create` was run under Codex.
 Check 4 proved the authenticated HTTPS-rewrite path with `git ls-remote` and check 5 made a local commit; the write path to GitHub (push, PR creation) rides the same token and credential helper but was not exercised end-to-end here.
@@ -18,18 +18,34 @@ Variant B (a user-level, automatic, per-command re-decision like Claude Code's) 
 It would require a mechanism that re-decides bot-vs-personal before every command with the same fail-closed properties, and no `$CLAUDE_ENV_FILE` equivalent — a file whose contents are evaluated in each command's own shell and working directory — was found in Codex 0.143.0.
 The profile mechanism Variant A uses is decided once per invocation, not per command, so it cannot back Variant B.
 
-## Activation surface — named `bot` profile, per invocation
+## Activation surface — guarded launcher and named `bot` profile
 
-The activation surface is a named profile (`bot`) invoked explicitly on every run: `codex sandbox --profile bot ...` or `codex exec --profile bot ...` (both the top-level `--profile` and the subcommand-local `--profile` placements load the profile identically — probe-verified).
+The supported activation surface is `scripts/codex/codex-bot`, installed beside the other bot scripts and invoked by its absolute path on every run.
+The launcher requires an absolute executable `REAL_CODEX`, verifies that `$CODEX_HOME/bot.config.toml` exists and is readable, rejects caller-supplied `-p` and `--profile` overrides, and prepends `--profile bot` before invoking the real CLI.
+Customize and install it without putting its directory on the personal `PATH`:
+
+```bash
+cp agent-bot-identity/scripts/codex/codex-bot ~/.config/acme-agent/bin/codex-bot
+chmod +x ~/.config/acme-agent/bin/codex-bot
+# edit REAL_CODEX="REPLACE" → the absolute path to the real Codex CLI
+/Users/<you>/.config/acme-agent/bin/codex-bot --version
+```
+
+Start work with `/Users/<you>/.config/acme-agent/bin/codex-bot sandbox ...` or `/Users/<you>/.config/acme-agent/bin/codex-bot exec ...`.
+Do not invoke bare `codex` for bot work, and do not add the install directory to personal `PATH`.
 
 **Read this first — the fail direction is weaker than Claude Variant A.**
-Because activation is a per-invocation flag, **forgetting `--profile bot` silently runs the personal identity** — commits attribute to the human, `gh` uses the personal login.
+Because activation is a per-invocation launcher, **invoking bare `codex` silently runs the personal identity** — commits attribute to the human, `gh` uses the personal login.
 That is a weaker opt-in than Claude Code Variant A's per-repo `.claude/settings.local.json` file, which is present-or-absent per repo rather than remembered per command.
-Treat `--profile bot` as mandatory on every Codex invocation in an enrolled repo; there is no file that makes it automatic.
+Treat the launcher's absolute path as mandatory on every Codex invocation in an enrolled repo; there is no file that makes it automatic.
+Codex 0.144.1 silently accepted an unknown profile name and continued without the intended profile values, so a direct `codex --profile <typo>` invocation can produce personal attribution without warning.
+The launcher closes that typo path for the supported entry point by checking the exact bot profile file before passing the fixed name.
+It remains routing rather than containment because a caller can bypass it and invoke the real CLI directly.
 
-Automatic, project-scoped activation (the Claude Variant A analog of a repo shipping its own config) is **pending — not available in this Codex version**.
-A project-scoped `.codex/config.toml` at the repo root is **never loaded** by Codex 0.143.0: probed under `codex sandbox` and `codex exec`, and even with the directory explicitly marked `trusted` via a `-c projects."<path>".trust_level=trusted` override, the project config's `shell_environment_policy.set` value never took effect.
-Directory trust state only gates interactive approval prompts; it does not toggle loading of any repo-local config file, and no such loading mechanism exists in this version.
+Automatic, project-scoped activation remains **pending**.
+In version-specific probes, a project-scoped `.codex/config.toml` at the repo root did not load under `codex sandbox` or `codex exec` on 0.143.0, and it still did not load under `codex sandbox` on 0.144.1 even with a trust-level override.
+That observed `codex sandbox` behavior conflicts with the broader current [configuration precedence documentation](https://learn.chatgpt.com/docs/config-file/config-basic#configuration-precedence), which says trusted project `.codex/config.toml` files load above selected profiles.
+Treat the probe as version- and surface-specific rather than a general statement that project config never loads, and retain the activation canaries because a higher-precedence project layer could override identity values where current documented behavior applies.
 
 The profile lives at `$CODEX_HOME/bot.config.toml` (default `~/.codex/bot.config.toml`), a **separate file** layered on top of the base `~/.codex/config.toml` by `--profile bot` — the base config is not edited.
 `codex exec` in a non-interactive path defaults to `approval: never` and `sandbox: read-only` with no trust prompt, so automation is not blocked by a prompt; the gap is purely the missing per-repo file, not an approval wall.
@@ -174,8 +190,8 @@ Narrowing the roots keeps the key and the shims read-only; it does not make the 
 The `[sandbox_workspace_write]` table (`writable_roots`, `network_access`) *does* apply from the profile; only the mode key needs forcing.
 Ship the config that handles both surfaces:
 
-- Under `codex sandbox`, force the mode explicitly: `codex sandbox --profile bot -c 'sandbox_mode="workspace-write"' <cmd>`.
-- Under `codex exec`, the `-s` flag works directly: `codex exec --profile bot -s workspace-write --skip-git-repo-check <prompt>`.
+- Under `codex sandbox`, force the mode explicitly: `/Users/<you>/.config/acme-agent/bin/codex-bot sandbox -c 'sandbox_mode="workspace-write"' <cmd>`.
+- Under `codex exec`, the `-s` flag works directly: `/Users/<you>/.config/acme-agent/bin/codex-bot exec -s workspace-write --skip-git-repo-check <prompt>`.
 
 (There is no `--full-auto` flag for `codex sandbox` — probed, it errors as an unexpected argument.)
 
@@ -187,13 +203,13 @@ Verified in Check 4: `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` succe
 
 ## Verification
 
-Run these together with the SKILL's Phase 5 checks, from a fresh Codex invocation with `--profile bot`.
+Run these together with the SKILL's Phase 5 checks, from a fresh invocation through the launcher's absolute path.
 Skip the SKILL's `GH_TOKEN`-prefix and `as-me` bullets; checks 2 and 6 below replace them.
 (A session-level `GH_TOKEN` is an audit smell here, not a pass: the shim exports it per invocation.)
-Sandboxed checks use `codex sandbox --profile bot -c 'sandbox_mode="workspace-write"' sh -c '<cmd>'`; the commit checks use `codex exec --profile bot -s workspace-write --skip-git-repo-check '<prompt>'`.
+Sandboxed checks use `/Users/<you>/.config/acme-agent/bin/codex-bot sandbox -c 'sandbox_mode="workspace-write"' sh -c '<cmd>'`; the commit checks use `/Users/<you>/.config/acme-agent/bin/codex-bot exec -s workspace-write --skip-git-repo-check '<prompt>'`.
 Ten checks were run live; each is one line with its expected result.
 
-1. `command -v gh` → the shim path (`~/.config/acme-agent/bin/gh`), proving the shim wins PATH. (PASS)
+1. Launch by the absolute `codex-bot` path, then run `command -v gh` → the shim path (`~/.config/acme-agent/bin/gh`), proving the launcher selected the profile and the shim wins PATH. (PASS)
 2. `gh api installation/repositories --jq .total_count` → the count of enrolled repos, proving `gh` acts as the bot. (PASS)
 3. `git config --show-scope credential.helper` → bot helper at `command` scope, proving env-scoped with no file changed. (PASS)
 4. `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds via the HTTPS rewrite + bot token, with SSH disabled. (PASS)
@@ -205,6 +221,7 @@ Ten checks were run live; each is one line with its expected result.
 10. Bypass smell: `/opt/homebrew/bin/gh api user --jq .login` (real `gh` by absolute path) → returns the **personal** account, confirming routing-not-enforcement. **Recorded behavior, not a pass/fail gate.**
 
 Checks 1–5, 7, and 8 are the pass/fail gate and all pass; Check 6's failure is the documented limitation; Checks 9 and 10 are recorded behaviors, not gates.
+Branch push, `gh pr create`, `gh pr checks`, and GitHub-side commit and PR actor verification remain explicit completion gates before this adapter can be labeled fully verified.
 
 Audit smells — any of these means the adapter is mis-wired:
 
@@ -215,3 +232,6 @@ Audit smells — any of these means the adapter is mis-wired:
 - Silent mint failure: the shim must fail closed with the non-empty `BOT-TOKEN-MINT-FAILED` sentinel so `gh` errors loudly (`Bad credentials (HTTP 401)`, Check 8) — an empty `GH_TOKEN` is treated as unset and falls back to the personal login.
   A setup with no visible mint-failure mode — or a runbook claiming minting "just works" without the sandbox prerequisites (`network_access = true` for the cold mint; `writable_roots` covering the `uv` and token caches) — is a smell.
 - PATH shims installed via shell dotfiles (`.zshrc`, `.zprofile`) instead of the profile's `shell_environment_policy.set.PATH`: dotfile PATH order is not the Codex-controlled routing surface and leaks into personal shells.
+- A bare `codex` command, a direct `--profile` invocation, or an alias that bypasses the absolute `codex-bot` path: each avoids the launcher's profile-file and override checks and can run with personal attribution.
+- A caller-supplied `-c` or `--config` override that changes `profile` or identity-bearing `shell_environment_policy` values: CLI config overrides outrank the bot profile and can defeat routing canaries.
+  The launcher intentionally permits config overrides because the supported `codex sandbox` invocation needs `-c sandbox_mode=...`, so audit their keys rather than treating the launcher as containment.

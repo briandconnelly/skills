@@ -1,11 +1,11 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral; adapters — Claude Code (tested), Codex CLI (Variant A verified, Variant B pending).
+description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral; adapters — Claude Code (tested), Codex CLI (Variant A partially verified, GitHub write path not exercised; Variant B pending).
 ---
 
 # Agent Bot Identity
 
-Core is harness-neutral; adapters ship for Claude Code (tested) and Codex CLI — Variant A verified (core routing contract) with a documented `as-me` limitation, Variant B pending — see Phase 4.
+Core is harness-neutral; adapters ship for Claude Code (tested) and Codex CLI — Variant A partially verified with its GitHub write path not exercised and a documented `as-me` limitation, Variant B pending — see Phase 4.
 
 ## Overview
 
@@ -104,9 +104,11 @@ There is no lock around the mint: concurrent cold-cache invocations may each min
 Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
 
 Keep `git-credential-bot` host-gated.
-On mint failure it must print no credential, and on wrong host it must stay silent so a typosquatted or mis-rewritten remote cannot coax out the installation token.
+For an eligible `https://github.com` request, a crashed or empty mint must return the complete invalid credential `username=x-access-token` and `password=BOT-TOKEN-MINT-FAILED` so Git cannot fall through to askpass, terminal prompting, or a personal credential source.
+For a wrong-host request it must stay silent so a typosquatted or mis-rewritten remote cannot coax out the installation token.
 Normalize hostnames case-insensitively and strip any credential-protocol port suffix before comparing to `github.com`.
 This matters most under an automatic-activation adapter that installs the helper in any org-matching repo (e.g. Claude Code's Variant B — see the adapter doc).
+Do not globally override `GIT_ASKPASS`, `SSH_ASKPASS`, or terminal-prompt variables in Variant B because a personal verdict cannot safely reconstruct IDE-provided values that the guard inherited.
 
 Use `as-me` only for commit authorship, always with a command — the script refuses zero arguments, because bare `env` would print the entire environment, `GH_TOKEN` included.
 Unsetting the four identity variables lets git fall back to the global `user.*` config while pushes, `gh` calls, and PRs still ride the bot token.
@@ -131,7 +133,7 @@ Do not port an adapter mechanically: Claude Code's per-command env-file evaluati
 Implemented adapters:
 
 - [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision). Tested.
-- [Codex CLI](references/adapters/codex.md) — Variant A verified (core routing contract) with a documented `as-me` limitation; Variant B pending. Verified live against Codex 0.143.0.
+- [Codex CLI](references/adapters/codex.md) — Variant A partially verified, with the GitHub write path not exercised and a documented `as-me` limitation; Variant B pending. Core routing probes were run against Codex 0.143.0, with activation behavior re-probed on 0.144.1.
 
 | Capability | Claude Code | Codex CLI |
 | --- | --- | --- |
@@ -141,7 +143,7 @@ Implemented adapters:
 | Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) |
 | Automatic user-level routing | ✅ Variant B | ❌ pending |
 | `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) |
-| Tested | ✅ scenarios 1–5 | ✅ live verification + scenarios C1–C2 |
+| Verification status | Scenarios 1–5 tested | Partially verified; GitHub write path not exercised; scenarios C1–C2 tested |
 
 ("Fail-closed" is scoped to routing, never containment.)
 
@@ -210,7 +212,8 @@ Enforced, server-side:
 
 - The installation token authenticates only to enrolled repos, only with the granted scopes, and expires in one hour; public repos stay world-readable regardless, so the boundary governs authenticated and write access.
 - No Workflows permission means GitHub rejects bot pushes that add or modify files under `.github/workflows/`; CI logic living elsewhere — scripts the workflows invoke, composite actions, Makefiles — is still reachable with Contents write, which is part of why the human review gate matters.
-- Everything done through the bot path is attributable and filterable in the audit log.
+- Supported GitHub-side events such as `pull_request.create` and `pull_request_review.submit` record actors and can support the approval-laundering detection pattern; local commits, most reads, and every local action are not automatically organization audit-log events.
+- On GitHub Enterprise Cloud, [Git transport events](https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/audit-log-events-for-your-enterprise#git) (`git.clone`, `git.fetch`, and `git.push`) are available through the REST API, export, or audit-log streaming rather than the web interface, and GitHub retains them for [seven days](https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#using-the-audit-log-api).
 
 Not enforced — the part everyone overstates:
 

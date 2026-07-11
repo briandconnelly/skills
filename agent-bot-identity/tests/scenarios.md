@@ -389,9 +389,12 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 ### Live verification record
 
 > [!NOTE]
-> **Codex adapter live verification (2026-07-07).** The Codex Variant A routing contract was verified end-to-end against `codex-cli 0.143.0`; the durable evidence summary lives in `references/adapters/codex.md` (Status + Verification sections), backed by a session-local verification transcript (session records).
+> **Codex adapter partial live verification (2026-07-07).** The Codex Variant A core routing checks were exercised against `codex-cli 0.143.0`, but the GitHub write path was not exercised; the durable evidence summary lives in `references/adapters/codex.md` (Status + Verification sections), backed by a session-local verification transcript (session records).
 > - **Codex version:** `codex-cli 0.143.0`.
-> - **Activation surface:** named `bot` profile (`~/.codex/bot.config.toml`) invoked per run with `--profile bot`; the base `~/.codex/config.toml` is not edited. A project-scoped `.codex/config.toml` is **never loaded** (probed, including with the directory explicitly trusted). Recorded quirk: `--profile bot` applies `[shell_environment_policy].set` (PATH + all `GIT_*`) but NOT the profile's top-level `sandbox_mode` key by itself — sandboxed checks force it with `-c 'sandbox_mode="workspace-write"'`; `codex exec` uses `-s workspace-write`.
+> - **Historical activation probe:** the named `bot` profile (`~/.codex/bot.config.toml`) was invoked per run with `--profile bot`, and the base `~/.codex/config.toml` was not edited.
+> - **Current supported activation:** invoke the guarded `codex-bot` launcher by absolute path; it checks the profile file, forces the bot profile, and rejects profile overrides.
+> - **Project-config probe:** a project-scoped `.codex/config.toml` did not load on the tested 0.143.0 surfaces, including with the directory explicitly trusted, but this version-specific observation conflicts with broader current configuration documentation and is not a general claim that project config never loads.
+> - **Recorded sandbox quirk:** `--profile bot` applied `[shell_environment_policy].set` (PATH + all `GIT_*`) but not the profile's top-level `sandbox_mode` key by itself, so sandboxed checks forced it with `-c 'sandbox_mode="workspace-write"'` and `codex exec` used `-s workspace-write`.
 > - **Sandbox profile:** `sandbox_mode = workspace-write`, `network_access = true` (cold mint only; a negative control failed at DNS), `writable_roots` = the `uv` cache (required every run — `bot-token` is a `uv run --script`) and the bot-config token-cache dir.
 > - **`as-me` status:** documented limitation — under this sandbox `.git` writes succeed only for a bare literal `git`; every wrapper/env-prefix/alias/command-substituted form is denied, so `as-me` cannot run in Codex; a literal `--author=` flag yields author=human but committer=bot. Collaborated authorship therefore happens outside Codex.
 >
@@ -410,7 +413,8 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 > | 9 | Untrusted fresh clone → identical behavior (no trust gate) | recorded, not a pass/fail gate |
 > | 10 | Bypass smell: real `gh` by absolute path → personal account | recorded, not a pass/fail gate |
 >
-> Gate = checks 1–5, 7, 8 (all PASS); check 6 is the documented limitation; checks 9–10 are recorded behaviors.
+> Core-routing gate = checks 1–5, 7, 8 (all PASS); check 6 is the documented limitation; checks 9–10 are recorded behaviors.
+> Full verification still requires a branch push, PR creation, check reading, and GitHub-side commit and PR actor verification.
 >
 > Audit-trail footnote: the gate was originally specified as checks 1–8.
 > Check 6 (`as-me`) was subsequently scoped out of the gate — by user decision — on the grounds that it tests a feature outside the SKILL's Phase 4 routing contract, which requires per-repo activation, static identity env, command-scope `GIT_CONFIG_*`, a dynamic `GH_TOKEN`, and a fail-closed substitute, but not an authorship escape.

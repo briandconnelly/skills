@@ -20,7 +20,8 @@ Neither can tell an agent-driven human approval from a real one — that is what
 
 ## Detection
 
-On org repos, alert on the audit-log pattern of the App's operator approving the App's PRs, especially within seconds of PR creation.
+On org repos, correlate `pull_request.create` for the App's PR with `pull_request_review.submit` by the App's operator, especially within seconds of PR creation.
+Do not assume the organization audit-log web interface contains every Git transport event or local action.
 
 ## Procedural
 
