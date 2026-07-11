@@ -15,8 +15,12 @@ Checks the corrected outputSchema/error contract (contract-checklist.md
     structuredContent (or, only when wire.degraded_text_carrier is declared,
     as JSON text in content[0].text);
   * the error envelope conforms to its own schema, NOT to outputSchema;
-  * both results carry a non-empty `content` array as the human/compatibility
-    fallback the §3 output contract requires alongside structuredContent.
+  * the error envelope also satisfies the §6 cross-field invariants directly
+    (required code/message/temporary/retry_after_ms; retry_after_ms is null
+    when temporary is false, else a non-negative integer or null) — independent
+    of the fixture-supplied schema, which may not encode them;
+  * both results carry a non-empty `content` array that includes a textual
+    fallback block, per the §3 output contract.
 """
 from __future__ import annotations
 
@@ -47,11 +51,38 @@ def _schema_errors(instance, schema, where: str) -> list[Issue]:
 
 def _content_fallback_issue(result: dict, where: str) -> Issue | None:
     """The §3 output contract keeps `content` as a human/compatibility fallback
-    alongside structuredContent, so a result must carry a non-empty content array."""
+    alongside structuredContent: a result must carry a non-empty content array
+    that includes at least one non-empty textual block."""
     content = result.get("content")
     if not isinstance(content, list) or not content:
         return Issue(where, "result must carry a non-empty 'content' array (§3 human/compatibility fallback)")
+    has_text = any(
+        isinstance(block, dict)
+        and block.get("type") == "text"
+        and isinstance(block.get("text"), str)
+        and block["text"].strip()
+        for block in content
+    )
+    if not has_text:
+        return Issue(where, "result 'content' must include a non-empty text block (§3 textual fallback)")
     return None
+
+
+def _envelope_invariant_issues(envelope: object, where: str) -> list[Issue]:
+    """§6 cross-field invariants that a fixture-supplied error_schema may not encode."""
+    if not isinstance(envelope, dict):
+        return [Issue(where, "error envelope must be a JSON object")]
+    issues: list[Issue] = []
+    for field in ("code", "message", "temporary", "retry_after_ms"):
+        if field not in envelope:
+            issues.append(Issue(where, f"error envelope missing required §6 field '{field}'"))
+    temporary = envelope.get("temporary")
+    delay = envelope.get("retry_after_ms")
+    if temporary is False and delay is not None:
+        issues.append(Issue(where, "retry_after_ms must be null when temporary is false (§6)"))
+    if delay is not None and (isinstance(delay, bool) or not isinstance(delay, int) or delay < 0):
+        issues.append(Issue(where, "retry_after_ms must be a non-negative integer when present (§6)"))
+    return issues
 
 
 def validate(fixture: object) -> list[Issue]:
@@ -121,6 +152,7 @@ def validate(fixture: object) -> list[Issue]:
                 envelope = None
 
     if envelope is not None:
+        issues += _envelope_invariant_issues(envelope, "error_result envelope (§6 invariants)")
         if isinstance(error_schema, dict):
             issues += _schema_errors(envelope, error_schema, "error_result envelope vs error_schema")
         else:
