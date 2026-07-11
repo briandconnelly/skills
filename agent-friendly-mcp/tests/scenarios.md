@@ -12,6 +12,21 @@ An assertion the with-skill run misses is a finding against the skill, not again
 3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the transcript.
    Record results in the table at the bottom.
 
+## Scoring dimensions
+
+Each assertion is one of two kinds; scenarios label which.
+
+- **Scored (protocol / outcome).**
+  Defect detection, severity / priority judgment, schema validity, and — for scenarios that supply a task and a tool catalog — first-call correctness, first-repair correctness, and the token / tool-call budgets.
+  These are what a run passes or fails on.
+- **Non-scored conformance.**
+  Report layout (the five-line finding format), the exact `Critical / Major / Minor / Nit` words, and coverage-table cosmetics.
+  Recorded for consistency, never the reason a run fails.
+
+Outcome-metric mapping is deliberately partial.
+First-call success, first-repair success, schema validity, tool-selection accuracy, and token usage are measured only where a scenario runs an executable or replayed task with a supplied catalog (see `tests/fixtures/` and `references/design-workflow.md` Step 8).
+A static design/audit assertion — "the contract describes a symbolic error code", "the schema sets `additionalProperties: false`" — is a **leading indicator** of those outcomes, not a measurement of them, and is labeled as such rather than force-mapped onto a metric it does not observe.
+
 ## Scenario 1: Design (application test)
 
 **Prompt:**
