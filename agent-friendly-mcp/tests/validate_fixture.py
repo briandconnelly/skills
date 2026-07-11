@@ -14,7 +14,9 @@ Checks the corrected outputSchema/error contract (contract-checklist.md
   * the error result sets isError: true and carries the §6 envelope in
     structuredContent (or, only when wire.degraded_text_carrier is declared,
     as JSON text in content[0].text);
-  * the error envelope conforms to its own schema, NOT to outputSchema.
+  * the error envelope conforms to its own schema, NOT to outputSchema;
+  * both results carry a non-empty `content` array as the human/compatibility
+    fallback the §3 output contract requires alongside structuredContent.
 """
 from __future__ import annotations
 
@@ -39,12 +41,23 @@ def _schema_errors(instance, schema, where: str) -> list[Issue]:
     validator = Draft202012Validator(schema)
     return [
         Issue(where, f"schema violation at {list(e.path)}: {e.message}")
-        for e in sorted(validator.iter_errors(instance), key=lambda e: list(e.path))
+        for e in sorted(validator.iter_errors(instance), key=lambda e: [str(p) for p in e.path])
     ]
 
 
-def validate(fixture: dict) -> list[Issue]:
+def _content_fallback_issue(result: dict, where: str) -> Issue | None:
+    """The §3 output contract keeps `content` as a human/compatibility fallback
+    alongside structuredContent, so a result must carry a non-empty content array."""
+    content = result.get("content")
+    if not isinstance(content, list) or not content:
+        return Issue(where, "result must carry a non-empty 'content' array (§3 human/compatibility fallback)")
+    return None
+
+
+def validate(fixture: object) -> list[Issue]:
     issues: list[Issue] = []
+    if not isinstance(fixture, dict):
+        return [Issue("fixture", "fixture root must be a JSON object")]
     wire = fixture.get("wire")
     if not isinstance(wire, dict):
         return [Issue("wire", "fixture has no 'wire' object")]
@@ -60,6 +73,9 @@ def validate(fixture: dict) -> list[Issue]:
     else:
         if success.get("isError") is True:
             issues.append(Issue("success_result", "success_result must not set isError: true"))
+        content_issue = _content_fallback_issue(success, "success_result.content")
+        if content_issue:
+            issues.append(content_issue)
         sc = success.get("structuredContent")
         if sc is None:
             issues.append(Issue("success_result", "success_result missing structuredContent"))
@@ -75,6 +91,10 @@ def validate(fixture: dict) -> list[Issue]:
 
     if error.get("isError") is not True:
         issues.append(Issue("error_result", "error_result must set isError: true"))
+
+    error_content_issue = _content_fallback_issue(error, "error_result.content")
+    if error_content_issue:
+        issues.append(error_content_issue)
 
     degraded = bool(wire.get("degraded_text_carrier"))
     envelope = error.get("structuredContent")

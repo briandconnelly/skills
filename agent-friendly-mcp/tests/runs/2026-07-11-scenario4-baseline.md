@@ -3,7 +3,7 @@
 - **Date:** 2026-07-11
 - **Tree:** `a3cd37f`
 - **Run:** baseline (produced without the skill)
-- **Artifact scored:** `/private/tmp/claude-501/-Users-bdc-projects-skills/24b2ced2-be35-4d8a-86bb-f5a73a4c40c9/scratchpad/s4-baseline.md`
+- **Artifact scored:** inlined verbatim below (produced in the run harness; not a repo file).
 
 ## Per-assertion scoring
 
@@ -16,3 +16,57 @@
 | A5 | **FAIL** | Spinnaker/Jenkins-fiasco/2021 discretionary trivia is dropped entirely (good — instructions line 6 mentions only "backed by Spinnaker," no history), but the Friday soft norm is handled inconsistently: resolved with an explicit override in the instructions ("unless it's urgent," line 14) yet echoed as an unresolved vibe with no override in the `deploy_service` description ("Prefer not to deploy to production on Fridays," line 35) — the two required prose surfaces disagree, and the description-level instance is not dropped, resolved, or separated. |
 
 **Total: baseline 1/5** (A3 pass only).
+
+## Scored artifact (verbatim)
+
+# deployctl — Baseline Prose (produced from general knowledge only)
+
+## instructions (server-level)
+
+```
+deployctl manages deployments for internal services, backed by Spinnaker.
+
+Typical workflow:
+1. Run a dry-run deploy first to catch config drift before it reaches an environment.
+2. Deploy to staging to validate. If staging seems stuck or unresponsive, a redeploy
+   usually clears it.
+3. Deploy to production. Production deploys require an approved change ticket
+   (SRE policy) — have the ticket ID ready. Avoid deploying to production on
+   Fridays unless it's urgent, since there's less coverage to respond to issues
+   over the weekend.
+
+Rolling back repoints the release symlink to the previous release, so it's normally
+fast and low-risk — but only works if that previous release still exists on disk.
+Releases older than 30 days are garbage-collected, so a rollback can fail if the
+prior release has aged out; check availability before relying on rollback as a
+safety net.
+
+The `force` flag (on deploy) skips pre-deploy health checks. Use it only when you
+understand why a health check is failing and are intentionally bypassing it —
+it removes a safety net, not just a formality.
+```
+
+## description — deployctl_deploy_service
+
+```
+Deploys a service via Spinnaker.
+
+Run with dry_run enabled first when possible — it surfaces config drift before
+any real change is made. Deploying to production requires a valid change ticket
+per SRE policy; the deploy will be rejected without one. Prefer not to deploy to
+production on Fridays. Setting the `force` flag skips pre-deploy health checks —
+only use it when you're deliberately bypassing a known, understood check, since
+it removes the safety net that normally catches bad deploys before they roll out.
+```
+
+## description — deployctl_rollback_service
+
+```
+Rolls back a service to its previous release by repointing the release symlink.
+This is generally fast and low-risk since it doesn't rebuild or redeploy artifacts.
+
+Rollback only works if the previous release is still on disk — releases older
+than 30 days are garbage-collected. Check that a prior release actually exists
+before depending on rollback as your recovery plan; if it's been purged, rollback
+will fail and you'll need to deploy forward instead.
+```

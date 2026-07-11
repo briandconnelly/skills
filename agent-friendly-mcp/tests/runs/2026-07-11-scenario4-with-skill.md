@@ -3,7 +3,7 @@
 - **Date:** 2026-07-11
 - **Tree:** `a3cd37f`
 - **Run:** with-skill (produced with the skill)
-- **Artifact scored:** `/private/tmp/claude-501/-Users-bdc-projects-skills/24b2ced2-be35-4d8a-86bb-f5a73a4c40c9/scratchpad/s4-treatment.md`
+- **Artifact scored:** inlined verbatim below (produced in the run harness; not a repo file).
 
 ## Per-assertion scoring
 
@@ -16,3 +16,48 @@
 | A5 | **PASS** | Spinnaker/Jenkins/2021 trivia is explicitly labeled "Background:" and kept structurally apart from the "Rules:" list, never interleaved (lines 5–12). The Friday soft norm is dropped entirely — "Friday" does not appear anywhere in the file — a valid resolution per the assertion (state as default-with-override, or drop), and no vibe-echo remains. |
 
 **Total: with-skill 5/5**
+
+## Scored artifact (verbatim)
+
+## `instructions` (server-level)
+
+deployctl deploys and rolls back internal services. It does not create or edit Spinnaker pipelines, provision infrastructure, or manage secrets — those stay in their own tools.
+
+Rules:
+
+- Deploying with `environment: production` requires an approved change ticket id in `change_ticket_id` (SRE policy); calls without one are rejected.
+- Default to `dry_run: true` on `deployctl_deploy_service`; only call with `dry_run: false` once a prior dry run for the same change reports no config drift.
+- Set `force: true` on `deployctl_deploy_service` only when the target service's health has already been verified some other way — `force` skips the pre-deploy health checks.
+- Before calling `deployctl_rollback_service`, confirm the previous release is less than 30 days old. Releases older than that are garbage-collected and the rollback will fail.
+
+Background: deploys execute as Spinnaker pipelines under the hood (adopted in 2021, replacing Jenkins). Rollback repoints the release symlink rather than redeploying, which is why it's fast and low-risk when the target release still exists.
+
+---
+
+## `description` — `deployctl_deploy_service`
+
+Deploy a new version of a service to an environment, executed as a Spinnaker pipeline.
+
+When to use: any time an agent has a service, target version, and environment ready to ship.
+
+Rules:
+- `environment: production` requires an approved change ticket id in `change_ticket_id`; the call is rejected without one.
+- Default to `dry_run: true`. It surfaces config drift before anything ships. Only set `dry_run: false` after a dry run for this same change has reported none.
+- Set `force: true` only when you've independently confirmed the service is healthy; it skips the pre-deploy health checks that would otherwise catch a bad target.
+
+Usage note: if staging deploys appear stuck (service not updating, health checks not clearing), redeploying to staging with this tool typically clears it.
+
+Example: `{"service": "checkout-api", "version": "1.42.0", "environment": "staging", "dry_run": true}`
+
+---
+
+## `description` — `deployctl_rollback_service`
+
+Roll a service back to its previous release by repointing the release symlink — not a redeploy, so it's fast and low-risk when the target release still exists.
+
+When to use: an in-progress or recent deploy needs to be undone quickly.
+
+Rules:
+- Works only if the previous release is less than 30 days old. Older releases are garbage-collected from the release store and the rollback will fail. Check the previous release's deploy timestamp before calling.
+
+Example: `{"service": "checkout-api", "environment": "production"}`

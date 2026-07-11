@@ -8,13 +8,11 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent))
 from validate_fixture import validate  # noqa: E402
 
 FIXTURE = json.loads(
-    (Path(__file__).parent / "fixtures" / "github_issues.json").read_text()
+    (Path(__file__).parent / "fixtures" / "github_issues.json").read_text(encoding="utf-8")
 )
 
 
@@ -57,3 +55,23 @@ def test_disclosed_degraded_text_carrier_is_accepted():
     err["content"] = [{"type": "text", "text": json.dumps(envelope)}]
     ok["wire"]["degraded_text_carrier"] = True
     assert validate(ok) == []
+
+
+def test_non_dict_fixture_root_fails_closed():
+    for bad_root in ([], "not-an-object", 42):
+        issues = validate(bad_root)
+        assert issues and any("root must be a JSON object" in i.message for i in issues)
+
+
+def test_success_result_requires_content_fallback():
+    bad = copy.deepcopy(FIXTURE)
+    del bad["wire"]["success_result"]["content"]
+    issues = validate(bad)
+    assert any(i.where == "success_result.content" for i in issues)
+
+
+def test_error_result_requires_content_fallback():
+    bad = copy.deepcopy(FIXTURE)
+    bad["wire"]["error_result"]["content"] = []
+    issues = validate(bad)
+    assert any(i.where == "error_result.content" for i in issues)
