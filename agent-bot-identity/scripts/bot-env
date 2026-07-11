@@ -19,9 +19,29 @@ rc=0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
 if [ "$rc" -eq 0 ]; then
   raw_remotes="$(mktemp)"
-  trap 'rm -f "$raw_remotes"' EXIT
+  worktree_remotes="$(mktemp)"
+  trap 'rm -f "$raw_remotes" "$worktree_remotes"' EXIT
   remote_rc=0
   git config --local --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
+  if [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
+    remote_rc=0
+  fi
+  if [ "$remote_rc" -eq 0 ]; then
+    worktree_enabled=""
+    worktree_flag_rc=0
+    worktree_enabled="$(git config --local --bool --get extensions.worktreeConfig 2>/dev/null)" || worktree_flag_rc=$?
+    if [ "$worktree_flag_rc" -eq 0 ] && [ "$worktree_enabled" = true ]; then
+      worktree_rc=0
+      git config --worktree --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$worktree_remotes" 2>/dev/null || worktree_rc=$?
+      if [ "$worktree_rc" -eq 0 ]; then
+        cat "$worktree_remotes" >>"$raw_remotes"
+      elif [ "$worktree_rc" -ne 1 ] || [ -s "$worktree_remotes" ]; then
+        remote_rc="$worktree_rc"
+      fi
+    elif [ "$worktree_flag_rc" -ne 0 ] && [ "$worktree_flag_rc" -ne 1 ]; then
+      remote_rc="$worktree_flag_rc"
+    fi
+  fi
   if [ "$remote_rc" -eq 0 ]; then
     if [ ! -s "$raw_remotes" ]; then
       verdict=bot
@@ -29,7 +49,10 @@ if [ "$rc" -eq 0 ]; then
     else
       empty_remote=0
       while IFS= read -r -d '' remote_record; do
-        url="${remote_record#*$'\n'}"
+        case "$remote_record" in
+          *$'\n'*) url="${remote_record#*$'\n'}" ;;
+          *) empty_remote=1; continue ;;
+        esac
         if [ -z "$url" ]; then
           empty_remote=1
           continue
@@ -65,14 +88,11 @@ if [ "$rc" -eq 0 ]; then
           esac
         fi
       done <"$raw_remotes"
-      if [ "$empty_remote" -eq 1 ]; then
+      if [ "$empty_remote" -eq 1 ] && [ "$verdict" != bot ]; then
         verdict=bot
         echo "bot-env: empty raw remote URL in $PWD; ambiguous, using the bot identity" >&2
       fi
     fi
-  elif [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
-    verdict=bot
-    echo "bot-env: no raw remote URLs in $PWD; ambiguous, using the bot identity" >&2
   else
     verdict=bot
     echo "bot-env: raw remote query failed in $PWD; using the bot identity" >&2

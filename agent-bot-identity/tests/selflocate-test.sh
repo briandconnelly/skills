@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Verifies shared scripts resolve siblings from an arbitrary install dir.
 set -euo pipefail
+# A Git hook may export repository context that makes scratch `git -C` commands
+# target the real repository instead of the fixture.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 trap 'rm -rf "$DIR"' EXIT
@@ -182,12 +185,33 @@ REPO="$(mktemp -d)"
 git -C "$REPO" init -q
 git -C "$REPO" config --add remote.origin.url ""
 git -C "$REPO" config --add remote.origin.pushurl ""
+printf '[remote "valueless"]\n\turl\n' >> "$REPO/.git/config"
 ERR="$(mktemp)"
 out="$(cd "$REPO" && "$DIR/bot-env" 2>"$ERR")"
-echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: empty raw remote values did not fail toward the bot verdict"; FAIL=1; }
-[ "$(grep -c 'empty raw remote URL' "$ERR")" -eq 1 ] || { echo "FAIL: empty raw remote values did not emit exactly one warning"; FAIL=1; }
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: empty or valueless raw remote records did not fail toward the bot verdict"; FAIL=1; }
+[ "$(grep -c 'empty raw remote URL' "$ERR")" -eq 1 ] || { echo "FAIL: empty or valueless raw remote records did not emit exactly one warning"; FAIL=1; }
 rm -rf "$REPO"
 rm -f "$ERR"
+
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:acme/scratch.git
+git -C "$REPO" config --add remote.empty.url ""
+ERR="$(mktemp)"
+out="$(cd "$REPO" && "$DIR/bot-env" 2>"$ERR")"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: org remote plus empty value did not get the bot verdict"; FAIL=1; }
+grep -q 'empty raw remote URL' "$ERR" && { echo "FAIL: empty raw remote value warned after an org remote established the bot verdict"; FAIL=1; }
+rm -rf "$REPO"
+rm -f "$ERR"
+
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" config extensions.worktreeConfig true
+git -C "$REPO" config remote.origin.url git@github.com:notacme/scratch.git
+git -C "$REPO" config --worktree remote.origin.url git@github.com:acme/scratch.git
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: raw org remote in worktree config did not get the bot verdict"; FAIL=1; }
+rm -rf "$REPO"
 
 # Force only the raw-config query to fail while leaving the work-tree probe
 # intact; an undetermined affiliation must resolve toward the bot.

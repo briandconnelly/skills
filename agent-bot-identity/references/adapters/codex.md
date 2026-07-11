@@ -233,3 +233,5 @@ Audit smells — any of these means the adapter is mis-wired:
   A setup with no visible mint-failure mode — or a runbook claiming minting "just works" without the sandbox prerequisites (`network_access = true` for the cold mint; `writable_roots` covering the `uv` and token caches) — is a smell.
 - PATH shims installed via shell dotfiles (`.zshrc`, `.zprofile`) instead of the profile's `shell_environment_policy.set.PATH`: dotfile PATH order is not the Codex-controlled routing surface and leaks into personal shells.
 - A bare `codex` command, a direct `--profile` invocation, or an alias that bypasses the absolute `codex-bot` path: each avoids the launcher's profile-file and override checks and can run with personal attribution.
+- A caller-supplied `-c` or `--config` override that changes `profile` or identity-bearing `shell_environment_policy` values: CLI config overrides outrank the bot profile and can defeat routing canaries.
+  The launcher intentionally permits config overrides because the supported `codex sandbox` invocation needs `-c sandbox_mode=...`, so audit their keys rather than treating the launcher as containment.

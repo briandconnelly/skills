@@ -115,7 +115,7 @@ Variant A's blast radius is narrower, which is one more reason to prefer A when 
 
 `bot-env` emits the complete Variant A-style bot env on a bot verdict.
 It emits explicit `unset`s on a personal verdict so no bot env leaks if a harness ever reuses a shell across commands.
-It reads null-delimited raw repository-local `remote.*.url` and `remote.*.pushurl` values rather than `git remote -v`, whose output has already passed through `insteadOf` rewriting.
+It reads null-delimited raw repository-local and enabled worktree-local `remote.*.url` and `remote.*.pushurl` values rather than `git remote -v`, whose output has already passed through `insteadOf` rewriting.
 The raw host and organization path segment determine the verdict and any extra `insteadOf` pairs, so an existing rewrite cannot hide an enrolled affiliation or manufacture one.
 Raw repository affiliation intentionally controls identity even if another `insteadOf` rule changes the effective transport target, because ambiguity must resolve toward bot attribution rather than silent human attribution.
 The emitted block mirrors the Variant A env, with one improvement over the static block: `bot-env` derives extra `insteadOf` pairs from the matched raw remote values themselves, so `ssh://` forms and case variants are rewritten without manual pairs.
@@ -135,7 +135,8 @@ The decision rules and their fail direction:
 | Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
 | Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
-| Any raw local remote URL or push URL is empty | Bot, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |
+| Any raw local remote URL or push URL is empty | Bot if otherwise undetermined, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |
+| A raw config record is valueless or malformed | Bot if otherwise undetermined, one stderr warning | Ambiguous — a record without the key/value separator cannot establish non-org affiliation |
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
