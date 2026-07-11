@@ -117,13 +117,59 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** narrative paragraphs that reproduce the ops notes' structure, hedges carried through verbatim ("generally", "be careful"), rules embedded mid-sentence next to Spinnaker trivia, compound sentences bundling mechanics with constraints.
 
+## Scenario 5: Resources (application test)
+
+**Prompt:**
+
+> Design the agent-facing MCP resource surface for a server that exposes a large internal documentation wiki to an agent.
+> The wiki has thousands of pages organized in spaces (e.g. `eng`, `hr`); pages can be large (some over 100 KB); page content changes during the day; and agents need to look up a specific page by space + slug as well as browse.
+> Produce: the resource URI scheme, what a resource index/list entry looks like versus a full body, how large pages are delivered, how an agent discovers parameterized lookups, how an agent is notified when a page it cares about changes, and any fallback for clients that do not handle resources well.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] Resource URIs are stable, hierarchical, and use domain nouns (e.g. `wiki://spaces/{space}/pages/{slug}`), not internal numeric ids that change between deployments (§4).
+- [ ] Index/list entries carry native triage metadata — `title`, `description`, `mimeType`, `size`, `annotations.lastModified` — and do NOT inline the page body; the summary is short (at most three sentences) (§4).
+- [ ] Large page bodies are chunkable, and every chunk has its own callable URI published as a resource template (`resources/templates/list` with `uriTemplate`) — because native `resources/read` takes only a URI — or a labeled tool fallback that accepts a chunk id (§4).
+- [ ] Chunk identifiers are stable across reads of the same page version, and a version change is observable via the resource's modification metadata (§4).
+- [ ] Custom/index metadata with no native field rides under a namespaced `_meta` key, never as a new top-level field on the `Resource` record (§4, native-vs-convention).
+- [ ] Mutable pages support subscriptions: the server advertises `resources.subscribe`, accepts `resources/subscribe`, and emits `notifications/resources/updated` for subscribed URIs — distinguished from `notifications/resources/list_changed`, which signals catalog membership changes, not body edits (§4).
+- [ ] Parameterized lookups are exposed via resource templates, with completion for `{space}`/`{slug}` where clients negotiate `completions`, so an agent can construct a page URI without enumerating every page (§4).
+- [ ] A tool fallback reaches the same indexed content and is self-sufficient from `tools/list` alone, for clients that do not expose resources well (§4).
+
+**Expected baseline failures:** unstable or numeric-id URIs, index entries that inline full bodies or omit `size`/`lastModified`, whole-document delivery with no chunking or chunk URIs, custom fields added at the top level of the resource record, `list_changed` conflated with per-resource update notifications (or no subscription mechanism at all), no resource-template or completion discovery, no tool fallback.
+
+## Scenario 6: Prompts (application test)
+
+**Prompt:**
+
+> Design a reusable MCP prompt named `open_incident` for a server that wraps an incident-management service.
+> Its tools already exist: `incident_create`, `incident_add_responder`, `incident_post_update`, plus a resource `incidents://active`.
+> The prompt should help an agent run the "declare a new incident" workflow.
+> Produce: the prompt definition (name, arguments, and any orchestration text), and a short note on what belongs in the prompt versus what belongs in the tool and resource schemas.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] The prompt references its follow-on tools and resource by canonical name (`incident_create`, `incident_add_responder`, `incident_post_update`, `incidents://active`) and does NOT redefine their argument shapes or contracts (§5).
+- [ ] Prerequisites are declared — which tools, which resources, and which permission or context assumptions the prompt relies on (§5).
+- [ ] No behavior is load-bearing in the prompt text: apply the "remove every prompt — is any tool now unsafe or uncallable?" audit; argument shapes, side effects, and error handling live in the tool schemas, not the prompt prose (§5).
+- [ ] Only native `PromptArgument` fields appear on each argument (`name`, `title`, `description`, `required`); value-shape guidance (types, enums, defaults, arrays) is carried in each argument's `description`, not as non-native keys such as `type`/`items`/`default` (§5, native-vs-convention).
+- [ ] Any convention metadata (when-to-use, prerequisites, expected-followups) rides under a namespaced `_meta` key, not as top-level `Prompt` fields (§5, native-vs-convention).
+- [ ] Completion is offered for arguments with dynamic value sets (e.g. a service or team the agent should not guess) where `completions` is negotiated (§5).
+- [ ] The design states explicitly that the prompt is optional orchestration scaffolding — a client that never invokes it (most code-execution clients) can still call every tool correctly from the schemas alone (§5).
+
+**Expected baseline failures:** prompt redefines tool argument shapes inline, encodes required behavior (side effects or error handling) in prose so a schema-only client would call wrong, uses non-native argument keys (`type`/`items`/`default`) or top-level convention fields, no declared prerequisites, no completion, treats the prompt as required rather than optional.
+
 ## Results
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-06-09 | 2 (audit) | baseline | 5/9 | Caught readOnlyHint lie, duplication, error strings, tool count, naming — but no severity scale (used Critical/High/Medium), no five-line format, no §-anchoring, no coverage table, no N/A entries for resources/prompts. |
 | 2026-06-09 | 2 (audit) | with-skill | 9/9 | Five-line findings F1–F7 anchored to §N; coverage table with not-checked reasons; six probes run, three skipped with reasons; remediations name `chat_send_message`, `channel_id`, `search_tools`. Errors rated Critical (within loosened assertion). |
-| 2026-06-09 | 1 (design) | _not yet run_ | | |
-| 2026-07-01 | 3 (long-running) | _not yet run_ | | |
+| 2026-07-11 | 1 (design) | baseline | 4/9 | Tree `d586ce3`. Passed A3/A4/A5/A8; failed granularity (11 endpoint-mirroring tools), naming (no service prefix, noun_verb), negative scope, pagination provenance/detail-toggle, and shown `outputSchema` (claimed in prose only). [evidence](runs/2026-07-11-scenario1-baseline.md) |
+| 2026-07-11 | 1 (design) | with-skill | 9/9 | Tree `d586ce3`. 11 endpoints → 7 task-completing `github_*` tools with justification table; explicit `does_not`; house pagination labeled vs native `nextCursor`; `outputSchema` on the flagship read tool; one-envelope-two-carriers errors. [evidence](runs/2026-07-11-scenario1-with-skill.md) |
+| 2026-07-11 | 3 (long-running) | baseline | 4/7 | Tree `d586ce3`. Passed A1/A2/A3/A7; failed A4 (invented `notifications/tasks/status` instead of request-`progressToken`), A5 (polled instead of preemptive-hold `tasks/result`), A6 (fallback not labeled convention, no expiry). Caveat: A1 used `requests: ["tools/call"]` array vs spec nested shape. [evidence](runs/2026-07-11-scenario3-baseline.md) |
+| 2026-07-11 | 3 (long-running) | with-skill | 7/7 | Tree `d586ce3`. Nested `tasks.requests.tools.call`; request-originated `progressToken`; preemptive-hold `input_required` recovery via `elicitation/create`; labeled-convention fallback mirroring expiry/result-location; `tasks/list` withheld for isolation. [evidence](runs/2026-07-11-scenario3-with-skill.md) |
+| 2026-07-11 | 5 (resources) | baseline | 5/8 | Tree `d586ce3`. Passed URIs/chunk-templates/version-pinning/subscriptions/tool-fallback; failed native triage field names (used `summary`/`sizeBytes`/`updatedAt`), non-namespaced `_meta`, and no completion on templates. [evidence](runs/2026-07-11-scenario5-baseline.md) |
+| 2026-07-11 | 5 (resources) | with-skill | 8/8 | Tree `d586ce3`. Native `size`/`annotations.lastModified` triage fields; namespaced `_meta` (`com.acme-wiki/*`); `completion/complete` for `{space}`/`{slug}`; bounded `resources/list`; one-envelope-two-carriers resource failures. [evidence](runs/2026-07-11-scenario5-with-skill.md) |
 | 2026-07-02 | 4 (prose) | baseline (skill pre-§2/§3/§4 prose rules) | 1/5 | `force` fact and 30-day condition checkable (A3 pass), but description rules buried mid-narrative and the dry-run rule left in a workflow paragraph (A1 fail), "Recommended workflow" dry-run carries no override condition (A2 fail), one bullet bundles previous-release-only + 30-day GC + recovery action (A4 fail), rollback mechanics interleaved with eligibility rules (A5 fail). |
 | 2026-07-02 | 4 (prose) | with-skill | 5/5 | Labeled `Rules:`/`Background:` sections; every rule mandatory or default-with-override; `force` carries the sourced fact plus an explicit permitted-use condition. Two earlier iterations were discarded: the first with-skill run echoed the guidance's then-deploy-domain examples (checklist examples moved to a messaging domain in response), and Codex review flagged that the prompt omitted `force` semantics so a pass could reward invented policy (sourced fact added to the notes). The scores above are the final runs against the corrected prompt. |
