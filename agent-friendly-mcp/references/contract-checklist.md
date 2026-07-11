@@ -198,6 +198,7 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Prefer resource or resource-link delivery for large results.** Return large results as resources or resource links with TTL metadata where you can; reserve the response-delivery-artifact pattern for cases where an inline or linked resource does not fit.
 
 - **Disclose response-delivery artifacts through the structured response and the description.** Use a structured response field (e.g., `result_artifact: {path, ttl_hours, mime_type}` — a house convention object, so its sub-fields use `snake_case`, not the native `Resource.mimeType`) and the tool description, never annotation flipping.
+  The local-path artifact pattern is valid only when server and caller share a filesystem (co-located stdio); a server reachable over HTTP or by remote clients must return the result as a fetchable resource, `resource_link`, or URL instead, because a returned filesystem path is dead weight to a remote client.
   See `examples.md` §12 for a worked response-delivery artifact.
 
 - **Annotations are hints, not security.** Declare them so agents can plan; do not rely on them for access control.

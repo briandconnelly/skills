@@ -1020,7 +1020,7 @@ A read-only query tool whose result is delivered as a local CSV file rather than
 ```json
 {
   "name": "warehouse_query",
-  "description": "Run a read-only SQL query against the analytics warehouse.\n\nResults are delivered as a CSV under the local cache dir (path returned in `result_artifact.path`); files self-expire after 24h. The artifact is the response, not a side effect — this tool does not mutate warehouse state, and the cache directory is per-session and not shared across users.\n\nExample: {\"sql\": \"SELECT user_id, signup_at FROM users WHERE signup_at > '2026-05-01' LIMIT 10000\"}",
+  "description": "Run a read-only SQL query against the analytics warehouse.\n\nResults are delivered as a CSV under the local cache dir (path returned in `result_artifact.path`); files self-expire after 24h. The artifact is the response, not a side effect — this tool does not mutate warehouse state, and the cache directory is per-session and not shared across users. This server runs as co-located stdio; the returned path is on the caller's machine.\n\nExample: {\"sql\": \"SELECT user_id, signup_at FROM users WHERE signup_at > '2026-05-01' LIMIT 10000\"}",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1059,6 +1059,7 @@ A successful response:
 
 What to notice: this skill treats `readOnlyHint: true` as defensible here — the call doesn't mutate the warehouse, doesn't change shared state, and the CSV is response delivery (scoped to this call, declared TTL, no shared visibility), not persistent state that outlives the response contract.
 That is a deliberate reading of an ambiguous hint, not settled spec (see contract-checklist §3): a reviewer who reads `readOnlyHint` literally as "does not modify its environment" may count the local write as mutation, so where you can, prefer returning the result as a resource or resource link with TTL metadata rather than a local-file artifact.
+This pattern assumes co-located stdio — a remote or HTTP deployment of the same tool must switch to a fetchable resource, `resource_link`, or URL, because a returned filesystem path is dead weight to a remote client (§3).
 `destructiveHint` and `idempotentHint` are omitted because the spec makes them meaningful only when `readOnlyHint` is `false` — declaring them here would assert semantics the protocol does not assign (contrast `slack_send_message` in §1, where `readOnlyHint: false` makes `idempotentHint: false` meaningful: re-sending compounds — two messages posted, not a no-op).
 `openWorldHint: true` reflects that the tool reaches an external warehouse.
 The artifact is disclosed in the structured response — `result_artifact` (a convention field) with `path`, `mime_type`, `ttl_hours`, `expires_at` — and in the tool description, never by flipping the annotation.
