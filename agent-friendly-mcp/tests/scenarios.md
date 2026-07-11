@@ -70,17 +70,20 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Uses the severity scale (Critical/Major/Minor/Nit) and the five-line finding format from `review-workflow.md`.
-- [ ] Flags `readOnlyHint: true` on `send` (a mutating tool) as **Critical** (§3 annotation honesty).
+- [ ] **(Scored — defect detection.)** Surfaces the load-bearing defects: the `readOnlyHint` lie on `send`, the `send`/`post_message` overlap, the unstructured error strings, the 61-tool no-reduction gap, and the missing `additionalProperties: false` — independent of how they are worded or labeled.
+- [ ] **(Scored — priority judgment, predeclared bands.)** Ranks by impact against `review-workflow.md:9–19`: the false `readOnlyHint` is highest-priority and merge-blocking; the `send`/`post_message` overlap and the unstructured error strings are at least must-fix / major-equivalent. Score the impact judgment, not the label word.
+- [ ] **(Non-scored conformance.)** May use the five-line finding layout and the exact `Critical / Major / Minor / Nit` vocabulary from `review-workflow.md:79–86`; recorded, never the reason a run fails.
+- [ ] **(Covered by the priority-band bullet above.)** The `readOnlyHint: true` claim on the mutating `send` tool is ranked highest-priority / merge-blocking (§3 annotation honesty); the exact word "Critical" is non-scored.
 - [ ] Flags `send` vs `post_message` overlap as a wrong-tool-selection finding (§3).
 - [ ] Flags `delete_all_messages` as needing an explicit `destructiveHint: true` and a confirmation boundary (§3 security) — without claiming omission declared it safe, since the spec default for an omitted `destructiveHint` is already `true`.
 - [ ] Flags unstructured error strings as Critical or Major against §6 (Critical is defensible when credential failure modes are also collapsed).
 - [ ] Flags 61 tools with no client-independent surface reduction (and no progressive-disclosure mechanism) as Major against §2 — not by asserting that `search_tools` alone would shrink what a standard preloading client loads.
 - [ ] Flags missing `additionalProperties: false`, ambiguous `channel`/`msg` parameter names (§3).
-- [ ] Produces the §1–§9 coverage table, with `not-checked`/`N/A` reasons for resources (§4) and prompts (§5).
+- [ ] **(Scored — coverage completeness.)** Accounts for every checklist section §1–§9, giving resources (§4) and prompts (§5) an explicit `not-checked` / `N/A` reason rather than silently skipping them.
+- [ ] **(Non-scored conformance.)** The specific coverage-table layout is recorded for consistency, not scored.
 - [ ] Remediations name real callable surfaces (renamed tools, parameter names), not generic advice.
 
-**Expected baseline failures:** unstructured prose review, no severity scale, no coverage table, misses the `readOnlyHint` lie or rates it as minor, no checklist-section anchoring.
+**Expected baseline failures:** unstructured prose review, misranks the readOnlyHint lie below merge-blocking, no coverage table, misses the `readOnlyHint` lie or rates it as minor, no checklist-section anchoring.
 
 ## Scenario 3: Long-running contract (application test)
 
