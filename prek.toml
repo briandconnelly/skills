@@ -24,4 +24,5 @@ repo = "local"
 hooks = [
   { id = "check-skill-frontmatter", name = "Validate SKILL.md frontmatter against agentskills.io spec", language = "python", language_version = "python3", additional_dependencies = ["pyyaml>=6"], entry = "python scripts/check-skill-frontmatter.py", files = "(?:^|/)SKILL\\.md$", pass_filenames = true },
   { id = "agent-bot-identity-selflocate", name = "agent-bot-identity: shared scripts self-locate and fail closed", language = "system", entry = "bash agent-bot-identity/tests/selflocate-test.sh", files = "^agent-bot-identity/scripts/", pass_filenames = false },
+  { id = "validate-mcp-fixtures", name = "agent-friendly-mcp: wire fixtures conform to the outputSchema/error contract", language = "python", language_version = "python3", additional_dependencies = ["jsonschema>=4"], entry = "python agent-friendly-mcp/tests/validate_fixture.py", files = "^agent-friendly-mcp/tests/fixtures/.*\\.json$", pass_filenames = true },
 ]
