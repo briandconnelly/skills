@@ -115,10 +115,16 @@ Variant A's blast radius is narrower, which is one more reason to prefer A when 
 
 `bot-env` emits the complete Variant A-style bot env on a bot verdict.
 It emits explicit `unset`s on a personal verdict so no bot env leaks if a harness ever reuses a shell across commands.
-The emitted block mirrors the Variant A env, with one improvement over the static block: `bot-env` derives extra `insteadOf` pairs from the matched remotes themselves, so `ssh://` forms and case variants are rewritten without manual pairs.
+It reads null-delimited raw repository-local `remote.*.url` and `remote.*.pushurl` values rather than `git remote -v`, whose output has already passed through `insteadOf` rewriting.
+The raw host and organization path segment determine the verdict and any extra `insteadOf` pairs, so an existing rewrite cannot hide an enrolled affiliation or manufacture one.
+Raw repository affiliation intentionally controls identity even if another `insteadOf` rule changes the effective transport target, because ambiguity must resolve toward bot attribution rather than silent human attribution.
+The emitted block mirrors the Variant A env, with one improvement over the static block: `bot-env` derives extra `insteadOf` pairs from the matched raw remote values themselves, so `ssh://` forms and case variants are rewritten without manual pairs.
 That derivation is load-bearing, not cosmetic — git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the canonical pair alone would take the bot verdict (the org match is deliberately case-insensitive) yet let the push silently ride the personal SSH key.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
+The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
+Wrong-host requests remain silent.
+Do not clear askpass or terminal-prompt variables globally because a personal verdict cannot safely restore caller- or IDE-provided values.
 
 The decision rules and their fail direction:
 
@@ -126,10 +132,10 @@ The decision rules and their fail direction:
 | --- | --- | --- |
 | Not a git repo (probe exits 128, git's definitive answer) | Personal | Unambiguous — nothing to attribute |
 | Probe fails any other way (git missing, broken PATH) | Bot, stderr warning | Ambiguous — cannot rule out org work; only a definitive "not a repository" may resolve personal |
-| Remotes exist, none in the org | Personal | Unambiguous |
-| Any remote in the org | Bot | The remote is the repo-intrinsic signal: travels with clones and worktrees, no per-repo state, no network |
+| Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
+| Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
-| Remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
+| Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
 

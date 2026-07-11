@@ -18,12 +18,17 @@ ssh_prefixes=""
 rc=0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
 if [ "$rc" -eq 0 ]; then
-  if remotes="$(git remote -v 2>/dev/null)"; then
-    if [ -z "$remotes" ]; then
+  raw_remotes="$(mktemp)"
+  trap 'rm -f "$raw_remotes"' EXIT
+  remote_rc=0
+  git config --local --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
+  if [ "$remote_rc" -eq 0 ]; then
+    if [ ! -s "$raw_remotes" ]; then
       verdict=bot
-      echo "bot-env: no remotes in $PWD; ambiguous, using the bot identity" >&2
+      echo "bot-env: no raw remote URLs in $PWD; ambiguous, using the bot identity" >&2
     else
-      while read -r _ url _; do
+      while IFS= read -r -d '' remote_record; do
+        url="${remote_record#*$'\n'}"
         [ -n "$url" ] || continue
         prefix=""
         case "$url" in
@@ -55,13 +60,14 @@ if [ "$rc" -eq 0 ]; then
               ;;
           esac
         fi
-      done <<EOF
-$remotes
-EOF
+      done <"$raw_remotes"
     fi
+  elif [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
+    verdict=bot
+    echo "bot-env: no raw remote URLs in $PWD; ambiguous, using the bot identity" >&2
   else
     verdict=bot
-    echo "bot-env: git remote query failed in $PWD; using the bot identity" >&2
+    echo "bot-env: raw remote query failed in $PWD; using the bot identity" >&2
   fi
 elif [ "$rc" -ne 128 ]; then
   verdict=bot

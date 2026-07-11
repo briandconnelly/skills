@@ -110,15 +110,28 @@ echo "$out" | grep -qF "GH_TOKEN=''" && { echo "FAIL: bot-env emitted an empty G
 rm -rf "$REPO"
 printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
 
-# 8. git-credential-bot: silent on a wrong host, and no credential on a bad mint.
+# 8. git-credential-bot: silent on a wrong host, and sentinel on a bad mint.
 out="$(printf 'protocol=https\nhost=evil.com\n\n' | "$DIR/git-credential-bot" get)"
 [ -z "$out" ] || { echo "FAIL: git-credential-bot answered for a non-github.com host"; FAIL=1; }
 printf '#!/usr/bin/env bash\nexit 1\n' > "$DIR/bot-token"
-out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get || true)"
-[ -z "$out" ] || { echo "FAIL: git-credential-bot printed a credential after a crashed mint"; FAIL=1; }
+out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get)"
+echo "$out" | grep -q '^username=x-access-token$' || { echo "FAIL: git-credential-bot omitted the sentinel username after a crashed mint"; FAIL=1; }
+echo "$out" | grep -q '^password=BOT-TOKEN-MINT-FAILED$' || { echo "FAIL: git-credential-bot omitted the sentinel password after a crashed mint"; FAIL=1; }
 printf '#!/usr/bin/env bash\nexit 0\n' > "$DIR/bot-token"
-out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get || true)"
-[ -z "$out" ] || { echo "FAIL: git-credential-bot printed a credential from an empty mint"; FAIL=1; }
+out="$(printf 'protocol=https\nhost=github.com\n\n' | "$DIR/git-credential-bot" get)"
+echo "$out" | grep -q '^password=BOT-TOKEN-MINT-FAILED$' || { echo "FAIL: git-credential-bot omitted the sentinel after an empty mint"; FAIL=1; }
+
+# A complete sentinel must stop git before an IDE-provided askpass helper can
+# supply personal credentials.
+ASKPASS_CANARY="$DIR/askpass-canary"
+ASKPASS_CALLED="$DIR/askpass-called"
+printf '#!/usr/bin/env bash\ntouch "$ASKPASS_CALLED"\necho personal-secret\n' > "$ASKPASS_CANARY"
+chmod +x "$ASKPASS_CANARY"
+export ASKPASS_CALLED
+out="$(printf 'protocol=https\nhost=github.com\n\n' | GIT_ASKPASS="$ASKPASS_CANARY" GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c "credential.helper=!$DIR/git-credential-bot" credential fill)"
+echo "$out" | grep -q '^password=BOT-TOKEN-MINT-FAILED$' || { echo "FAIL: git credential fill did not accept the sentinel"; FAIL=1; }
+[ ! -e "$ASKPASS_CALLED" ] || { echo "FAIL: git invoked askpass after receiving the sentinel"; FAIL=1; }
+unset ASKPASS_CALLED
 printf '#!/usr/bin/env bash\necho ghs_stubtoken\n' > "$DIR/bot-token"
 
 # 9. bot-env personal verdict: explicit unsets, and never an exported GH_TOKEN.
@@ -130,6 +143,91 @@ echo "$out" | grep -q '^unset GH_TOKEN$' || { echo "FAIL: bot-env personal verdi
 echo "$out" | grep -q '^unset GIT_AUTHOR_NAME ' || { echo "FAIL: bot-env personal verdict did not unset the identity vars"; FAIL=1; }
 echo "$out" | grep -q 'export GH_TOKEN' && { echo "FAIL: bot-env personal verdict exported GH_TOKEN"; FAIL=1; }
 rm -rf "$REPO"
+
+# 10. bot-env classifies only raw local url/pushurl values, before insteadOf.
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:acme/scratch.git
+git -C "$REPO" config url.ssh://git@mirror.invalid/acme/.insteadOf git@github.com:acme/
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: rewritten raw org remote did not get the bot verdict"; FAIL=1; }
+rm -rf "$REPO"
+
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@mirror.invalid:notacme/scratch.git
+git -C "$REPO" config url.git@github.com:acme/.insteadOf git@mirror.invalid:notacme/
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -q '^unset GH_TOKEN$' || { echo "FAIL: rewritten raw non-org remote did not get the personal verdict"; FAIL=1; }
+rm -rf "$REPO"
+
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:notacme/scratch.git
+git -C "$REPO" remote set-url --add --push origin SSH://git@GITHUB.COM/ACME/scratch.git
+git -C "$REPO" remote set-url --add --push origin SSH://git@GITHUB.COM/ACME/scratch.git
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: mixed-case raw org pushurl did not get the bot verdict"; FAIL=1; }
+echo "$out" | grep -q '^export GIT_CONFIG_COUNT=5$' || { echo "FAIL: duplicate raw pushurls emitted duplicate rewrite pairs"; FAIL=1; }
+[ "$(echo "$out" | grep -c "GIT_CONFIG_VALUE_4='SSH://git@GITHUB.COM/ACME/'")" -eq 1 ] || { echo "FAIL: mixed-case raw pushurl rewrite was missing or duplicated"; FAIL=1; }
+rm -rf "$REPO"
+
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+out="$(cd "$REPO" && "$DIR/bot-env" 2>/dev/null)"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: missing raw remotes did not fail toward the bot verdict"; FAIL=1; }
+rm -rf "$REPO"
+
+# Force only the raw-config query to fail while leaving the work-tree probe
+# intact; an undetermined affiliation must resolve toward the bot.
+mkdir -p "$DIR/git-fail-bin"
+REAL_GIT="$(command -v git)"
+sed "s|REAL_GIT_REPLACE|$REAL_GIT|" > "$DIR/git-fail-bin/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == config && "${2:-}" == --local ]]; then
+  exit 2
+fi
+exec REAL_GIT_REPLACE "$@"
+EOF
+chmod +x "$DIR/git-fail-bin/git"
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:notacme/scratch.git
+out="$(cd "$REPO" && PATH="$DIR/git-fail-bin:$PATH" "$DIR/bot-env" 2>/dev/null)"
+echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: failed raw-remote query did not resolve toward bot"; FAIL=1; }
+rm -rf "$REPO"
+
+# 11. codex-bot validates its real CLI and profile before forcing profile bot.
+mkdir -p "$DIR/codex-home" "$DIR/other-codex-home"
+: > "$DIR/codex-home/bot.config.toml"
+: > "$DIR/other-codex-home/bot.config.toml"
+printf '#!/usr/bin/env bash\nprintf "CODEX_HOME=%%s args=" "$CODEX_HOME"\nprintf "<%%s>" "$@"\nprintf "\\n"\n' > "$DIR/real/codex"
+chmod +x "$DIR/real/codex"
+sed "s|^REAL_CODEX=.*|REAL_CODEX=\"$DIR/real/codex\"|" "$SRC/codex/codex-bot" > "$DIR/codex-bot"
+chmod +x "$DIR/codex-bot"
+out="$(CODEX_HOME="$DIR/codex-home" "$DIR/codex-bot" exec hello)"
+echo "$out" | grep -qF 'args=<--profile><bot><exec><hello>' || { echo "FAIL: codex-bot did not prepend the bot profile"; FAIL=1; }
+out="$(CODEX_HOME="$DIR/other-codex-home" "$DIR/codex-bot" --version)"
+echo "$out" | grep -qF "CODEX_HOME=$DIR/other-codex-home" || { echo "FAIL: codex-bot did not preserve custom CODEX_HOME"; FAIL=1; }
+if CODEX_HOME="$DIR/missing-home" "$DIR/codex-bot" exec true >/dev/null 2>&1; then
+  echo "FAIL: codex-bot accepted a missing bot profile"; FAIL=1
+fi
+for args in '-p other' '-pother' '--profile other' '--profile=other'; do
+  if CODEX_HOME="$DIR/codex-home" "$DIR/codex-bot" $args >/dev/null 2>&1; then
+    echo "FAIL: codex-bot accepted profile override [$args]"; FAIL=1
+  fi
+done
+sed 's|^REAL_CODEX=.*|REAL_CODEX="codex"|' "$SRC/codex/codex-bot" > "$DIR/codex-relative"
+chmod +x "$DIR/codex-relative"
+if CODEX_HOME="$DIR/codex-home" "$DIR/codex-relative" >/dev/null 2>&1; then
+  echo "FAIL: codex-bot accepted a relative REAL_CODEX"; FAIL=1
+fi
+sed "s|^REAL_CODEX=.*|REAL_CODEX=\"$DIR/real/not-executable\"|" "$SRC/codex/codex-bot" > "$DIR/codex-nonexec"
+: > "$DIR/real/not-executable"
+chmod +x "$DIR/codex-nonexec"
+if CODEX_HOME="$DIR/codex-home" "$DIR/codex-nonexec" >/dev/null 2>&1; then
+  echo "FAIL: codex-bot accepted a non-executable REAL_CODEX"; FAIL=1
+fi
 
 [ "$FAIL" -eq 0 ] && echo "selflocate-test: PASS"
 exit "$FAIL"
