@@ -178,6 +178,38 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 
 **Expected baseline failures:** prompt redefines tool argument shapes inline, encodes required behavior (side effects or error handling) in prose so a schema-only client would call wrong, uses non-native argument keys (`type`/`items`/`default`) or top-level convention fields, no declared prerequisites, no completion, treats the prompt as required rather than optional.
 
+## Scenario 7: Triggering (activation test)
+
+Unlike Scenarios 1–6, this scenario tests whether the skill's `description` fires at all, so baseline/treatment does not apply — loading the skill is the dependent variable.
+
+**Method.**
+
+1. Present the skill alongside a realistic catalog of sibling skills, in randomized order, with the prompt blind to the expected answer.
+2. Prefer the host's real selector and verify an observable skill-load/read event before task execution.
+   Where the harness exposes no such signal, fall back to a labeled description-classifier proxy: ask a dispatcher "which of these skills, if any, applies?" — recorded as a **proxy**, not proof the host loads the skill.
+3. Run each case several times with a pinned model/runtime and report a **trigger rate**, not a single pass/fail.
+
+**Cases — close-boundary minimal pairs (grounded in `SKILL.md:56–69`):**
+
+| # | Prompt (abbreviated) | Expected |
+| --- | --- | --- |
+| T1 | "Design the MCP server contract for our billing API so agents can call it." | fire |
+| T2 | "Review the internal Python of our MCP server for dead code and style." | quiet (non-agent-facing internals, `SKILL.md:64`) |
+| T3 | "Harden the input schemas on our `deploy` and `rollback` MCP tools — agents keep passing ambiguous args." | fire |
+| T4 | "Add one optional `note` field to a tool on our already agent-friendly MCP server." | quiet (trivial addition, `SKILL.md:66`) |
+| T5 | "Design the recovery + progress contract for a 5-minute MCP render task." | fire |
+| T6 | "Design the operator dashboard that shows our MCP server's request volume." | quiet (operator dashboard, `SKILL.md:67`) |
+| T7 | "Write the client code that calls the `incidents://active` resource on someone else's MCP server." | quiet (consuming, not designing) |
+| T8 | "Our agents keep picking the wrong tool out of the 60 we expose — help." | fire (symptom, no literal "MCP server") |
+
+**Assertions:**
+
+- [ ] **(Scored — trigger recall.)** T1, T3, T5, T8 fire at a high rate; report the rate per case.
+- [ ] **(Scored — trigger precision.)** T2, T4, T6, T7 stay quiet at a high rate; a fire on any of these is a precision finding against the `description`, not against the agent.
+- [ ] **(Recorded.)** Whether the run used the host's real selector or the labeled classifier proxy, and the model/runtime and trial count.
+
+**Expected description weaknesses (findings against the skill if seen):** T8 (symptom without "MCP server") fails to fire — the description leans on the literal term; T2 or T7 fire — the description over-matches on the keyword "MCP" regardless of design-vs-consume or agent-facing-vs-internal.
+
 ## Results
 
 | Date | Scenario | Run | Assertions passed | Notes |
