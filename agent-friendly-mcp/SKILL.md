@@ -45,7 +45,7 @@ Keep them — but never let them masquerade as protocol.
   Implementation: `name`, `title`, `version`, `description`, `icons`, `websiteUrl`.
 - Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
 - Label every convention extension as such where it appears, so a reader can tell protocol from house style.
-- The examples in this skill keep some conventions inline at the top level for readability; production servers SHOULD namespace convention metadata under `_meta`. See `examples.md` §3/§4 for the worked `_meta` pattern.
+- The primary example blocks in this skill are wire-valid: convention metadata rides under a namespaced `_meta` key, never as a top-level field on a native record. See `examples.md` §1/§3/§4/§5 for the worked `_meta` pattern; the few deliberately abbreviated blocks (e.g. §10) carry an explicit non-wire label.
 - For the exact native request/response envelopes, field names, and casing of the methods most often confused with house conventions — list pagination, completion, the `tools/call` result, and the task lifecycle — see [native-wire-shapes.md](references/native-wire-shapes.md).
 
 ## When To Use
