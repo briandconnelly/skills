@@ -64,6 +64,9 @@ Mark each probe with the checklist section and threat class it targets.
 - **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds).
   A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in the solo profile once reviews are >= 1 and is not a finding; an empty list is expected in the solo interim (reviews 0) and in small-team and org/high-risk repos (a second human reviewer unblocks merges without a bypass).
   Flag any `bypass_mode: exempt` entry regardless of actor — exempt (added September 2025) skips the rules silently and writes no bypass audit entry.
+  Run this probe with a personal identity holding repo admin — confirm `gh api repos/{owner}/{repo} --jq .permissions.admin` returns `true` before reading any ruleset.
+  A GitHub App installation token, or a personal token without admin, gets `bypass_actors` silently withheld: the read succeeds and `--jq '.bypass_actors'` prints `null`, so a wrong-identity audit records "no bypass actors" while blind to exactly this item.
+  Record an omitted or `null` `bypass_actors` field as `not-checked`, never as clean, and before recording a clean result run a positive control — prove the reading identity can see a bypass actor on a ruleset known to have one (the agent-bot-identity skill's Phase 6 documents this failure mode).
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
 

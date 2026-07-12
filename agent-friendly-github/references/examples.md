@@ -511,7 +511,13 @@ Local commits still need GPG, SSH, or S/MIME signing when the ruleset requires s
 
 ```sh
 # 1. Create the App at the org level (GitHub UI or gh api).
-#    Set permissions: contents=write, pull_requests=write, issues=write.
+#    Set permissions: contents=write, pull_requests=write, issues=write,
+#    checks=read, actions=read. Both reads are needed for `gh pr checks`:
+#    the status rollup traverses each check suite's workflow run, and an App
+#    token lacking actions:read fails with "Resource not accessible by integration".
+#    Never grant workflows=write — its absence is itself a server-side control,
+#    because GitHub rejects App-token pushes that add or modify files in the
+#    .github/workflows/ directory.
 #    Record the App ID and generate a private key.
 
 # 2. Install the App on the target repository and note the installation ID.
@@ -519,7 +525,7 @@ gh api orgs/{org}/installations \
   --jq '.installations[] | {app_slug, app_id, installation_id: .id, repository_selection}'
 
 # 3. Generate a short-lived installation token (expires in 1 hour).
-#    In CI, use an action like tibdex/github-app-token to do this automatically.
+#    In CI, use actions/create-github-app-token to do this automatically.
 #    Illustrative manual call (requires a signed JWT — use gh-app-token or similar):
 # gh api app/installations/{installation_id}/access_tokens \
 #   --method POST \
@@ -547,9 +553,11 @@ gh api orgs/{org}/installations \
 | Open / update PRs | `pull_requests: write` |
 | Create / update issues | `issues: write` |
 | Read check runs | `checks: read` |
+| Read PR check status (`gh pr checks`) | `checks: read` + `actions: read` |
 | Trigger workflow dispatch | `actions: write` (add only if needed) |
 
 Keep `actions: write` out of the default token; grant it only in the specific job that needs it.
+These are GitHub App repository permissions — a separate namespace from the workflow `GITHUB_TOKEN` `permissions:` blocks elsewhere in this file; granting one never grants the other.
 
 ## Always-Running Monorepo Gate Check
 
