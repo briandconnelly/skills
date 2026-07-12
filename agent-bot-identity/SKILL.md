@@ -203,7 +203,7 @@ For every repo the App is installed on, walk that skill's checklist §2; the ite
 - No `required_signatures` rule, or a dedicated bot signing key is provisioned first — `gpgsign false` plus an App-token push means every bot commit is unsigned, and a `required_signatures` ruleset rejects the push outright.
 
 Run the audit from a personal terminal, never through the bot token — not because the bot token fails loudly, but because it does not fail at all.
-An installation-token ruleset read silently redacts `bypass_actors` to `null` rather than returning 403, so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
+An installation-token ruleset read succeeds with `bypass_actors` silently withheld — `--jq '.bypass_actors'` prints `null` instead of the request failing with 403 — so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
 A bot-token audit is therefore not merely incomplete; it is affirmatively misleading.
 Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
 `gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without admin access to the repo also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
@@ -254,7 +254,7 @@ Not enforced — the part everyone overstates:
 | Letting the agent decide when to use `as-me` | Explicit user direction only; subagents and scheduled runs then stay bot-attributed by construction |
 | Extending `as-me` to pushes and PRs with personal credentials | Reintroduces the approval-laundering surface; the escape is commit authorship only — auth stays the bot token |
 | Expecting `as-me` commits to be signed or Verified | `gpgsign false` stays in effect and App-token pushes are never auto-verified; amend from a personal terminal if a signature is required |
-| Auditing Phase 6 rulesets with the bot token | The installation token returns `bypass_actors: null` rather than 403 — the audit reports "no bypass actors" and looks clean while blind; read rulesets with a personal identity holding repo admin and run the Phase 6 positive control |
+| Auditing Phase 6 rulesets with the bot token | A bot-token ruleset read succeeds with `bypass_actors` withheld (`--jq` prints `null`) rather than failing with 403 — the audit reports "no bypass actors" and looks clean while blind; read rulesets with a personal identity holding repo admin and run the Phase 6 positive control |
 | Assuming the installation list bounds everything the bot can write | It bounds git/content access and all private-repo access; issue creation on any public repo with Issues enabled is open to any authenticated actor, App tokens included |
 
 Harness-mechanism-specific pitfalls (PATH-shim snapshots, `settings.local.json` static env, the per-command guard, `CwdChanged` plumbing) live with each adapter — see the adapter doc.
