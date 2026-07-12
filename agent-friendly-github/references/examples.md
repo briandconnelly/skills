@@ -516,8 +516,8 @@ Local commits still need GPG, SSH, or S/MIME signing when the ruleset requires s
 #    the status rollup traverses each check suite's workflow run, and an App
 #    token lacking actions:read fails with "Resource not accessible by integration".
 #    Never grant workflows=write — its absence is itself a server-side control,
-#    because GitHub rejects App-token pushes that add or modify files under
-#    .github/workflows/.
+#    because GitHub rejects App-token pushes that add or modify files in the
+#    .github/workflows/ directory.
 #    Record the App ID and generate a private key.
 
 # 2. Install the App on the target repository and note the installation ID.
