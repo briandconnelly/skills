@@ -14,7 +14,7 @@ Attribution is per unit of work: autonomous agent work carries the bot identity,
 The isolation mechanism is local routing that injects the bot's credentials only into the agent's sessions where the bot belongs — either per-project opt-in or automatic org-gated routing, depending on the harness adapter (Phase 4) — without editing any shell dotfiles.
 
 Core principle: **this buys attribution, not containment.**
-The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list — which bounds git/content access and private repos, not everything (see What This Enforces) — and the server-side rulesets of the repos it touches.
+The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list — which bounds git/content access and all access to private repos, not everything (see What This Enforces) — and the server-side rulesets of the repos it touches.
 Never present this setup as a sandbox.
 
 ## When to Use
@@ -202,7 +202,8 @@ For every repo the App is installed on, walk that skill's checklist §2; the ite
 - Bypass-actors list contains no automation identity — including this App and any other bot App already installed (verify; never assume an existing bot's posture is clean).
 - No `required_signatures` rule, or a dedicated bot signing key is provisioned first — `gpgsign false` plus an App-token push means every bot commit is unsigned, and a `required_signatures` ruleset rejects the push outright.
 
-Run the audit from a personal terminal, never through the bot token — not because the bot token fails loudly, but because it does not fail at all: an installation-token ruleset read silently redacts `bypass_actors` to `null` rather than returning 403, so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
+Run the audit from a personal terminal, never through the bot token — not because the bot token fails loudly, but because it does not fail at all.
+An installation-token ruleset read silently redacts `bypass_actors` to `null` rather than returning 403, so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
 A bot-token audit is therefore not merely incomplete; it is affirmatively misleading.
 Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
 `gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without write access to the ruleset also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
@@ -215,7 +216,7 @@ File gaps with the repo's admins rather than working around them.
 Enforced, server-side:
 
 - The installation token carries only the granted scopes and expires in one hour; the installation list bounds git/content access and **all** access to private repos.
-  It does not bound issue creation on public repos: any authenticated actor — an App installation token included — can open an issue on any public repo with Issues enabled, no permission grant required, so a misdirected agent can post far outside the enrolled set, attributed to the operator's App.
+  It does not bound issue creation on public repos: any authenticated actor — an App installation token included — can open an issue on any public repo with Issues enabled, even one the App is not installed on, so a misdirected agent can post far outside the enrolled set, attributed to the operator's App.
   That is a reputational and spam surface rather than a code-integrity one, but treat the enrolled set as the bot's *git* reach, not its *write* reach.
 - No Workflows permission means GitHub rejects bot pushes that add or modify files under `.github/workflows/`; CI logic living elsewhere — scripts the workflows invoke, composite actions, Makefiles — is still reachable with Contents write, which is part of why the human review gate matters.
 - Supported GitHub-side events such as `pull_request.create` and `pull_request_review.submit` record actors and can support the approval-laundering detection pattern; local commits, most reads, and every local action are not automatically organization audit-log events.
