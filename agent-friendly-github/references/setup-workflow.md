@@ -31,6 +31,7 @@ The profile determines which controls below are required versus N/A — most imp
 Provision a distinct, attributable identity for every agent that will work this repository.
 Preference order: GitHub App (fine-grained permissions, short-lived tokens, clear audit trail) > fine-grained PAT (narrowly scoped, short expiry) > shared user account (avoid for automated work).
 Never create or rely on classic broad PATs (closes T9).
+If a local coding agent on a developer machine will use this App, the agent-bot-identity skill is the local-machine implementation of this step — App registration, token minting, credential routing, and verification; harness adapters vary in maturity (check its support matrix), so follow it for the local side where supported, then return here for Step 2.
 
 For a GitHub App, create it at the org level (or under the personal account that owns a user-owned repository) and generate an installation token scoped to the target repository:
 
