@@ -136,8 +136,9 @@ def _extract_envelope(error: dict, degraded: bool) -> tuple[object, list[Issue]]
         ]
 
     # disclosed degraded mode: envelope rides as JSON text in content[0].text
-    content = error.get("content") or []
-    text = content[0].get("text") if content and isinstance(content[0], dict) else None
+    content = error.get("content")
+    first = content[0] if isinstance(content, list) and content else None
+    text = first.get("text") if isinstance(first, dict) else None
     if text is None:
         return None, [
             Issue(
