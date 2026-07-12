@@ -1,0 +1,27 @@
+# Repo-wide lint/format gate for all Python bundled with skills.
+# Skills get vendored into repos whose lint gates run repo-wide, so the
+# bundled Python must stay clean under common strictness (issue #62).
+# Settings match or exceed the strictest known downstream consumer
+# (briandconnelly/codex-in-claude: line-length 100, E/F/W/I/B/UP/SIM/PIE/
+# RUF/PL/PT/TID/TC/ARG/PTH).
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = [
+  "E",   # pycodestyle errors (incl. E501 line length)
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "SIM", # flake8-simplify
+  "PIE", # flake8-pie
+  "RUF", # ruff-specific
+  "PL",  # pylint
+  "PT",  # flake8-pytest-style
+  "TID", # flake8-tidy-imports
+  "TC",  # flake8-type-checking
+  "ARG", # flake8-unused-arguments
+  "PTH", # flake8-use-pathlib
+]
