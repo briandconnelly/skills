@@ -1,6 +1,8 @@
 """Tests for validate_fixture.validate — run with:
-uv run --with pytest --with jsonschema pytest agent-friendly-mcp/tests/test_validate_fixture.py -v
+uv run --with pytest --with jsonschema pytest \
+    agent-friendly-mcp/tests/test_validate_fixture.py -v
 """
+
 from __future__ import annotations
 
 import copy
@@ -9,7 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from validate_fixture import validate  # noqa: E402
+from validate_fixture import validate
 
 FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures" / "github_issues.json").read_text(encoding="utf-8")
@@ -60,7 +62,8 @@ def test_disclosed_degraded_text_carrier_is_accepted():
 def test_non_dict_fixture_root_fails_closed():
     for bad_root in ([], "not-an-object", 42):
         issues = validate(bad_root)
-        assert issues and any("root must be a JSON object" in i.message for i in issues)
+        assert issues
+        assert any("root must be a JSON object" in i.message for i in issues)
 
 
 def test_success_result_requires_content_fallback():
@@ -101,7 +104,9 @@ def test_permanent_error_must_have_null_retry_after_ms():
     env["temporary"] = False
     env["retry_after_ms"] = 100  # schema permits it; the §6 invariant must reject it
     issues = validate(bad)
-    assert any("§6" in i.where and "must be null when temporary is false" in i.message for i in issues)
+    assert any(
+        "§6" in i.where and "must be null when temporary is false" in i.message for i in issues
+    )
 
 
 def test_negative_retry_after_ms_rejected():
