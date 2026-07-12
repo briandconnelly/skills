@@ -13,7 +13,7 @@ Run: baseline without the skill.
 
 Total: 1/5.
 
-## Scored Artifact
+## Scored Output
 
 - **Context misplaced as a rule:** “The retention service was introduced during the 2024 storage migration” is historical background.
   Move it to a `## Context` section.

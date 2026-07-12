@@ -14,7 +14,7 @@ Run: baseline without the skill.
 
 Total: 3/6.
 
-## Scored Artifact
+## Scored Output
 
 The document mostly separates context from constraints correctly:
 

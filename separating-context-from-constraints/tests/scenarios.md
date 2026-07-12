@@ -4,14 +4,16 @@ Behavioral test scenarios for this skill, following the baseline/with-skill meth
 A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
 An assertion the with-skill run misses is a finding against the skill, not against the agent.
 Give each agent only the scenario prompt and any skill access required for treatment; do not reveal the assertions, expected failures, prior outputs, or review conclusions.
-Store each scored transcript in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md` or `tests/runs/YYYY-MM-DD-scenarioN-with-skill.md` with an assertion table, evidence pointers, and total.
+Store each scored output in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md` or `tests/runs/YYYY-MM-DD-scenarioN-with-skill.md` with an assertion table, evidence pointers, and total.
+Artifact reports are scored outputs, not raw agent transcripts.
+Scenarios 2 and 3 informed the initial R5 and rewrite-contract iterations, so their recorded treatments are fitted checks rather than held-out evaluations.
 
 ## How to run
 
 1. **Baseline:** dispatch a subagent with only the scenario prompt below.
    Record which assertions its output satisfies.
 2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt.
-3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the transcript.
+3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the scored output.
    Record results in the table at the bottom.
 4. **Trigger:** run trigger-discrimination scenarios with the stated skill catalog but without naming the expected selection in the user request.
    Store the result in `tests/runs/YYYY-MM-DD-scenarioN-trigger.md`.

@@ -13,7 +13,7 @@ Run: baseline without the skill.
 
 Total: 0/5.
 
-## Scored Artifact
+## Scored Output
 
 The document mostly separates applicability from behavioral constraints, but the `Rules` section conflates different constraint strengths.
 

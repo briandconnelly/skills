@@ -12,7 +12,7 @@ Run: treatment with the skill.
 
 Total: 4/4.
 
-## Scored Artifact
+## Scored Output
 
 ## Summary
 

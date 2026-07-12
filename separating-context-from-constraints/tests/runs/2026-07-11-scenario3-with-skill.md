@@ -18,7 +18,7 @@ Total: 5/5.
 The first treatment substituted a binding default for the required demoted nonbinding alternative.
 The rewrite contract was tightened so a defeasible default cannot replace the promoted-versus-demoted pair.
 
-## Scored Artifact
+## Scored Output
 
 ## Findings
 

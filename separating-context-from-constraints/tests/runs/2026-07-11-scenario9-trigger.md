@@ -11,6 +11,6 @@ Run: trigger discrimination.
 
 Total: 3/3.
 
-## Scored Artifact
+## Scored Output
 
 `separating-context-from-constraints` — it audits agent instructions for buried and ambiguous binding rules, including mandatory commands weakened by phrases like “generally” and “try to.”

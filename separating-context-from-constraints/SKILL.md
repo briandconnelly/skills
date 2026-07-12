@@ -34,8 +34,8 @@ Each rule below has an id and is checkable by an auditing agent.
 
 - **R1 Distinguishability.**
   Make every binding rule structurally distinguishable from context.
-  Treat a document as long-form when it uses sections or distributes rules across multiple paragraphs, and place its rules in a dedicated labeled section.
-  Treat a single flat tool, resource, or prompt description as compact, and mark its rules inline with imperative sentences, list items, or explicit mandatory wording.
+  Treat a document with labeled sections or rules distributed across multiple paragraphs as long-form, and place its rules in a dedicated labeled section.
+  Treat a single flat description without sections as compact, and mark its rules inline with imperative sentences, list items, or explicit mandatory wording.
   Keep rule sections free of discretionary context and load-bearing facts; place those statements in context, semantics, or similarly informative sections.
   A "rule" that cannot fail is context in disguise and belongs elsewhere.
   One finding per misplaced statement, even when both directions of the defect are present.
@@ -54,10 +54,8 @@ Each rule below has an id and is checkable by an auditing agent.
   Condition–action–exception clauses sharing one trigger may stay together as a single unit.
 - **R5 Reachable precedence.**
   Where two rules in the document can actually conflict on a realistic input, precedence is explicit.
-  Require both rules to prescribe incompatible outcomes for the same decision; shared words or adjacent schema fields alone do not create a conflict.
-  A restriction on one parameter category, such as accepting a channel id rather than a channel name, does not prohibit unrelated parameters unless the text says it is the only accepted input.
-  Interpret a contrast such as "Accepts only a channel_id, never a channel name" as restricting the representation of the channel locator, not as banning unrelated fields in the same input object.
-  Treat the whole input object as restricted only when the text says "only input," "only argument," "only property," or an equivalent whole-object phrase.
+  Two rules conflict only when they prescribe incompatible outcomes for the same decision; shared words or adjacent fields alone do not create a conflict.
+  A restriction on the representation of one field does not restrict unrelated fields unless the document explicitly restricts the whole input object.
   When the document does not determine which rule wins, present every plausible precedence choice and mark the choice as an author decision.
   Speculative pairwise precedence for unreachable conflicts is not required and is not a finding.
 
@@ -96,6 +94,7 @@ An R5 finding attaches to the conflicting pair of statements, not to either stat
 ## Summary Format
 
 Report counts per rule and per severity, followed by a one-paragraph overall assessment.
+Report safety notes separately and exclude them from counts.
 Do not include a numeric score.
 
 ## Non-Goals

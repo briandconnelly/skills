@@ -16,7 +16,7 @@ Total: 3/3.
 Two earlier treatment runs misread “Accepts only a channel_id, never a channel name” as banning the unrelated `confirmed` field.
 R5 was tightened to require incompatible outcomes at the same semantic scope and to treat contrastive locator wording as a representation restriction rather than a whole-object restriction.
 
-## Scored Artifact
+## Scored Output
 
 ## Findings
 

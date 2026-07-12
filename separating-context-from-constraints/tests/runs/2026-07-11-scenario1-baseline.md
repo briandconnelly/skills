@@ -13,7 +13,7 @@ Run: baseline without the skill.
 
 Total: 0/5.
 
-## Scored Artifact
+## Scored Output
 
 ## Audit
 

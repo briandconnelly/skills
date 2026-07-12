@@ -12,7 +12,7 @@ Run: baseline without the skill.
 
 Total: 1/4.
 
-## Scored Artifact
+## Scored Output
 
 The rules conflict: “Always use the global endpoint” forbids the EU endpoint required by the next rule.
 The document also mixes a default behavior with an exception without defining precedence.
