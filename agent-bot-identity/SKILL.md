@@ -206,7 +206,7 @@ Run the audit from a personal terminal, never through the bot token — not beca
 An installation-token ruleset read silently redacts `bypass_actors` to `null` rather than returning 403, so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
 A bot-token audit is therefore not merely incomplete; it is affirmatively misleading.
 Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
-`gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without write access to the ruleset also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
+`gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without admin access to the repo also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
 Confirm `gh api repos/OWNER/REPO --jq .permissions.admin` returns `true` for each repo audited.
 Some checks (Actions settings, secret scanning) additionally need admin access.
 File gaps with the repo's admins rather than working around them.
