@@ -14,7 +14,7 @@ Attribution is per unit of work: autonomous agent work carries the bot identity,
 The isolation mechanism is local routing that injects the bot's credentials only into the agent's sessions where the bot belongs — either per-project opt-in or automatic org-gated routing, depending on the harness adapter (Phase 4) — without editing any shell dotfiles.
 
 Core principle: **this buys attribution, not containment.**
-The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list and the server-side rulesets of the repos it touches.
+The per-project scoping makes the well-behaved default path use the bot identity; the only hard boundaries are the App's installation list — which bounds git/content access and private repos, not everything (see What This Enforces) — and the server-side rulesets of the repos it touches.
 Never present this setup as a sandbox.
 
 ## When to Use
@@ -35,7 +35,7 @@ Never present this setup as a sandbox.
 | Layer | Mechanism | What it buys |
 | --- | --- | --- |
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
-| Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled repos, even if config leaks |
+| Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled **private** repos or push to any non-enrolled repo, even if config leaks; public-repo surfaces open to any actor (e.g. filing issues) stay open |
 | Local routing | harness adapter — see Phase 4 | Bot identity activates only where the adapter routes it — per-project opt-in or org-gated automatic; no shell dotfiles change |
 | git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | harness adapter — see Phase 4 | `gh` calls use the installation token, minted fresh per session/command rather than the personal login |
@@ -202,15 +202,21 @@ For every repo the App is installed on, walk that skill's checklist §2; the ite
 - Bypass-actors list contains no automation identity — including this App and any other bot App already installed (verify; never assume an existing bot's posture is clean).
 - No `required_signatures` rule, or a dedicated bot signing key is provisioned first — `gpgsign false` plus an App-token push means every bot commit is unsigned, and a `required_signatures` ruleset rejects the push outright.
 
-Run the audit from a personal terminal, never through the bot token.
-Some checks (Actions settings, secret scanning) need admin access.
+Run the audit from a personal terminal, never through the bot token — not because the bot token fails loudly, but because it does not fail at all: an installation-token ruleset read silently redacts `bypass_actors` to `null` rather than returning 403, so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
+A bot-token audit is therefore not merely incomplete; it is affirmatively misleading.
+Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
+`gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without write access to the ruleset also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
+Confirm `gh api repos/OWNER/REPO --jq .permissions.admin` returns `true` for each repo audited.
+Some checks (Actions settings, secret scanning) additionally need admin access.
 File gaps with the repo's admins rather than working around them.
 
 ## What This Enforces — and What It Does Not
 
 Enforced, server-side:
 
-- The installation token authenticates only to enrolled repos, only with the granted scopes, and expires in one hour; public repos stay world-readable regardless, so the boundary governs authenticated and write access.
+- The installation token carries only the granted scopes and expires in one hour; the installation list bounds git/content access and **all** access to private repos.
+  It does not bound issue creation on public repos: any authenticated actor — an App installation token included — can open an issue on any public repo with Issues enabled, no permission grant required, so a misdirected agent can post far outside the enrolled set, attributed to the operator's App.
+  That is a reputational and spam surface rather than a code-integrity one, but treat the enrolled set as the bot's *git* reach, not its *write* reach.
 - No Workflows permission means GitHub rejects bot pushes that add or modify files under `.github/workflows/`; CI logic living elsewhere — scripts the workflows invoke, composite actions, Makefiles — is still reachable with Contents write, which is part of why the human review gate matters.
 - Supported GitHub-side events such as `pull_request.create` and `pull_request_review.submit` record actors and can support the approval-laundering detection pattern; local commits, most reads, and every local action are not automatically organization audit-log events.
 - On GitHub Enterprise Cloud, [Git transport events](https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/audit-log-events-for-your-enterprise#git) (`git.clone`, `git.fetch`, and `git.push`) are available through the REST API, export, or audit-log streaming rather than the web interface, and GitHub retains them for [seven days](https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#using-the-audit-log-api).
@@ -247,6 +253,8 @@ Not enforced — the part everyone overstates:
 | Letting the agent decide when to use `as-me` | Explicit user direction only; subagents and scheduled runs then stay bot-attributed by construction |
 | Extending `as-me` to pushes and PRs with personal credentials | Reintroduces the approval-laundering surface; the escape is commit authorship only — auth stays the bot token |
 | Expecting `as-me` commits to be signed or Verified | `gpgsign false` stays in effect and App-token pushes are never auto-verified; amend from a personal terminal if a signature is required |
+| Auditing Phase 6 rulesets with the bot token | The installation token returns `bypass_actors: null` rather than 403 — the audit reports "no bypass actors" and looks clean while blind; read rulesets with a personal identity holding repo admin and run the Phase 6 positive control |
+| Assuming the installation list bounds everything the bot can write | It bounds git/content access and all private-repo access; issue creation on any public repo with Issues enabled is open to any authenticated actor, App tokens included |
 
 Harness-mechanism-specific pitfalls (PATH-shim snapshots, `settings.local.json` static env, the per-command guard, `CwdChanged` plumbing) live with each adapter — see the adapter doc.
 
