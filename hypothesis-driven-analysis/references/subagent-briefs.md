@@ -11,7 +11,8 @@ Degrade gracefully: a harness without subagents runs the same tests serially in 
 These bind every dispatched worker:
 
 - Workers are read-only except for their own scratch space.
-- Workers never change git branches or worktrees, and never mutate external systems.
+- Workers run no git commands at all — not `checkout` or `worktree`, and not the read-only ones either. `git show`, `git log`, and `git grep` reach content outside the slices a worker was briefed on, which is the whole point of briefing it on slices; and a worker that runs git in a shared checkout can disturb state the main agent is relying on.
+- Workers never mutate external systems.
 - Every brief carries an explicit budget (tool calls or queries); a worker that exhausts it reports what it has.
 - Workers receive data slices or pointers, never an instruction to go find whatever seems relevant.
 - Workers test; the main agent concludes.

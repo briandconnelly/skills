@@ -22,6 +22,10 @@ Keep measuring it — a future change that makes the skill cheaper, or a fixture
 Fixtures live in `tests/fixtures/`, regenerated deterministically by `uv run hypothesis-driven-analysis/tests/fixtures/generate.py`.
 Each fixture's ground truth is documented in the generator's per-scenario comments; verify a fixture still encodes its intended signal before trusting a run scored against it.
 
+Path convention: anything meant to be **run** is written repo-root-relative and assumes the repository root as the working directory, because an executable path with an unstated cwd is a bug waiting for a new runner.
+Descriptive pointers to fixture data are relative to this skill directory.
+Dispatched prompts resolve both to absolute paths, since a subagent inherits no cwd assumption of ours.
+
 ## How to run
 
 1. **Baseline:** dispatch a subagent with only the scenario prompt below.
@@ -187,7 +191,7 @@ Baseline/treatment comparison, not a trigger test: the prompt offers no skill ca
 **Prompt:**
 
 > Page load p95 regressed sharply on 2026-07-15 vs 2026-07-14. Find out why.
-> Evidence must be pulled from the metered warehouse CLI: `uv run tests/fixtures/s10-fanout/warehouse.py --dataset <name> --day <YYYY-MM-DD>`.
+> Evidence must be pulled from the metered warehouse CLI, run from the repository root: `uv run hypothesis-driven-analysis/tests/fixtures/s10-fanout/warehouse.py --dataset <name> --day <YYYY-MM-DD>`.
 > Datasets, each a separate system with no shared preprocessing: `cdn_edge`, `db_slowlog`, `client_rum`. Each query is metered and takes ~18 seconds.
 
 Fixture (`s10-fanout`): exists because `s1-conversion` can never satisfy the fan-out criterion — its tests share one groupby over one small local file.
