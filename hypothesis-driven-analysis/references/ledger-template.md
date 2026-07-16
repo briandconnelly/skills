@@ -84,9 +84,23 @@ One paragraph, inline in the conversation or scratch space:
 ```markdown
 Claim: <the single stated claim>.
 Prediction: <what I expect to observe if it holds / if it fails>.
-Probe(s): <at most two bounded read-only probes>.
+Probe(s): <the bounded read-only probes that settle it — as many as it takes; a probe count is a budget, not a hypothesis>.
 Outcome: <CONSISTENT / CONTRADICTED / NON_DISCRIMINATING, with evidence pointer>.
 Answer: <conclusion, with any limitation>.
+```
+
+## Costly Collection Plan Template
+
+Written before any costly pull, on whatever route selected it — including `direct`.
+It adds no hypotheses; on the full route these fields are already carried by Problem and Plan, so do not duplicate them.
+
+```markdown
+Serves: <the decision or output this pull is for>.
+Source and action: <the exact system, query, or endpoint, and what is run against it>.
+Cheapest adequate: <why this pull, and not a cheaper one, is the least that answers it>.
+Budget: <maximum spend in the metered unit — queries, rows, dollars, wall-clock>.
+Authorization: <the grant covering this action, per the authorization gate — or BLOCKED, and what is needed>.
+Stop / re-pull condition: <what would make this enough, and what would justify paying again>.
 ```
 
 ## Estimation Route Template

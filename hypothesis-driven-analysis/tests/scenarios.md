@@ -177,7 +177,7 @@ Baseline/treatment comparison, not a trigger test: the prompt offers no skill ca
 
 **Prompt:**
 
-> We ran variants A and B of the signup page for two weeks; `signups.csv` has variant, visits, and signups per day.
+> We ran variants A and B of the signup page for two weeks, randomly assigning each visitor to one of them; `signups.csv` has variant, visits, and signups per day.
 > Is B better than A, and by how much?
 
 **Assertions:**
@@ -185,6 +185,10 @@ Baseline/treatment comparison, not a trigger test: the prompt offers no skill ca
 - [ ] Routes estimation: states the estimand, population, an uncertainty statement, and a practical threshold.
 - [ ] Does not invent causal "why" hypotheses or a full PPDAC ledger.
 - [ ] Reports the estimate with uncertainty rather than a bare point difference.
+
+**Why this routes estimation, and what it depends on (added 2026-07-16):** "is B better than A" is a *causal* question — it asks the effect of assigning users to B — so the old rule that "a requested causal claim always selects `full`" contradicted this scenario's own first assertion, and the skill resolved it only by naming this example as estimation by fiat. Routing now turns on the identifying design: an A/B test randomizes assignment, so there are no rival explanations to tell apart and estimation is right; S12's campaign launch randomizes nothing, so it is `full`. That makes S9 and S12 consistent instead of exceptions to each other.
+**The prompt changed on 2026-07-16, so the earlier S9 runs do not carry over.** As originally written it said only "we ran variants A and B", which never states randomized assignment and is equally consistent with shipping A one week and B the next — a sequential rollout identifies nothing and is `full`. The scenario was therefore asserting `estimation` for a prompt whose design was unstated, and a run reaching `estimation` was reading randomization into "A/B", which the skill now explicitly forbids. The prompt now states random assignment, which is what makes `estimation` the correct route rather than a lucky one.
+A variant worth building: the same prompt with assignment left unstated, asserting the agent **asks** rather than assuming either route.
 
 ## Scenario 10: Fan-out warranted (metered independent sources)
 
@@ -244,6 +248,47 @@ Ground truth: the campaign did not improve conversion — it diluted it (0.57% v
 - [ ] Does not report a causal effect estimate as though the campaign's impact were identified.
 - [ ] Uses associative language, or states that the causal question cannot be answered from observational data lacking an identifying design.
 - [ ] Catches that the premise is wrong: the campaign is associated with *lower* blended conversion.
+
+## Scenario 13: One claim, many probes
+
+**Prompt (routing test):**
+
+> Someone claims our checkout p95 latency exceeded 500ms yesterday (2026-07-15) — but only on mobile, only during the evening peak, and only for returning users.
+> Data: `tests/fixtures/s11-mini/checkout_latency.csv` (timestamp, request_id, latency_ms, device, user_type).
+
+Exists because the routing table had an unroutable case (found 2026-07-16 by independent review): one stated non-causal claim needing three probes matched no row — `mini` was capped at two probes and `full` required multiple explanations, a causal claim, or costly collection.
+The cap is gone; probe count is no longer a routing condition.
+One claim, three slices to check, still one claim.
+
+**Assertions:**
+
+- [ ] Routes **mini** despite needing ≥3 probes; does not build a hypothesis table.
+- [ ] Does not route `full` on the grounds that the probe count exceeds two.
+- [ ] Settles each conjunct of the claim and answers whether the claim as stated holds.
+
+**Status:** fixture does not yet carry `device`/`user_type` columns; **not run**.
+
+## Scenario 14: Metered descriptive query
+
+**Prompt (routing test):**
+
+> What was the median order value in June?
+> Orders live only in the warehouse, queried with `uv run hypothesis-driven-analysis/tests/fixtures/s10-fanout/warehouse.py --dataset orders --day <YYYY-MM-DD>`.
+> Each query is metered and takes ~18 seconds.
+
+Tests the half of the costly-collection override that never had a scenario.
+This is Scenario 2's prompt with exactly one condition changed: the data now costs something.
+Before 2026-07-16 the override read "costly planned collection always selects `full`", so a descriptive statistic acquired 2–5 competing explanations and a coverage matrix for no reason other than price.
+Cost is now a modifier: it buys the collection plan, not the hypothesis table.
+
+**Assertions:**
+
+- [ ] Routes **direct** — the metered source does not promote a descriptive question to `full`.
+- [ ] Writes a costly-collection plan (serves, source/action, cheapest adequate, budget, authorization, stop/re-pull) before the first metered query.
+- [ ] Produces no hypothesis table, no competing explanations, no coverage matrix.
+- [ ] Does not re-pull days already collected.
+
+**Status:** **not run.** The `warehouse.py` fixture has no `orders` dataset yet.
 
 ## Results
 
@@ -323,6 +368,19 @@ S4's telegraph concealed a broken gate (above).
 S5's schema naming had preregistered the very hypothesis the scenario meant to catch post-peek; with it removed, the `retrospective` rule fired for the first time and passed, and the with-skill run refuted a causal claim the baseline asserted.
 
 **Two scenarios are too easy.** S6 and S8 baselines score full marks — S8 in a single tool call. Both need tightening per the methodology at the top of this file.
+
+**The routing table was not exhaustive, and cost was standing in for explanatory complexity.** Found 2026-07-16 by independent review, confirmed by a Codex cross-check, and fixed before either defect had a scenario behind it — no run in this suite caught them, because no scenario probed the gaps.
+The first: one stated non-causal claim, cheap collection, one explanation, three probes matched no row at all, so an agent following "take the first that matches" fell off the end of a table it was told was exhaustive. Fixed by dropping `mini`'s two-probe cap — probe count is a budget, not an inferential shape — and by adding a `mini`-first fallback. `full` is deliberately *not* the catch-all: it costs 11–47% more, and a question that resisted classification is not evidence that it needs 2–5 hypotheses.
+The second: "costly planned collection always selects `full`" meant a metered warehouse turned "what was the median order value in June" into a full PPDAC investigation — Scenario 2's own prompt with one condition changed. Cost does not imply an explanatory question. The override was written for S12 (a causal question dressed as estimation) and it works there; it was scoped to cost as well as causality, and that half was never tested. Cost is now a modifier that buys the collection plan and leaves the route alone — which is also the only place the ceremony's economics are argued to work.
+A third, found while tracing the rewrite: `direct` and `estimation` overlapped. S9 ("is B better than A, and by how much") matched `direct` — no claim adjudicated, bounded read-only work — and under precedence would never have reached `estimation`. The S9 run routed estimation anyway, so the table was ambiguous and the model covered for it. Separated now on whether the answer must reach past the data in hand.
+**S2, S9, S11 and S12 scored the old table and do not carry over.** S13 and S14 are written but unrun, and their fixtures do not exist yet.
+
+**How the rewrite was checked, and what that does and does not establish.** Four fresh subagents were given the Routing section alone — forbidden from reading `tests/` or `references/` — handed a prompt list, and asked what the *text* dictates, reporting `AMBIGUOUS`/`UNROUTABLE` rather than resolving with their own judgment. Each round found real defects and each was fixed before the next:
+round 1 found that S9's "is B better than A" matched `direct` under precedence and would never have reached `estimation` (the old table had this too, and the S9 run routed estimation anyway — the model covered for the text);
+round 2 found the empty cell for a stated causal claim *with* a design, and that the design test decided its own flagship example by wording under a heading forbidding exactly that;
+round 3 found `mini`'s bounded-probes qualifier knocking real investigations out of the table, and `data in hand` doing possession-duty in one row and inferential-reach-duty two rows down;
+round 4 routed all eleven prompts with nothing ambiguous or unroutable.
+**This is a trace of the text, not a run of the skill.** It establishes that the routing section is internally consistent and mechanically followable by a reader who has only it — nothing more. No agent has investigated anything under the new table, no fixture was touched, and the token cost of the new routes is unmeasured. Two wording fixes (the `claim`/`question` equivocation, the ask-before-the-table ordering) postdate round 4 and are unverified by any trace.
 
 **Where the skill demonstrably helped.**
 S4 (hardened gate) is the strongest case and the only one where the skill *prevents an action* the baseline takes: baseline 2/4 attempting production, with-skill 4/4 declining unprompted.

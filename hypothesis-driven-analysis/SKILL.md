@@ -8,29 +8,70 @@ description: 'Use when investigating an unresolved explanatory, diagnostic, or c
 Guide empirical investigations through PPDAC (Problem, Plan, Data, Analysis, Conclusion) and the scientific method.
 The framework buys accuracy and auditability: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits, and every rejected alternative leaves a record of why.
 Expect it to cost more tokens than an unstructured investigation, not fewer — measured at 11–47% more on small local datasets (`tests/scenarios.md`).
-The plan pays for itself only where collection is expensive enough that fishing expeditions and re-pulls dominate the bill: paid APIs, slow warehouse queries, large remote logs.
+It may pay for itself where collection is expensive enough that fishing expeditions and re-pulls dominate the bill — paid APIs, slow warehouse queries, large remote logs — but treat that as the claim it is: no run has measured it, and the fixtures that could are the ones nobody has built.
 That trade is why routing matters — spend the ceremony where a wrong answer or a wasted pull is costly, and take the direct route everywhere else.
 
 ## Routing
 
 Routes are precedence-ordered; take the first that matches.
 Safety gates take precedence over all routes.
-Two conditions override phrasing entirely: **a requested causal claim, or costly planned collection, always selects `full`**.
-A causal question does not escape the loop by being worded as "how much" or "which is better" — "how much did this change improve retention" is a causal claim carrying a number, not an estimation task.
+Route on the inferential shape of the answer being asked for — not on the question's phrasing, and not on what the data costs to collect.
 
 | Route | Observable condition | Ceremony |
 | --- | --- | --- |
-| **direct** | A question with no claim to adjudicate, answerable by bounded read-only work with no explanatory inference — computing a statistic counts | None; answer and stop |
-| **estimation** | Question asks "how much" or "which is better", no causal claim is requested, and collection is not costly | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
-| **mini** | One stated non-causal claim, testable with at most two bounded read-only probes | One-paragraph ledger: claim, prediction, probe, outcome |
-| **full** | Multiple live explanations, a causal claim is requested, or planned collection is costly | Full PPDAC loop with investigation ledger |
+| **direct** | No claim is being adjudicated, and the answer is a fact the records themselves settle — no explanatory or causal inference, no generalization past what they directly measure — computing a bounded statistic counts | None; answer and stop |
+| **estimation** | The answer is a magnitude or a comparison that generalizes past what the records directly measure, no prior claim is being adjudicated, and nothing causal is asked that the design does not already identify | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
+| **mini** | Exactly one stated claim is being adjudicated with no rival explanation competing for it — non-causal, or causal with an identifying design behind it | One-paragraph ledger: claim, prediction, probes, outcome |
+| **full** | A causal claim or question is requested that no identifying design settles, or two or more live explanations have to be told apart | Full PPDAC loop with investigation ledger |
 
-**direct** and **mini** are separated by whether someone has asserted something, not by how much arithmetic is involved.
-"What was the median order value in June" is a question: compute it, answer, stop.
-"Someone says p95 exceeded 500ms yesterday" is a claim with a truth value someone will act on, so it earns a prediction, a probe, and a recorded outcome — the same work, plus the thing that makes it checkable.
-Do not route by effort: needing a percentile instead of a key lookup does not turn a question into a claim.
+If nothing matches, this is probably not an investigation: answer it directly and stop.
+Summarization, retrieval, and one-off artifacts are Non-Goals, not routes — they have no record to fill, and `mini` is not a home for them.
+Leave that only when orientation surfaces something to adjudicate — a claim, a second live explanation, a causal question nothing identifies — and then re-enter the table above rather than guessing from here; record why you promoted.
+Do not fall through to `full` by default: the loop costs more than it saves on small questions, and a question you struggled to classify is not evidence that it needs 2–5 hypotheses.
 
-The direct route records nothing.
+### A causal question routes on its design, not its wording
+
+Ask what assigned the exposure, and route on what you are *told* assigned it — not on what the phrasing implies.
+Randomization stated, or assignment stated to be plausibly independent of the outcome, with a comparison group that would have moved the same way had the cause been absent: the effect is identified and no rival explanations need telling apart, so the work is **estimation** — or `mini`, if someone has already put a number on the table for you to check.
+"Is B better than A, and by how much" over an assignment you have been told was random is an estimation task, however causal it sounds — the design already did the discriminating that the loop would otherwise have to do.
+Assigned by anything else — someone launched it, it shipped to whoever got it, it happened in a week when other things also happened: nothing identifies the effect, every co-occurring change is a live rival, and that is **full**.
+"How much did launching the campaign improve conversion" is the second case wearing the first one's clothes: a causal question carrying a number, with no design behind it.
+The loop's job there is not to produce the number — it is to establish that the number is not available from this data, and to report what is.
+
+**Unstated assignment is the common case, and it is not an invitation to assume.**
+"We ran variants A and B" does not say users were randomized; it is equally consistent with shipping A one week and B the next, which identifies nothing.
+An unstated mechanism is not a route — it is a question, and it comes before the table, not after it.
+Ask; one question is cheaper than either wrong route.
+When you cannot ask, assume nothing identifies the effect, take `full`, and name the assumption: a loop that concludes "not identifiable from this data" is recoverable, and a manufactured causal number is not.
+
+Two questions separate the three cheap routes, and neither is about effort.
+
+*Has someone asserted something?*
+"What was the median order value in June" has not — compute it, answer, stop.
+"Someone says p95 exceeded 500ms yesterday" has: a truth value someone will act on, so it earns a prediction, a probe, and a recorded outcome — the same work, plus the thing that makes it checkable.
+
+*Does the answer have to reach past what the records measure?*
+The median of June's orders is a fact those orders settle — whether they sit in a local file or behind a metered query, since where the data lives is a cost, not an inference.
+Whether B beats A is a claim about a population those two weeks only sample, so it needs an estimand, an uncertainty statement, and a threshold — the same arithmetic, aimed somewhere the records do not reach on their own.
+
+Neither question is about how hard the work is.
+Needing a percentile instead of a key lookup does not turn a question into a claim, and a claim that takes four probes to settle is still one claim — a probe budget is not a second hypothesis.
+
+### Costly collection is a modifier, not a route
+
+Collection is costly when the user, the tool, or the configuration states a cost — a price, a quota, a rate limit, a latency, a size — when you observe the cost directly, or when the pull exceeds a budget they set.
+What triggers this is a cost someone stated or you measured, not one you suspect; a guess is not an observable condition, and the first slow query is.
+If you have a number and cannot tell whether it is big enough to matter, treat it as costly: the plan is six lines and the pull is not.
+Cost does not select the route, because cost says nothing about whether there is anything to explain.
+A metered warehouse does not turn "what was the median order value in June" into a question with competing explanations; it is the same descriptive answer, bought at a worse price.
+
+What costly collection buys is the plan, not the hypothesis table.
+It binds any costly pull you make, on every route and on work that took no route at all — a metered dump you are only reformatting is still metered.
+Before collecting, write down: the decision or output the pull serves, the exact source and action, why this is the cheapest adequate collection, a budget in the relevant unit, the authorization covering it (or `BLOCKED`), and the condition under which you stop or re-pull.
+That record is the thing the expense is meant to buy: the fishing expedition you do not pay for twice.
+It is worth writing whether the answer is one median or five rival explanations.
+
+The direct route records nothing, unless collection is costly, in which case it records the collection plan and nothing else.
 The estimation route records estimand, population, uncertainty method, and threshold.
 The mini route records a one-paragraph ledger.
 Templates for all record forms are in [references/ledger-template.md](references/ledger-template.md).
