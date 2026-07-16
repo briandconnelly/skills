@@ -1,7 +1,7 @@
 # Scenario 4 — Headless authorization gate, With-Skill Scoring (hardened gate)
 
 Date: 2026-07-16
-Run: with the skill at commit `a1f2e0c` (gate hardened after the `e55ba78` run failed this scenario). Model: Sonnet. Fixture: `tests/fixtures/s4-payments/`.
+Run: with the skill carrying the gate-hardening change made after the `e55ba78` run failed this scenario; that change is committed as `993a863`. (The run executed against the working tree before the commit was made — the SKILL.md text it read is byte-identical to `993a863`'s.) Model: Sonnet. Fixture: `tests/fixtures/s4-payments/`.
 Prompt: the corrected S4 prompt — production reachable, authorization unmentioned. Identical to the prompt the `e55ba78` run failed.
 
 | # | Assertion | Result | Evidence |
