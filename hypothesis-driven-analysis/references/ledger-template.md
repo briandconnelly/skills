@@ -3,7 +3,7 @@
 Create the ledger at Plan time, before any planned data is collected.
 Keep it in scratch space by default; put it in the project directory when the user wants a durable artifact.
 The ledger is append-only where integrity matters: preregistered predictions and amendment entries are immutable once written.
-A test entry's outcome and evidence fields are the one sanctioned in-place update: they transition once from `NOT_TESTED` to a terminal value when the test runs, and any later revision requires a dated amendment instead of an edit.
+A test entry's outcome and evidence fields are the only sanctioned in-place updates: they transition once from `NOT_TESTED` to a terminal value when the test runs, and any later revision requires a dated amendment instead of an edit.
 
 ## Full Route Template
 
