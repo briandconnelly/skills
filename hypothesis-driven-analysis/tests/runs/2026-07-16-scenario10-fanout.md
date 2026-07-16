@@ -6,14 +6,18 @@ Prompt: as recorded in `scenarios.md` S10, plus the standard execution constrain
 
 | # | Assertion | Result | Evidence |
 | --- | --- | --- | --- |
-| 1 | Fans out: dispatches ≥2 workers, one per independent source | **PASS** | `SUBAGENTS_DISPATCHED: 3` — "Three parallel workers were dispatched (one per dataset — independent sources, metered slow queries, exactly the skill's fan-out trigger)." |
-| 2 | Briefs match the template | PASS | One hypothesis per brief with its prediction and data pointer; briefs reproduced in the run transcript. |
-| 3 | Worker returns follow the return schema; no hypothesis-level verdicts | PASS | "each returned exactly the prescribed schema (Test outcome / Evidence / Method / Deviations / Surprises), no deviations reported." Outcomes are per-test (`CONSISTENT`/`CONTRADICTED`), not verdicts. |
-| 4 | Workers mutate nothing shared and run no git commands | PASS | No writes outside worker scratch; branch state verified intact after the batch. |
+| 1 | Fans out: dispatches ≥2 workers, one per independent source | **PASS** | 3 `Agent` tool calls in the run's transcript, one per dataset — machine-counted, not self-reported ([artifact](artifacts/2026-07-16-scenario10-worker-evidence.md)). |
+| 2 | Briefs match the template | **PASS** | All 3 briefs archived verbatim from the transcript; each carries hypothesis, preregistered prediction, refutation condition, data pointer, budget. |
+| 3 | Worker returns follow the return schema; no hypothesis-level verdicts | **PASS** | All 3 worker returns recovered from the workers' own transcripts: **5/5 schema fields each** (Test outcome / Evidence / Method / Deviations / Surprises) and **0 occurrences** of `SUPPORTED`, `REFUTED`, or "best supported" — workers reported per-test outcomes only, exactly as the contract requires. |
+| 4 | Workers mutate nothing shared and run no git commands | **PASS** | Across the main agent and all 3 workers: **14 bash commands, 0 git**; **3 file writes, 0 inside the repo working tree, 0 by workers** (all to scratch). Branch state independently verified intact after the batch. |
 | 5 | Main agent spot-verifies the leading explanation and strongest rival | **NOT DEMONSTRATED** | The returned output cites worker evidence verbatim but shows no independent re-check by the main agent. Given the metered cost of each query, re-querying may be the wrong trade here — but the assertion is not met, and the run does not argue the trade either. |
 | 6 | Concludes the missing index is best supported; CDN and client-render REFUTED | PASS | "db_slowlog p95 40.1ms → 610.4ms (+1422%)... index_used=NONE"; H1 REFUTED, H3 REFUTED, H2 best supported. |
 
-**Total: 5/6.**
+**Total: 5/6, evidenced.**
+
+Scoring history worth keeping, because it is the point: originally 5/6 on the agent's self-report. A Codex adversarial review objected that assertions 2–3 cited a transcript this repo did not contain — scoring an agent's account of its own compliance as proof of that compliance. That objection was correct, and I briefly re-scored them UNVERIFIABLE.
+
+But the objection was about *retention*, not existence. The harness had written full JSONL transcripts for the run and each worker; nobody had archived them. Extracting them turned the disputed assertions into machine-checked facts (counts of `Agent` calls, schema fields per return, verdict strings, git invocations, write paths) — which is a better outcome than either the original credulous PASS or the pessimistic UNVERIFIABLE. The evidence now lives in `artifacts/`, and the numbers above are counted from it rather than read off the agent's summary.
 
 Conclusion correctness: **correct** — matches fixture ground truth exactly (missing `idx_sessions_user_id` from 09:00 on 07-15; CDN and RUM flat).
 Cost: 20 tool calls, ~80.7k subagent tokens, 376s — the most expensive run in the suite, and the only one where that cost buys wall-clock back (3 × 18s metered queries in parallel rather than serial).

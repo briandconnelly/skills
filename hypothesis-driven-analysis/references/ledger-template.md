@@ -26,9 +26,13 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 | H2 | ... | ... | ... | ... | T2 | ... |
 
 The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
-Leave it blank when the hypothesis has no prediction that *must* hold — such a hypothesis can be supported or left `UNRESOLVED`, but nothing in this investigation can refute it, and saying so up front is more honest than discovering it at conclusion time.
+Every row must carry one, and it must be able to fail — it follows from the hypothesis's own mechanism, and you could observe it failing while the rest of the data stays as it is.
+A row whose necessary prediction cannot fail is not a testable hypothesis: move it to Limitations as an open possibility rather than leaving it in the table to sit `UNRESOLVED` forever while competing for "best supported".
 
-Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`) and cannot be best supported without evidence gathered after they were added.
+Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`).
+A retrospective hypothesis can only be best supported on evidence that did not inform it — a held-out slice, a later window, a source you had not looked at, or a new measurement.
+It need not come from a different system: a slice of the same source you had not seen when you framed the hypothesis qualifies, because what disqualifies evidence is having already shaped the guess.
+Re-running a fresh statistic over the same records that suggested it is a new query, not new evidence; if no qualifying evidence exists, it stays exploratory and is reported as an open possibility.
 Inspecting inventory, schemas, provenance, and coverage does not make a hypothesis retrospective; inspecting a cause-outcome relationship does.
 
 ## Sources
@@ -42,8 +46,9 @@ Every evidence cell in Tests references a source id, so results stay reproducibl
 ## Data Validity
 
 - Collection method: <how each source is produced>
-- Coverage: <row counts per period and per segment, compared across the periods being contrasted — a segment or period that is simply absent will not appear in a null/duplicate scan>
-- Field population: <the populated rate of each field relied on, per period; a field present for only part of the data is a coverage gap, not a null problem>
+- Coverage matrix: <row counts at the crossed grain the analysis uses — every time bucket compared × every segment appearing in a denominator, contrast, or hypothesis. Separate per-period and per-segment totals do not substitute: a hole in one segment on a few days hides between them.>
+- Field population: <the populated rate of each field relied on, at that same crossed grain; a field present for only part of the data is a coverage gap, not a null problem>
+- Coverage baseline: <the expected schedule or independent denominator the matrix was compared against; if neither exists, record coverage as unverifiable rather than clean>
 - Known instrument failures: <dashboards, exporters, sampling quirks>
 - Sensitivity checks performed: <known positives surfaced, detection limits>
 
@@ -116,6 +121,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | H1 | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
 | H2 | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
 | H4 (retrospective) | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
+| H5 | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
 
 ## Sources
 
@@ -125,13 +131,17 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | S2 | cache metrics dashboard export, 5-min grain | 2026-07-08 09:05Z | 10% request sample |
 | S3 | raw request logs `logs/checkout-2026-07-0{6,7,8}.jsonl.gz` | 2026-07-08 09:10Z | all rows; user-agent field populated for only ~30% of rows |
 | S4 | trace spans, Jaeger query `/checkout` 07-06..07-08 | 2026-07-08 10:40Z | 1% trace sampling |
+| S5 | load balancer request counter, 1-hour grain | 2026-07-08 11:15Z | independent of the logging pipeline — used as the coverage baseline |
 
 ## Data Validity
 
 - Collection method: dashboard aggregates from the metrics pipeline; raw request logs and traces available.
-- Coverage: request-log rows are complete, but the user-agent field is populated for only ~30% of rows; the dashboard samples 10% of requests; traces sample 1%.
+- Coverage matrix: the analysis compares hours × route, so request-log rows were counted at that grain across 07-06..07-08. Every hour carries 3.9k–4.4k rows on every route, except `/checkout` on 07-07 21:00–23:00, which carries ~1.2k/hour — a shortfall confined to one route and three hours. Per-day totals (11.9M, 11.7M, 11.8M) and per-route totals both look healthy and would have hidden it, which is exactly why they are not the check.
+- Field population: at the same hour × route grain, `route` and `latency_ms` are 100% populated throughout; `user_agent` is populated for ~30% of rows overall and drops to ~4% on mobile routes after 07-07 12:00 — a coverage gap, not a null problem, and the reason T3 below cannot discriminate.
+- Coverage matrix, trace spans (S4): H4/T4 contrasts payment spans against other spans, so span type is a segment the analysis uses and needs its own matrix at hour × span-type. Every hour carries 40–70 sampled traces per span type across both days, with `span_name` and `duration_ms` 100% populated — no hole, so T4's span breakdown rests on checked coverage rather than on S4's global "1% sampling" note, which describes the sample rate and says nothing about whether the sample is evenly spread.
+- Coverage baseline: compared against the load balancer's independent request counter, which shows no dip in the 07-07 21:00–23:00 window — so the shortfall is in the logging pipeline, not in real traffic. Promoted to H5 (see Amendments) rather than analyzed as a traffic change.
 - Known instrument failures: dashboard p95 is computed over 5-minute windows and hides sub-window spikes.
-- Sensitivity checks performed: dashboard step cross-checked against raw logs (known positive: the step appears in both) — dashboard artifact ruled out, so no artifact hypothesis was promoted.
+- Sensitivity checks performed: dashboard step cross-checked against raw logs (known positive: the step appears in both), so the dashboard is not blind to steps of this size.
 
 ## Tests
 
@@ -142,15 +152,17 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | T3 | H2 | new client version drives the miss-route traffic | group miss-route traffic by user agent | NON_DISCRIMINATING | user-agent populated for only ~30% of rows (Sources S3); cannot detect a shift smaller than ~25pp (S3 §5) |
 | T4 | H4 | payment span accounts for majority of added p95 | compare span breakdown across the step | CONTRADICTED | added latency distributed across spans (S4 §2) |
 | T5 | H2 | reweighting Monday's per-route latencies by Tuesday's route mix reproduces ≥80% of the observed p95 increase | counterfactual reweighting on request logs | CONSISTENT | reweighted p95 +96ms vs observed +110ms (S3 §6) |
+| T6 | H5 | LB counter flat while log volume dips 07-07 21:00–23:00 | compare log rows/hour against the LB's independent counter | CONSISTENT | LB counter steady at ~4.1k/hour through the window (S5 §1) while logs carry ~1.2k/hour (S3 §7) — the gap is in logging, so those hours are excluded from the rate denominators |
 
 ## Amendments
 
-- 2026-07-08: added H4 (retrospective) after T2 evidence showed latency also rose on some cached routes; requires fresh evidence (T4).
+- 2026-07-08: added H4 (retrospective) after T2 evidence showed latency also rose on some cached routes. Promoting it would need evidence that did not inform it; T4 uses trace spans (S4), a source untouched when H4 was framed, so it qualifies — a second statistic over the same request logs would not have.
+- 2026-07-08: added H5 after the coverage matrix showed a `/checkout` log shortfall on 07-07 21:00–23:00. Not retrospective: it came from inspecting coverage, not a cause-outcome relationship.
 
 ## Conclusion
 
 - Answer: the p95 increase is associated with a traffic-mix shift toward uncached routes starting 09:10 Tuesday; the deploy is not implicated, so do not roll back.
 - Best supported: H2, via T2 and T5 (discriminating: the step co-occurs with the route-mix shift, precedes the deploy, and the mix shift reproduces most of the observed increase under reweighting).
-- Per-hypothesis summary: H1 REFUTED (necessary timing prediction failed under an adequate test, T1); H2 UNRESOLVED and best supported (T2, T5 CONSISTENT); H4 REFUTED (its necessary majority-of-added-latency prediction failed under T4).
-- Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — user-agent coverage too sparse); the claim is associative, no intervention was run.
+- Per-hypothesis summary: H1 REFUTED (necessary timing prediction failed under an adequate test, T1); H2 UNRESOLVED and best supported (T2, T5 CONSISTENT); H4 REFUTED (its necessary majority-of-added-latency prediction failed under T4, on trace spans that had not informed it); H5 UNRESOLVED and best supported for the coverage gap (T6 CONSISTENT).
+- Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — user-agent coverage too sparse); the 07-07 21:00–23:00 hours are excluded from rate denominators per H5/T6, which does not change the conclusion but narrows the window the step is measured over; the claim is associative — the route mix was not assigned by anything independent of latency, and no intervention was run, so "the mix shift is associated with the increase" is as far as this data reaches.
 ```

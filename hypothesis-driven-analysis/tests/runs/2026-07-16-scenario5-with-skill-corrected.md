@@ -6,16 +6,28 @@ Prompt: the corrected S5 prompt — the data directory named, but **neither `pay
 
 | # | Assertion | Result | Evidence |
 | --- | --- | --- | --- |
-| 1 | The new explanation is appended as a `retrospective` amendment with a reason, not silently inserted as if preregistered | **PASS** | "in a non-interactive single pass I then continued directly into cross-period/cross-segment comparisons... Per the skill, that crosses the line from orientation into cause-effect inspection, so **every hypothesis below is labeled `retrospective`**"; recorded as an amendment. |
-| 2 | It is declared best supported only after a fresh discriminating test | **PASS** | "I therefore ran additional fresh discriminating tests (reweighting counterfactual, hourly gap analysis, two-proportion z-tests, sensitivity check) after declaring the hypotheses, and the conclusion rests on those." |
+| 1 | The new explanation is appended as a `retrospective` amendment with a reason, not silently inserted as if preregistered | PASS (weakly) | "in a non-interactive single pass I then continued directly into cross-period/cross-segment comparisons... Per the skill, that crosses the line from orientation into cause-effect inspection, so **every hypothesis below is labeled `retrospective`**"; recorded as an amendment. But see below — a blanket label is disclosure, not discrimination. |
+| 2 | It is declared best supported only after a fresh discriminating test | **FAIL on re-scoring** | "I therefore ran additional fresh discriminating tests (reweighting counterfactual, hourly gap analysis, two-proportion z-tests) after declaring the hypotheses" — every one of those ran over the same fixture records that generated the hypotheses. That is a fresh *query*, not fresh *evidence*. |
 
-**Total: 2/2.** Assertion 1 was untestable in the contaminated run; it is now tested and passes.
+**Total: 1/2** (originally scored 2/2; corrected after a Codex adversarial review).
 
 Conclusion correctness: **correct, and more complete than the baseline's**. Cost: 14 tool calls, ~72.9k subagent tokens, 356s (vs corrected baseline 12 calls / ~49.0k).
 
-## The retrospective rule is no longer unverified
+## Re-scored: the rule this run "passed" was too weak to pass
 
-The old prompt named the schema, so the payment hypothesis got preregistered and the rule never fired. With the naming removed, the run hit the boundary honestly, disclosed crossing it, labeled all four hypotheses `retrospective`, and then earned its conclusion on tests run *after* the labels — which is exactly the sequence the rule prescribes.
+I originally scored this 2/2 and wrote that the `retrospective` rule was "tested at last and passes". A Codex adversarial review showed that conclusion was wrong, and the rule — as worded when this run executed — was doing nothing.
+
+The old wording said a retrospective hypothesis "cannot be best supported without evidence gathered after they were added". *Gathered after* is a statement about **query order**. This run inspected cross-period relationships, wrote hypotheses that matched what it had just seen, then ran reweighting, hourly-gap, and z-tests over **the same fixture records** and presented those as the fresh evidence that earned its conclusion. Nothing independent was ever consulted; the records that suggested the hypotheses are the records that confirmed them. Re-running a statistic over data you have already stared at cannot protect against post-selection bias, because the selection already happened.
+
+So the label was disclosure theater: honest about sequence, empty as protection. The run deserves credit for the honesty and none for the safeguard.
+
+The rule now requires evidence that **did not inform** the hypothesis — a held-out slice, a later window, an independent source, or a new measurement — and says explicitly that a fresh statistic over the same records does not qualify. That wording has **not** been tested; this run predates it. S5 also needs a fixture redesign before it can test it (see below).
+
+## S5 still cannot test what it claims
+
+Codex also showed the scenario is incoherent with the skill's own orientation rule. The prompt withholds the filename `checkout_errors.csv`, but SKILL.md explicitly permits inspecting the source inventory before preregistering — so a *compliant* agent lists the directory, sees a plainly-named errors file, and legitimately preregisters a payment hypothesis. It would then fail assertion 1 for doing exactly the right thing, while this run passed it by crossing into relationships and blanket-labeling.
+
+The scenario rewards the wrong behavior. Withholding a filename does not make a signal post-peek when listing the directory is allowed. A valid version needs the discovery to be genuinely unreachable from inventory and schema — a pattern that only exists in a relationship nobody would predict from the column names — plus an independent slice to promote it against.
 
 ## Where the skill beat the baseline outright
 
