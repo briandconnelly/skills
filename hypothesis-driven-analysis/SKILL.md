@@ -70,7 +70,7 @@ Record provenance for every source.
 ### Analysis
 
 Analyze inline by default.
-Fan out to subagents per [references/subagent-briefs.md](references/subagent-briefs.md) only when at least two bounded, independent test packages exist and the briefing-plus-reconciliation cost is less than the context protected.
+Fan out to subagents per [references/subagent-briefs.md](references/subagent-briefs.md) only when at least two bounded, independent test packages exist and the briefing-plus-reconciliation overhead is smaller than the main-context tokens the same tests would consume if run inline.
 Degrade gracefully: a harness without subagents runs the same tests serially.
 Record each test outcome as `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with evidence pointers.
 Look at the data before summarizing it: distributions, outliers, missingness.

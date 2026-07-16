@@ -1,7 +1,7 @@
 # Subagent Briefs for Hypothesis Testing
 
 Inline analysis is the default.
-Fan out only when at least two bounded, independent test packages exist and the briefing-plus-reconciliation cost is less than the context protected from raw data.
+Fan out only when at least two bounded, independent test packages exist and the briefing-plus-reconciliation overhead is smaller than the main-context tokens the same tests would consume if run inline (raw data stays in the worker; only the structured return enters the main context).
 Degrade gracefully: a harness without subagents runs the same tests serially in the main context.
 
 ## Isolation Rules
