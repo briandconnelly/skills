@@ -38,7 +38,8 @@ Every evidence cell in Tests references a source id, so results stay reproducibl
 ## Data Validity
 
 - Collection method: <how each source is produced>
-- Coverage: <what each source includes and misses, down to field-level gaps>
+- Coverage: <row counts per period and per segment, compared across the periods being contrasted — a segment or period that is simply absent will not appear in a null/duplicate scan>
+- Field population: <the populated rate of each field relied on, per period; a field present for only part of the data is a coverage gap, not a null problem>
 - Known instrument failures: <dashboards, exporters, sampling quirks>
 - Sensitivity checks performed: <known positives surfaced, detection limits>
 

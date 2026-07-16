@@ -6,9 +6,10 @@ description: 'Use when investigating an unresolved explanatory, diagnostic, or c
 # Hypothesis-Driven Analysis
 
 Guide empirical investigations through PPDAC (Problem, Plan, Data, Analysis, Conclusion) and the scientific method.
-The framework targets two outcomes.
-Accuracy: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits.
-Token economy: a solid plan before execution prevents fishing expeditions, repeated re-pulls, and "one more query" churn.
+The framework buys accuracy and auditability: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits, and every rejected alternative leaves a record of why.
+Expect it to cost more tokens than an unstructured investigation, not fewer — measured at 11–47% more on small local datasets (`tests/scenarios.md`).
+The plan pays for itself only where collection is expensive enough that fishing expeditions and re-pulls dominate the bill: paid APIs, slow warehouse queries, large remote logs.
+That trade is why routing matters — spend the ceremony where a wrong answer or a wasted pull is costly, and take the direct route everywhere else.
 
 ## Routing
 
@@ -55,6 +56,8 @@ Resolve ambiguity with the user here, where it is cheap, not during analysis, wh
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
 Perform a mandatory data-validity check: how was the data collected, what does it cover, what instrument failures are known.
+A schema audit is not this check — nulls, duplicates, and type drift cannot detect a row that is simply absent.
+Compare coverage across the periods, segments, and fields you are contrasting: row counts per period and per segment, and the population rate of each field you rely on.
 Promote a data-artifact hypothesis into the table only when you can state a concrete failure mechanism, not as a ritual entry.
 Rank tests cheapest-adequate-first, and prefer tests that discriminate between explanations over tests that merely confirm one.
 Create the investigation ledger from [references/ledger-template.md](references/ledger-template.md).
@@ -83,6 +86,7 @@ Validate assumptions shared across workers — a shared bad join or unit error i
 
 Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly.
 The status set is closed: `REFUTED` when a necessary prediction failed under an adequate test, `UNRESOLVED` otherwise.
+A data-artifact hypothesis is never `REFUTED` on a validity check that did not probe coverage and missingness.
 `SUPPORTED` is not a status; "best supported" is conclusion language, earned by discriminating evidence and stated alongside the remaining alternatives.
 Apply the precommitted stop rule:
 
