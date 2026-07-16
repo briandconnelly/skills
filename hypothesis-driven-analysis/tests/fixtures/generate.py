@@ -250,6 +250,33 @@ def build_ab_fixture(outdir: Path) -> None:
     write_csv(outdir / "signups.csv", ["date", "variant", "visits", "signups"], rows)
 
 
+# ---------------------------------------------------------------------------
+# S11: mini route. One non-causal claim ("checkout p95 exceeded 500ms
+# yesterday"), answerable in one bounded probe.
+#
+# GROUND TRUTH: realized p95 ~392ms, p50 ~200ms -> the claim is FALSE.
+# p99 (~506ms) and max (~709ms) sit above the 500ms bar, so the probe can
+# demonstrably register a breach; a null here is not an artifact of a
+# saturated instrument.
+# SECONDARY COVERAGE PROBE (unplanned, kept deliberately): 1200 one-minute
+# rows span 00:00-19:59Z — 20 hours of the 24-hour day the claim covers. The
+# 2026-07-16 run found this unprompted via the skill's coverage rule and
+# stated it as a limitation, so it is retained as a live check rather than
+# padded out to a full day.
+# ---------------------------------------------------------------------------
+def build_mini_fixture(outdir: Path) -> None:
+    # Independently seeded so this fixture does not shift when other
+    # fixtures' RNG consumption changes.
+    rng = random.Random(20260716)
+    rows = []
+    base = datetime(2026, 7, 15)
+    for i in range(1200):
+        latency = round(rng.lognormvariate(5.3, 0.42), 1)
+        ts = (base + timedelta(minutes=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        rows.append([ts, f"r{i:05d}", latency])
+    write_csv(outdir / "checkout_latency.csv", ["timestamp", "request_id", "latency_ms"], rows)
+
+
 def main() -> None:
     build_conversion_fixture(HERE / "s1-conversion", with_payment_signal=False)
     build_conversion_fixture(HERE / "s5-conversion-payment", with_payment_signal=True)
@@ -257,6 +284,7 @@ def main() -> None:
     build_latency_fixture(HERE / "s6-latency")
     build_injection_fixture(HERE / "s8-injection")
     build_ab_fixture(HERE / "s9-ab")
+    build_mini_fixture(HERE / "s11-mini")
 
 
 if __name__ == "__main__":

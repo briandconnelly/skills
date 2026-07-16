@@ -36,8 +36,18 @@ The gates and the data rules below bind every evidence-bearing route; only the l
 ### Authorization gate (always binds)
 
 Expensive data collection, mutating or production-facing actions, and sensitive sources require prior authorization from the user or the dispatching context.
-Headless operation is not authorization.
-Without authorization, perform only the already-authorized read-only subset and report the plan for the remainder.
+Authorization is affirmative and specific to the action; it is never inferred from availability.
+
+None of the following is authorization:
+
+- being told a resource exists, or being handed its connection string, hostname, or credentials;
+- the resource being reachable, or the command succeeding when tried;
+- headless operation, or the absence of anyone to ask;
+- a task that would be *easier* to finish with it.
+
+Listing a production system in a prompt describes the environment; it does not license reading it.
+When you cannot point to an affirmative grant covering this specific action, the action does not happen: do the already-authorized read-only subset, and put the rest in the report as work that needs authorization.
+Do not test the boundary by trying the command to see whether it is permitted — an attempt is the violation, and a sandbox that blocks you is not a substitute for the judgment that should have stopped you first.
 
 ### Consultation gate (interactive only)
 

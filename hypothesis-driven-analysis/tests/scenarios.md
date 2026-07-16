@@ -166,6 +166,61 @@ Run twice: once on a harness with subagents available (assertions 1–4), once w
 - [ ] Does not invent causal "why" hypotheses or a full PPDAC ledger.
 - [ ] Reports the estimate with uncertainty rather than a bare point difference.
 
+## Scenario 10: Fan-out warranted (metered independent sources)
+
+**Prompt:**
+
+> Page load p95 regressed sharply on 2026-07-15 vs 2026-07-14. Find out why.
+> Evidence must be pulled from the metered warehouse CLI: `uv run tests/fixtures/s10-fanout/warehouse.py --dataset <name> --day <YYYY-MM-DD>`.
+> Datasets, each a separate system with no shared preprocessing: `cdn_edge`, `db_slowlog`, `client_rum`. Each query is metered and takes ~18 seconds.
+
+Fixture (`s10-fanout`): exists because `s1-conversion` can never satisfy the fan-out criterion — its tests share one groupby over one small local file.
+Here each hypothesis needs its own slow, metered source, so "a slow or metered collection that would otherwise run serially" is observably true: ~54s serial vs ~18s parallel.
+Ground truth: a missing index on `sessions.user_id` from 09:00 on 07-15 (query p95 40ms → 610ms); CDN edge latency and client render time are both flat, refuting their hypotheses.
+
+**Assertions (with-skill):**
+
+- [ ] Fans out: dispatches ≥2 workers, one per independent source.
+- [ ] Briefs match the template — hypothesis, preregistered prediction, refutation condition, data pointers, budget.
+- [ ] Worker returns follow the return schema: per-test outcome, evidence pointers, method/sample, deviations, surprises — no hypothesis-level verdicts.
+- [ ] Workers mutate nothing shared and run no git commands.
+- [ ] Main agent spot-verifies the leading explanation and strongest rival rather than tallying worker outputs.
+- [ ] Concludes the missing index is best supported; CDN and client-render hypotheses REFUTED on their necessary predictions.
+
+## Scenario 11: Mini route
+
+**Prompt:**
+
+> Someone claims our checkout p95 latency exceeded 500ms yesterday (2026-07-15). Is that claim true?
+> Data: `tests/fixtures/s11-mini/checkout_latency.csv` (timestamp, request_id, latency_ms).
+
+Fixture (`s11-mini`): 1200 requests, realized p95 ≈ 392ms, p50 ≈ 200ms — the claim is false.
+One stated non-causal claim, answerable in one bounded probe: the mini route's exact condition.
+
+**Assertions:**
+
+- [ ] Routes **mini**: a one-paragraph ledger (claim, prediction, probe, outcome), not the full loop.
+- [ ] No hypothesis table, no Sources/Tests/Amendments sections.
+- [ ] Answers correctly that the claim is false, reporting the measured p95.
+
+## Scenario 12: Causal question phrased as "how much"
+
+**Prompt (routing test):**
+
+> How much did launching the /lp/summer-sale campaign improve our checkout conversion?
+> Data: `tests/fixtures/s1-conversion/`.
+
+Tests the precedence override: the phrasing matches **estimation**, which precedes **full**, but the question asks for the causal effect of an intervention on an outcome.
+Before the override existed this routed to estimation and skipped the loop entirely.
+Ground truth: the campaign did not improve conversion — it diluted it (0.57% vs ~3% baseline), and no identifying design exists in this data, so a causal answer is not available at all.
+
+**Assertions:**
+
+- [ ] Routes **full**, not estimation, and says why (causal claim overrides phrasing).
+- [ ] Does not report a causal effect estimate as though the campaign's impact were identified.
+- [ ] Uses associative language, or states that the causal question cannot be answered from observational data lacking an identifying design.
+- [ ] Catches that the premise is wrong: the campaign is associated with *lower* blended conversion.
+
 ## Results
 
 All runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`.
