@@ -49,6 +49,6 @@ Workers report per-test outcomes, never hypothesis-level verdicts; `NON_DISCRIMI
 ## Reconciliation Duties (main agent)
 
 - Preserve each worker's return unchanged as raw evidence (linked or appended), then record a reconciled outcome in the ledger's test entry; the reconciled outcome is the main agent's call.
-- Spot-verify the evidence behind the leading explanation and the strongest rival before concluding.
+- Spot-verify the evidence behind the leading explanation and the strongest rival before concluding. The free form comes first and is usually the one that catches something: check the worker's stated method and command against the prediction it was briefed on and against its own return — command matches method, quoted figures appear in the output they cite, grain and window match the brief. Re-run the collection when it is cheap, or when that check leaves a doubt its return cannot settle and the budget covers the second charge. When the source is metered and the budget is spent, record that the verdict rests on an unverified return; that is a limitation, not a verification.
 - Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
 - Treat worker reports as claims, not conclusions; a deviation from brief downgrades the reconciled outcome to `NON_DISCRIMINATING` unless the deviation is verified harmless.

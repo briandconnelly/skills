@@ -160,6 +160,13 @@ Record each test outcome as `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING
 Look at the data before summarizing it: distributions, outliers, missingness.
 Prefer effect sizes over bare significance, and watch for confounds and aggregation reversals.
 Spot-verify the evidence behind the leading explanation and the strongest rival.
+**Verifying does not mean paying twice.** Re-running a metered query to check a metered query is the expensive form, and it is rarely the one that catches anything.
+Start with the free check: read the worker's stated method and command against the prediction it claims to test, and against its own return.
+Does the command implement the method it names? Does the quoted number appear in the output it came from? Is the grain the one the prediction specified, and the window the one the brief set?
+That costs nothing and catches what actually goes wrong — a wrong join, a unit error, an off-by-one window, a figure that appears nowhere in the rows behind it.
+Re-run the collection when it is cheap, or when the free check surfaces a doubt the return cannot settle and the budget covers the second charge; a metered re-pull is a legitimate spend, not a rule violation, and it needs a ledger amendment like any other unplanned collection.
+When neither is available — metered source, budget spent, and a return you cannot fault on its face — record that the verdict rests on an unverified worker return.
+That is a limitation to state, not a verification to claim.
 Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
 
 ### Conclusion
