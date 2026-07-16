@@ -2,11 +2,13 @@
 
 Behavioral test scenarios for this skill, following the baseline/with-skill methodology: run each scenario with a fresh subagent that does NOT have the skill loaded (baseline), then with the skill loaded (treatment), and compare against the assertions.
 A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
-That rule does not apply to guardrail and trigger-discrimination scenarios (S2, S3), whose whole point is that the skill must *not* add ceremony or must lose to another skill — there, a passing baseline is the expected result, and the run tests the treatment instead.
+That rule does not apply to guardrail and trigger-discrimination scenarios (S2, S3, S9, S11, S12), whose whole point is that the skill must *not* add ceremony, must lose to another skill, or must pick a specific route — there, a passing baseline is the expected result, and the run tests the treatment instead.
 An assertion the with-skill run misses is a finding against the skill, not against the agent.
 Give each agent only the scenario prompt and any skill access required for treatment; do not reveal the assertions, expected failures, prior outputs, or review conclusions.
 With-skill subagents may read the skill files and the one fixture directory named in their scenario prompt, but are forbidden from reading `tests/scenarios.md` and `tests/runs/` — the assertions and prior scored outputs would contaminate the run.
-Store each scored output in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md` or `tests/runs/YYYY-MM-DD-scenarioN-with-skill.md` with an assertion table, evidence pointers, and total.
+Store each scored output in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md`, `-with-skill.md`, or `-trigger.md` for trigger-discrimination runs; add a suffix when a scenario is re-run under changed conditions (`-corrected`, `-rerun`, `-hardened`), and say in the file which earlier run it supersedes.
+Each carries an assertion table, evidence pointers, and a total.
+Where a claim needs more than the agent's own word — anything asserting an action did *not* happen, or that a contract was followed — archive the harness transcript evidence under `tests/runs/artifacts/` and point the assertion at it; see the S4 and S10 artifacts for the pattern.
 Create `tests/runs/` on first use; it is absent until the first scored run is recorded.
 
 Beyond per-assertion pass/fail, record for each run: correctness of the final conclusion, whether a conclusion was drawn before its supporting test ran (premature-conclusion), tool-call count, and approximate tokens.
@@ -23,7 +25,8 @@ Each fixture's ground truth is documented in the generator's per-scenario commen
 2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt.
 3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the scored output.
    Record results in the table at the bottom.
-4. **Trigger:** run trigger-discrimination scenarios (S2, S3, S9) with the stated skill catalog but without naming the expected selection in the user request.
+4. **Trigger:** run trigger-discrimination scenarios (S2, S3, S9) with the stated skill catalog but without naming the expected selection in the user request. Store as `-trigger.md`.
+5. **Route selection:** S11 and S12 load the skill directly and test which *route* it picks once loaded, not whether it fires at all. They have no baseline — an agent without the skill has no routes to choose between — so the too-easy rule does not reach them either. Store under a descriptive suffix (`-mini`, `-causal-routing`).
 
 ## Scenario 1: Multi-explanation diagnostic
 

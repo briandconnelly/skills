@@ -47,7 +47,7 @@ def _ts(day: datetime, seq: int, total: int) -> str:
 
 def write_csv(path: Path, header: list[str], rows: list[list]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="\n") as fh:
+    with path.open("w", newline="\n", encoding="utf-8") as fh:
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(header)
         w.writerows(rows)
@@ -55,8 +55,12 @@ def write_csv(path: Path, header: list[str], rows: list[list]) -> None:
 
 
 def write_text(path: Path, body: str) -> None:
+    # newline="" suppresses translation so the \n in `body` survives verbatim;
+    # Path.write_text() would emit \r\n on Windows and break the byte-identical
+    # regeneration the scenarios rely on when scoring runs against a fixture.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        fh.write(body)
     print(f"wrote {path.relative_to(REPO_ROOT)}")
 
 
