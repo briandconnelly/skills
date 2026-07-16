@@ -15,11 +15,13 @@ That trade is why routing matters — spend the ceremony where a wrong answer or
 
 Routes are precedence-ordered; take the first that matches.
 Safety gates take precedence over all routes.
+Two conditions override phrasing entirely: **a requested causal claim, or costly planned collection, always selects `full`**.
+A causal question does not escape the loop by being worded as "how much" or "which is better" — "how much did this change improve retention" is a causal claim carrying a number, not an estimation task.
 
 | Route | Observable condition | Ceremony |
 | --- | --- | --- |
 | **direct** | One bounded read-only lookup answers the question with no explanatory inference | None; answer and stop |
-| **estimation** | Question asks "how much" or "which is better", not "why" | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
+| **estimation** | Question asks "how much" or "which is better", no causal claim is requested, and collection is not costly | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
 | **mini** | One stated non-causal claim, testable with at most two bounded read-only probes | One-paragraph ledger: claim, prediction, probe, outcome |
 | **full** | Multiple live explanations, a causal claim is requested, or planned collection is costly | Full PPDAC loop with investigation ledger |
 
@@ -53,6 +55,11 @@ Resolve ambiguity with the user here, where it is cheap, not during analysis, wh
 
 ### Plan
 
+**Orient before you preregister.** Inspecting the source inventory, schemas, field definitions, provenance, row counts, and coverage is part of writing the plan, not a breach of it — you cannot design an adequate test against data whose shape you have not seen.
+What you may not inspect is any relationship between a candidate cause and the outcome.
+Cross that line and every hypothesis written afterwards is `retrospective`.
+Orientation findings belong in the plan; they are not amendments.
+
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
 Perform a mandatory data-validity check: how was the data collected, what does it cover, what instrument failures are known.
@@ -74,7 +81,14 @@ Record provenance for every source.
 ### Analysis
 
 Analyze inline by default.
-Fan out to subagents per [references/subagent-briefs.md](references/subagent-briefs.md) only when at least two bounded, independent test packages exist and the briefing-plus-reconciliation overhead is smaller than the main-context tokens the same tests would consume if run inline.
+Fan out to subagents per [references/subagent-briefs.md](references/subagent-briefs.md) only when at least two bounded, independent test packages exist **and** at least one of these observable conditions holds:
+
+- the tests read separate data sources that share no preprocessing;
+- a test needs a slow or metered collection — a paid API, a slow warehouse query, a large remote fetch — that would otherwise run serially;
+- the raw evidence a test must read is large enough that reading it inline would crowd the main context;
+- the user asked for parallel work.
+
+Do not estimate whether delegation "saves tokens" against an inline run you have not performed; that comparison is unknowable before the fact, and treating it as the trigger means never fanning out.
 Degrade gracefully: a harness without subagents runs the same tests serially.
 Record each test outcome as `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with evidence pointers.
 Look at the data before summarizing it: distributions, outliers, missingness.
@@ -85,9 +99,15 @@ Validate assumptions shared across workers — a shared bad join or unit error i
 ### Conclusion
 
 Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly.
-The status set is closed: `REFUTED` when a necessary prediction failed under an adequate test, `UNRESOLVED` otherwise.
+The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise.
+"Necessary" is not decided at conclusion time — each hypothesis declares at Plan time which prediction must hold if it is true, and only that prediction's failure can refute it.
+A prediction that merely *would be nice* for the hypothesis cannot refute it, however cleanly it fails.
 A data-artifact hypothesis is never `REFUTED` on a validity check that did not probe coverage and missingness.
-`SUPPORTED` is not a status; "best supported" is conclusion language, earned by discriminating evidence and stated alongside the remaining alternatives.
+
+When a hypothesis's tests conflict, it stays `UNRESOLVED`: a `CONSISTENT` outcome never overturns a valid refutation, and a `CONTRADICTED` outcome on a non-necessary prediction never refutes.
+
+`SUPPORTED` is not a status; "best supported" is conclusion language and must clear a stated bar: the hypothesis is not `REFUTED`, at least one `CONSISTENT` outcome came from a test that discriminates it from the named rivals, and no unrefuted rival explains the same observations equally well.
+If two explanations both clear that bar, report both rather than picking one.
 Apply the precommitted stop rule:
 
 - **Conclude** when the success criterion is met and no named unresolved alternative could reverse the answer.
@@ -95,7 +115,9 @@ Apply the precommitted stop rule:
 - **Stop with limits** otherwise: report what is known and what cannot be determined from the available data — "can't tell from this data" is a valid conclusion.
 
 Multiple contributing explanations are allowed; do not force a single winner.
-Use causal wording only when backed by an intervention, a natural experiment, or documented temporal-plus-confounder reasoning; otherwise associative language is mandatory.
+Use causal wording only when backed by an identifying design: an intervention you controlled, or a natural experiment where exposure is assigned independently of the outcome.
+Observational adjustment does not clear that bar — temporal ordering and controlling for the confounders you happened to measure say nothing about unmeasured confounding, selection, or interference.
+Absent an identifying design, associative language is mandatory and the limitations name which of those threats remain open.
 Do not invent numeric confidence values.
 Report the answer first, then the per-hypothesis evidence summary, then limitations, then a pointer to the ledger when a durable artifact exists.
 

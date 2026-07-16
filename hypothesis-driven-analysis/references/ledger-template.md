@@ -20,12 +20,16 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 
 ## Hypotheses
 
-| id | Candidate explanation | Prediction if true | Prediction if false | Cheapest adequate test | Data needed |
-| --- | --- | --- | --- | --- | --- |
-| H1 | ... | ... | ... | T1 | ... |
-| H2 | ... | ... | ... | T2 | ... |
+| id | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
+| --- | --- | --- | --- | --- | --- | --- |
+| H1 | ... | ... | ... | ... | T1 | ... |
+| H2 | ... | ... | ... | ... | T2 | ... |
+
+The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
+Leave it blank when the hypothesis has no prediction that *must* hold — such a hypothesis can be supported or left `UNRESOLVED`, but nothing in this investigation can refute it, and saying so up front is more honest than discovering it at conclusion time.
 
 Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`) and cannot be best supported without evidence gathered after they were added.
+Inspecting inventory, schemas, provenance, and coverage does not make a hypothesis retrospective; inspecting a cause-outcome relationship does.
 
 ## Sources
 
@@ -107,11 +111,11 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 
 ## Hypotheses
 
-| id | Candidate explanation | Prediction if true | Prediction if false | Cheapest adequate test | Data needed |
-| --- | --- | --- | --- | --- | --- |
-| H1 | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | T1 | deploy log, cache metrics |
-| H2 | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | T2 | request logs by route |
-| H4 (retrospective) | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | T4 | trace spans |
+| id | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
+| --- | --- | --- | --- | --- | --- | --- |
+| H1 | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
+| H2 | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
+| H4 (retrospective) | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
 
 ## Sources
 
