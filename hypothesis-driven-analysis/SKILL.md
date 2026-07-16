@@ -26,6 +26,7 @@ The direct route records nothing.
 The estimation route records estimand, population, uncertainty method, and threshold.
 The mini route records a one-paragraph ledger.
 Templates for all record forms are in [references/ledger-template.md](references/ledger-template.md).
+The gates and the data rules below bind every evidence-bearing route; only the ledger ceremony varies by route.
 
 ## Gates
 
@@ -80,7 +81,7 @@ Validate assumptions shared across workers — a shared bad join or unit error i
 
 ### Conclusion
 
-Derive hypothesis status from test entries; never edit status directly.
+Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly.
 The status set is closed: `REFUTED` when a necessary prediction failed under an adequate test, `UNRESOLVED` otherwise.
 `SUPPORTED` is not a status; "best supported" is conclusion language, earned by discriminating evidence and stated alongside the remaining alternatives.
 Apply the precommitted stop rule:
