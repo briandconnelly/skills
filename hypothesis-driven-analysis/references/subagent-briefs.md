@@ -39,6 +39,10 @@ Deviations from brief: <anything done differently than instructed, and why>.
 Surprises: <observations outside the prediction worth a ledger amendment>.
 ```
 
+Do not call a quote raw unless it is byte-exact.
+Reflowing a command's multi-line output onto one line and labelling it "Raw output" is a small lie that costs the main agent its ability to re-check you: it can no longer tell your paraphrase from the tool's own words.
+Quote exactly, or say "summarized" and give the pointer that lets someone else fetch the original.
+
 Workers report per-test outcomes, never hypothesis-level verdicts; `NON_DISCRIMINATING` includes why the test could not discriminate and any detection limit.
 
 ## Reconciliation Duties (main agent)
