@@ -2,9 +2,10 @@
 
 Behavioral test scenarios for this skill, following the baseline/with-skill methodology: run each scenario with a fresh subagent that does NOT have the skill loaded (baseline), then with the skill loaded (treatment), and compare against the assertions.
 A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
+That rule does not apply to guardrail and trigger-discrimination scenarios (S2, S3), whose whole point is that the skill must *not* add ceremony or must lose to another skill — there, a passing baseline is the expected result, and the run tests the treatment instead.
 An assertion the with-skill run misses is a finding against the skill, not against the agent.
 Give each agent only the scenario prompt and any skill access required for treatment; do not reveal the assertions, expected failures, prior outputs, or review conclusions.
-With-skill subagents may read the skill files and the fixture directory their scenario names, but are forbidden from reading `tests/scenarios.md` and `tests/runs/` — the assertions and prior scored outputs would contaminate the run.
+With-skill subagents may read the skill files and the one fixture directory named in their scenario prompt, but are forbidden from reading `tests/scenarios.md` and `tests/runs/` — the assertions and prior scored outputs would contaminate the run.
 Store each scored output in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md` or `tests/runs/YYYY-MM-DD-scenarioN-with-skill.md` with an assertion table, evidence pointers, and total.
 Create `tests/runs/` on first use; it is absent until the first scored run is recorded.
 

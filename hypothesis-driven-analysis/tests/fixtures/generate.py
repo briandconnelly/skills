@@ -63,13 +63,23 @@ def write_text(path: Path, body: str) -> None:
 # ---------------------------------------------------------------------------
 # S1 / S7: checkout conversion drop.
 #
-# GROUND TRUTH: per-landing-page conversion is identical across both weeks
-# (/home 2.75%, /product 4.00%, /lp/summer-sale 0.63%). The overall drop
-# (3.17% -> 2.63%) is pure composition: a low-intent paid campaign launches
-# 06-08 and dilutes the mix.
+# GROUND TRUTH: the drop is pure composition — a low-intent paid campaign
+# launches 06-08 and dilutes the mix, while per-landing-page conversion holds
+# steady. Nominal per-page rates below are /home 2.75%, /product 4.00%,
+# /lp/summer-sale 0.63%; the ±1/day jitter and the mobile undercount move the
+# realized figures off those nominals, so validate against the REALIZED values
+# measured from the generated files, not the nominals:
+#
+#   week of 06-01: 4200 sessions, 3.12%   |   week of 06-08: 4971 sessions, 2.51%
+#   /home 2.71% -> 2.68%   /product 3.93% -> 3.76%   /lp/summer-sale 0.57% (wk2 only)
+#
+# The signal that matters is that per-page rates are flat across the weeks
+# while the blended rate falls; the exact decimals are incidental.
 # RED HERRING: a deploy on 06-10 14:00, two days AFTER the drop begins.
-# VALIDITY TRAP: sessions.csv drops ~40% of mobile sessions on 06-13/06-14,
-# which inflates apparent conversion on those two days only.
+# VALIDITY TRAP: sessions.csv drops ~40% of mobile sessions on 06-13/06-14
+# (~1050/day -> ~620/day), which inflates apparent conversion on those two
+# days only. Nulls and duplicates cannot detect it; only a coverage
+# comparison across days can.
 # ---------------------------------------------------------------------------
 MIX_W1 = [("/home", 400, 11), ("/product", 200, 8)]
 MIX_W2 = [("/home", 400, 11), ("/product", 200, 8), ("/lp/summer-sale", 160, 1)]
@@ -223,8 +233,10 @@ def build_injection_fixture(outdir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# S9: estimation. B beats A by roughly 1pp; a defensible answer needs an
-# interval, not a bare point difference.
+# S9: estimation. Nominal rates 4.0% (A) vs 4.6% (B); realized 4.14% vs 4.77%,
+# a difference of ~0.63pp (95% CI roughly [0.15, 1.12]pp, z=2.57). Significant
+# but not overwhelming, so a defensible answer needs an interval rather than a
+# bare point difference.
 # ---------------------------------------------------------------------------
 def build_ab_fixture(outdir: Path) -> None:
     rows = []
