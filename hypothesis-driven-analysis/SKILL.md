@@ -20,10 +20,15 @@ A causal question does not escape the loop by being worded as "how much" or "whi
 
 | Route | Observable condition | Ceremony |
 | --- | --- | --- |
-| **direct** | One bounded read-only lookup answers the question with no explanatory inference | None; answer and stop |
+| **direct** | A question with no claim to adjudicate, answerable by bounded read-only work with no explanatory inference — computing a statistic counts | None; answer and stop |
 | **estimation** | Question asks "how much" or "which is better", no causal claim is requested, and collection is not costly | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
 | **mini** | One stated non-causal claim, testable with at most two bounded read-only probes | One-paragraph ledger: claim, prediction, probe, outcome |
 | **full** | Multiple live explanations, a causal claim is requested, or planned collection is costly | Full PPDAC loop with investigation ledger |
+
+**direct** and **mini** are separated by whether someone has asserted something, not by how much arithmetic is involved.
+"What was the median order value in June" is a question: compute it, answer, stop.
+"Someone says p95 exceeded 500ms yesterday" is a claim with a truth value someone will act on, so it earns a prediction, a probe, and a recorded outcome — the same work, plus the thing that makes it checkable.
+Do not route by effort: needing a percentile instead of a key lookup does not turn a question into a claim.
 
 The direct route records nothing.
 The estimation route records estimand, population, uncertainty method, and threshold.
