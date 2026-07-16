@@ -6,6 +6,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 Give each agent only the scenario prompt and any skill access required for treatment; do not reveal the assertions, expected failures, prior outputs, or review conclusions.
 With-skill subagents may read the skill files but are forbidden from reading `tests/`.
 Store each scored output in `tests/runs/YYYY-MM-DD-scenarioN-baseline.md` or `tests/runs/YYYY-MM-DD-scenarioN-with-skill.md` with an assertion table, evidence pointers, and total.
+Create `tests/runs/` on first use; it is absent until the first scored run is recorded.
 
 Beyond per-assertion pass/fail, record for each run: correctness of the final conclusion, whether a conclusion was drawn before its supporting test ran (premature-conclusion), tool-call count, and approximate tokens.
 The skill claims token savings; that claim is tested by these comparisons, not asserted.
