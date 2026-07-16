@@ -41,7 +41,7 @@ Workers report per-test outcomes, never hypothesis-level verdicts; `NON_DISCRIMI
 
 ## Reconciliation Duties (main agent)
 
-- Copy each worker's test entry into the ledger unchanged.
+- Preserve each worker's return unchanged as raw evidence (linked or appended), then record a reconciled outcome in the ledger's test entry; the reconciled outcome is the main agent's call.
 - Spot-verify the evidence behind the leading explanation and the strongest rival before concluding.
 - Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
-- Treat worker reports as claims, not conclusions; deviations from brief downgrade an outcome to `NON_DISCRIMINATING` unless the deviation is verified harmless.
+- Treat worker reports as claims, not conclusions; a deviation from brief downgrades the reconciled outcome to `NON_DISCRIMINATING` unless the deviation is verified harmless.

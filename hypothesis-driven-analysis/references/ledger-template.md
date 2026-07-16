@@ -50,7 +50,7 @@ A `NON_DISCRIMINATING` outcome states why (underpowered, wrong grain, no known-p
 
 - Answer: <answer first>
 - Best supported: <explanation(s), with the discriminating evidence>
-- Per-hypothesis summary: <one line per hypothesis, status derived from test entries>
+- Per-hypothesis summary: <one line per hypothesis, status REFUTED or UNRESOLVED derived from test entries>
 - Limitations: <named unresolved alternatives, data gaps, associative-only claims>
 ```
 
@@ -97,7 +97,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | --- | --- | --- | --- | --- | --- |
 | H1 | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | T1 | deploy log, cache metrics |
 | H2 | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | T2 | request logs by route |
-| H4 (retrospective) | Upstream payment API slowed | /checkout spans show payment call dominating added latency | added latency spread across spans | T4 | trace spans |
+| H4 (retrospective) | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | T4 | trace spans |
 
 ## Data Validity
 
@@ -123,6 +123,6 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 
 - Answer: the p95 increase is associated with a traffic-mix shift toward uncached routes starting 09:10 Tuesday; the deploy is not implicated, so do not roll back.
 - Best supported: H2, via T2 (discriminating: the step co-occurs with the route-mix shift and precedes the deploy).
-- Per-hypothesis summary: H1 REFUTED (necessary timing prediction failed under an adequate test, T1); H2 best supported (T2 CONSISTENT); H4 REFUTED (T4).
+- Per-hypothesis summary: H1 REFUTED (necessary timing prediction failed under an adequate test, T1); H2 UNRESOLVED and best supported (T2 CONSISTENT); H4 REFUTED (its necessary majority-of-added-latency prediction failed under T4).
 - Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — UA sampling too sparse); the claim is associative, no intervention was run.
 ```

@@ -93,9 +93,12 @@ Fixture: construct the CSVs so the drop is driven by a traffic-mix shift (a paid
 **Prompt:**
 
 > Users claim the search feature got slower after the index rebuild.
-> You have a latency log that samples 1 in 500 requests, covering 6 hours.
-> The claimed regression is about 30ms on a 200ms median.
+> You have `latency_sample.csv`: about 40 sampled requests (1 in 500), all from the 6 hours after the rebuild, with heavy-tailed latencies (median ≈ 200ms, standard deviation ≈ 120ms).
+> The only pre-rebuild reference is the dashboard's reported 200ms median.
+> The claimed regression is about 30ms.
 > Did the rebuild slow search down?
+
+Fixture note: with ~40 samples at sd ≈ 120ms the standard error is ≈ 19ms, so a 30ms shift is below the detectable limit; the expected result derives this (or an equivalent bound) rather than asserting a null.
 
 **Assertions:**
 
@@ -105,7 +108,9 @@ Fixture: construct the CSVs so the drop is driven by a traffic-mix shift (a paid
 
 ## Scenario 7: Fan-out isolation
 
-**Prompt:** Scenario 1's investigation, on a harness with subagents, with the two lead hypotheses independently testable against separate files.
+**Prompt:** Scenario 1's investigation, with the two lead hypotheses independently testable against separate files.
+
+Run twice: once on a harness with subagents available (assertions 1–4), once with subagents disabled (assertion 5).
 
 **Assertions:**
 
