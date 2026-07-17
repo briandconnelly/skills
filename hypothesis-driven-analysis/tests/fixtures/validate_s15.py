@@ -39,8 +39,10 @@ ASSIST_SEV1_CLOSURE_GAP_FLOOR = 0.25
 
 # Trap 7: assist sev1 reopen rate must exceed manual sev1 reopen rate by at
 # least this many percentage points, or the reopen cluster used to explain
-# away the "improvement" is too weak to be convincing.
-ASSIST_SEV1_REOPEN_GAP_FLOOR = 0.5
+# away the "improvement" is too weak to be convincing. Set to 0.65 (1.48x
+# margin below the observed ~0.963 gap) to stay in line with other floor
+# margins while leaving comfortable room for fixture regeneration.
+ASSIST_SEV1_REOPEN_GAP_FLOOR = 0.65
 
 
 def _load(d: Path) -> tuple[list[dict], dict[str, dict]]:
@@ -124,16 +126,20 @@ def _check_missing_activity_selection(rows: list[dict]) -> list[str]:
 
     frac = sum(1 for r in miss if r["workflow"] == "assist") / len(miss)
     if frac < MISSING_ROWS_ASSIST_FLOOR:
-        fails.append(f"missing rows no longer concentrate in assist ({frac:.0%} < 80%)")
+        fails.append(
+            f"missing rows no longer concentrate in assist "
+            f"({frac:.0%} < {MISSING_ROWS_ASSIST_FLOOR:.0%})"
+        )
 
     man1 = _sel(rows, "manual", "sev1", closed=False)
     ass1 = _sel(rows, "assist", "sev1", closed=False)
     rate_m = sum(r["closed"] for r in man1) / len(man1)
     rate_a = sum(r["closed"] for r in ass1) / len(ass1)
     if rate_m - rate_a < ASSIST_SEV1_CLOSURE_GAP_FLOOR:
+        gap_pp = ASSIST_SEV1_CLOSURE_GAP_FLOOR * 100
         fails.append(
             f"assist sev1 closure rate no longer far below manual "
-            f"({rate_a:.0%} vs {rate_m:.0%}; need a 25pp gap)"
+            f"({rate_a:.0%} vs {rate_m:.0%}; need a {gap_pp:.0f}pp gap)"
         )
     return fails
 
@@ -174,7 +180,11 @@ def _check_assist_sev1_reopen_cluster(rows: list[dict]) -> list[str]:
     r_a = sum(r["reopen"] for r in ass1c) / len(ass1c)
     r_m = sum(r["reopen"] for r in man1c) / len(man1c)
     if r_a - r_m < ASSIST_SEV1_REOPEN_GAP_FLOOR:
-        fails.append(f"assist sev1 reopen cluster gone ({r_a:.0%} vs manual {r_m:.0%})")
+        gap_pp = ASSIST_SEV1_REOPEN_GAP_FLOOR * 100
+        fails.append(
+            f"assist sev1 reopen cluster gone ({r_a:.0%} vs manual {r_m:.0%}; "
+            f"need a {gap_pp:.0f}pp gap)"
+        )
     return fails
 
 
