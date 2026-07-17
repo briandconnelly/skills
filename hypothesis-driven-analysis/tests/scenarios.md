@@ -16,7 +16,8 @@ Where a claim needs more than the agent's own word — anything asserting an act
 Create `tests/runs/` and `tests/runs/artifacts/` if a fresh checkout of this skill lacks them; git does not track empty directories.
 
 Beyond per-assertion pass/fail, record for each run: correctness of the final conclusion, whether a conclusion was drawn before its supporting test ran (premature-conclusion), tool-call count, and approximate tokens.
-Cost is measured, never asserted: the 2026-07-16 suite measured the skill costing 11–47% *more* tokens than baseline on these fixtures, which is why SKILL.md now states a token premium rather than a saving.
+Cost is measured, never asserted: the first-wave 2026-07-16 runs measured the skill costing 11–47% *more* tokens than baseline on those fixtures, which is why SKILL.md now states a token premium rather than a saving.
+That range is a first-wave measurement, not a ceiling: the Third wave's scenario 15 measured +85% to +99% on the same skill, so read 11–47% as what this suite's easier fixtures cost, not a bound the skill guarantees.
 Keep measuring it — a future change that makes the skill cheaper, or a fixture with expensive collection, should show up here first.
 
 Fixtures live in `tests/fixtures/`, regenerated deterministically by `uv run hypothesis-driven-analysis/tests/fixtures/generate.py`.
@@ -402,6 +403,9 @@ The suite is one scenario deep on a should-not-refute case, and the brief's own 
    The skill text says `SUPPORTED` is not a status, and `references/ledger-template.md`'s worked example puts that phrase in the *basis* column, not status.
    Assertion 2 passed on manual read of all three runs, but the automated check that assertion is supposed to lean on does not work against real ledgers as written.
    This needs either a status-column format fix in the skill's worked examples/guidance or a scorer that recognizes the vocabulary agents actually produce — as it stands the "machine-checked" claim on assertion 2 is not true in practice.
+   **Resolved 2026-07-16, Fourth wave below:** the ledger template's deleted status-vocabulary sentence has been restored.
+   C1 evaluated 0/3 before that fix and 3/3 after, measured by running `score_ledger.py` against three fresh post-fix ledgers.
+   The numbers in this item are unchanged as measured; they are the record of a real defect, not superseded.
 2. **Assertion 6 failed 3/3.**
    Every run wrote "still open" rather than "no recorded closure," and every run asserted a direction for the censoring bias (`biases the assist median low`, `understated`, a stated lower bound) without first establishing the export's completeness semantics.
    SKILL.md line 164 — "An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias" — is present in the skill and did not prevent this in any run.
@@ -414,9 +418,54 @@ The suite is one scenario deep on a should-not-refute case, and the brief's own 
    The other scenarios in the table mostly stay within the claimed range — scenario 9's delta is the cheapest at +11%, and S8–S4 range from +24% to +47% — but leaving a stated number in the preamble while even one scenario contradicts it is exactly the failure the skill revision aims to fix.
    Either the preamble's range needs re-measurement across the full suite and restatement, or it needs scoping to say which kinds of investigation questions apply to it.
 
+### Fourth wave, 2026-07-16 — after restoring the status vocabulary
+
+The Third wave's finding above was not cosmetic: the ledger template's Conclusion line naming the status vocabulary (`status REFUTED or UNRESOLVED derived from test entries`) had been deleted by an earlier commit, leaving only a bare `- Per-hypothesis summary:` with no vocabulary stated.
+That is why 9/14 status cells across the three Third-wave runs read `best supported` and why C1 never evaluated in any of them.
+The sentence has been restored, and `data-artifact` added as a third `claim` value alongside `causal`/`descriptive` (the skill already governed that class; the template had no cell for it, which is why the Third-wave worked example had forced H5 into `causal`).
+Five fresh runs were scored against the restored template: three more scenario-15 with-skill runs, and two scenario-1 with-skill runs added specifically to probe the over-caution regression the final review called blocking — whether the causal-refutation rule blocks legitimate refutation, not just confounded-contrast refutation.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-16 | 15 (confounded rollout) | postfix, run 1 | 7/7 scoreable | 15 | 93.0k | `score_ledger.py` C1: `OK`, 5 summary rows read, 0 REFUTED, none causal, exit 0. First run where assertion 2 is actually machine-checked, not just manually read. |
+| 2026-07-16 | 15 (confounded rollout) | postfix, run 2 | 7/7 scoreable | 19 | 95.6k | Same C1 result: `OK`, exit 0. |
+| 2026-07-16 | 15 (confounded rollout) | postfix, run 3 | 7/7 scoreable | 19 | 94.1k | Same C1 result: `OK`, exit 0. |
+| 2026-07-16 | 1 (multi-explanation), postfix a | with-skill | 6/6 | 14 | 84.6k | Not formally scored against S1's full assertion table below — added to probe over-caution, scored only for causal-status behavior and `data-artifact` adoption. Refuted H2 (deploy, completion-ratio timing) and H3 (device-mix, reweighting direction); H4 labelled `data-artifact`. |
+| 2026-07-16 | 1 (multi-explanation), postfix b | with-skill | 6/6 | 15 | 79.4k | Same caveat as run a — not formally scored against S1's assertion table. Refuted H1 (deploy, timing) and H3 (mobile regression, direction); H4 labelled `data-artifact`. |
+
+**Headline: C1 evaluated 0/3 before the fix, 3/3 after.**
+All three post-fix scenario-15 runs score `OK: C1 checked and passed: 5 summary row(s) read, 0 REFUTED, none of them causal`, exit 0 — verified by running `score_ledger.py` against each archived ledger just now, not carried over from the runs' own summaries.
+The three pre-fix Third-wave ledgers were re-scored against the same scorer as a control: all three still `FAIL` at `parse:` with an unrecognized status cell, unchanged.
+They are evidence of the state before the fix, not re-scored as if the fix applied to them.
+
+**The causal rule still holds on its target scenario.**
+Zero causal rows were marked `REFUTED` across all three post-fix scenario-15 runs — the exact result the status-adequacy revision exists to produce, now machine-confirmed rather than manually read.
+
+**The over-caution regression is now measured, and it was the gap the final review called blocking.**
+Scenario 1's deploy hypothesis is a *causal* claim legitimately refuted on timing (the deploy lands 06-10, two days after the drop begins).
+Across two post-fix runs, 4 causal rows were correctly marked `REFUTED`: run a refuted H2 (deploy, on completion-ratio timing) and H3 (device-mix, on reweighting direction); run b refuted H1 (deploy, on timing) and H3 (mobile regression, on direction).
+The rule discriminates rather than suppresses: it blocks refutation-by-confounded-contrast in scenario 15 while permitting refutation-by-timing and refutation-by-mechanism in scenario 1.
+Nothing on this branch had shown that before.
+
+**The `data-artifact` claim value was adopted unprompted, and by all five runs, not four.**
+All five post-fix runs (three scenario-15, two scenario-1) that met a records-quality hypothesis labelled it `data-artifact` rather than forcing it into `causal`: scenario-15's H4 (right-censoring) in all three runs, and scenario-1's H4 (session-logging undercount) in both runs.
+The measurement handed off for this record said four; grep against all five archived files shows `data-artifact` present in every one, so the count recorded here is 5/5, corrected from the figure supplied.
+
+**An honest caveat: `score_ledger.py`'s C1 is fixture-conditional, and that is now empirically confirmed rather than merely asserted.**
+Running C1 (without `--plan`) against both scenario-1 postfix ledgers was executed just now, not predicted: `2026-07-16-scenario1-postfix-a.md` fails with `C1: H2 is a causal claim marked REFUTED` and `C1: H3 (retrospective) is a causal claim marked REFUTED`; `2026-07-16-scenario1-postfix-b.md` fails with the same two lines naming H1 and H3.
+Both exit 1.
+That is the documented, expected out-of-scope case — `score_ledger.py`'s own SCOPE docstring says C1 is valid only for a scenario whose ground truth contains no legitimate causal refutation, names scenario 15 specifically, and says "a should-refute scenario needs its own check, not this one."
+Scenario 1 must never be machine-scored with C1.
+
+**What this does not establish.**
+SKILL.md line 164 (establish completeness semantics before asserting a direction) remains measured 0/3 from the Third wave; nothing in this wave re-tested it, and it is not fixed by this work.
+The token-cost finding also stands: none of these five runs came in under the skill's stated 11–47% range, and the three scenario-15 postfix runs (93.0k–95.6k against a 50.9k scenario-15 baseline, +83% to +88%) confirm the Third-wave +85–99% finding rather than revise it.
+This wave is two scenarios deep, both already in the suite; it is not a new fixture, and it does not touch the open item calling for a genuinely novel should-refute case beyond scenario 1.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
+Read that 11–47% span as this wave's five fixtures, not a bound on the skill: the Third wave's S15 measured +85% to +99%, and the Fourth wave's S15 postfix runs confirm that scale rather than revise it.
 The claim in SKILL.md's purpose ("a solid plan before execution prevents fishing expeditions, repeated re-pulls, and 'one more query' churn") is not supported by any run here, and these fixtures cannot support it: they are small, local, and free to re-read, so there is no churn for a plan to prevent and the ledger is pure overhead.
 The claim may hold where re-pulls are genuinely expensive (paid APIs, slow warehouse queries, large remote logs), but that is now an untested hypothesis, not a demonstrated property. Either scope the claim to expensive-collection investigations and test it there, or drop it.
 
