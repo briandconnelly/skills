@@ -29,6 +29,11 @@ Checks exactly two things, both syntactic:
       same id with a non-empty estimand. Catches status laundering: inventing a
       descriptive claim at conclusion time to house a REFUTED.
 
+This scorer fails closed: a run's own summary of how it did cannot be
+trusted, so any row, claim cell, or status cell it cannot confidently parse
+is recorded as a parse failure and the whole run exits 1. It never silently
+drops or waves through input it failed to understand.
+
 Every other assertion in scenario 15 is rubric-scored. Do not add them here
 without the ledger fields to support them.
 
@@ -44,10 +49,22 @@ import sys
 from pathlib import Path
 
 ROW = re.compile(r"^\s*\|(?P<cells>.+)\|\s*$")
+CELL_SPLIT = re.compile(r"(?<!\\)\|")
+EMPHASIS = re.compile(r"[*_]")
+STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
+
+
+def unescape_cell(cell: str) -> str:
+    """Strip a table cell and turn its escaped pipes (\\|) back into literal |."""
+    return cell.strip().replace("\\|", "|")
 
 
 def parse_tables(md: str) -> list[list[list[str]]]:
-    """Return every markdown table as a list of rows, each row a list of cells."""
+    """Return every markdown table as a list of rows, each row a list of cells.
+
+    Cells are split on unescaped pipes only, so a literal `|` written as `\\|`
+    inside a cell's text does not fragment the row.
+    """
     tables: list[list[list[str]]] = []
     current: list[list[str]] = []
     for line in md.splitlines():
@@ -57,7 +74,7 @@ def parse_tables(md: str) -> list[list[list[str]]]:
                 tables.append(current)
                 current = []
             continue
-        cells = [c.strip() for c in m.group("cells").split("|")]
+        cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
         if all(set(c) <= {"-", ":"} and c for c in cells):
             continue  # separator row
         current.append(cells)
@@ -66,49 +83,115 @@ def parse_tables(md: str) -> list[list[list[str]]]:
     return tables
 
 
-def find_rows(md: str, *required: str) -> list[dict[str, str]]:
-    """Rows of the first table whose header contains every required column."""
+def find_rows(md: str, *required: str) -> tuple[list[dict[str, str]], list[str]]:
+    """Rows of the first table whose header contains every required column.
+
+    Returns (rows, parse_fails). A data row whose cell count does not match
+    the header's is a parse failure, recorded by name — never silently
+    dropped.
+    """
     for t in parse_tables(md):
         if not t:
             continue
         header = [h.lower() for h in t[0]]
-        if all(any(r == h for h in header) for r in required):
-            return [dict(zip(header, row, strict=True)) for row in t[1:] if len(row) == len(header)]
+        if not all(any(r == h for h in header) for r in required):
+            continue
+        rows: list[dict[str, str]] = []
+        fails: list[str] = []
+        for n, row in enumerate(t[1:], start=2):
+            if len(row) != len(header):
+                fails.append(
+                    f"parse: table row {n} has {len(row)} cell(s) but the header has "
+                    f"{len(header)}: {row!r}"
+                )
+                continue
+            rows.append(dict(zip(header, row, strict=True)))
+        return rows, fails
+    return [], []
+
+
+def claim_of(cell: str) -> str | None:
+    """Classify a claim cell as 'causal' or 'descriptive', or None if unrecognized.
+
+    Strict on purpose: this scorer must not guess. A misspelling, an empty
+    cell, or anything else that doesn't start with one of the two known
+    forms (after stripping markdown emphasis) is a parse failure, not a
+    default classification.
+    """
+    stripped = EMPHASIS.sub("", cell).strip().lower()
+    if stripped.startswith("causal"):
+        return "causal"
+    if stripped.startswith("descriptive"):
+        return "descriptive"
+    return None
+
+
+def status_of(cell: str) -> str | None:
+    """Return the first REFUTED/UNRESOLVED token in a status cell, or None.
+
+    Matches a whole word, not a substring, so prose like "UNRESOLVED, was
+    REFUTED before amendment" reads as UNRESOLVED (its first token) instead
+    of tripping on REFUTED appearing later in the sentence.
+    """
+    m = STATUS_TOKEN.search(cell.upper())
+    return m.group(1) if m else None
+
+
+def _check_descriptive_refuted(
+    row: dict[str, str], planned: dict[str, dict[str, str]] | None
+) -> list[str]:
+    """C2: a descriptive REFUTED row must trace back to a Plan-time estimand."""
+    if planned is None:
+        return []
+    p = planned.get(row["id"])
+    if p is None:
+        return [
+            f"C2: {row['id']} carries a descriptive REFUTED but does not appear in the "
+            f"Plan-time ledger. A descriptive row created at conclusion time is laundering."
+        ]
+    if "estimand" not in p["claim"].lower():
+        return [
+            f"C2: {row['id']} carries a descriptive REFUTED but named no estimand at Plan time."
+        ]
     return []
 
 
-def claim_of(cell: str) -> str:
-    return "causal" if cell.strip().lower().startswith("causal") else "descriptive"
+def _check_row(row: dict[str, str], planned: dict[str, dict[str, str]] | None) -> list[str]:
+    """Score a single summary row against C1/C2, returning any failures."""
+    status = status_of(row["status"])
+    if status is None:
+        return [f"parse: {row['id']} has an unrecognized status cell: {row['status']!r}"]
+    if status != "REFUTED":
+        return []
+
+    claim = claim_of(row["claim"])
+    if claim is None:
+        return [f"parse: {row['id']} has an unrecognized claim cell: {row['claim']!r}"]
+
+    if claim == "causal":
+        return [
+            f"C1: {row['id']} is a causal claim marked REFUTED. "
+            f"An unidentified exposure-outcome contrast cannot refute a causal hypothesis."
+        ]
+
+    return _check_descriptive_refuted(row, planned)
 
 
 def score(final: str, plan: str | None) -> list[str]:
     fails: list[str] = []
-    summary = find_rows(final, "id", "claim", "status")
-    if not summary:
+    summary, parse_fails = find_rows(final, "id", "claim", "status")
+    fails.extend(parse_fails)
+    if not summary and not parse_fails:
         return ["no per-hypothesis summary table with id/claim/status found in the final ledger"]
 
+    planned: dict[str, dict[str, str]] | None = None
+    if plan is not None:
+        planned_rows, planned_fails = find_rows(plan, "id", "claim")
+        fails.extend(f"plan: {f}" for f in planned_fails)
+        planned = {r["id"]: r for r in planned_rows}
+
     for row in summary:
-        status = row["status"].upper()
-        if "REFUTED" not in status:
-            continue
-        if claim_of(row["claim"]) == "causal":
-            fails.append(
-                f"C1: {row['id']} is a causal claim marked REFUTED. "
-                f"An unidentified exposure-outcome contrast cannot refute a causal hypothesis."
-            )
-        elif plan is not None:
-            planned = {r["id"]: r for r in find_rows(plan, "id", "claim")}
-            p = planned.get(row["id"])
-            if p is None:
-                fails.append(
-                    f"C2: {row['id']} carries a descriptive REFUTED but does not appear in the "
-                    f"Plan-time ledger. A descriptive row created at conclusion time is laundering."
-                )
-            elif "estimand" not in p["claim"].lower():
-                fails.append(
-                    f"C2: {row['id']} carries a descriptive REFUTED but named no estimand at "
-                    f"Plan time."
-                )
+        fails.extend(_check_row(row, planned))
     return fails
 
 
