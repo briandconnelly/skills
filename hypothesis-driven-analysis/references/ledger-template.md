@@ -28,7 +28,8 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
 Every row must carry one, and it must be able to fail — it follows from the hypothesis's own mechanism, and you could observe it failing while the rest of the data stays as it is.
 A row whose necessary prediction cannot fail is not a testable hypothesis: move it to Limitations as an open possibility rather than leaving it in the table to sit `UNRESOLVED` forever while competing for "best supported".
-Each row declares its claim as `causal` or `descriptive`, and a descriptive row names the estimand its prediction is about.
+Each row declares its claim as `causal`, `descriptive`, or `data-artifact`, and a descriptive row names the estimand its prediction is about.
+A `data-artifact` row claims the records themselves are wrong — missing, miscounted, mis-instrumented — and per the skill it can only be `REFUTED` by a check that actually probed coverage and missingness.
 The claim column is what the status rules read: a `causal` row cannot be `REFUTED` by a contrast whose design does not identify it, and a `descriptive` row cannot be added after Plan time.
 
 Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`).
@@ -75,11 +76,13 @@ An amendment that supersedes a test outcome names the test id, the replacement o
 
 - Answer: <answer first>
 - Best supported: <explanation(s), with the discriminating evidence>
-- Per-hypothesis summary:
+- Per-hypothesis summary — `status` is `REFUTED` or `UNRESOLVED` and nothing else:
 
   | id | claim | status | basis |
   | --- | --- | --- | --- |
   | H1 | causal | UNRESOLVED | <the discriminating evidence, or why nothing settled it> |
+
+  "Best supported" is conclusion language, not a status: it belongs in `basis`, as the worked example shows.
 - Limitations: <named unresolved alternatives, data gaps, associative-only claims>
 ```
 
@@ -141,7 +144,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | H1 | causal | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
 | H2 | causal | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
 | H4 (retrospective) | causal | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
-| H5 | causal | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
+| H5 | data-artifact | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
 
 ## Sources
 
@@ -190,6 +193,6 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
   | H1 | causal | REFUTED | necessary timing prediction failed under an adequate test, T1 |
   | H2 | causal | UNRESOLVED | best supported (T2, T5 CONSISTENT) |
   | H4 (retrospective) | causal | REFUTED | its necessary majority-of-added-latency prediction failed under T4, on trace spans that had not informed it |
-  | H5 | causal | UNRESOLVED | best supported for the coverage gap (T6 CONSISTENT) |
+  | H5 | data-artifact | UNRESOLVED | best supported for the coverage gap (T6 CONSISTENT) |
 - Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — user-agent coverage too sparse); the 07-07 21:00–23:00 hours are excluded from rate denominators per H5/T6, which does not change the conclusion but narrows the window the step is measured over; the claim is associative — the route mix was not assigned by anything independent of latency, and no intervention was run, so "the mix shift is associated with the increase" is as far as this data reaches.
 ```
