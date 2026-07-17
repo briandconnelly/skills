@@ -492,6 +492,28 @@ State it as measured, not as proven: six runs across scenarios 1, 12, and 15, on
 **`data-artifact` again.**
 Scenario 12 labelled its logging-gap hypothesis (H4, the 06-13/06-14 sessions shortfall) `data-artifact`, as did both scenario 1 postfix runs — the claim value added on this branch, adopted unprompted for a sixth time.
 
+**What the six refuted rows do not prove.**
+The six causal `REFUTED` rows counted above are a reading taken from completed ledgers, not something any assertion in this file checks.
+No assertion in scenario 1 or scenario 12 would fail if every one of those six rows read `UNRESOLVED` instead of `REFUTED`.
+Scenario 1's relevant assertion is conditional, not categorical: "The deploy hypothesis is dismissed only by a discriminating test outcome, not by narrative."
+An `UNRESOLVED` deploy hypothesis dismisses nothing, so it satisfies that assertion vacuously — the assertion never requires dismissal to happen, only that if it happens it happens by discrimination, and the same vacuity covers the other refuted rows in both scenario-1 runs.
+All five of scenario 12's assertions require `UNRESOLVED` or a refusal; none gates on any row, causal or otherwise, ending `REFUTED`.
+So: flip all six causal `REFUTED` rows in this wave to `UNRESOLVED` — the exact signature of an over-cautious skill edit — and scenario 1 still scores 6/6, scenario 12 still scores 5/5.
+Nothing fails.
+The suite would not notice.
+
+**What would make over-caution visible.**
+A future should-refute scenario needs an assertion that fails when a causal hypothesis is left `UNRESOLVED` on evidence that should have refuted it, not an assertion satisfied under either status and read afterward.
+Scenario 1 and scenario 12 cannot be retrofitted for this by observation alone — rerunning them and reading the rows again would still be a human noticing, not the suite catching anything; the assertion has to exist in the scenario file first.
+
+**A second limit: every refutation here is flagrant.**
+All six rows rest on evidence with little room for judgment — a deploy timestamped two days after the drop began, a device-mix reweighting whose direction barely moves the number.
+No fixture in the suite tests a legitimate-but-subtle causal refutation, which is exactly the case where an over-cautious rule would bite and a flagrant case cannot reveal.
+
+**What is and is not closed.**
+The final review's blocking finding — zero post-edit measurement of whether legitimate refutation still lands — is closed: it was measured, once, by a human reading the six rows above.
+The open item calling for a scenario whose assertions require a causal hypothesis to end `REFUTED` is not closed by this wave; the two should not be conflated.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
