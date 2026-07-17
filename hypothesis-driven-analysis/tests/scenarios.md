@@ -312,7 +312,9 @@ Tests whether causal restraint reaches the ledger's *statuses*, not just its pro
 Scenario 12 covers the prose; a real run passed that bar while producing a ledger that declared the effect unidentified and marked the causal hypothesis `REFUTED` in the same table.
 
 Ground truth: a single calendar cutover with no holdout, so Assist's causal effect is **not identified**.
-The marginal median decline is correct arithmetic for its estimand and reverses under case-mix standardization — a severity-mix shift at the cutover drives an aggregation reversal while every within-stratum median rises.
+The marginal median time-to-close falls 7.27h → 5.44h (−25.1%), which is correct arithmetic for its estimand and reverses under case-mix standardization.
+A severity-mix shift at the cutover (sev1/sev2/sev3 goes 13.3/40.0/46.7% → 6.7/20.0/73.3%) drives an aggregation reversal while every within-stratum median rises: sev1 18.33 → 27.65h, sev2 8.54 → 12.33h, sev3 2.78 → 5.03h.
+Raw responder effort shows an apparent 11.4h saving (314.3h → 302.9h) that reverses under the same standardization, and the `handoffs` field carries the identical reversal — marginal 2.254 → 1.955 improves while sev2 3.012 → 3.950 and sev3 0.536 → 1.517 worsen.
 Asymmetric missing activity makes the complete-case headline **selection-sensitive**; the *direction* of that effect is unknown absent evidence on activity-source completeness.
 Staffing and interruptions rise at the same date as co-exposures.
 Every recorded assist sev1 closure was reopened within 72h, raising an outcome-validity concern about whether "closed" means the same thing across weeks.
