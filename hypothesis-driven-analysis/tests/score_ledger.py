@@ -31,10 +31,13 @@ Checks exactly two things, both syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
-      status-adequacy revision exists to prevent.
+      status-adequacy revision exists to prevent. A `data-artifact` row is
+      exempt: the skill permits refuting one once coverage and missingness
+      have been probed.
   C2  Every REFUTED `descriptive` row existed in the Plan-time ledger under the
       same id with a non-empty estimand. Catches status laundering: inventing a
-      descriptive claim at conclusion time to house a REFUTED.
+      descriptive claim at conclusion time to house a REFUTED. Does not apply
+      to `causal` or `data-artifact` rows.
 
 WHY IT IS BUILT THE WAY IT IS
 
@@ -45,9 +48,10 @@ Fail closed. Anything it cannot confidently resolve is a parse failure and the
 run exits 1 naming what could not be verified: a file with no table carrying the
 required columns, more than one such table, a repeated column name, a data row
 whose cell count does not match the header, a repeated or empty id, a claim cell
-that is neither `causal` nor `descriptive`, or a status cell carrying neither
-REFUTED nor UNRESOLVED. It never drops or waves through input it failed to
-understand, and it never reports C2 against a --plan it could not parse.
+that is none of `causal`, `descriptive`, or `data-artifact`, or a status cell
+carrying neither REFUTED nor UNRESOLVED. It never drops or waves through
+input it failed to understand, and it never reports C2 against a --plan it
+could not parse.
 
 Report only what was earned. Success output states, per check, whether it was
 checked and passed, had nothing to check, or was not checked at all — a run with
@@ -224,10 +228,11 @@ def read_table(
 
 
 def claim_of(cell: str) -> str | None:
-    """Classify a claim cell as 'causal' or 'descriptive', or None if unrecognized.
+    """Classify a claim cell as 'causal', 'descriptive', or 'data-artifact', or
+    None if unrecognized.
 
     Strict on purpose: this scorer must not guess. A misspelling, an empty
-    cell, or anything else that doesn't start with one of the two known
+    cell, or anything else that doesn't start with one of the three known
     forms (after stripping markdown emphasis) is a parse failure, not a
     default classification.
     """
@@ -236,6 +241,8 @@ def claim_of(cell: str) -> str | None:
         return "causal"
     if stripped.startswith("descriptive"):
         return "descriptive"
+    if stripped.startswith("data-artifact"):
+        return "data-artifact"
     return None
 
 
@@ -298,7 +305,7 @@ def check_ids(rows: list[dict[str, str]], label: str) -> list[str]:
 
 
 def check_claims(rows: list[dict[str, str]], label: str) -> list[str]:
-    """Every claim cell must classify as causal or descriptive."""
+    """Every claim cell must classify as causal, descriptive, or data-artifact."""
     fails: list[str] = []
     for n, row in enumerate(rows, start=1):
         if claim_of(row["claim"]) is None:
@@ -344,7 +351,10 @@ def _check_row(row: dict[str, str], planned: dict[str, dict[str, str]] | None) -
             f"C1: {row['id']} is a causal claim marked REFUTED. "
             f"An unidentified exposure-outcome contrast cannot refute a causal hypothesis."
         ]
-    if planned is None:
+    # A data-artifact REFUTED needs no further check here: the skill explicitly
+    # permits refuting one once coverage and missingness have been probed, and
+    # C2 (status laundering) applies only to descriptive rows.
+    if claim == "data-artifact" or planned is None:
         return []
     return _check_descriptive_refuted(row, planned)
 
