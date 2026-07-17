@@ -394,7 +394,7 @@ No run marked the causal hypothesis `REFUTED`; one run held `UNRESOLVED` even un
 **Do not read this as the defect closed.**
 The suite is one scenario deep on a should-not-refute case, and the brief's own open item (below the fold in this file) still wants a should-refute fixture before the rule is trusted either direction.
 
-**Two problems surfaced that the revision does not fix:**
+**Three problems surfaced that the revision does not fix:**
 
 1. **The machine check (C1) never evaluated, in any of the three runs.**
    9 of 14 per-hypothesis rows across the three ledgers put `best supported` or `CONSISTENT / best supported` in the status column — not a status the skill or `score_ledger.py` recognizes.
@@ -407,6 +407,12 @@ The suite is one scenario deep on a should-not-refute case, and the brief's own 
    SKILL.md line 164 — "An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias" — is present in the skill and did not prevent this in any run.
    This is a measured 0/3 for that line, not a partial win.
    It needs either sharper wording or a worked example showing the "establish completeness before asserting direction" move, because runs currently jump straight to a direction claim backed only by the prompt's "seven full days to mature" note, which addresses recency, not export completeness.
+3. **The skill's stated cost range contradicts the measurements from this scenario.**
+   Scenario 15 measured baseline 50.9k tokens versus with-skill runs at 94.0k / 101.5k / 95.5k — a range of +85% to +99%, against the preamble's stated 11–47% for small local datasets.
+   SKILL.md's opening paragraph makes this claim citing `tests/scenarios.md` as the evidence, so the suite now reports a cost range its own source document contradicts.
+   Scenario 15 is unusually analysis-heavy: a 420-row join, per-stratum work across three severity bands, and standardization, so +85% to +99% may represent the expensive end rather than proof the whole range is wrong.
+   The other scenarios in the table mostly stay within the claimed range — scenario 9's delta is the cheapest at +11%, and S8–S4 range from +24% to +47% — but leaving a stated number in the preamble while even one scenario contradicts it is exactly the failure the skill revision aims to fix.
+   Either the preamble's range needs re-measurement across the full suite and restatement, or it needs scoping to say which kinds of investigation questions apply to it.
 
 ## Findings from the 2026-07-16 suite
 
