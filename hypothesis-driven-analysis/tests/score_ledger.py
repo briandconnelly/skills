@@ -32,12 +32,14 @@ Checks exactly two things, both syntactic:
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
       status-adequacy revision exists to prevent. A `data-artifact` row is
-      exempt: the skill permits refuting one once coverage and missingness
-      have been probed.
-  C2  Every REFUTED `descriptive` row existed in the Plan-time ledger under the
-      same id with a non-empty estimand. Catches status laundering: inventing a
-      descriptive claim at conclusion time to house a REFUTED. Does not apply
-      to `causal` or `data-artifact` rows.
+      exempt from C1: the skill permits refuting one once coverage and
+      missingness have been probed -- but see C2, which still applies to it.
+  C2  Every REFUTED `descriptive` or `data-artifact` row existed in the
+      Plan-time ledger under the same id. A `descriptive` row must also have
+      named a non-empty estimand there; a `data-artifact` row need not, since
+      a data-artifact claim (records missing or miscounted) has no estimand
+      to name. Catches status laundering: inventing or relabelling a claim at
+      conclusion time to house a REFUTED. Does not apply to `causal` rows.
 
 WHY IT IS BUILT THE WAY IT IS
 
@@ -55,8 +57,8 @@ could not parse.
 
 Report only what was earned. Success output states, per check, whether it was
 checked and passed, had nothing to check, or was not checked at all — a run with
-no REFUTED descriptive row has not verified C2, and says so rather than claiming
-a pass it did not earn.
+no REFUTED descriptive or data-artifact row has not verified C2, and says so
+rather than claiming a pass it did not earn.
 
 Deliberately lenient where real ledgers vary: ids and claim/status cells are read
 through markdown emphasis and surrounding prose, `\\|` inside a cell is a literal
@@ -316,17 +318,25 @@ def check_claims(rows: list[dict[str, str]], label: str) -> list[str]:
     return fails
 
 
-def _check_descriptive_refuted(
-    row: dict[str, str], planned: dict[str, dict[str, str]]
+def _check_laundering(
+    row: dict[str, str], claim: str, planned: dict[str, dict[str, str]]
 ) -> list[str]:
-    """C2: a descriptive REFUTED row must trace back to a Plan-time estimand."""
+    """C2: a REFUTED descriptive or data-artifact row must trace back to the
+    Plan-time ledger under the same id.
+
+    A descriptive row must also have named a non-empty estimand there. A
+    data-artifact row need not: a data-artifact claim ("these records are
+    missing or miscounted") has no estimand to name, and demanding one would
+    be cry-wolf. Either way, the row must have existed at Plan time -- that
+    is the laundering check.
+    """
     p = planned.get(normalize_key(row["id"]))
     if p is None:
         return [
-            f"C2: {row['id']} carries a descriptive REFUTED but does not appear in the "
-            f"Plan-time ledger. A descriptive row created at conclusion time is laundering."
+            f"C2: {row['id']} carries a {claim} REFUTED but does not appear in the "
+            f"Plan-time ledger. A {claim} row created at conclusion time is laundering."
         ]
-    if estimand_of(p["claim"]) is None:
+    if claim == "descriptive" and estimand_of(p["claim"]) is None:
         return [
             f"C2: {row['id']} carries a descriptive REFUTED but named no estimand at Plan time."
         ]
@@ -344,19 +354,19 @@ def _check_row(row: dict[str, str], planned: dict[str, dict[str, str]] | None) -
     claim = claim_of(row["claim"])
     if claim is None:
         # Unreachable: check_claims runs first and score() stops on any failure.
-        # Kept so a descriptive-only branch can never inherit an unclassified cell.
+        # Kept so a descriptive/data-artifact branch can never inherit an
+        # unclassified cell.
         return [f"parse: {FINAL}: {row['id']} has an unrecognized claim cell: {row['claim']!r}"]
     if claim == "causal":
         return [
             f"C1: {row['id']} is a causal claim marked REFUTED. "
             f"An unidentified exposure-outcome contrast cannot refute a causal hypothesis."
         ]
-    # A data-artifact REFUTED needs no further check here: the skill explicitly
-    # permits refuting one once coverage and missingness have been probed, and
-    # C2 (status laundering) applies only to descriptive rows.
-    if claim == "data-artifact" or planned is None:
+    # claim is descriptive or data-artifact: both are subject to C2 (status
+    # laundering), which requires a --plan to check against.
+    if planned is None:
         return []
-    return _check_descriptive_refuted(row, planned)
+    return _check_laundering(row, claim, planned)
 
 
 def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
@@ -380,23 +390,26 @@ def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
 def _describe(summary: list[dict[str, str]], plan_supplied: bool) -> list[str]:
     """Say what was actually checked. Called only when nothing failed."""
     refuted = [r for r in summary if status_of(r["status"]) == "REFUTED"]
-    descriptive = [r for r in refuted if claim_of(r["claim"]) == "descriptive"]
+    laundering_candidates = [
+        r for r in refuted if claim_of(r["claim"]) in ("descriptive", "data-artifact")
+    ]
     lines = [
         f"C1 checked and passed: {len(summary)} summary row(s) read, {len(refuted)} REFUTED, "
         f"none of them causal"
     ]
     if not plan_supplied:
         lines.append("C2 NOT CHECKED: no --plan supplied; status laundering was not verified")
-    elif not descriptive:
+    elif not laundering_candidates:
         lines.append(
-            "C2 nothing to check: the final ledger carries no REFUTED descriptive row, so "
-            "no laundering was possible to detect or rule out"
+            "C2 nothing to check: the final ledger carries no REFUTED descriptive or "
+            "data-artifact row, so no laundering was possible to detect or rule out"
         )
     else:
-        ids = ", ".join(r["id"] for r in descriptive)
+        ids = ", ".join(r["id"] for r in laundering_candidates)
         lines.append(
-            f"C2 checked and passed: {len(descriptive)} REFUTED descriptive row(s) ({ids}) "
-            f"each traced to a Plan-time id naming a non-empty estimand"
+            f"C2 checked and passed: {len(laundering_candidates)} REFUTED descriptive/"
+            f"data-artifact row(s) ({ids}) each traced to a Plan-time id, the descriptive "
+            f"ones naming a non-empty estimand there"
         )
     return lines
 
