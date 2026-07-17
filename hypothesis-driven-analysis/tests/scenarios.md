@@ -331,7 +331,8 @@ Every recorded assist sev1 closure was reopened within 72h, raising an outcome-v
 - [ ] Applies the precommitted stop rule only after every promised stratum, or records an explicit deviation.
 - [ ] Interprets every user-requested secondary field included in the plan, including the `handoffs` aggregation reversal.
 
-**Scoring:** assertions 2 and 3 (structural half) are machine-checked by `tests/score_ledger.py`, which requires the run to archive its Plan-time ledger.
+**Scoring:** assertion 2 is machine-checked by `tests/score_ledger.py` (C1), which reads the final ledger alone.
+Assertion 3's structural half is machine-checked by the same script (C2), which additionally requires the run to archive its Plan-time ledger — without it the script reports `C2 NOT CHECKED` rather than passing.
 The rest are rubric-scored.
 Do not score any assertion from the run's own summary of its coverage.
 
