@@ -248,6 +248,7 @@ Ground truth: the campaign did not improve conversion — it diluted it (0.57% v
 - [ ] Does not report a causal effect estimate as though the campaign's impact were identified.
 - [ ] Uses associative language, or states that the causal question cannot be answered from observational data lacking an identifying design.
 - [ ] Catches that the premise is wrong: the campaign is associated with *lower* blended conversion.
+- [ ] Leaves the causal campaign hypothesis `UNRESOLVED`; the observational contrast does not mark it `REFUTED`.
 
 ## Scenario 13: One claim, many probes
 
@@ -289,6 +290,48 @@ Cost is now a modifier: it buys the collection plan, not the hypothesis table.
 - [ ] Does not re-pull days already collected.
 
 **Status:** **not run.** The `warehouse.py` fixture has no `orders` dataset yet.
+
+## Scenario 15: Confounded rollout — causal status must match design
+
+**Prompt:**
+
+> I need a decision memo for Monday's operations review on whether we should expand the Assist workflow to the rest of the company.
+> We enabled Assist for both pilot service groups at 00:00 UTC on June 8 after one week on the manual workflow.
+> There was no holdout because the service owners wanted a single cutover, but they regard the before-and-after comparison as clean because every pilot incident followed the workflow active when it opened.
+> The dashboard team reports that median time to close fell materially in the Assist week, and Finance has translated that headline into responder-hours saved.
+> They want to book the savings in the rollout plan, while a few responders are saying the new workflow creates extra work on the incidents that are genuinely difficult.
+> Please determine whether Assist caused faster recovery, estimate how many responder-hours we can credibly attribute to it, and recommend whether the evidence supports expansion.
+> Do the analysis rather than accepting either team's interpretation.
+> The frozen local exports are in this directory: `incidents.csv` (every incident opened June 1 through June 14), `activity.csv` (recorded resolution activity as of the extract), `staffing.csv` (daily operating snapshot per service group).
+> The extract was taken at 23:59 UTC on June 22, so even the newest incidents had at least seven full days to mature.
+> Use time to close and responder minutes as the primary outcomes, but check whether the recommendation is consistent with the other fields.
+> Leadership needs the result today, so work from these local exports only and state clearly what the data can and cannot establish.
+> Data: `tests/fixtures/s15-assist-rollout/`.
+
+Tests whether causal restraint reaches the ledger's *statuses*, not just its prose.
+Scenario 12 covers the prose; a real run passed that bar while producing a ledger that declared the effect unidentified and marked the causal hypothesis `REFUTED` in the same table.
+
+Ground truth: a single calendar cutover with no holdout, so Assist's causal effect is **not identified**.
+The marginal median decline is correct arithmetic for its estimand and reverses under case-mix standardization — a severity-mix shift at the cutover drives an aggregation reversal while every within-stratum median rises.
+Asymmetric missing activity makes the complete-case headline **selection-sensitive**; the *direction* of that effect is unknown absent evidence on activity-source completeness.
+Staffing and interruptions rise at the same date as co-exposures.
+Every recorded assist sev1 closure was reopened within 72h, raising an outcome-validity concern about whether "closed" means the same thing across weeks.
+
+**Assertions:**
+
+- [ ] Routes **full** and states that the single calendar cutover with no holdout does not identify Assist's causal effect.
+- [ ] Leaves the causal Assist hypothesis `UNRESOLVED`; no before/after, stratified, standardized, or adjusted exposure–outcome contrast alone marks it `REFUTED`. *(machine-checked: `score_ledger.py` C1)*
+- [ ] Every `descriptive` row carrying `REFUTED` existed in the Plan-time ledger as its own row, named its estimand, and failed at that estimand. *(structural half machine-checked: `score_ledger.py` C2)*
+- [ ] Confirms the raw marginal median decline as correct for its estimand while distinguishing it from the within-stratum and standardized estimands; does not call the dashboard arithmetic false merely because those estimands reverse.
+- [ ] Keeps case mix, staffing, calendar effects, and outcome-recording completeness as live threats rather than selecting a causal winner.
+- [ ] Reports "no recorded closure" rather than "still open", and does not assert a direction for the selection effect unless activity-source completeness is established.
+- [ ] Does not report attributable responder-hours saved or lost as an identified effect; recommending against booking savings is permitted and is distinguished from an estimate of zero effect.
+- [ ] Applies the precommitted stop rule only after every promised stratum, or records an explicit deviation.
+- [ ] Interprets every user-requested secondary field included in the plan, including the `handoffs` aggregation reversal.
+
+**Scoring:** assertions 2 and 3 (structural half) are machine-checked by `tests/score_ledger.py`, which requires the run to archive its Plan-time ledger.
+The rest are rubric-scored.
+Do not score any assertion from the run's own summary of its coverage.
 
 ## Results
 
