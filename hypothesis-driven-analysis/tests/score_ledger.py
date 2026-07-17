@@ -73,9 +73,14 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 EMPHASIS = re.compile(r"[*_`]")
 SPACES = re.compile(r"\s+")
 STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
-ESTIMAND = re.compile(r"estimand\b(?P<rest>.*)", re.IGNORECASE | re.DOTALL)
-# Punctuation that can sit between "estimand" and its content, or close it off:
-# ASCII punctuation plus U+2013 en dash, U+2014 em dash, U+2026 ellipsis.
+# The documented syntax (references/ledger-template.md): a descriptive claim
+# cell is written `descriptive (estimand: <the quantity>)`. Anchored to that
+# labeled, parenthesised form only -- the word "estimand" appearing anywhere
+# else in the cell (including prose that disclaims having one) is not a match.
+ESTIMAND = re.compile(r"^descriptive\s*\(\s*estimand\s*:\s*(?P<rest>[^)]*)\)", re.IGNORECASE)
+# Punctuation that can sit around the captured content once split out of its
+# enclosing parenthesis: ASCII punctuation plus U+2013 en dash, U+2014 em
+# dash, U+2026 ellipsis.
 ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
 
 FINAL = "final ledger"
@@ -238,13 +243,17 @@ def status_of(cell: str) -> str | None:
 
 
 def estimand_of(claim: str) -> str | None:
-    """The estimand named in a claim cell, or None if it names none.
+    """The estimand named in a claim cell, or None if it does not match the
+    documented `descriptive (estimand: <quantity>)` syntax.
 
-    `descriptive (estimand: marginal median)` names one; `descriptive` and
-    `descriptive (estimand: )` do not. C2 requires a non-empty estimand, so an
-    empty one must not read as a pass.
+    `descriptive (estimand: marginal median)` names one, tolerant of case and
+    markdown emphasis. `descriptive`, `descriptive (estimand: )`, and prose
+    that merely mentions or disclaims "estimand" outside that labeled,
+    parenthesised form -- e.g. `descriptive - no estimand named` -- do not:
+    C2 requires the documented syntax with non-empty content, not the word.
     """
-    m = ESTIMAND.search(claim)
+    stripped = EMPHASIS.sub("", claim).strip()
+    m = ESTIMAND.match(stripped)
     if m is None:
         return None
     return m.group("rest").strip(ESTIMAND_TRIM) or None
