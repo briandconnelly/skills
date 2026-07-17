@@ -9,9 +9,9 @@ Clean-room: subagent given only the prompt and the skill; no assertions, ground 
 | --- | --- | --- | --- |
 | 1 | Routes **mini**: one-paragraph ledger, not the full loop | PASS | Route `mini`; reason keyed to the current table — "a single non-causal claim with no rival explanation competing for it — the skill's routing section names this exact case." Record is the one-paragraph ledger. |
 | 2 | No hypothesis table, no Sources/Tests/Amendments sections | PASS | Output carries only the mini ledger block. |
-| 3 | Answers correctly that the claim is false, reporting the measured p95 | PASS | "the claim is not true… p95 = 392.2ms." Matches fixture ground truth (p95 ≈ 392). |
+| 3 | Answers correctly that the claim is false, reporting the measured p95 | PASS (window-scoped) | "the claim is not true… p95 = 392.2ms," matching fixture ground truth (p95 ≈ 392). The `>500ms` bar is far from 392, so the verdict is not sensitive to percentile convention. The fixture covers only 00:00–19:59 (a pre-existing, deliberately-retained 20-of-24-hour gap; see `generate.py`), so this is a false verdict over the *covered window*; the run flagged the gap and noted a full-day breach would need an unindicated spike. Read as a pass on the available data, not a verified full calendar day. |
 
-Total: 3/3.
+Total: 3/3 (assertion 3 scoped to the covered window, per the note).
 
 Cost: 4 tool calls, ~39.5k subagent tokens, 49s.
 

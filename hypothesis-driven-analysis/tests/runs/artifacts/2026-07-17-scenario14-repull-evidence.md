@@ -1,6 +1,17 @@
-# Scenario 14 — re-pull evidence (machine-extracted from the run transcript)
+# Scenario 14 — plan-ordering and re-pull evidence (machine-extracted from the run transcript)
 
-Assertion 4 ("Does not re-pull days already collected") asserts an action did *not* happen, which the run's own COMMANDS summary cannot establish — and in this case actively mis-stated ("June 01… not re-queried"). This artifact records what the harness transcript shows.
+Assertions 2 ("plan before the first metered query") and 4 ("does not re-pull days already collected") both concern *ordering* around the metered calls, which the run's own COMMANDS summary cannot establish — and in this case actively mis-stated ("June 01… not re-queried"). This artifact records what the harness transcript shows.
+
+## Chronological event order (JSONL line numbers = event order)
+
+- **line 11** — tool_result: the agent reads `references/ledger-template.md`. This is the source of the generic `Serves:` / `Cheapest adequate:` / `Stop / re-pull condition:` strings; it is the *template*, not the agent's plan.
+- **line 14** — tool_use: `uv run warehouse.py --dataset orders --day 2026-06-01` — the first metered query (the orientation probe).
+- **line 17** — assistant text: the agent's *own* costly-collection plan, first identifiable by its specific wording (`Serves: answering …`, `30 calls is the fewest …`, `Budget: 30 queries; no re-pulls`).
+- **line 18** — tool_use: `for d in $(seq -w 1 30); do … --day 2026-06-$d; done` — the systematic pull.
+
+Checks run over the transcript (`head -14 | grep`): none of the agent's plan markers (`Serves: answering`, `30 calls is the fewest`) appear before line 14; only the template's markers do.
+
+**Conclusion for assertion 2:** the plan (line 17) came *after* the first metered query (line 14) → assertion 2 FAIL. The plan preceded the loop but not the probe, and the probe is a metered call.
 
 ## Every warehouse-invoking command (tool_use inputs, in file order)
 

@@ -8,7 +8,7 @@ description: 'Use when investigating an unresolved explanatory, diagnostic, or c
 Guide empirical investigations through PPDAC (Problem, Plan, Data, Analysis, Conclusion) and the scientific method.
 The framework buys accuracy and auditability: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits, and every rejected alternative leaves a record of why.
 Expect it to cost more tokens than an unstructured investigation, not fewer — measured at 11–99% more on small local datasets, rising with analysis complexity (`tests/scenarios.md`).
-It may pay for itself where collection is expensive enough that fishing expeditions and re-pulls dominate the bill — paid APIs, slow warehouse queries, large remote logs — but treat that as the claim it is: no run has measured it, and the fixtures that could are the ones nobody has built.
+It may pay for itself where collection is expensive enough that fishing expeditions and re-pulls dominate the bill — paid APIs, slow warehouse queries, large remote logs — but treat that as the claim it is: a metered fixture now exists (`tests/scenarios.md` S14), but no paired baseline-vs-skill run has measured whether the ceremony saves more than it costs there, so the saving remains unmeasured rather than shown.
 That trade is why routing matters — spend the ceremony where a wrong answer or a wasted pull is costly, and take the direct route everywhere else.
 
 ## Routing
@@ -52,8 +52,9 @@ Two questions separate the three cheap routes, and neither is about effort.
 
 *Does the answer have to reach past what the records measure?*
 The median of June's orders is a fact those orders settle — whether they sit in a local file or behind a metered query, since where the data lives is a cost, not an inference.
-Whether B beats A — given a design that identifies the comparison — is a claim about a population those two weeks only sample, so it needs an estimand, an uncertainty statement, and a threshold — the same arithmetic, aimed somewhere the records do not reach on their own.
-Absent that design the same question is not estimation at all: it is the unidentified-causal case above, and it routes `full` (or a clarifying question first).
+Whether B beats A — given a design that lets the comparison generalize — is a claim about a population those two weeks only sample, so it needs an estimand, an uncertainty statement, and a threshold — the same arithmetic, aimed somewhere the records do not reach on their own.
+Absent that design, a B-vs-A question that asks for a causal effect is not estimation at all: it is the unidentified-causal case above, and it routes `full` (or a clarifying question first).
+A purely predictive comparison — which model, page, or copy scores better on samples drawn the same way — stays estimation on its sampling design alone; it needs no causal identification because it makes no causal claim.
 
 Neither question is about how hard the work is.
 Needing a percentile instead of a key lookup does not turn a question into a claim, and a claim that takes four probes to settle is still one claim — a probe budget is not a second hypothesis.
@@ -70,7 +71,8 @@ What costly collection buys is the plan, not the hypothesis table.
 It binds any costly pull you make, on every route and on work that took no route at all — a metered dump you are only reformatting is still metered.
 Before collecting, write down: the decision or output the pull serves, the exact source and action, why this is the cheapest adequate collection, a budget in the relevant unit, the authorization covering it (or `BLOCKED`), and the condition under which you stop or re-pull.
 That record is the thing the expense is meant to buy: the fishing expedition you do not pay for twice.
-A datum you have already pulled — including an orientation probe taken to see the data's shape — is already paid for; the collection reuses it rather than fetching it again, and a systematic pull skips the rows a probe already returned.
+A datum you have already pulled — including one an orientation probe returned to show the data's shape — is already paid for; when the probe returned the same rows, at the same grain and snapshot, that the systematic pull would, reuse them rather than paying twice, and fold the probe into the plan's budget rather than leaving it uncounted.
+When the probe only sampled, truncated, or reshaped the data, a re-pull is legitimate — take it and say why, rather than stitching an inconsistent dataset together to dodge one.
 It is worth writing whether the answer is one median or five rival explanations.
 
 The direct route records nothing, unless collection is costly, in which case it records the collection plan and nothing else.
