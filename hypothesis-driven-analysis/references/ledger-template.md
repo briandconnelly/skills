@@ -136,12 +136,12 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 
 ## Hypotheses
 
-| id | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
-| --- | --- | --- | --- | --- | --- | --- |
-| H1 | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
-| H2 | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
-| H4 (retrospective) | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
-| H5 | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
+| id | claim | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| H1 | causal | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
+| H2 | causal | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
+| H4 (retrospective) | causal | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
+| H5 | causal | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
 
 ## Sources
 
@@ -183,6 +183,13 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 
 - Answer: the p95 increase is associated with a traffic-mix shift toward uncached routes starting 09:10 Tuesday; the deploy is not implicated, so do not roll back.
 - Best supported: H2, via T2 and T5 (discriminating: the step co-occurs with the route-mix shift, precedes the deploy, and the mix shift reproduces most of the observed increase under reweighting).
-- Per-hypothesis summary: H1 REFUTED (necessary timing prediction failed under an adequate test, T1); H2 UNRESOLVED and best supported (T2, T5 CONSISTENT); H4 REFUTED (its necessary majority-of-added-latency prediction failed under T4, on trace spans that had not informed it); H5 UNRESOLVED and best supported for the coverage gap (T6 CONSISTENT).
+- Per-hypothesis summary:
+
+  | id | claim | status | basis |
+  | --- | --- | --- | --- |
+  | H1 | causal | REFUTED | necessary timing prediction failed under an adequate test, T1 |
+  | H2 | causal | UNRESOLVED | best supported (T2, T5 CONSISTENT) |
+  | H4 (retrospective) | causal | REFUTED | its necessary majority-of-added-latency prediction failed under T4, on trace spans that had not informed it |
+  | H5 | causal | UNRESOLVED | best supported for the coverage gap (T6 CONSISTENT) |
 - Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — user-agent coverage too sparse); the 07-07 21:00–23:00 hours are excluded from rate denominators per H5/T6, which does not change the conclusion but narrows the window the step is measured over; the claim is associative — the route mix was not assigned by anything independent of latency, and no intervention was run, so "the mix shift is associated with the increase" is as far as this data reaches.
 ```
