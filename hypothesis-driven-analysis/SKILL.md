@@ -175,6 +175,9 @@ Derive hypothesis status from the latest effective outcome of each test entry (t
 The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise.
 "Necessary" is not decided at conclusion time — every hypothesis in the table declares at Plan time the one prediction that must hold if it is true, and only that prediction's failure can refute it.
 A prediction that merely *would be nice* for the hypothesis cannot refute it, however cleanly it fails.
+An exposure–outcome contrast from a design that does not identify the causal contrast cannot by itself mark that causal hypothesis `REFUTED`: that test leaves it `UNRESOLVED`, because a co-exposure pushing the other way could mask a real effect.
+Independent evidence can still refute it when that evidence falsifies a preregistered necessary prediction without relying on the unidentified contrast — an artifact that inflates the wrong week cannot explain a drop, and that refutation stands.
+A descriptive claim the records settle may carry its own `REFUTED`, but only as a row registered separately at Plan time with its estimand named; creating, splitting, or relabelling one at conclusion time is status laundering, not a finding.
 
 A necessary prediction has to be able to fail: it must follow from the hypothesis's own mechanism, and it must be possible to observe it failing while the rest of your data stays as it is.
 "The timestamps fall in the analysis window" is not a necessary prediction; it is a tautology wearing one's clothes, and a hypothesis defended by one is unfalsifiable.
