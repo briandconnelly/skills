@@ -159,6 +159,9 @@ Degrade gracefully: a harness without subagents runs the same tests serially.
 Record each test outcome as `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with evidence pointers.
 Look at the data before summarizing it: distributions, outliers, missingness.
 Prefer effect sizes over bare significance, and watch for confounds and aggregation reversals.
+When two quantities you compare differ in denominator, weighting, aggregation, or censoring, name what each one measures rather than presenting them as versions of the same number.
+A sign change between a marginal and a standardized quantity shows sensitivity to composition and estimand; it is not the standardized quantity correcting the marginal one, and claiming that requires stating the standardization assumptions — including that the stratifier is not itself downstream of the exposure.
+An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias.
 Spot-verify the evidence behind the leading explanation and the strongest rival.
 **Verifying does not mean paying twice.** Re-running a metered query to check a metered query is the expensive form, and it is rarely the one that catches anything.
 Start with the free check: read the worker's stated method and command against the prediction it claims to test, and against its own return.
