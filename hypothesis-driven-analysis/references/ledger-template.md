@@ -20,14 +20,16 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 
 ## Hypotheses
 
-| id | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
-| --- | --- | --- | --- | --- | --- | --- |
-| H1 | ... | ... | ... | ... | T1 | ... |
-| H2 | ... | ... | ... | ... | T2 | ... |
+| id | claim | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| H1 | causal | ... | ... | ... | ... | T1 | ... |
+| H2 | descriptive (estimand: ...) | ... | ... | ... | ... | T2 | ... |
 
 The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
 Every row must carry one, and it must be able to fail — it follows from the hypothesis's own mechanism, and you could observe it failing while the rest of the data stays as it is.
 A row whose necessary prediction cannot fail is not a testable hypothesis: move it to Limitations as an open possibility rather than leaving it in the table to sit `UNRESOLVED` forever while competing for "best supported".
+Each row declares its claim as `causal` or `descriptive`, and a descriptive row names the estimand its prediction is about.
+The claim column is what the status rules read: a `causal` row cannot be `REFUTED` by a contrast whose design does not identify it, and a `descriptive` row cannot be added after Plan time.
 
 Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`).
 A retrospective hypothesis can only be best supported on evidence that did not inform it — a held-out slice, a later window, a source you had not looked at, or a new measurement.
@@ -73,7 +75,11 @@ An amendment that supersedes a test outcome names the test id, the replacement o
 
 - Answer: <answer first>
 - Best supported: <explanation(s), with the discriminating evidence>
-- Per-hypothesis summary: <one line per hypothesis, status REFUTED or UNRESOLVED derived from test entries>
+- Per-hypothesis summary:
+
+  | id | claim | status | basis |
+  | --- | --- | --- | --- |
+  | H1 | causal | UNRESOLVED | <the discriminating evidence, or why nothing settled it> |
 - Limitations: <named unresolved alternatives, data gaps, associative-only claims>
 ```
 
