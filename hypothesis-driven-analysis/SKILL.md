@@ -20,7 +20,7 @@ Route on the inferential shape of the answer being asked for — not on the ques
 | Route | Observable condition | Ceremony |
 | --- | --- | --- |
 | **direct** | No claim is being adjudicated, and the answer is a fact the records themselves settle — no explanatory or causal inference, no generalization past what they directly measure — computing a bounded statistic counts | None; answer and stop |
-| **estimation** | The answer is a magnitude or a comparison that generalizes past what the records directly measure, no prior claim is being adjudicated, and nothing causal is asked that the design does not already identify | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
+| **estimation** | The answer is a magnitude or a comparison that generalizes past what the records directly measure, no prior claim is being adjudicated, nothing causal is asked that the design does not already identify, and no rival explanations have to be told apart | Estimand, population, uncertainty statement, practical threshold; no competing hypotheses |
 | **mini** | Exactly one stated claim is being adjudicated with no rival explanation competing for it — non-causal, or causal with an identifying design behind it | One-paragraph ledger: claim, prediction, probes, outcome |
 | **full** | A causal claim or question is requested that no identifying design settles, or two or more live explanations have to be told apart | Full PPDAC loop with investigation ledger |
 
@@ -32,7 +32,7 @@ Do not fall through to `full` by default: the loop costs more than it saves on s
 ### A causal question routes on its design, not its wording
 
 Ask what assigned the exposure, and route on what you are *told* assigned it — not on what the phrasing implies.
-Randomization stated, or assignment stated to be plausibly independent of the outcome, with a comparison group that would have moved the same way had the cause been absent: the effect is identified and no rival explanations need telling apart, so the work is **estimation** — or `mini`, if someone has already put a number on the table for you to check.
+Randomization stated, or assignment stated to be plausibly independent of the outcome, with a comparison group that would have moved the same way had the cause been absent: the effect is identified and no rival explanations need telling apart, so the work is **estimation** — or `mini`, if someone has already stated a claim, numeric or qualitative, for you to check.
 "Is B better than A, and by how much" over an assignment you have been told was random is an estimation task, however causal it sounds — the design already did the discriminating that the loop would otherwise have to do.
 Assigned by anything else — someone launched it, it shipped to whoever got it, it happened in a week when other things also happened: nothing identifies the effect, every co-occurring change is a live rival, and that is **full**.
 "How much did launching the campaign improve conversion" is the second case wearing the first one's clothes: a causal question carrying a number, with no design behind it.
@@ -52,7 +52,8 @@ Two questions separate the three cheap routes, and neither is about effort.
 
 *Does the answer have to reach past what the records measure?*
 The median of June's orders is a fact those orders settle — whether they sit in a local file or behind a metered query, since where the data lives is a cost, not an inference.
-Whether B beats A is a claim about a population those two weeks only sample, so it needs an estimand, an uncertainty statement, and a threshold — the same arithmetic, aimed somewhere the records do not reach on their own.
+Whether B beats A — given a design that identifies the comparison — is a claim about a population those two weeks only sample, so it needs an estimand, an uncertainty statement, and a threshold — the same arithmetic, aimed somewhere the records do not reach on their own.
+Absent that design the same question is not estimation at all: it is the unidentified-causal case above, and it routes `full` (or a clarifying question first).
 
 Neither question is about how hard the work is.
 Needing a percentile instead of a key lookup does not turn a question into a claim, and a claim that takes four probes to settle is still one claim — a probe budget is not a second hypothesis.
@@ -69,6 +70,7 @@ What costly collection buys is the plan, not the hypothesis table.
 It binds any costly pull you make, on every route and on work that took no route at all — a metered dump you are only reformatting is still metered.
 Before collecting, write down: the decision or output the pull serves, the exact source and action, why this is the cheapest adequate collection, a budget in the relevant unit, the authorization covering it (or `BLOCKED`), and the condition under which you stop or re-pull.
 That record is the thing the expense is meant to buy: the fishing expedition you do not pay for twice.
+A datum you have already pulled — including an orientation probe taken to see the data's shape — is already paid for; the collection reuses it rather than fetching it again, and a systematic pull skips the rows a probe already returned.
 It is worth writing whether the answer is one median or five rival explanations.
 
 The direct route records nothing, unless collection is costly, in which case it records the collection plan and nothing else.
