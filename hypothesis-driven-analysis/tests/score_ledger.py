@@ -129,24 +129,34 @@ def parse_tables(md: str) -> list[list[list[str]]]:
 
 
 def _select_table(
-    md: str, label: str, required: tuple[str, ...]
+    md: str, label: str, required: tuple[str, ...], excluded: tuple[str, ...] = ()
 ) -> tuple[list[list[str]] | None, list[str]]:
-    """The one table whose header carries every required column, or a parse failure.
+    """The one table whose header carries every required column and none of the
+    excluded ones, or a parse failure.
 
-    Zero matches and more than one match are both failures: neither leaves the
-    scorer able to say which rows it was supposed to check.
+    `excluded` narrows a required-column match to the table it's actually meant
+    to find when more than one table in the file happens to carry the same
+    required columns — e.g. a Plan-time ledger's Hypotheses table and its
+    Conclusion summary both carry `id` + `claim`, and only `status` tells them
+    apart. Zero matches and more than one match are both failures: neither
+    leaves the scorer able to say which rows it was supposed to check.
     """
     cols = ", ".join(required)
-    matches = [t for t in parse_tables(md) if t and _header_has(t[0], required)]
+    desc = cols if not excluded else f"{cols}, excluding {', '.join(excluded)}"
+    matches = [
+        t
+        for t in parse_tables(md)
+        if t and _header_has(t[0], required) and _header_lacks(t[0], excluded)
+    ]
     if not matches:
         return None, [
             f"parse: {label}: no table found whose header carries every required "
-            f"column ({cols}); nothing in this file could be checked"
+            f"column ({desc}); nothing in this file could be checked"
         ]
     if len(matches) > 1:
         return None, [
             f"parse: {label}: {len(matches)} tables carry the required columns "
-            f"({cols}); cannot tell which one to score"
+            f"({desc}); cannot tell which one to score"
         ]
     return matches[0], []
 
@@ -154,6 +164,11 @@ def _select_table(
 def _header_has(header: list[str], required: tuple[str, ...]) -> bool:
     names = [normalize_key(h) for h in header]
     return all(r in names for r in required)
+
+
+def _header_lacks(header: list[str], excluded: tuple[str, ...]) -> bool:
+    names = [normalize_key(h) for h in header]
+    return not any(e in names for e in excluded)
 
 
 def _rows_from(table: list[list[str]], label: str) -> tuple[list[dict[str, str]], list[str]]:
@@ -180,13 +195,16 @@ def _rows_from(table: list[list[str]], label: str) -> tuple[list[dict[str, str]]
     return rows, fails
 
 
-def read_table(md: str, label: str, *required: str) -> tuple[list[dict[str, str]], list[str]]:
-    """Rows of the file's one table carrying every required column, plus parse failures.
+def read_table(
+    md: str, label: str, *required: str, excluded: tuple[str, ...] = ()
+) -> tuple[list[dict[str, str]], list[str]]:
+    """Rows of the file's one table carrying every required column (and none of
+    the excluded ones), plus parse failures.
 
     Returns ([], fails) whenever the table cannot be identified or trusted; a
     caller that sees any failure must not treat the rows as a verified reading.
     """
-    table, fails = _select_table(md, label, required)
+    table, fails = _select_table(md, label, required, excluded)
     if table is None:
         return [], fails
     return _rows_from(table, label)
@@ -307,8 +325,16 @@ def _check_row(row: dict[str, str], planned: dict[str, dict[str, str]] | None) -
 
 
 def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
-    """The Plan-time rows keyed by normalized id, or None if the plan is untrustworthy."""
-    rows, fails = read_table(plan, PLAN, "id", "claim")
+    """The Plan-time rows keyed by normalized id, or None if the plan is untrustworthy.
+
+    Targets the Hypotheses table specifically: it carries `id` + `claim` but no
+    `status` column, which distinguishes it from the ledger template's other
+    `id` + `claim` table, the Conclusion per-hypothesis summary (which also
+    carries `status`). Without excluding `status`, a real Plan-time ledger
+    written from the template would carry two matching tables and fail to
+    parse even though which one to read is unambiguous.
+    """
+    rows, fails = read_table(plan, PLAN, "id", "claim", excluded=("status",))
     fails += check_ids(rows, PLAN)
     fails += check_claims(rows, PLAN)
     if fails:
