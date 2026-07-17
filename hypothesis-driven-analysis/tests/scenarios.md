@@ -377,6 +377,37 @@ Triggered by an independent adversarial review. Every row below exercises the cu
 | 2026-07-16 | 11 (mini route) | with-skill | **3/3** | 5 | 39.7k | Mini route fires on its condition. Coverage check caught an unplanned 20-of-24-hour gap in the fixture. |
 | 2026-07-16 | 12 (causal "how much") | with-skill | **4/4** | 12 | 64.6k | Routed **full**, not estimation, citing the override; refused a causal estimate; caught the false premise. |
 
+### Third wave, 2026-07-16 — scenario 15 (Task 9, causal-status revision)
+
+Baseline plus three with-skill runs, targeting the defect the current revision exists to fix: a causal hypothesis marked `REFUTED` from an unidentified pre/post contrast.
+`score_ledger.py` C1/C2 were run against all three with-skill ledgers; results below are the actual tool output, not a prediction.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-16 | 15 (confounded rollout) | baseline | 4/5 scoreable | 11 | 50.9k | Unaided run still caught the Simpson's reversal, staffing confound, censoring asymmetry, and 100% sev1 reopen cluster, and refused Finance a savings figure. **No ledger, so the ledger/route/stop-rule assertions are unscoreable** — baseline's only real gap is machinery a baseline by definition doesn't produce, not judgment. |
+| 2026-07-16 | 15 (confounded rollout) | with-skill, run 1 | 6/7 scoreable | 20 | 94.0k | Causal-status rule held: H1 stayed `UNRESOLVED`, citing the design-identification rule by name. **Assertion 2 unscoreable in practice** — status column reads `best supported`, `score_ledger.py` fails closed at parse before C1 runs. Assertion 6 failed: wrote "still open," asserted the censoring bias direction without checking export completeness. |
+| 2026-07-16 | 15 (confounded rollout) | with-skill, run 2 | 6/7 scoreable | 18 | 101.5k | Same rule hold, same failure mode: `UNRESOLVED` with the identification rule cited, but status column is `CONSISTENT / best supported` on three rows — **`score_ledger.py` fails closed at parse, C1 never evaluates**. Assertion 6 failed the same way as run 1. |
+| 2026-07-16 | 15 (confounded rollout) | with-skill, run 3 | 6/7 scoreable | 18 | 95.5k | Strongest hold of the three: necessary prediction failed in 3/3 severity strata and H1 was still kept `UNRESOLVED`, explicit that it "cannot be marked REFUTED because the design is an unidentified pre/post contrast." **Same status-vocabulary failure** (`best supported`, `best supported (associative)`) breaks the machine check anyway. Assertion 6 failed a third time, with a direction claim ("understated, not overstated") volunteered from arithmetic, not from a completeness check. |
+
+**Catch rate on the targeted defect: 3/3.**
+No run marked the causal hypothesis `REFUTED`; one run held `UNRESOLVED` even under a 3/3-strata prediction failure, the exact case the last rewrite lost.
+**Do not read this as the defect closed.**
+The suite is one scenario deep on a should-not-refute case, and the brief's own open item (below the fold in this file) still wants a should-refute fixture before the rule is trusted either direction.
+
+**Two problems surfaced that the revision does not fix:**
+
+1. **The machine check (C1) never evaluated, in any of the three runs.**
+   9 of 14 per-hypothesis rows across the three ledgers put `best supported` or `CONSISTENT / best supported` in the status column — not a status the skill or `score_ledger.py` recognizes.
+   Confirmed by running the scorer: all three runs `FAIL` at `parse:` with "unrecognized status cell," before C1 or C2 execute.
+   The skill text says `SUPPORTED` is not a status, and `references/ledger-template.md`'s worked example puts that phrase in the *basis* column, not status.
+   Assertion 2 passed on manual read of all three runs, but the automated check that assertion is supposed to lean on does not work against real ledgers as written.
+   This needs either a status-column format fix in the skill's worked examples/guidance or a scorer that recognizes the vocabulary agents actually produce — as it stands the "machine-checked" claim on assertion 2 is not true in practice.
+2. **Assertion 6 failed 3/3.**
+   Every run wrote "still open" rather than "no recorded closure," and every run asserted a direction for the censoring bias (`biases the assist median low`, `understated`, a stated lower bound) without first establishing the export's completeness semantics.
+   SKILL.md line 164 — "An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias" — is present in the skill and did not prevent this in any run.
+   This is a measured 0/3 for that line, not a partial win.
+   It needs either sharper wording or a worked example showing the "establish completeness before asserting direction" move, because runs currently jump straight to a direction claim backed only by the prompt's "seven full days to mature" note, which addresses recency, not export completeness.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
