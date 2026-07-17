@@ -20,6 +20,13 @@ SCOPE — read before pointing this at a new scenario:
   conclude anything — the top regression risk this revision is trying to avoid.
   A should-refute scenario needs its own check, not this one.
 
+SYNTACTIC CHECKS ONLY
+
+  This scorer verifies syntactic presence, not semantic quality. For example,
+  a cell like `descriptive (estimand: N/A)` satisfies the C2 syntactic check
+  by design; judging whether a named estimand is meaningful is the rubric
+  grader's job, not this script's.
+
 Checks exactly two things, both syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
@@ -65,6 +72,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import NamedTuple
 
@@ -251,12 +259,20 @@ def estimand_of(claim: str) -> str | None:
     that merely mentions or disclaims "estimand" outside that labeled,
     parenthesised form -- e.g. `descriptive - no estimand named` -- do not:
     C2 requires the documented syntax with non-empty content, not the word.
+
+    This check is syntactic presence, not semantic quality: a cell like
+    `descriptive (estimand: N/A)` satisfies it by design, and judging whether
+    a named estimand is meaningful is the rubric grader's job, not this
+    script's.
     """
     stripped = EMPHASIS.sub("", claim).strip()
     m = ESTIMAND.match(stripped)
     if m is None:
         return None
-    return m.group("rest").strip(ESTIMAND_TRIM) or None
+    # Strip Unicode Cf (Format category) characters like U+200B (zero-width space),
+    # U+FEFF (zero-width no-break space), U+200C, U+200D, U+2060, U+00AD, etc.
+    content = "".join(c for c in m.group("rest") if unicodedata.category(c) != "Cf")
+    return content.strip(ESTIMAND_TRIM) or None
 
 
 def check_ids(rows: list[dict[str, str]], label: str) -> list[str]:
