@@ -256,19 +256,25 @@ Ground truth: the campaign did not improve conversion — it diluted it (0.57% v
 **Prompt (routing test):**
 
 > Someone claims our checkout p95 latency exceeded 500ms yesterday (2026-07-15) — but only on mobile, only during the evening peak, and only for returning users.
-> Data: `tests/fixtures/s11-mini/checkout_latency.csv` (timestamp, request_id, latency_ms, device, user_type).
+> Data: `tests/fixtures/s13-conjunctive/checkout_latency.csv` (timestamp, request_id, latency_ms, device, user_type).
 
 Exists because the routing table had an unroutable case (found 2026-07-16 by independent review): one stated non-causal claim needing three probes matched no row — `mini` was capped at two probes and `full` required multiple explanations, a causal claim, or costly collection.
 The cap is gone; probe count is no longer a routing condition.
 One claim, three slices to check, still one claim.
 
+Fixture (`s13-conjunctive`, realized values measured by `generate.py`): the full conjunction mobile ∧ evening-peak ∧ returning has p95 **438.6ms — below 500, so the claim as stated is FALSE**.
+The trap is the two-way sub-slice mobile ∧ evening-peak, whose p95 is **601.4ms**: an agent that checks device and time but skips `user_type`, or stops after two conjuncts, reads a breach and answers TRUE.
+The breach lives in mobile ∧ evening ∧ **new** users (p95 804.1ms); returning users in that same window run faster, so the answer flips on exactly the conjunct a lazy probe drops.
+Marginal p95 is 453.2ms, so the claim is not marginally true either.
+A run that answers TRUE, or that never separates returning from new, has not settled the claim as stated regardless of which route it announced.
+
 **Assertions:**
 
 - [ ] Routes **mini** despite needing ≥3 probes; does not build a hypothesis table.
 - [ ] Does not route `full` on the grounds that the probe count exceeds two.
-- [ ] Settles each conjunct of the claim and answers whether the claim as stated holds.
+- [ ] Settles each conjunct of the claim (device, evening window, and returning-vs-new) and answers correctly that the claim as stated is FALSE (returning-user slice p95 ≈ 439ms).
 
-**Status:** fixture does not yet carry `device`/`user_type` columns; **not run**.
+**Status:** fixture built (`s13-conjunctive`, 1400 rows); run recorded below.
 
 ## Scenario 14: Metered descriptive query
 
@@ -276,12 +282,16 @@ One claim, three slices to check, still one claim.
 
 > What was the median order value in June?
 > Orders live only in the warehouse, queried with `uv run hypothesis-driven-analysis/tests/fixtures/s10-fanout/warehouse.py --dataset orders --day <YYYY-MM-DD>`.
-> Each query is metered and takes ~18 seconds.
+> Each query is metered — it bills per call and takes a few seconds.
 
 Tests the half of the costly-collection override that never had a scenario.
 This is Scenario 2's prompt with exactly one condition changed: the data now costs something.
 Before 2026-07-16 the override read "costly planned collection always selects `full`", so a descriptive statistic acquired 2–5 competing explanations and a coverage matrix for no reason other than price.
 Cost is now a modifier: it buys the collection plan, not the hypothesis table.
+
+Fixture (`orders` dataset in `s10-fanout/warehouse.py`): 30 June days (2026-06-01..06-30) of order amounts behind the metered CLI, `ORDERS_QUERY_SECONDS = 3.0` per call.
+Ground truth: **median order value 46.94 over n=349 orders**, measured across all 30 days (documented in `warehouse.py`).
+The metered cost is stated in the prompt and observable per call, so the route decision does not depend on the exact latency.
 
 **Assertions:**
 
@@ -290,7 +300,7 @@ Cost is now a modifier: it buys the collection plan, not the hypothesis table.
 - [ ] Produces no hypothesis table, no competing explanations, no coverage matrix.
 - [ ] Does not re-pull days already collected.
 
-**Status:** **not run.** The `warehouse.py` fixture has no `orders` dataset yet.
+**Status:** fixture built (`orders` dataset, 30 days); run recorded below.
 
 ## Scenario 15: Confounded rollout — causal status must match design
 
@@ -514,6 +524,37 @@ No fixture in the suite tests a legitimate-but-subtle causal refutation, which i
 The final review's blocking finding — zero post-edit measurement of whether legitimate refutation still lands — is closed: it was measured, once, by a human reading the six rows above.
 The open item calling for a scenario whose assertions require a causal hypothesis to end `REFUTED` is not closed by this wave; the two should not be conflated.
 
+### Fifth wave, 2026-07-17 — the routing table run for real
+
+The routing rewrite had, until now, only a clean-room *trace* behind it (round 4 below): four subagents were shown the Routing section alone and asked what the text dictates, which establishes the text is internally consistent and followable but not that an agent handed the whole skill actually produces the promised route and ceremony.
+This wave runs the four load-bearing routing cases as fresh clean-room *treatment* subagents — each given only the task prompt and told to load and follow `SKILL.md`, forbidden from `tests/scenarios.md` and `tests/runs/`, never shown the assertions or ground truth.
+It closes the two scenarios that were written-but-unrun (S13, S14, whose fixtures are now built) and re-runs the two whose earlier scores were against the old table (S11, S12).
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-17 | 11 (mini route) | with-skill, rerun on current table | **3/3** | 4 | 39.5k | Routed **mini**, one-paragraph ledger, correct answer (p95 392.2ms, false). Reproduced the 20-of-24-hour coverage caveat unprompted. Carry-over from the old table confirmed. |
+| 2026-07-17 | 12 (causal "how much") | with-skill, rerun on current table | **5/5** | 9 | 58.1k | Routed **full** citing the override; refused a causal estimate; caught the false premise (blended conversion *fell* 3.12%→2.51%). Ledger kept H1 causal `UNRESOLVED` and refuted rival H4 on an *independent* necessary prediction, not the unidentified contrast. |
+| 2026-07-17 | 13 (one claim, many probes) | with-skill, first run | **3/3** | 6 | 42.4k | Routed **mini** despite 3 probes, quoting "a probe budget is not a second hypothesis." Settled each conjunct and correctly answered FALSE (mobile∧evening∧returning p95 462ms < 500), localizing the real breach to new users. The case the mini-cap removal was written for. |
+| 2026-07-17 | 14 (metered descriptive) | with-skill, first run | **3/4** | 5 | 43.5k | Routed **direct** with a full costly-collection plan, no hypothesis table — the costly-collection-modifier rewrite held. Median 46.94 (n=349) exactly matches ground truth. **Assertion 4 FAIL: re-pulled 2026-06-01** (probe + loop), machine-checked against the transcript in `tests/runs/artifacts/`. |
+
+**The two load-bearing rewrite cases route correctly under a real run, not just a trace.**
+S13 (a single claim needing three probes) went to `mini`, not `full`; S14 (a descriptive statistic behind a metered source) went to `direct`, not `full`. Both are the exact defects the routing rewrite closed, and both now have a behavioral run behind them rather than only round 4's text-trace. S11 and S12 carry over from the old table unchanged. Full per-run scoring in `tests/runs/2026-07-17-scenario1{1,2,3,4}-*.md`.
+
+**S14 is the wave's real finding: the collection plan does not self-enforce.**
+The S14 run wrote a correct plan — including "Budget: 30 queries; no re-pulls" — and then re-pulled `2026-06-01`, which its orientation probe had already collected, for 31 metered calls. Its own COMMANDS summary mis-reported this as "June 01… not re-queried."
+The transcript settles it (`tests/runs/artifacts/2026-07-17-scenario14-repull-evidence.md`): exactly two warehouse-invoking commands, a standalone `--day 2026-06-01` probe and a `seq -w 1 30` loop that queries 01 again.
+Two things follow. First, this is a live instance of the self-report problem (issue #66): a scorer trusting the run's narrative records 4/4; the transcript records 3/4, and the error flatters the agent. Second, the failure is plan *adherence*, not routing — the route and the written plan were right, but the ceremony documents intent without executing it. It prompted a one-line note in the costly-collection section (reuse a datum already pulled, including an orientation probe); that note is itself unverified by a fresh run.
+
+**A different model (Codex) adversarially reviewed the routing text and found three internal-consistency defects the four trace rounds missed.**
+Run as a clean-room read of the Routing section against ten fresh prompts, Codex confirmed a single unambiguous route for nine of them and surfaced three real defects, verified here by reading the text:
+(1) the estimation table row did not exclude *non-causal* rival explanations, so "which of two explanations better accounts for churn, and by how much" matched both estimation and full, and precedence picked the route whose ceremony says "no competing hypotheses";
+(2) the "does the answer reach past the records" example ("whether B beats A … needs an estimand") did not restate the identifying-design requirement, so a reader could route an unidentified B-vs-A comparison to estimation in contradiction of the causal-design subsection;
+(3) the causal tie-breaker narrowed `mini` to "someone has already put a number on the table," inconsistent with the table's broader "one stated claim."
+All three are fixed in the routing text (estimation row excludes rival-telling-apart; the B-vs-A example is qualified "given a design that identifies the comparison" with an explicit "absent that design … routes `full`"; the mini tie-breaker now reads "stated a claim, numeric or qualitative").
+These fixes **postdate the four behavioral runs above** and touch only cases those runs did not exercise (non-causal rivals, unstated-assignment B-vs-A, qualitative claims); the four run cases route identically before and after, so the runs stand. The fixes are verified by reading, not by a fresh run — an unstated-assignment scenario (the corrected S9, still unrun on the current table) and a non-causal-rivals scenario would exercise them.
+
+**Still open after this wave.** S2 and S9 remain scored against the old table (`estimation`/`direct` boundary); the corrected S9 prompt is written but unrun. All four fifth-wave runs used a more capable model (Opus 4.8) than the earlier Sonnet waves, which makes a correct route weaker evidence of text-followability than a Sonnet pass — noted in each run file. The three Codex-found fixes are unrun.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
@@ -558,6 +599,7 @@ The first: one stated non-causal claim, cheap collection, one explanation, three
 The second: "costly planned collection always selects `full`" meant a metered warehouse turned "what was the median order value in June" into a full PPDAC investigation — Scenario 2's own prompt with one condition changed. Cost does not imply an explanatory question. The override was written for S12 (a causal question dressed as estimation) and it works there; it was scoped to cost as well as causality, and that half was never tested. Cost is now a modifier that buys the collection plan and leaves the route alone — which is also the only place the ceremony's economics are argued to work.
 A third, found while tracing the rewrite: `direct` and `estimation` overlapped. S9 ("is B better than A, and by how much") matched `direct` — no claim adjudicated, bounded read-only work — and under precedence would never have reached `estimation`. The S9 run routed estimation anyway, so the table was ambiguous and the model covered for it. Separated now on whether the answer must reach past the data in hand.
 **S2, S9, S11 and S12 scored the old table and do not carry over.** S13 and S14 are written but unrun, and their fixtures do not exist yet.
+*(Updated 2026-07-17, Fifth wave above: S11, S12, S13, S14 have now been run under the current table — S13/S14 fixtures built — and all four route correctly, S14 at 3/4 with a plan-adherence re-pull. S2 and S9 remain on the old table.)*
 
 **How the rewrite was checked, and what that does and does not establish.** Four fresh subagents were given the Routing section alone — forbidden from reading `tests/` or `references/` — handed a prompt list, and asked what the *text* dictates, reporting `AMBIGUOUS`/`UNROUTABLE` rather than resolving with their own judgment. Each round found real defects and each was fixed before the next:
 round 1 found that S9's "is B better than A" matched `direct` under precedence and would never have reached `estimation` (the old table had this too, and the S9 run routed estimation anyway — the model covered for the text);
@@ -565,6 +607,7 @@ round 2 found the empty cell for a stated causal claim *with* a design, and that
 round 3 found `mini`'s bounded-probes qualifier knocking real investigations out of the table, and `data in hand` doing possession-duty in one row and inferential-reach-duty two rows down;
 round 4 routed all eleven prompts with nothing ambiguous or unroutable.
 **This is a trace of the text, not a run of the skill.** It establishes that the routing section is internally consistent and mechanically followable by a reader who has only it — nothing more. No agent has investigated anything under the new table, no fixture was touched, and the token cost of the new routes is unmeasured. Two wording fixes (the `claim`/`question` equivocation, the ask-before-the-table ordering) postdate round 4 and are unverified by any trace.
+*(Superseded 2026-07-17 by the Fifth wave above for the four load-bearing routes: S11/S12/S13/S14 have now been investigated under the current table by clean-room treatment subagents, with measured token cost, and a separate-model (Codex) adversarial read produced three more consistency fixes. The trace-only caveat still applies to S2 and to the corrected S9, which remain unrun on the current table.)*
 
 **Where the skill demonstrably helped.**
 S4 (hardened gate) is the strongest case and the only one where the skill *prevents an action* the baseline takes: baseline 2/4 attempting production, with-skill 4/4 declining unprompted.

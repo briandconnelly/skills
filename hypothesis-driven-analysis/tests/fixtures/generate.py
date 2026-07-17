@@ -54,6 +54,19 @@ def write_csv(path: Path, header: list[str], rows: list[list]) -> None:
     print(f"wrote {path.relative_to(REPO_ROOT)} ({len(rows)} rows)")
 
 
+def _pctl(values: list[float], p: float) -> float:
+    """Linear-interpolation percentile (numpy 'linear' method), no deps."""
+    xs = sorted(values)
+    if not xs:
+        raise ValueError("percentile of empty sequence")
+    rank = (p / 100.0) * (len(xs) - 1)
+    lo = int(rank)
+    frac = rank - lo
+    if lo + 1 >= len(xs):
+        return xs[lo]
+    return xs[lo] + frac * (xs[lo + 1] - xs[lo])
+
+
 def write_text(path: Path, body: str) -> None:
     # newline="" suppresses translation so the \n in `body` survives verbatim;
     # Path.write_text() would emit \r\n on Windows and break the byte-identical
@@ -279,6 +292,82 @@ def build_mini_fixture(outdir: Path) -> None:
         ts = (base + timedelta(minutes=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
         rows.append([ts, f"r{i:05d}", latency])
     write_csv(outdir / "checkout_latency.csv", ["timestamp", "request_id", "latency_ms"], rows)
+
+
+# ---------------------------------------------------------------------------
+# S13: one claim, many probes (routing test). The claim is a single non-causal
+# assertion sliced three ways: "p95 > 500ms yesterday, but only on mobile,
+# only during the evening peak, and only for returning users." Three probes,
+# still one claim -> the correct route is `mini`, not `full`.
+#
+# GROUND TRUTH (realized values measured from the generated file, printed by
+# this builder; validate against those, not the nominal shifts below):
+#   - The full conjunction mobile AND evening-peak AND returning has p95 BELOW
+#     500ms, so the claim AS STATED is FALSE.
+#   - The two-way sub-slice mobile AND evening-peak (dominated by new users)
+#     has p95 ABOVE 500ms. This is the trap: an agent that checks only device
+#     and time, or stops after two conjuncts, reads a breach and answers TRUE.
+#     Adding the third conjunct (returning users, who run faster) pulls it back
+#     under 500 -- so the answer flips on the conjunct a lazy probe skips.
+#   - The marginal p95 is well below 500, so the claim is not "sort of true"
+#     at the top level either.
+# The scenario scores the ROUTE and whether each conjunct was actually settled;
+# the fixture is built so that only settling all three reaches the right answer.
+# ---------------------------------------------------------------------------
+S13_BASE_MU = 5.25
+S13_SIGMA = 0.38
+S13_SHIFT = {
+    ("desktop", None): -0.10,  # desktop is faster; pulls the marginal down
+    ("mobile", None): 0.05,
+    "evening": 0.22,  # added when the request falls in the evening peak
+    "new": 0.32,  # new users run slower than returning; added for user_type=new
+}
+S13_EVENING_HOURS = range(18, 22)
+"""Evening peak: 18:00-21:59 local, the window the claim scopes to."""
+S13_MOBILE_SHARE = 0.55
+"""Fraction of S13 requests on mobile."""
+S13_RETURNING_SHARE = 0.60
+"""Fraction of S13 requests from returning users (who run faster than new)."""
+
+
+def build_conjunctive_fixture(outdir: Path) -> None:
+    # Independently seeded so this fixture is stable regardless of other
+    # fixtures' RNG consumption.
+    rng = random.Random(20260715)
+    base = datetime(2026, 7, 15)
+    rows = []
+    slices: dict[str, list[float]] = {
+        "all": [],
+        "mobile": [],
+        "mobile_evening": [],
+        "mobile_evening_returning": [],
+        "mobile_evening_new": [],
+    }
+    for i in range(1400):
+        ts = base + timedelta(minutes=i)
+        device = "mobile" if rng.random() < S13_MOBILE_SHARE else "desktop"
+        user_type = "returning" if rng.random() < S13_RETURNING_SHARE else "new"
+        evening = ts.hour in S13_EVENING_HOURS
+        mu = S13_BASE_MU + S13_SHIFT[(device, None)]
+        if evening:
+            mu += S13_SHIFT["evening"]
+        if user_type == "new":
+            mu += S13_SHIFT["new"]
+        latency = round(rng.lognormvariate(mu, S13_SIGMA), 1)
+        rows.append([ts.strftime("%Y-%m-%dT%H:%M:%SZ"), f"r{i:05d}", latency, device, user_type])
+        slices["all"].append(latency)
+        if device == "mobile":
+            slices["mobile"].append(latency)
+            if evening:
+                slices["mobile_evening"].append(latency)
+                slices[f"mobile_evening_{user_type}"].append(latency)
+    write_csv(
+        outdir / "checkout_latency.csv",
+        ["timestamp", "request_id", "latency_ms", "device", "user_type"],
+        rows,
+    )
+    for name, vals in slices.items():
+        print(f"  s13 p95[{name}] = {_pctl(vals, 95):.1f}  (n={len(vals)})")
 
 
 # ---------------------------------------------------------------------------
@@ -538,6 +627,7 @@ def main() -> None:
     build_injection_fixture(HERE / "s8-injection")
     build_ab_fixture(HERE / "s9-ab")
     build_mini_fixture(HERE / "s11-mini")
+    build_conjunctive_fixture(HERE / "s13-conjunctive")
     build_assist_rollout_fixture(HERE / "s15-assist-rollout")
 
 
