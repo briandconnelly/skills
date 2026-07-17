@@ -432,6 +432,8 @@ Five fresh runs were scored against the restored template: three more scenario-1
 | 2026-07-16 | 15 (confounded rollout) | postfix, run 3 | 7/7 scoreable | 19 | 94.1k | Same C1 result: `OK`, exit 0. |
 | 2026-07-16 | 1 (multi-explanation), postfix a | with-skill | 6/6 | 14 | 84.6k | Not formally scored against S1's full assertion table below — added to probe over-caution, scored only for causal-status behavior and `data-artifact` adoption. Refuted H2 (deploy, completion-ratio timing) and H3 (device-mix, reweighting direction); H4 labelled `data-artifact`. |
 | 2026-07-16 | 1 (multi-explanation), postfix b | with-skill | 6/6 | 15 | 79.4k | Same caveat as run a — not formally scored against S1's assertion table. Refuted H1 (deploy, timing) and H3 (mobile regression, direction); H4 labelled `data-artifact`. |
+| 2026-07-16 | 2 (non-trigger) | postfix | **2/2** | 4 | 47.5k | Routed **direct**, computed the median ($76.36, n = 268), and stopped — no ledger and no ceremony. Guardrail check that this branch's Analysis- and Conclusion-section edits did not leak ceremony into the cheap routes. |
+| 2026-07-16 | 12 (causal "how much") | postfix | **5/5** | 12 | 70.2k | Routed **full**, refused a causal estimate, used associative language, and caught the false premise (campaign associated with *lower* conversion). The newly-added fifth assertion passed: H1 stayed `UNRESOLVED`, not `REFUTED`. |
 
 **Headline: C1 evaluated 0/3 before the fix, 3/3 after.**
 All three post-fix scenario-15 runs score `OK: C1 checked and passed: 5 summary row(s) read, 0 REFUTED, none of them causal`, exit 0 — verified by running `score_ledger.py` against each archived ledger just now, not carried over from the runs' own summaries.
@@ -461,6 +463,34 @@ Scenario 1 must never be machine-scored with C1.
 SKILL.md line 164 (establish completeness semantics before asserting a direction) remains measured 0/3 from the Third wave; nothing in this wave re-tested it, and it is not fixed by this work.
 The token-cost finding also stands: none of these five runs came in under the skill's stated 11–47% range, and the three scenario-15 postfix runs (93.0k–95.6k against a 50.9k scenario-15 baseline, +83% to +88%) confirm the Third-wave +85–99% finding rather than revise it.
 This wave is two scenarios deep, both already in the suite; it is not a new fixture, and it does not touch the open item calling for a genuinely novel should-refute case beyond scenario 1.
+
+**Two more postfix runs extend this wave: scenario 2 (guardrail) and scenario 12 (causal status, with a new assertion).**
+
+**Scenario 2 confirms the cheap routes stayed cheap.**
+Routed **direct**, computed the median ($76.36, n = 268), and produced no ledger and no ceremony, in 4 tool calls.
+This is the guardrail check that this branch's Analysis- and Conclusion-section edits did not leak ceremony into the routes that were never supposed to carry it.
+
+**Scenario 12 passed 5/5, including the assertion added on this branch and never previously run.**
+Routed **full**, not estimation.
+Refused a causal estimate.
+Used associative language, stating landing-page assignment is self-selected rather than randomized.
+Caught the false premise in the prompt: the campaign is associated with *lower* conversion, not higher — 0.50% on `/lp/summer-sale` against 2.70–3.90% on `/home` and `/product`, sitewide 3.12% pre-launch falling to 2.43–2.63% post-launch.
+The new fifth assertion passed: H1, the causal campaign hypothesis, stayed `UNRESOLVED`, not `REFUTED`.
+
+**A finding that changes guidance, not just a count.**
+Scenario 12's ledger also carries two causal rows correctly marked `REFUTED` — H2 (the checkout-form deploy, refuted on timing) and H3 (a device-mix confound, refuted on reweighting direction).
+Scenario 12 is therefore itself a should-refute scenario and must never be machine-scored with `score_ledger.py`'s C1: C1 asserts that no causal row is `REFUTED`, which is true only of a fixture whose ground truth contains no legitimate causal refutation.
+This corrects earlier guidance that treated scenario 12 as a safe C1 target alongside s15; measured now, that assumption is wrong.
+C1 remains sound for scenario 15 alone, by construction.
+
+**This closes a standing open item.**
+The suite previously had no regression covering a causal claim that *should* end `REFUTED`, which the final whole-branch review called blocking — it meant over-caution would be invisible.
+That gap is now closed by measurement: scenario 1 produced 4 such rows across two runs and scenario 12 produced 2 more.
+Combined with s15's 0 causal-`REFUTED` rows across three runs, the rule is measured to discriminate — it blocks refutation-by-confounded-contrast while permitting refutation-by-timing and refutation-by-mechanism.
+State it as measured, not as proven: six runs across scenarios 1, 12, and 15, on two underlying fixtures, is what it is.
+
+**`data-artifact` again.**
+Scenario 12 labelled its logging-gap hypothesis (H4, the 06-13/06-14 sessions shortfall) `data-artifact`, as did both scenario 1 postfix runs — the claim value added on this branch, adopted unprompted for a sixth time.
 
 ## Findings from the 2026-07-16 suite
 
