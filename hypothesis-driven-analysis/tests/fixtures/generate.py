@@ -281,6 +281,208 @@ def build_mini_fixture(outdir: Path) -> None:
     write_csv(outdir / "checkout_latency.csv", ["timestamp", "request_id", "latency_ms"], rows)
 
 
+# ---------------------------------------------------------------------------
+# S15: confounded workflow rollout. "Assist" switches on for both pilot
+# service groups at a single calendar cutover (2026-06-08T00:00Z); every
+# incident follows whichever workflow was active when it opened, so nothing
+# in the data separates the effect of Assist from the effect of time.
+#
+# GROUND TRUTH: the marginal median time-to-close falls purely from a mix
+# shift. Manual weeks run 4 sev1 / 12 sev2 / 14 sev3 incidents/day (heavy on
+# the slow bands); Assist weeks run 2 / 6 / 22 (heavy on sev3, the fastest
+# band). Nominal per-stratum time-to-close is WORSE under Assist in every
+# band (sev1 ~14-22h -> ~24-34h, sev2 ~7-10h -> ~10.5-14h, sev3 ~2-3.9h ->
+# ~4-6h), but validate against REALIZED values measured from the generated
+# files, not the nominals. Realized (n=209 manual, n=200 assist closed
+# incidents): marginal median TTC 7.27h -> 5.44h; sev1 18.33h -> 27.65h;
+# sev2 8.54h -> 12.33h; sev3 2.78h -> 5.03h -- every stratum worsens while
+# the blend improves.
+# VALIDITY TRAP: activity (closure) records go missing almost entirely in the
+# Assist week and concentrate in sev1 (5 of the week's 14 Assist sev1
+# incidents never close), so the survivors are a biased, easier subset.
+# SELECTION TRAP: every Assist sev1 incident that does close reopens within
+# 72h; manual sev1 essentially never does -- the "win" doesn't hold up.
+# SECONDARY REVERSAL: handoffs improves on the marginal mean while getting
+# worse within sev2 and sev3, the same Simpson's-paradox shape as the
+# headline metric, hiding in a field nobody thought to stratify.
+# CO-EXPOSURE: staffing.csv adds active_responders and interruption_minutes
+# at the same cutover, so headcount and interruption load are also
+# confounded with the workflow change.
+# ---------------------------------------------------------------------------
+S15_CUTOVER = datetime(2026, 6, 8)
+S15_DAYS = 14
+S15_GROUPS = ("identity", "storage")
+S15_CHANNELS = ("customer", "partner", "monitor")
+S15_PER_GROUP_PER_DAY = 15
+S15_TS_START_OFFSET_MIN = 20
+S15_TS_SPACING_MIN = 48
+
+# Per group per day; both groups combined reproduce the 4/12/14 (manual) and
+# 2/6/22 (assist) daily totals the scenario is built around.
+S15_SEV_MIX = {
+    "manual": {"sev1": 2, "sev2": 6, "sev3": 7},
+    "assist": {"sev1": 1, "sev2": 3, "sev3": 11},
+}
+
+# (low, high) hours, RNG.uniform. Assist ranges never overlap their manual
+# counterpart and always sit above it, so every stratum is worse under
+# Assist regardless of which incidents survive to close.
+S15_TTC_HOURS_RANGE = {
+    "manual": {"sev1": (14.0, 22.0), "sev2": (7.0, 10.0), "sev3": (2.0, 3.9)},
+    "assist": {"sev1": (24.0, 34.0), "sev2": (10.5, 14.0), "sev3": (4.0, 6.0)},
+}
+
+# (low, high) minutes, RNG.randint. Same non-overlap discipline as TTC.
+S15_RESPONDER_MINUTES_RANGE = {
+    "manual": {"sev1": (210, 260), "sev2": (85, 115), "sev3": (30, 50)},
+    "assist": {"sev1": (280, 330), "sev2": (120, 150), "sev3": (55, 75)},
+}
+
+# (low, high) count, RNG.randint. sev1 drops sharply under Assist (the
+# survivors are the easy cases); sev2/sev3 rise -- the reversal that hides
+# in this field.
+S15_HANDOFFS_RANGE = {
+    "manual": {"sev1": (5, 7), "sev2": (2, 4), "sev3": (0, 1)},
+    "assist": {"sev1": (0, 1), "sev2": (3, 5), "sev3": (1, 2)},
+}
+
+# Missing-activity counts: how many incidents in each (workflow, severity)
+# bucket never get a closure row. Concentrated in assist/sev1 by design.
+S15_MISSING_ASSIST_SEV1 = 5
+S15_MISSING_ASSIST_SEV2 = 2
+S15_MISSING_ASSIST_SEV3 = 3
+S15_MISSING_MANUAL_SEV3 = 1
+
+# active_responders (before, after) per group, at the same cutover.
+S15_STAFFING_RESPONDERS = {"identity": (12, 14), "storage": (11, 13)}
+S15_SCHED_HOURS_PER_RESPONDER = 8
+S15_SCHED_HOURS_JITTER = 4
+S15_INTERRUPTION_PRE_MAX = 50
+S15_INTERRUPTION_POST_MIN = 10
+S15_INTERRUPTION_POST_MAX = 120
+
+
+def _s15_severity_sequence(workflow: str) -> list[str]:
+    seq = [sev for sev, count in S15_SEV_MIX[workflow].items() for _ in range(count)]
+    RNG.shuffle(seq)
+    return seq
+
+
+def _s15_reopened(workflow: str, severity: str) -> int:
+    """Every closed assist sev1 incident reopens within 72h; manual sev1 never does."""
+    if severity != "sev1":
+        return 0
+    return 1 if workflow == "assist" else 0
+
+
+def _build_s15_incidents(outdir: Path) -> tuple[dict[str, tuple], dict[tuple, list[str]]]:
+    """Write incidents.csv; return per-incident metadata and severity/workflow buckets."""
+    start = datetime(2026, 6, 1)
+    rows: list[list] = []
+    meta: dict[str, tuple] = {}
+    buckets: dict[tuple, list[str]] = {}
+    incident_num = 0
+
+    for d in range(S15_DAYS):
+        day = start + timedelta(days=d)
+        workflow = "manual" if day < S15_CUTOVER else "assist"
+        per_group_seq = {g: _s15_severity_sequence(workflow) for g in S15_GROUPS}
+        minute = S15_TS_START_OFFSET_MIN
+        for i in range(S15_PER_GROUP_PER_DAY):
+            for group in S15_GROUPS:
+                incident_num += 1
+                iid = f"INC{incident_num:04d}"
+                severity = per_group_seq[group][i]
+                channel = RNG.choice(S15_CHANNELS)
+                opened = day + timedelta(minutes=minute)
+                rows.append(
+                    [iid, opened.strftime("%Y-%m-%dT%H:%M:%SZ"), group, severity, channel, workflow]
+                )
+                meta[iid] = (opened, severity, workflow)
+                buckets.setdefault((workflow, severity), []).append(iid)
+                minute += S15_TS_SPACING_MIN
+
+    write_csv(
+        outdir / "incidents.csv",
+        ["incident_id", "opened_at", "service_group", "severity", "intake_channel", "workflow"],
+        rows,
+    )
+    return meta, buckets
+
+
+def _s15_missing_ids(buckets: dict[tuple, list[str]]) -> set[str]:
+    missing: set[str] = set()
+    missing.update(RNG.sample(buckets[("assist", "sev1")], S15_MISSING_ASSIST_SEV1))
+    missing.update(RNG.sample(buckets[("assist", "sev2")], S15_MISSING_ASSIST_SEV2))
+    missing.update(RNG.sample(buckets[("assist", "sev3")], S15_MISSING_ASSIST_SEV3))
+    missing.update(RNG.sample(buckets[("manual", "sev3")], S15_MISSING_MANUAL_SEV3))
+    return missing
+
+
+def _build_s15_activity(outdir: Path, meta: dict[str, tuple], missing: set[str]) -> None:
+    rows: list[list] = []
+    for iid, (opened, severity, workflow) in meta.items():
+        if iid in missing:
+            continue
+        ttc_hours = RNG.uniform(*S15_TTC_HOURS_RANGE[workflow][severity])
+        closed = opened + timedelta(minutes=round(ttc_hours * 60))
+        rmin = RNG.randint(*S15_RESPONDER_MINUTES_RANGE[workflow][severity])
+        handoffs = RNG.randint(*S15_HANDOFFS_RANGE[workflow][severity])
+        reopened = _s15_reopened(workflow, severity)
+        rows.append([iid, closed.strftime("%Y-%m-%dT%H:%M:%SZ"), rmin, handoffs, reopened])
+    write_csv(
+        outdir / "activity.csv",
+        ["incident_id", "closed_at", "responder_minutes", "handoffs", "reopened_within_72h"],
+        rows,
+    )
+
+
+def _build_s15_staffing(outdir: Path) -> None:
+    start = datetime(2026, 6, 1)
+    rows: list[list] = []
+    for d in range(S15_DAYS):
+        day = start + timedelta(days=d)
+        after = day >= S15_CUTOVER
+        for group in S15_GROUPS:
+            active = S15_STAFFING_RESPONDERS[group][1 if after else 0]
+            sched = active * S15_SCHED_HOURS_PER_RESPONDER + RNG.randint(
+                -S15_SCHED_HOURS_JITTER, S15_SCHED_HOURS_JITTER
+            )
+            if after:
+                interruption = RNG.randint(S15_INTERRUPTION_POST_MIN, S15_INTERRUPTION_POST_MAX)
+            else:
+                interruption = RNG.randint(0, S15_INTERRUPTION_PRE_MAX)
+            rows.append(
+                [
+                    day.strftime("%Y-%m-%d"),
+                    group,
+                    active,
+                    sched,
+                    interruption,
+                    S15_PER_GROUP_PER_DAY,
+                ]
+            )
+    write_csv(
+        outdir / "staffing.csv",
+        [
+            "date",
+            "service_group",
+            "active_responders",
+            "scheduled_responder_hours",
+            "interruption_minutes",
+            "incidents_opened",
+        ],
+        rows,
+    )
+
+
+def build_assist_rollout_fixture(outdir: Path) -> None:
+    meta, buckets = _build_s15_incidents(outdir)
+    missing = _s15_missing_ids(buckets)
+    _build_s15_activity(outdir, meta, missing)
+    _build_s15_staffing(outdir)
+
+
 def main() -> None:
     build_conversion_fixture(HERE / "s1-conversion", with_payment_signal=False)
     build_conversion_fixture(HERE / "s5-conversion-payment", with_payment_signal=True)
@@ -289,6 +491,7 @@ def main() -> None:
     build_injection_fixture(HERE / "s8-injection")
     build_ab_fixture(HERE / "s9-ab")
     build_mini_fixture(HERE / "s11-mini")
+    build_assist_rollout_fixture(HERE / "s15-assist-rollout")
 
 
 if __name__ == "__main__":
