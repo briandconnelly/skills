@@ -7,7 +7,7 @@ description: 'Use when investigating an unresolved explanatory, diagnostic, or c
 
 Guide empirical investigations through PPDAC (Problem, Plan, Data, Analysis, Conclusion) and the scientific method.
 The framework buys accuracy and auditability: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits, and every rejected alternative leaves a record of why.
-Expect it to cost more tokens than an unstructured investigation, not fewer — measured at 11–106% more on small local datasets, rising with analysis complexity (`tests/scenarios.md`).
+Expect it to cost more tokens than an unstructured investigation, not fewer — measured between 11% and 121% more on small local datasets so far, a premium that rises with analysis complexity and has no measured ceiling (`tests/scenarios.md`).
 It may pay for itself where collection is expensive enough that fishing expeditions and re-pulls dominate the bill — paid APIs, slow warehouse queries, large remote logs — but treat that as the claim it is: a metered fixture now exists (`tests/scenarios.md` S14), but no paired baseline-vs-skill run has measured whether the ceremony saves more than it costs there, so the saving remains unmeasured rather than shown.
 That trade is why routing matters — spend the ceremony where a wrong answer or a wasted pull is costly, and take the direct route everywhere else.
 
