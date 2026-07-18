@@ -335,7 +335,8 @@ def build_latency_fixture(outdir: Path) -> None:
 #     auth-backed routes (/api/auth/*, /api/session/*) fail, and their edge
 #     status is 504 with origin_status=timeout (the origin not answering).
 #   - Recovery alignment: auth initiates redis failover at 03:19:58; the last
-#     edge 5xx is at 03:20:11 and auth-backed routes are 200 from 03:21:00.
+#     edge 5xx is at 03:20:11, the first auth-backed 200 follows at 03:20:16,
+#     and the auth log reports healthy at 03:21:03.
 #   - Static assets (cache=HIT) never touch the origin and stay 200; they are
 #     consistent with, but do not by themselves establish, CDN health.
 # Onset ordering plus the control route (or recovery alignment) supports

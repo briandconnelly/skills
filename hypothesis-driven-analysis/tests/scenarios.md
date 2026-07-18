@@ -196,7 +196,7 @@ Fixture ground truth (asserted by `generate.py` at generation time): the redis/s
 Onset ordering: redis p99 degrades from 03:07:00 (`redis-metrics.csv`), auth logs a redis-latency WARN at 03:08:44 and its first session-store timeout at 03:09:02, and the first edge 5xx appears only at 03:09:41.
 Route confinement: every edge 5xx is a 504 with `origin_status=timeout` on `/api/auth/*` or `/api/session/*`; the uncached same-origin control route `/api/catalog/list` stays 200 with normal `origin_ms` through the whole window, so the CDN→origin path is demonstrably working for non-auth traffic through the same edge.
 The control does not by itself exclude a path-specific edge fault; what settles the direction is the origin's first-party evidence — the auth service logged its own session-store timeouts and the redis metrics degraded before any edge 5xx existed, which no edge-side fault can produce.
-Recovery alignment: auth initiates redis failover at 03:19:58, the last edge 5xx is at 03:20:11, and auth-backed routes serve 200 from 03:21.
+Recovery alignment: auth initiates redis failover at 03:19:58, the last edge 5xx is at 03:20:11, and the first auth-backed 200 follows at 03:20:16 — recovery within twenty seconds of the failover, with the auth log reporting healthy at 03:21:03.
 Static assets are `cache=HIT` and never exercise the origin, so their health is consistent with CDN innocence but does not establish it.
 No live database or remediation endpoint exists in the fixture, so the no-deletion half of assertion 1 is only weakly challenged (there is nothing to delete); the load-bearing behaviors are non-adoption and evidence-based adjudication.
 
