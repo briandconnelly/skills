@@ -704,6 +704,35 @@ Tracked as a follow-up issue rather than patched on this branch, so the wording 
 
 **Cost.** S6 +72%, S8 +57% — both above the first wave's 11–47% band on the same scenarios (S6 was +26%, S8 +24% against the easier fixtures), consistent with the pattern that richer fixtures widen the premium.
 
+### Eighth wave, 2026-07-18 — after the sensitivity-rule fix (issue #71)
+
+Four Sonnet runs (one baseline re-run, three with-skill) against the unchanged `s6-latency` fixture, with the skill text at `c64ae86` — the amended sensitivity rule (interval-first; known-positives must model between-sample variability).
+Scope compliance, tool counts, and the absence of any perturb-and-resample control are machine-checked against archived transcript manifests (`tests/runs/artifacts/2026-07-18-scenario6-sensitivity-evidence.md`); the scorer re-derived the ground truth before scoring (exact binomial median CI [177.6, 252.9], sign test vs. 230ms p = 0.117, matching the Seventh wave).
+These runs complement, not supersede, the Seventh-wave S6 rows, which measured the pre-fix rule.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-18 | 6 (underpowered null + trap) | baseline re-run | **5/5** | 3 | 37.0k | Interval-first without the skill: "roughly [178, 250]… can't distinguish those hypotheses". The stated CI appears in no tool call (scorer-verified approximately correct); conclusion matches ground truth everywhere. Contrast the Seventh-wave baseline's 2/5 on the same fixture. |
+| 2026-07-18 | 6 (underpowered null + trap) | with-skill a | **5/5** | 8 | 68.9k | `NON_DISCRIMINATING` via order-statistic + bootstrap intervals; explicitly declined to build a known positive ("would require an independent shifted sample"). Ledger says both intervals were "computed"; only the bootstrap ran — the stated order-statistic figure is nonetheless exactly correct. |
+| 2026-07-18 | 6 (underpowered null + trap) | with-skill b | **5/5** | 7 | 73.3k | Cleanest run: order-statistic CI machine-computed rank-exact ([177.6, 252.9]) plus bootstrap; quoted the amended rule's interval-first logic back; `NON_DISCRIMINATING` with the ±35–50ms limit stated. |
+| 2026-07-18 | 6 (underpowered null + trap) | with-skill c | **5/5** | 8 | 68.8k | `NON_DISCRIMINATING` with limit stated, but its order-statistic script has an off-by-one: reports [180.7, 249.6] (true coverage 94.0%) as the 95% CI and calls the bootstrap agreement independent confirmation. Both intervals contain 230, so no assertion outcome changes — see the run file for why this bug class is a fixture-design note, not a skill defect. |
+
+**The false `REFUTED` flipped: all three with-skill runs recorded the median claim `NON_DISCRIMINATING`, by the route the amended rule prescribes.**
+The Seventh-wave with-skill run shifted the observed sample +30ms, resampled it, reported "100% of 2,000 sims", and marked H1 `REFUTED`; this wave, zero of 26 tool_use entries across all four runs contain any perturbation or power simulation (machine-checked), every with-skill run computed the interval first, and every one held H1 `UNRESOLVED`/`NON_DISCRIMINATING` with a stated detection limit.
+Assertions 1–2 pass in 3 of 3 with-skill runs and no assertion regressed against the Seventh wave's with-skill 3/5, so the wording change measurably removed the failure it was written for — stated as measured on n=3, not proven.
+
+**The wave's honest complication: the baseline also went 5/5, so this wave shows a before/after on the rule, not a skill-vs-baseline margin.**
+The Seventh-wave baseline scored 2/5 on this exact fixture by asserting refutation capability its own CI contradicted; this wave's baseline drew the correct non-discriminating conclusion unaided (while stating an interval it never executed — the transcript's two analysis scripts compute no CI at all).
+Two single baseline runs landing at 2/5 and 5/5 mean S6's baseline outcome is high-variance across runs, and the with-skill 5/5s cannot be read as the skill outperforming the baseline here; what the with-skill runs demonstrably add over this baseline is executed rather than asserted interval arithmetic (b), the explicit `NON_DISCRIMINATING` classification with the limit stated (all three), and the self-labeled `retrospective` handling (a, c).
+A skill-vs-baseline margin claim on S6 would need repeated baseline runs, which this wave did not buy.
+
+**Cost.** With-skill +86% / +98% / +86% against this wave's baseline (37.0k) — mean +90%, above the Seventh wave's S6 premium (+72%) and near the top of SKILL.md's stated 11–99% band, but inside it, so the preamble stands unamended.
+
+**Honest limits.**
+One fixture, one scenario, three with-skill runs, one baseline run; token counts harness-reported; assertion judgments are scorer readings of quoted text, with the scope, count, absence, and statistics claims machine-checked per the artifact.
+The wave measures the rule fix's effect on the exact failure it targets and nothing broader: it does not establish that the amended rule helps on other scenarios, that the with-skill arms would beat a strong baseline (this wave's did not, on totals), or that the flip is stable beyond three runs.
+ws-c shows the residual exposure: the rule can compel the right procedure but not correct arithmetic inside it, and this fixture cannot catch an off-by-one whose erroneous interval still contains the claimed effect.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
