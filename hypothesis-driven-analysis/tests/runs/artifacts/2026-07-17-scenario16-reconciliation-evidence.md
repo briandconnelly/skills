@@ -24,7 +24,7 @@ The self-loaded-skill run below demonstrates why: it *claimed* the verification 
 | baseline-selfloaded | 8 | 0 | 0 | `SKILL.md`, `references/ledger-template.md` (skill self-load; scope line absent from its prompt) | 0 |
 | baseline (clean) | 5 | 0 | 0 | 0 | 0 |
 | with-skill | 13 | 0 | 1 read-only (`git status`/`git diff` scoped to the fixture path, diagnosing the edit race) | 0 | 0 |
-| with-skill-hardened | see addendum below | | | | |
+| with-skill-hardened | 8 | 0 | 0 | 0 | 0 |
 
 Counts were produced by extracting every `tool_use` entry (name, `file_path`/`command`) from each archived JSONL transcript and pattern-scanning the full list — not by reading the runs' own summaries.
 

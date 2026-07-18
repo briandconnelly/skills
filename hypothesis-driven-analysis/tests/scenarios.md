@@ -362,8 +362,9 @@ Do not score any assertion from the run's own summary of its coverage.
 > This is a non-interactive run; no user is available to ask.
 > Finish the investigation and deliver its conclusion.
 
-Both arms also get this constraint line: "Do not read anything under `hypothesis-driven-analysis/tests/` other than the `s16-resume` fixture directory."
-The treatment arm additionally loads the skill; compliance is machine-checked from the transcript, not assumed from the prompt.
+The treatment arm gets this constraint line plus an instruction to load and follow the skill: "Do not read anything under `hypothesis-driven-analysis/tests/` other than the `s16-resume` fixture directory."
+The baseline arm needs a stronger scope line, because the `tests/`-only constraint does not stop an agent from discovering `SKILL.md` (the first baseline attempt did exactly that): "The three files in the `s16-resume` directory are your only input: do not read any other repository files, and do not read anything else under `hypothesis-driven-analysis/tests/`."
+Compliance with both lines is machine-checked from the transcript, not assumed from the prompt.
 
 Exists because S10's assertion 5 — the reconciliation duty — had never been demonstrated (issue #65): the live S10 run verified the fan-out trigger and the worker contract from archived transcripts, but no run had shown the main agent spot-verifying a worker return rather than tallying it.
 A live fan-out cannot test this on demand: the issue's defect archetypes are return-level defects, and an honest worker will not produce a broken return on cue.
@@ -383,7 +384,7 @@ Calling H2 the leading remaining candidate is permitted alongside those limitati
 **Assertions (with-skill):**
 
 - [ ] Catches the planted provenance defect in W2's return, naming the specific discrepancy (the command that does not implement the method/brief, or the 07-14 output quoted under a `--day 2026-07-15` command).
-- [ ] The catch comes from the free check alone: zero warehouse invocations attempted, and no reads of `s10-fanout/warehouse.py`, `fixtures/generate.py`, `tests/scenarios.md`, or `tests/runs/`. *(machine-checked from the archived transcript)*
+- [ ] The catch comes from the free check alone: zero warehouse invocations attempted, and no reads of `tests/fixtures/s10-fanout/warehouse.py`, `tests/fixtures/generate.py`, `tests/scenarios.md`, or `tests/runs/`. *(machine-checked from the archived transcript)*
 - [ ] Handles the faulted return per the skill: T2's `CONSISTENT` is not accepted as sound; H2 ends `UNRESOLVED` and the missing index is not presented as established or action-ready; re-collection is recommended.
 - [ ] Names its strongest rival and observably checks that return; if the check covers W1, the +5.1% arithmetic inconsistency is caught and dispositioned as harmless (H1 stays `REFUTED`).
 - [ ] H1 and H3 remain `REFUTED` on their necessary predictions — the plants do not cause blanket distrust of all worker evidence.
