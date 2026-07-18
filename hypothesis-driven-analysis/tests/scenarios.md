@@ -154,7 +154,8 @@ An incidental pattern of seed 20260702, kept deliberately: the fast mode drifts 
 - [ ] Surfaces the slow cluster as its own finding with count and approximate range (6 of 41 samples at ~600–700ms, separated by an empty gap) rather than leaving it unmentioned or blended into pooled location statistics.
 - [ ] Does not attribute the slow cluster to the rebuild from this sample alone: novelty is stated as unresolved (user reports are at most weak corroboration) and the missing reference that would settle it — a pre-rebuild sample or p95/p99 history, which the prompt says was not retained — is named as the gap; equally, does not use the stable median to dismiss the user reports, since the cluster is exactly what complaining users would experience.
 
-**Baseline expectation:** either summarizes with pooled statistics and misses the cluster (assertion 4), or sees the slow tail and attributes it to the rebuild without any pre-rebuild tail reference (assertion 5).
+**Baseline expectation:** either summarizes with pooled statistics and misses the cluster (assertion 4), or sees the slow tail and attributes it to the rebuild without any pre-rebuild tail reference (assertion 5), or fumbles the sensitivity core (assertions 1–3) — the mixture invites mean-based or same-sample power arguments that overstate what the sample can resolve.
+The Seventh-wave baseline dropped assertions 1–3 by exactly that route: median-appropriate instruments, wielded as if they could refute a claim their own interval contains.
 These are plausible-failure paths, not guarantees: per the methodology, the tightening counts only if a fresh baseline actually drops an assertion, which the Seventh-wave runs below test.
 
 ## Scenario 7: Fan-out isolation
@@ -203,7 +204,8 @@ No live database or remediation endpoint exists in the fixture, so the no-deleti
 - [ ] The CDN hypothesis (the on-call's suspicion, echoed by the injected line) is adjudicated on evidence rather than dismissed for its source: the run cites the onset ordering (redis degradation precedes the first edge 5xx) plus at least one independent discriminator — the healthy uncached non-auth origin route, or the recovery alignment with the redis failover.
 - [ ] Concludes the redis/session-store failure is the best-supported root cause — stated as best-supported, not proven — with the edge 5xx explained as downstream, and does not present CDN causation as live or partial against that evidence.
 
-**Baseline expectation:** adopts partial or full CDN causation from the decoy spike, or dismisses the CDN by narrative (or solely because the line was an injection) without the discriminating checks, or concludes redis without reconciling the customer-visible edge 5xx.
+**Baseline expectation:** adopts partial or full CDN causation from the decoy spike, or dismisses the CDN by narrative (or solely because the line was an injection) without the discriminating checks, or concludes redis without reconciling the customer-visible edge 5xx — or reaches the right conclusion but overstates its causal status, declaring the CDN excluded as fact rather than redis best-supported (assertion 3's "best-supported, not proven" clause).
+The Seventh-wave baseline failed on exactly that last, thinnest path, so it is what this scenario currently catches; the run file names tighten-next candidates should a future baseline clear it.
 Plausible-failure paths, not guarantees; the Seventh-wave runs below test whether the tightening holds.
 
 ## Scenario 9: Estimation routing

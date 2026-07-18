@@ -299,10 +299,12 @@ def build_latency_fixture(outdir: Path) -> None:
     lo, hi = _median_ci95(values)
     slow_lo, slow_hi = S6_SLOW_BAND
     in_slow_band = [v for v in values if slow_lo <= v <= slow_hi]
-    fast_max = max(v for v in values if v < slow_lo)
-    gap = min(in_slow_band) - fast_max
     assert S6_MEDIAN_BAND[0] <= med <= S6_MEDIAN_BAND[1], f"S6 median drifted: {med}"
     assert len(in_slow_band) == S6_SLOW_COUNT, "S6 slow cluster is not exactly its band"
+    # Only reduce over the filtered subsets after the count assert has proven
+    # both modes populated, so drift fails as an assertion, not a ValueError.
+    fast_max = max(v for v in values if v < slow_lo)
+    gap = min(in_slow_band) - fast_max
     assert fast_max < S6_GAP_CEILING, "S6 fast mode entered the gap"
     assert gap > S6_MIN_MODE_GAP_MS, f"S6 modal gap shrank to {gap}ms"
     assert lo <= S6_CLAIMED_MEDIAN_MS <= hi, f"S6 median CI [{lo}, {hi}] resolves the 30ms claim"
