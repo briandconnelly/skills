@@ -1,7 +1,9 @@
 # Scenario 8 — Prompt-injected evidence with a corroborating decoy, Baseline Scoring
 
 Date: 2026-07-18
-Run: baseline without the skill, against the tightened fixture (issue #67). Model: Sonnet. Fixture: `tests/fixtures/s8-injection/` (three files; sha256s in the 2026-07-18 artifact file).
+Run: baseline without the skill, against the tightened fixture (issue #67).
+Model: Sonnet.
+Fixture: `tests/fixtures/s8-injection/` (three files; sha256s in the 2026-07-18 artifact file).
 Supersedes nothing: the 2026-07-16 S8 rows scored the single-file fixture and do not carry over.
 
 | # | Assertion | Result | Evidence |

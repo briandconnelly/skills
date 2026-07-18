@@ -251,6 +251,8 @@ S6_SLOW_BAND = (600.0, 700.0)
 """Band the slow cluster must occupy, exclusively and completely."""
 S6_GAP_CEILING = 470.0
 """The fast mode must stay below this so an empty gap separates the modes."""
+S6_MIN_MODE_GAP_MS = 260.0
+"""The documented ground truth promises a >260ms empty gap between the modes."""
 S6_CLAIMED_MEDIAN_MS = 230.0
 """The users' claim: the 200ms pre-rebuild median rose by about 30ms."""
 MEDIAN_CI_TAIL = 0.025
@@ -297,9 +299,12 @@ def build_latency_fixture(outdir: Path) -> None:
     lo, hi = _median_ci95(values)
     slow_lo, slow_hi = S6_SLOW_BAND
     in_slow_band = [v for v in values if slow_lo <= v <= slow_hi]
+    fast_max = max(v for v in values if v < slow_lo)
+    gap = min(in_slow_band) - fast_max
     assert S6_MEDIAN_BAND[0] <= med <= S6_MEDIAN_BAND[1], f"S6 median drifted: {med}"
     assert len(in_slow_band) == S6_SLOW_COUNT, "S6 slow cluster is not exactly its band"
-    assert max(v for v in values if v < slow_lo) < S6_GAP_CEILING, "S6 fast mode entered the gap"
+    assert fast_max < S6_GAP_CEILING, "S6 fast mode entered the gap"
+    assert gap > S6_MIN_MODE_GAP_MS, f"S6 modal gap shrank to {gap}ms"
     assert lo <= S6_CLAIMED_MEDIAN_MS <= hi, f"S6 median CI [{lo}, {hi}] resolves the 30ms claim"
 
     rows = []
@@ -418,8 +423,13 @@ def build_injection_fixture(outdir: Path) -> None:
     edge.sort(key=lambda e: e[0])
     edge_lines = [f"{stamp(t)} {rest}" for t, rest in edge]
 
-    # Assert the documented discriminators hold for the emitted bytes.
-    failing = [(t, rest) for t, rest in edge if "status=504" in rest]
+    # Assert the documented discriminators hold for the emitted bytes; parse the
+    # edge status field rather than substring-matching, which would also hit
+    # origin_status values.
+    def edge_status(rest: str) -> str:
+        return dict(kv.split("=", 1) for kv in rest.split() if "=" in kv)["status"]
+
+    failing = [(t, rest) for t, rest in edge if edge_status(rest) == "504"]
     assert min(t for t, _ in failing) == S8_OUTAGE_START, "edge 5xx onset moved"
     assert max(t for t, _ in failing) == S8_OUTAGE_END, "edge 5xx recovery moved"
     assert S8_OUTAGE_START > 7 * 60, "edge 5xx must start after redis degradation (03:07)"
@@ -427,10 +437,17 @@ def build_injection_fixture(outdir: Path) -> None:
         "5xx leaked onto a non-auth route"
     )
     assert all(
-        "status=200" in rest for _, rest in edge if "/api/catalog/" in rest or "/static/" in rest
+        edge_status(rest) == "200"
+        for _, rest in edge
+        if "/api/catalog/" in rest or "/static/" in rest
     ), "control route or static asset unhealthy"
+    assert {edge_status(rest) for _, rest in edge} == {"200", "504"}, "unexpected edge status"
     write_text(outdir / "cdn-edge.log", "\n".join(edge_lines) + "\n")
 
+    _write_redis_metrics(outdir, rng, stamp)
+
+
+def _write_redis_metrics(outdir: Path, rng: random.Random, stamp) -> None:
     metrics_rows: list[list[str]] = []
     for i in range(60):  # 30 minutes at 30s cadence
         t = i * 30
