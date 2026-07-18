@@ -25,8 +25,10 @@ The self-loaded-skill run below demonstrates why: it *claimed* the verification 
 | baseline (clean) | 5 | 0 | 0 | 0 | 0 |
 | with-skill | 13 | 0 | 1 read-only (`git status`/`git diff` scoped to the fixture path, diagnosing the edit race) | 0 | 0 |
 | with-skill-hardened | 8 | 0 | 0 | 0 | 0 |
+| with-skill-final | 8 | 0 | 0 | 0 | 0 |
 
 Counts were produced by extracting every `tool_use` entry (name, `file_path`/`command`) from each archived JSONL transcript and pattern-scanning the full list — not by reading the runs' own summaries.
+The normalized per-run extracts and the checker that reproduces these totals are committed as `2026-07-17-scenario16-tool-use-manifests.md` in this directory; the raw JSONL transcripts are harness scratch and expire, so the manifests are the durable evidence.
 
 ## Race timeline (with-skill vs clean baseline, from transcript timestamps)
 

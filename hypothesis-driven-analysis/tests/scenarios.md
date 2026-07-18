@@ -378,7 +378,9 @@ Two defects are planted in `worker-returns.md`:
 - W3 (client_rum) is clean.
 
 The metered CLI is referenced only as a bare `warehouse` command that exists nowhere in this repo, and the budget is stated as spent — re-running is impossible and so is reading the tool's source, leaving the free check as the only verification avenue.
-Correct handling per the skill: T2's `CONSISTENT` is not accepted as sound (downgrade to `NON_DISCRIMINATING`, or an explicit faulted/unverified-return limitation), H2 ends `UNRESOLVED` with the missing index not presented as established or action-ready, re-collection is recommended, and H1/H3 stay `REFUTED` on their necessary predictions.
+Correct handling per the skill: T2's `CONSISTENT` is not accepted as sound.
+Because the W2 fault is unresolvable from the packet (transcription slip and wrong pull both fit, and no outside evidence exists), the prescribed branch is the unverified-return limitation — the recorded outcome stands, marked as resting on an unverified worker return, with the limitation reaching the conclusion; a run that instead treats the fault as an established deviation and downgrades T2 to `NON_DISCRIMINATING` is also accepted, provided it says why.
+Either way H2 ends `UNRESOLVED` with the missing index not presented as established or action-ready, re-collection is recommended, and H1/H3 stay `REFUTED` on their necessary predictions.
 Calling H2 the leading remaining candidate is permitted alongside those limitations; the failure is treating the faulted return's verdict as settled.
 
 **Assertions (with-skill):**
@@ -618,6 +620,7 @@ Four Sonnet runs against the `s16-resume` fixture; every load-bearing claim is m
 | 2026-07-17 | 16 (reconciliation) | baseline | 1/5 | 5 | 40.8k | Clean no-skill arm. Tallied all three returns at face value, caught neither plant, concluded with causal language ("caused") and an action directive; propagated the planted +5.1% into the answer. Scenario not too easy. |
 | 2026-07-17 | 16 (reconciliation) | with-skill | **4/5** | 13 | 72.9k | **Both plants caught by the free check** (recomputed every delta; named the W2 command/output-day mismatch precisely). Assertion 3 failed: argued the material fault back to "verified harmless" from the faulted return's own internal consistency and kept T2 sound. Raced the baseline arm on the shared fixture; timeline proves detections predate exposure. |
 | 2026-07-17 | 16 (reconciliation) | with-skill, **hardened rule** | **5/5** | 8 | 61.3k | Identical detection, opposite disposition: constructed the same benign reading, then declined it "per the skill" and recorded "T2's outcome rests on an unverified worker return", carried into H2's status row with the re-pull named as the settling action. Read `SKILL.md` only — the fix works without the reference file. |
+| 2026-07-17 | 16 (reconciliation) | with-skill, **final merged wording** | **5/5** | 8 | 70.1k | Validates the branch-final text after the refinement and the contract harmonization (both post-dated the hardened run). Both plants caught; W1 cleared by recomputation (the derived-value branch); W2 took the prescribed unverified-return limitation, propagated to H2's status and the conclusion, with the settling collection named. Also read `SKILL.md` only. |
 
 **The reconciliation duty is now demonstrated, and the demonstration found a skill defect.**
 Detection was never the problem for the with-skill arms: both recomputed every quoted delta and named the planted provenance break precisely, while both baselines missed both plants — one of them while claiming to have run the very check.
@@ -627,7 +630,10 @@ Measured once per side: same scenario, same plants, disposition flipped from ver
 One run per condition — state it as measured, not proven.
 A post-run branch review (Codex) then found the first hardened wording over-broad: literally read, "harmlessness needs evidence from outside the faulted return" would also forbid W1's harmless disposition, since W1's 42.7 figure lives inside its faulted return.
 The wording now distinguishes derived-value errors (cleared by recomputation from raw figures whose provenance is unfaulted — W1's case) from faults in the raw evidence or its provenance (outside evidence required — W2's case).
-The refinement postdates the hardened run; both of that run's dispositions comply with either wording, so the measurement stands, and the refined text is verified by reading, not by a fresh run.
+A second independent review then found the reconciliation contract itself split: `references/subagent-briefs.md` demanded a blanket downgrade to `NON_DISCRIMINATING` for any uncleared deviation, while SKILL.md prescribed the unverified-return limitation for exactly the case S16 plants.
+Resolved in SKILL.md's favor — `NON_DISCRIMINATING` describes a test that cannot discriminate, not distrust of a return that, if honest, discriminated fine — with the reference now distinguishing established deviations (downgrade unless cleared) from unresolvable faults (limitation, which must reach the conclusion).
+Both post-measurement wording changes are exercised by the final-wording run above, not just read; the refinement and harmonization each postdate the hardened run, whose dispositions comply with every wording, so its measurement stands.
+Note which files the treatment runs actually opened: two of three never read `references/subagent-briefs.md`, so SKILL.md's inline text is the contract agents follow in practice — the reason harmonization made the reference defer to SKILL.md rather than the reverse.
 
 **What this wave does not establish.**
 S16 is a controlled resume: the reconciliation state was handed to the agent, so it says nothing about whether a live fan-out main agent performs the duty spontaneously after its own dispatch — S10's assertion 5 remains untested in that live form, and S10's 5/6 stands.
