@@ -53,7 +53,7 @@ Every evidence cell in Tests references a source id, so results stay reproducibl
 - Field population: <the populated rate of each field relied on, at that same crossed grain; a field present for only part of the data is a coverage gap, not a null problem>
 - Coverage baseline: <the expected schedule or independent denominator the matrix was compared against; if neither exists, record coverage as unverifiable rather than clean>
 - Known instrument failures: <dashboards, exporters, sampling quirks>
-- Sensitivity checks performed: <intervals computed and known positives surfaced — fresh draws or independent data, never the observed sample perturbed and resampled — plus detection limits>
+- Sensitivity checks performed: <intervals computed and known positives surfaced — fresh draws per trial or independent data, never intervals recomputed from one fixed shifted copy — plus detection limits>
 
 ## Tests
 

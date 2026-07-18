@@ -719,7 +719,7 @@ These runs complement, not supersede, the Seventh-wave S6 rows, which measured t
 
 **The false `REFUTED` flipped: all three with-skill runs recorded the median claim `NON_DISCRIMINATING`, by the route the amended rule prescribes.**
 The Seventh-wave with-skill run shifted the observed sample +30ms, resampled it, reported "100% of 2,000 sims", and marked H1 `REFUTED`; this wave, zero of 26 tool_use entries across all four runs contain any perturbation or power simulation (machine-checked), every with-skill run computed the interval first, and every one held H1 `UNRESOLVED`/`NON_DISCRIMINATING` with a stated detection limit.
-Assertions 1–2 pass in 3 of 3 with-skill runs and no assertion regressed against the Seventh wave's with-skill 3/5, so the wording change measurably removed the failure it was written for — stated as measured on n=3, not proven.
+The targeted failure was absent in 3/3 post-fix with-skill runs — REFUTED replaced by `NON_DISCRIMINATING` via interval-first arguments — which is consistent with the intended fix but does not by itself attribute the flip to the wording: there is no contemporaneous pre-fix treatment arm, and the baseline's own 2/5 → 5/5 flip on the unchanged fixture shows run-level variance on this scenario.
 
 **The wave's honest complication: the baseline also went 5/5, so this wave shows a before/after on the rule, not a skill-vs-baseline margin.**
 The Seventh-wave baseline scored 2/5 on this exact fixture by asserting refutation capability its own CI contradicted; this wave's baseline drew the correct non-discriminating conclusion unaided (while stating an interval it never executed — the transcript's two analysis scripts compute no CI at all).
@@ -732,6 +732,9 @@ A skill-vs-baseline margin claim on S6 would need repeated baseline runs, which 
 One fixture, one scenario, three with-skill runs, one baseline run; token counts harness-reported; assertion judgments are scorer readings of quoted text, with the scope, count, absence, and statistics claims machine-checked per the artifact.
 The wave measures the rule fix's effect on the exact failure it targets and nothing broader: it does not establish that the amended rule helps on other scenarios, that the with-skill arms would beat a strong baseline (this wave's did not, on totals), or that the flip is stable beyond three runs.
 ws-c shows the residual exposure: the rule can compel the right procedure but not correct arithmetic inside it, and this fixture cannot catch an off-by-one whose erroneous interval still contains the claimed effect.
+
+**Post-measurement refinement (same day):** a cross-model (Codex) review of this branch found the measured rule wording ambiguous about the estimand the interval brackets, overbroad in banning all resampling of a shifted sample (the defective procedure is recomputing intervals from one fixed shifted copy — fresh draws per trial from a shifted empirical distribution are a valid known positive), and missing the prior detection-limit branch that issue #71 said to keep.
+The rule was reworded accordingly after the three with-skill runs above were scored, so those runs measured the earlier wording; final-wording validation runs are recorded below.
 
 ## Findings from the 2026-07-16 suite
 
