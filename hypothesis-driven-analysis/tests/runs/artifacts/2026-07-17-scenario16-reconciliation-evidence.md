@@ -118,7 +118,17 @@ Free-check recompute — as executed (00:23:13Z):
 python3 -c "
 print('W1 edge_p95 pct:', (42.7-41.2)/41.2*100)
 print('W2 db p95 pct:', (610.4-40.1)/40.1*100)
-...
+print('W3 render pct:', (182.9-180.5)/180.5*100)
+print('W3 js pct:', (44.6-44.1)/44.1*100)
+print('W3 samples pct:', (91002-88771)/91002*100)
+"
+```
+
+W3 clearance — as written to the ledger (verbatim), supporting the no-blanket-distrust half of assertion 5:
+
+```text
+- T3 (W3): command labels and output day headers match; recomputed deltas (+1.33%, +1.13%)
+  match W3's claims. No fault found.
 ```
 
 W2 disposition — as written to the ledger (verbatim):

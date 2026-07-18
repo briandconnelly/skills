@@ -36,3 +36,4 @@ Zero warehouse invocations; zero git commands; no reads of `s10-fanout/warehouse
 
 Pre/post measurement of the hardening: the identical scenario moved the W2 disposition from "Verified harmless; T2 outcome and figures unchanged" (pre-fix, assertion 3 FAIL) to the recorded-limitation branch (post-fix, PASS), with detection identical in both runs.
 One run per side; state it as measured once, not proven.
+The hardened wording this run exercised was subsequently refined (derived-value errors vs provenance faults; see the Sixth-wave notes in `tests/scenarios.md`); both of this run's dispositions comply with either wording, so the score stands.

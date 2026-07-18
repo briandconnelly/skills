@@ -401,7 +401,7 @@ A no-skill baseline also needs the input-scope line above stated firmly — the 
 
 ## Results
 
-All runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`.
+First-wave runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`; later waves date their runs in their own headings and tables (the Fifth wave used Opus 4.8, the Sixth wave Sonnet).
 Token counts are subagent totals; tool calls are harness-observed.
 
 | Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
@@ -624,6 +624,9 @@ The defect was the escape hatch: "unless the deviation is verified harmless" did
 Hardened in `SKILL.md` (Analysis) and `references/subagent-briefs.md` (Reconciliation Duties): harmlessness needs evidence from outside the faulted return.
 Measured once per side: same scenario, same plants, disposition flipped from verification-claim to recorded-limitation.
 One run per condition — state it as measured, not proven.
+A post-run branch review (Codex) then found the first hardened wording over-broad: literally read, "harmlessness needs evidence from outside the faulted return" would also forbid W1's harmless disposition, since W1's 42.7 figure lives inside its faulted return.
+The wording now distinguishes derived-value errors (cleared by recomputation from raw figures whose provenance is unfaulted — W1's case) from faults in the raw evidence or its provenance (outside evidence required — W2's case).
+The refinement postdates the hardened run; both of that run's dispositions comply with either wording, so the measurement stands, and the refined text is verified by reading, not by a fresh run.
 
 **What this wave does not establish.**
 S16 is a controlled resume: the reconciliation state was handed to the agent, so it says nothing about whether a live fan-out main agent performs the duty spontaneously after its own dispatch — S10's assertion 5 remains untested in that live form, and S10's 5/6 stands.

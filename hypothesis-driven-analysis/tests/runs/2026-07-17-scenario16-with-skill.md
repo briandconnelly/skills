@@ -45,4 +45,4 @@ Zero warehouse invocations; no reads of `s10-fanout/warehouse.py`, `generate.py`
 Assertion 3's failure is a skill-text defect, not only an agent lapse: `references/subagent-briefs.md` said a deviation downgrades "unless the deviation is verified harmless" without saying what *verified* means, and the agent used the escape hatch exactly as written — constructing a benign explanation from the faulted return's internal consistency.
 The same worker whose quote broke had also attested "Deviations from brief: none" and byte-exact quoting, so those attestations cannot clear the fault they sit beside.
 Fixed after this run by narrowing the escape hatch in both `SKILL.md` (Analysis) and `references/subagent-briefs.md` (Reconciliation Duties): harmlessness needs evidence from outside the faulted return.
-The hardened text is measured by `2026-07-17-scenario16-with-skill-hardened.md`.
+The hardened text is measured by `2026-07-17-scenario16-with-skill-hardened.md`; a post-run branch review then scoped the outside-evidence requirement to provenance faults, so a derived-value error stays clearable by recomputation (see the Sixth-wave notes in `tests/scenarios.md`).
