@@ -17,6 +17,8 @@ Supersedes nothing: the 2026-07-16 S6 rows scored the pre-tightening fixture and
 
 Total: 3/5.
 
+Conclusion correctness: mixed — the median-claim verdict (`REFUTED`, "refuted by this sample") is incorrect per ground truth (`NON_DISCRIMINATING`; the CI contains 230 and the sign test gives p = 0.117), while the cluster finding, its unresolved novelty, and the retrospective handling of the drift are all correct.
+Premature-conclusion: no — zero text blocks containing verdict language precede the final tool call in the transcript (machine-checked; see the artifact file).
 Cost: 9 tool calls, ~61.1k subagent tokens, 364s.
 Token delta vs. baseline: +72%.
 

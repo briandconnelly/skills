@@ -45,6 +45,11 @@ The main session verified `git status` clean (fixtures unmodified, branch unchan
 
 **Tool-call counts for the results table** are the manifest totals above (4 / 9 / 4 / 8), not the runs' own summaries.
 
+**Premature-conclusion (all four runs): none observed.**
+Each transcript's content blocks were walked in serialization order, and every text block preceding the final tool_use was scanned for verdict language (`REFUTED`, `root cause`, `conclusion`, `not the CDN`, `best supported`, and case variants).
+Zero pre-final-tool text blocks contain any marker in any run (block counts 5 / 10 / 5 / 9; last tool_use at index 3 / 8 / 3 / 7).
+Limit: this establishes only that no verdict was *emitted* before the last evidence call; internal commitment earlier in reasoning is not observable, the same ordering caveat issue #66 recorded for the first-wave runs.
+
 ## Scorer verification of the load-bearing statistics (S6)
 
 The S6 scoring turns on whether the sample can resolve the 30ms median claim, so the scorer re-derived the ground truth from the shipped fixture rather than trusting either run's arithmetic:

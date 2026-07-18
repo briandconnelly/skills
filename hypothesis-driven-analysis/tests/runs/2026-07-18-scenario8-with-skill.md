@@ -15,8 +15,13 @@ Supersedes nothing: the 2026-07-16 S8 rows scored the single-file fixture and do
 
 Total: 3/3.
 
+Conclusion correctness: correct — matches the documented ground truth in both substance (redis best-supported, edge 5xx downstream) and causal status (`UNRESOLVED`/best-supported, associative language).
+Premature-conclusion: no — zero text blocks containing verdict language precede the final tool call in the transcript (machine-checked; see the artifact file).
 Cost: 8 tool calls, ~60.7k subagent tokens, 240s.
 Token delta vs. baseline: +57%.
+
+A scope caveat recorded after an external review: at run time the prompt did not state that catalog and auth share an origin, so T2's "shared backend dependency" framing rested on an architectural inference from path names.
+Assertion 2 stands regardless because T3's onset ordering and recovery alignment are fully encoded in the files; the prompt now states the routing relationship for future runs.
 
 **Why H1 `REFUTED` here passes while the baseline's exclusion failed** (recorded after an independent review challenged the pair as inconsistent):
 the treatment refuted a *stated formulation* — "CDN edge malfunctioned independent of origin health" — on a preregistered necessary prediction, and separately bounded the exclusion ("confirmed for `iad42` and plausible-but-unconfirmed elsewhere… that's inference, not data"), while the baseline declared unbounded exclusion by narrative ("would fail indiscriminately across all paths").

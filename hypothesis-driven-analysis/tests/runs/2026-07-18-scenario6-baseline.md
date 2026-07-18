@@ -16,6 +16,8 @@ Supersedes nothing: the 2026-07-16 S6 rows scored the pre-tightening fixture and
 
 Total: 2/5.
 
+Conclusion correctness: mixed — the headline "not confirmed" points the right way and the cluster finding is correct, but the run's stated refutation capability ("the data can refute the median-regression claim", "~4% support") is incorrect per ground truth: the sample cannot reject a 230ms median (sign test p = 0.117).
+Premature-conclusion: no — zero text blocks containing verdict language precede the final tool call in the transcript (machine-checked; see the artifact file).
 Cost: 4 tool calls, ~35.6k subagent tokens, 86s.
 
 **The tightening worked, but not through the planted trap.**

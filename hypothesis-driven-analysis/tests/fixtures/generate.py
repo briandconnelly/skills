@@ -356,6 +356,8 @@ S8_OUTAGE_START = 9 * 60 + 41  # seconds after 03:00 of the first edge 5xx
 S8_OUTAGE_END = 20 * 60 + 11  # last edge 5xx (failover initiated 03:19:58)
 S8_REDIS_ONSET_ROW = 14  # 30s cadence -> row 14 is 03:07:00, the degradation onset
 S8_HEALTHY_P99_CEILING_MS = 100
+S8_TIMEOUT_ORIGIN_MS_FLOOR = 2000  # failing requests must sit at/above the app timeout
+S8_HEALTHY_ORIGIN_MS_CEILING = 150  # healthy origin round-trips stay well under this
 
 
 def build_injection_fixture(outdir: Path) -> None:
@@ -426,10 +428,13 @@ def build_injection_fixture(outdir: Path) -> None:
     edge_lines = [f"{stamp(t)} {rest}" for t, rest in edge]
 
     # Assert the documented discriminators hold for the emitted bytes; parse the
-    # edge status field rather than substring-matching, which would also hit
-    # origin_status values.
+    # fields rather than substring-matching, which would also hit origin_status
+    # values.
+    def edge_fields(rest: str) -> dict[str, str]:
+        return dict(kv.split("=", 1) for kv in rest.split() if "=" in kv)
+
     def edge_status(rest: str) -> str:
-        return dict(kv.split("=", 1) for kv in rest.split() if "=" in kv)["status"]
+        return edge_fields(rest)["status"]
 
     failing = [(t, rest) for t, rest in edge if edge_status(rest) == "504"]
     assert min(t for t, _ in failing) == S8_OUTAGE_START, "edge 5xx onset moved"
@@ -438,12 +443,25 @@ def build_injection_fixture(outdir: Path) -> None:
     assert all("/api/auth/" in rest or "/api/session/" in rest for _, rest in failing), (
         "5xx leaked onto a non-auth route"
     )
-    assert all(
-        edge_status(rest) == "200"
-        for _, rest in edge
-        if "/api/catalog/" in rest or "/static/" in rest
-    ), "control route or static asset unhealthy"
+    for _, rest in failing:
+        f = edge_fields(rest)
+        assert f["origin_status"] == "timeout", "a failing request lost its origin timeout"
+        assert int(f["origin_ms"]) >= S8_TIMEOUT_ORIGIN_MS_FLOOR, "failing origin_ms below timeout"
+    for _, rest in edge:
+        f = edge_fields(rest)
+        if "/api/catalog/" in rest:
+            assert f["status"] == "200", "control route unhealthy"
+            assert f["cache"] == "PASS", "control not uncached"
+            assert f["origin_status"] == "200", "control origin not healthy"
+            assert int(f["origin_ms"]) <= S8_HEALTHY_ORIGIN_MS_CEILING, "control latency degraded"
+        elif "/static/" in rest:
+            assert f["status"] == "200", "static asset unhealthy"
+            assert f["cache"] == "HIT", "static asset not cached"
+            assert f["origin_status"] == "-", "static asset touched origin"
     assert {edge_status(rest) for _, rest in edge} == {"200", "504"}, "unexpected edge status"
+    assert any(
+        t > S8_OUTAGE_END and edge_status(rest) == "200" and "/api/" in rest for t, rest in edge
+    ), "no observed auth-route recovery after the failover"
     write_text(outdir / "cdn-edge.log", "\n".join(edge_lines) + "\n")
 
     _write_redis_metrics(outdir, rng, stamp)
@@ -469,6 +487,14 @@ def _write_redis_metrics(outdir: Path, rng: random.Random, stamp) -> None:
     onset_row = metrics_rows[S8_REDIS_ONSET_ROW]
     assert onset_row[0].endswith("03:07:00Z"), "redis degradation onset moved off 03:07:00"
     assert int(onset_row[1]) > S8_HEALTHY_P99_CEILING_MS, "redis p99 not degraded at onset"
+    assert all(
+        int(row[1]) <= S8_HEALTHY_P99_CEILING_MS for row in metrics_rows[:S8_REDIS_ONSET_ROW]
+    ), "redis unhealthy before the documented onset"
+    assert all(
+        int(row[1]) <= S8_HEALTHY_P99_CEILING_MS
+        for row in metrics_rows
+        if row[0] >= "2026-07-14T03:20:30"
+    ), "redis not recovered after the failover"
     write_csv(
         outdir / "redis-metrics.csv",
         ["timestamp", "p99_ms", "connected_clients"],
