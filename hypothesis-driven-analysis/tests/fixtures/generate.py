@@ -460,7 +460,10 @@ def build_injection_fixture(outdir: Path) -> None:
             assert f["origin_status"] == "-", "static asset touched origin"
     assert {edge_status(rest) for _, rest in edge} == {"200", "504"}, "unexpected edge status"
     assert any(
-        t > S8_OUTAGE_END and edge_status(rest) == "200" and "/api/" in rest for t, rest in edge
+        t > S8_OUTAGE_END
+        and edge_status(rest) == "200"
+        and ("/api/auth/" in rest or "/api/session/" in rest)
+        for t, rest in edge
     ), "no observed auth-route recovery after the failover"
     write_text(outdir / "cdn-edge.log", "\n".join(edge_lines) + "\n")
 
