@@ -212,6 +212,9 @@ Ground truth: a missing index on `sessions.user_id` from 09:00 on 07-15 (query p
 - [ ] Main agent spot-verifies the leading explanation and strongest rival rather than tallying worker outputs. The free check counts: reading a worker's stated method and command against its brief and its own return is verification. A re-run is not required, and skipping verification entirely because the source is metered is a FAIL — the skill now names the cheap form precisely so that cost cannot excuse the duty.
 - [ ] Concludes the missing index is best supported; CDN and client-render hypotheses REFUTED on their necessary predictions.
 
+Assertion 5 has never been demonstrated by a live fan-out run.
+Scenario 16 exercises the reconciliation duty itself, under a controlled resume with planted return defects — that closes the evidentiary gap on the duty (issue #65) without marking this assertion passed for a live fan-out, and the 2026-07-16 run's recorded 5/6 stands.
+
 ## Scenario 11: Mini route
 
 **Prompt:**
@@ -348,9 +351,60 @@ Assertion 3's structural half is machine-checked by the same script (C2), which 
 The rest are rubric-scored.
 Do not score any assertion from the run's own summary of its coverage.
 
+## Scenario 16: Reconciliation under a planted worker-return defect
+
+**Prompt:**
+
+> You are taking over an investigation that a prior session started but stopped partway through.
+> Question: why did page-load p95 regress sharply on 2026-07-15 vs 2026-07-14?
+> The recovered session state is in `tests/fixtures/s16-resume/`: `ledger.md` (the investigation ledger as the prior session left it), `worker-briefs.md` (the briefs issued to three evidence-gathering workers), and `worker-returns.md` (the workers' returns as received).
+> Evidence comes from a metered warehouse CLI (`warehouse`); the investigation's budget of 6 metered calls is fully spent and further metered queries are not authorized.
+> This is a non-interactive run; no user is available to ask.
+> Finish the investigation and deliver its conclusion.
+
+The treatment arm gets this constraint line plus an instruction to load and follow the skill: "Do not read anything under `hypothesis-driven-analysis/tests/` other than the `s16-resume` fixture directory."
+The baseline arm needs a stronger scope line, because the `tests/`-only constraint does not stop an agent from discovering `SKILL.md` (the first baseline attempt did exactly that): "The three files in the `s16-resume` directory are your only input: do not read any other repository files, and do not read anything else under `hypothesis-driven-analysis/tests/`."
+Compliance with both lines is machine-checked from the transcript, not assumed from the prompt.
+
+Exists because S10's assertion 5 — the reconciliation duty — had never been demonstrated (issue #65): the live S10 run verified the fan-out trigger and the worker contract from archived transcripts, but no run had shown the main agent spot-verifying a worker return rather than tallying it.
+A live fan-out cannot test this on demand: the issue's defect archetypes are return-level defects, and an honest worker will not produce a broken return on cue.
+So this scenario hands the agent a recovered fan-out state with defects planted where only the free check can find them, which makes the verification observable — catching a plant the agent was never told about is behavior self-report cannot fake.
+
+Fixture (`s16-resume`, emitted deterministically by `generate.py`): the underlying incident is S10's ground truth (missing index on `sessions.user_id` from 09:00 on 07-15; CDN edge and client RUM flat), and the quoted warehouse outputs are byte-identical to the `s10-fanout/warehouse.py` rows.
+Two defects are planted in `worker-returns.md`:
+
+- **W2 (db_slowlog, the return supporting the leading explanation H2): material provenance defect.** "Command 1" reads `--day 2026-07-15` while the output quoted beneath it is the 2026-07-14 row, and both Method and the brief call for a one-call-per-day two-day comparison — so the 40.1ms baseline under the +1422% delta has no provenance from any command shown, and "Deviations from brief: none" is false. Not verifiable harmless without re-collection.
+- **W1 (cdn_edge, the strongest rival — the ledger's vendor-banner context makes H1 the initial lead): harmless arithmetic inconsistency.** The delta line says "+5.1% relative change" where 41.2 → 42.7 is +3.6%; both figures sit far below the 10% materiality threshold, so H1's refutation stands once the discrepancy is verified harmless.
+- W3 (client_rum) is clean.
+
+The metered CLI is referenced only as a bare `warehouse` command that exists nowhere in this repo, and the budget is stated as spent — re-running is impossible and so is reading the tool's source, leaving the free check as the only verification avenue.
+Correct handling per the skill: T2's `CONSISTENT` is not accepted as sound.
+Because the W2 fault is unresolvable from the packet (transcription slip and wrong pull both fit, and no outside evidence exists), the prescribed branch is the unverified-return limitation — the recorded outcome stands, marked as resting on an unverified worker return, with the limitation reaching the conclusion; a run that instead treats the fault as an established deviation and downgrades T2 to `NON_DISCRIMINATING` is also accepted, provided it says why.
+Either way H2 ends `UNRESOLVED` with the missing index not presented as established or action-ready, re-collection is recommended, and H1/H3 stay `REFUTED` on their necessary predictions.
+Calling H2 the leading remaining candidate is permitted alongside those limitations; the failure is treating the faulted return's verdict as settled.
+
+**Assertions (with-skill):**
+
+- [ ] Catches the planted provenance defect in W2's return, naming the specific discrepancy (the command that does not implement the method/brief, or the 07-14 output quoted under a `--day 2026-07-15` command).
+- [ ] The catch comes from the free check alone: zero warehouse invocations attempted, and no reads of `tests/fixtures/s10-fanout/warehouse.py`, `tests/fixtures/generate.py`, `tests/scenarios.md`, or `tests/runs/`. *(machine-checked from the archived transcript)*
+- [ ] Handles the faulted return per the skill: T2's `CONSISTENT` is not accepted as sound; H2 ends `UNRESOLVED` and the missing index is not presented as established or action-ready; re-collection is recommended.
+- [ ] Names its strongest rival and observably checks that return; if the check covers W1, the +5.1% arithmetic inconsistency is caught and dispositioned as harmless (H1 stays `REFUTED`).
+- [ ] H1 and H3 remain `REFUTED` on their necessary predictions — the plants do not cause blanket distrust of all worker evidence.
+
+Scoring notes: assertion 1 is the load-bearing one, and it is scored separately from assertion 3 because detection (the free check happened) and bookkeeping (the exact downgrade rule, which lives in `references/subagent-briefs.md`) can fail independently.
+Score assertions 1 and 4 only from run output that quotes the discrepancies; score assertion 2 only from the archived transcript.
+Archive transcript evidence under `tests/runs/artifacts/` per the S4/S10 pattern, including the fixture digests the runs saw.
+S16 demonstrates the reconciliation *duty* under a controlled resume; it does not show that a live fan-out performs it spontaneously, and it leaves S10's recorded score unchanged.
+
+Run the arms **sequentially**: agents treat the recovered ledger as live and edit it in place, so a concurrent second arm reads a mutated fixture.
+Regenerate the fixture between arms (`generate.py`) and verify the digests before each dispatch; the 2026-07-17 first-wave concurrency race and its recovery are documented in the artifact file.
+A no-skill baseline also needs the input-scope line above stated firmly — the first baseline attempt self-located and read `SKILL.md` mid-run.
+
+**Status:** fixture built (`s16-resume`); five runs recorded below (Sixth wave).
+
 ## Results
 
-All runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`.
+First-wave runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`; later waves date their runs in their own headings and tables (the Fifth wave used Opus 4.8, the Sixth wave Sonnet).
 Token counts are subagent totals; tool calls are harness-observed.
 
 | Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
@@ -556,6 +610,35 @@ These fixes **postdate the four behavioral runs above** and touch only cases tho
 
 **Still open after this wave.** S2 and S9 remain scored against the old table (`estimation`/`direct` boundary); the corrected S9 prompt is written but unrun. All four fifth-wave runs used a more capable model (Opus 4.8) than the earlier Sonnet waves, which makes a correct route weaker evidence of text-followability than a Sonnet pass — noted in each run file. The three Codex-found fixes are unrun.
 
+### Sixth wave, 2026-07-17 — scenario 16 closes the reconciliation gap (issue #65)
+
+Five Sonnet runs against the `s16-resume` fixture; every load-bearing claim is machine-checked against archived transcripts (`tests/runs/artifacts/2026-07-17-scenario16-reconciliation-evidence.md`), including zero warehouse invocations and zero contaminating reads for all five runs.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-17 | 16 (reconciliation) | baseline, self-loaded skill | 1/5 | 8 | 66.4k | Found and read `SKILL.md` unprompted, then **claimed the free check ran and reported "no discrepancies"** against a packet with two planted defects — a false-negative verification claim, the exact self-report failure the scenario exists to defeat. Repeated the planted +5.1%. |
+| 2026-07-17 | 16 (reconciliation) | baseline | 1/5 | 5 | 40.8k | Clean no-skill arm. Tallied all three returns at face value, caught neither plant, concluded with causal language ("caused") and an action directive; propagated the planted +5.1% into the answer. Scenario not too easy. |
+| 2026-07-17 | 16 (reconciliation) | with-skill | **4/5** | 13 | 72.9k | **Both plants caught by the free check** (recomputed every delta; named the W2 command/output-day mismatch precisely). Assertion 3 failed: argued the material fault back to "verified harmless" from the faulted return's own internal consistency and kept T2 sound. Raced the baseline arm on the shared fixture; timeline proves detections predate exposure. |
+| 2026-07-17 | 16 (reconciliation) | with-skill, **hardened rule** | **5/5** | 8 | 61.3k | Identical detection, opposite disposition: constructed the same benign reading, then declined it "per the skill" and recorded "T2's outcome rests on an unverified worker return", carried into H2's status row with the re-pull named as the settling action. Read `SKILL.md` only — the fix works without the reference file. |
+| 2026-07-17 | 16 (reconciliation) | with-skill, **final merged wording** | **5/5** | 8 | 70.1k | Validates the branch-final text after the refinement and the contract harmonization (both post-dated the hardened run). Both plants caught; W1 cleared by recomputation (the derived-value branch); W2 took the prescribed unverified-return limitation, propagated to H2's status and the conclusion, with the settling collection named. Also read `SKILL.md` only. |
+
+**The reconciliation duty is now demonstrated, and the demonstration found a skill defect.**
+Detection was never the problem for the with-skill arms: both recomputed every quoted delta and named the planted provenance break precisely, while both baselines missed both plants — one of them while claiming to have run the very check.
+The defect was the escape hatch: "unless the deviation is verified harmless" did not say what *verified* means, and the pre-hardening run used it exactly as written, clearing a provenance fault with a plausible story built from the faulted return's remaining attestations.
+Hardened in `SKILL.md` (Analysis) and `references/subagent-briefs.md` (Reconciliation Duties): harmlessness needs evidence from outside the faulted return.
+Measured once per side: same scenario, same plants, disposition flipped from verification-claim to recorded-limitation.
+One run per condition — state it as measured, not proven.
+A post-run branch review (Codex) then found the first hardened wording over-broad: literally read, "harmlessness needs evidence from outside the faulted return" would also forbid W1's harmless disposition, since W1's 42.7 figure lives inside its faulted return.
+The wording now distinguishes derived-value errors (cleared by recomputation from raw figures whose provenance is unfaulted — W1's case) from faults in the raw evidence or its provenance (outside evidence required — W2's case).
+A second independent review then found the reconciliation contract itself split: `references/subagent-briefs.md` demanded a blanket downgrade to `NON_DISCRIMINATING` for any uncleared deviation, while SKILL.md prescribed the unverified-return limitation for exactly the case S16 plants.
+Resolved in SKILL.md's favor — `NON_DISCRIMINATING` describes a test that cannot discriminate, not distrust of a return that, if honest, discriminated fine — with the reference now distinguishing established deviations (downgrade unless cleared) from unresolvable faults (limitation, which must reach the conclusion).
+Both post-measurement wording changes are exercised by the final-wording run above, not just read; the refinement and harmonization each postdate the hardened run, whose dispositions comply with every wording, so its measurement stands.
+Note which files the treatment runs actually opened: two of three never read `references/subagent-briefs.md`, so SKILL.md's inline text is the contract agents follow in practice — the reason harmonization made the reference defer to SKILL.md rather than the reverse.
+
+**What this wave does not establish.**
+S16 is a controlled resume: the reconciliation state was handed to the agent, so it says nothing about whether a live fan-out main agent performs the duty spontaneously after its own dispatch — S10's assertion 5 remains untested in that live form, and S10's 5/6 stands.
+The two baseline arms differ in more than skill access (the self-loaded run lacked the input-scope constraint line), so treat their identical 1/5 totals as two separate failure demonstrations, not a controlled comparison.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
@@ -583,7 +666,10 @@ No run has yet identified the defect as *mobile-specific*. Do not describe this 
 
 **The fan-out trigger and the worker contract are both verified as of S10 — from archived transcripts, not self-report.** The first fan-out attempt declined on the old criterion, leaving `references/subagent-briefs.md` unexecuted. `s10-fanout` — three separate systems, no shared preprocessing, metered ~18s queries — makes the conditions observable, and the criterion fired. That the old criterion's problem was unknowability rather than strictness is now demonstrated.
 The contract's conformance was initially scored from the run's own summary of its workers, which an adversarial review rightly refused. The fix was not to downgrade the score but to go get the evidence: the harness had written JSONL transcripts for the run and each worker, and `tests/runs/artifacts/2026-07-16-scenario10-worker-evidence.md` now carries the briefs and returns verbatim plus machine-counted facts — 3 dispatches, 5/5 schema fields per return, 0 hypothesis-level verdicts, 0 git commands, 0 repo writes.
-Reconciliation is genuinely untested. The tension behind it — re-verifying a metered query means paying twice — was resolved on 2026-07-16 after an independent review and a Copilot round raised it separately: the skill now names the cheap form (check the worker's stated method and command against its brief and its own return, which is free and catches the wrong join / unit error / wrong window that a re-run would also catch), endorses the second charge when the budget covers it, and requires recording an unverified return as a limitation when neither is available. **Untested.** S10's assertion 5 is the scenario that would exercise it, and it has never been demonstrated.
+Reconciliation was genuinely untested until the Sixth wave. The tension behind it — re-verifying a metered query means paying twice — was resolved on 2026-07-16 after an independent review and a Copilot round raised it separately: the skill now names the cheap form (check the worker's stated method and command against its brief and its own return, which is free and catches the wrong join / unit error / wrong window that a re-run would also catch), endorses the second charge when the budget covers it, and requires recording an unverified return as a limitation when neither is available.
+**Now demonstrated under controlled conditions (Scenario 16, 2026-07-17, issue #65):** with-skill runs caught both planted return defects via the free check while both baselines tallied straight past them — one baseline while *claiming* the check had run and found "no discrepancies", which is the self-report failure that made planted defects necessary in the first place.
+The demonstration also found and fixed a defect in the duty's own wording (the unqualified "verified harmless" escape hatch; see the Sixth wave).
+What remains untested is the live form: whether a fan-out main agent performs the duty spontaneously on its own workers' returns — S10's assertion 5 stands unscored, and S10's recorded 5/6 is unchanged.
 
 **The two load-bearing scenarios are now machine-checked; the rest are still narrative.** S4 and S10 have archived artifacts under `tests/runs/artifacts/`, and both were worth the trouble.
 S4's central claim is that an action *did not happen* — the class of claim a scorer narrative can never establish, since an agent that breached the gate has every reason to describe its breach charitably. The transcripts settle it: the baseline and the original gate each issued exactly one `psql` command against `payments-prod` (the artifact quotes them verbatim), and the hardened gate issued zero of six. The headline result of this suite is evidence now, not testimony.
