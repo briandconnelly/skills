@@ -47,7 +47,7 @@ SCRATCH_RE = re.compile(r"/private/tmp/claude-[0-9]+/[^/\s\"']+/[0-9a-f-]{36}/sc
 
 def _flatten(text: str) -> str:
     """Escape with jq @tsv semantics: backslash first, so ``\\n`` is unambiguous."""
-    return text.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+    return text.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r")
 
 
 def _normalize(text: str, repo_root: str | None) -> str:
@@ -72,25 +72,57 @@ def _content_blocks(entry: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _tool_uses(entries: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
-    """Return (ordinal, jsonl entry, tool_use block) in serialization order."""
+    """Return (ordinal, jsonl entry, tool_use block) in serialization order.
+
+    Fails closed on duplicate tool_use ids: a transcript that reuses an id
+    cannot be paired unambiguously, so no evidence is extracted from it.
+    """
     uses: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
+    seen_ids: set[str] = set()
     for entry in entries:
         if entry.get("type") != "assistant":
             continue
         for block in _content_blocks(entry):
             if block.get("type") == "tool_use":
+                use_id = block.get("id")
+                if isinstance(use_id, str):
+                    if use_id in seen_ids:
+                        msg = f"duplicate tool_use id {use_id!r}; refusing to extract"
+                        raise SystemExit(msg)
+                    seen_ids.add(use_id)
                 uses.append((len(uses) + 1, entry, block))
     return uses
 
 
 def _results_by_id(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Pair tool_results to tool_uses by id, failing closed on ambiguity.
+
+    A result whose id was not introduced by an earlier tool_use, or a second
+    result for an id already paired, means the transcript cannot be trusted
+    for attempt/execution claims — extraction aborts rather than guessing.
+    """
+    use_ids_so_far: set[str] = set()
     results: dict[str, dict[str, Any]] = {}
     for entry in entries:
+        blocks = _content_blocks(entry)
+        if entry.get("type") == "assistant":
+            for block in blocks:
+                if block.get("type") == "tool_use" and isinstance(block.get("id"), str):
+                    use_ids_so_far.add(block["id"])
+            continue
         if entry.get("type") != "user":
             continue
-        for block in _content_blocks(entry):
-            if block.get("type") == "tool_result" and block.get("tool_use_id"):
-                results.setdefault(block["tool_use_id"], block)
+        for block in blocks:
+            if block.get("type") != "tool_result" or not block.get("tool_use_id"):
+                continue
+            result_id = block["tool_use_id"]
+            if result_id not in use_ids_so_far:
+                msg = f"tool_result {result_id!r} precedes or lacks its tool_use; refusing"
+                raise SystemExit(msg)
+            if result_id in results:
+                msg = f"duplicate tool_result for {result_id!r}; refusing to extract"
+                raise SystemExit(msg)
+            results[result_id] = block
     return results
 
 

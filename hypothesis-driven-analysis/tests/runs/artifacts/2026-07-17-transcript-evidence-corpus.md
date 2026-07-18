@@ -1,7 +1,7 @@
 # Transcript-evidence corpus — S1, S5, S6, S8, S9, S11, S12 (issue #66)
 
 Issue #66 recorded that these seven scenarios' results rested on scorer narratives quoting the agents' own output.
-This corpus is the shared provenance layer for the seven per-scenario evidence files (`2026-07-17-scenario{1,5,6,8,9,11,12}-transcript-evidence.md`): which transcripts exist, how each was identified, what the extraction instrument is, and how the instrument was validated before any of its negative results were trusted.
+This corpus is the shared provenance layer for the seven per-scenario evidence files (`2026-07-17-scenario{1,5,6,8,9,11,12}-transcript-evidence.md`) and the two durable extract files — `2026-07-17-transcript-evidence-manifests.md` (the tool-use surface) and `2026-07-17-transcript-evidence-outputs.md` (assistant text and Write/Edit contents): which transcripts exist, how each was identified, what the extraction instrument is, and how the instrument was validated before any of its negative results were trusted.
 Extraction date: 2026-07-17.
 
 ## Provenance
@@ -31,6 +31,9 @@ A broken instrument and a clean result look identical, so the extractor was vali
 3. **Failed-result pairing:** the S4 psql attempts pair to `is_error: true` results (the harness classifier denial), so the attempt/execution distinction is machine-visible.
 4. **End-to-end reproduction:** its manifest of the S16 with-skill transcript is byte-identical to the committed S16 manifest (`2026-07-17-scenario16-tool-use-manifests.md`) except for two lines where the committed file double-escaped `\n` as `\\n` — a defect in the committed file, confirmed by running that file's own stated jq checker, and corrected in this change.
 5. **Content recovery:** `events` recovers a full ledger from a Write tool input (S1 with-skill, ordinal 13), verbatim.
+6. **Fail-closed pairing:** synthetic transcripts with a duplicate tool_use id, a tool_result preceding its tool_use, and a duplicate tool_result each abort extraction with an explicit refusal; all 20 real transcripts pass the same validation.
+7. **Flattening equivalence:** on a synthetic input containing backslash, tab, newline, and carriage return, the manifest target is byte-identical to jq `@tsv` output.
+8. **Quote verification:** every quoted line in the seven per-scenario files (73 lines) was machine-matched verbatim against the extracted text, manifests, and Write/Edit inputs.
 
 ## Two corrections this corpus already forced
 
@@ -109,4 +112,5 @@ Each per-scenario file separates four layers so judgment never masquerades as co
 
 One structural limit recurs and is worth stating once: most Sonnet runs in these waves emitted their entire ledger and answer as a single final message after all tool calls.
 For those runs the transcript's emission order cannot establish that hypotheses were written before analysis queries ran; that claim rests on the ledger's internal structure, which is self-report.
-Where a run externalized state mid-run (a ledger Write before subsequent queries, then an amendment Edit — e.g. S5 with-skill, S12 with-skill, S12 rerun), the ordering is machine-checked and the per-scenario file says which case applies.
+Where a run externalized state mid-run (a hypothesis-table Write before its test queries, then an amendment Edit — s5-with-skill and s12-rerun are the two clean cases), the ordering is machine-checked and the per-scenario file says which case applies.
+s12-with-skill is not such a case: its first ledger Write (ordinal 9) both failed and already followed the analysis calls at ordinals 4–8.

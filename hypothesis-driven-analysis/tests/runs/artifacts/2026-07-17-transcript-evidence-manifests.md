@@ -1,7 +1,8 @@
 # Transcript-evidence manifests — S1, S5, S6, S8, S9, S11, S12 (issue #66)
 
 One section per run, one line per `tool_use`, extracted from each run's harness JSONL transcript with the committed extractor.
-These are the durable full-fidelity extracts the per-scenario evidence files derive their counts from; run keys, transcript hashes, and instrument validation are in `2026-07-17-transcript-evidence-corpus.md`.
+These are the durable extracts of each run's tool-use surface — ordinals, timestamps, tools, result statuses, and targets — from which the per-scenario evidence files derive their counts and orderings.
+They deliberately omit tool-input bodies and results: the content surface (assistant text and full Write/Edit inputs) is archived separately in `2026-07-17-transcript-evidence-outputs.md`, and run keys, transcript hashes, and instrument validation are in `2026-07-17-transcript-evidence-corpus.md`.
 Format: `ordinal<TAB>timestamp<TAB>tool<TAB>result-status<TAB>target` — target is the `file_path` for file tools and the full `command` for Bash, flattened with jq `@tsv` semantics (backslash first, then newline/tab).
 Path normalization: `<REPO_ROOT>` is the repository root and `<SCRATCH>` the harness scratch directory.
 These substitutions and the flattening are the only edits to extracted text.
