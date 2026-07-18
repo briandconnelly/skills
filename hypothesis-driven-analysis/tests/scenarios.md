@@ -400,7 +400,7 @@ Run the arms **sequentially**: agents treat the recovered ledger as live and edi
 Regenerate the fixture between arms (`generate.py`) and verify the digests before each dispatch; the 2026-07-17 first-wave concurrency race and its recovery are documented in the artifact file.
 A no-skill baseline also needs the input-scope line above stated firmly — the first baseline attempt self-located and read `SKILL.md` mid-run.
 
-**Status:** fixture built (`s16-resume`); four runs recorded below (Sixth wave).
+**Status:** fixture built (`s16-resume`); five runs recorded below (Sixth wave).
 
 ## Results
 
@@ -612,7 +612,7 @@ These fixes **postdate the four behavioral runs above** and touch only cases tho
 
 ### Sixth wave, 2026-07-17 — scenario 16 closes the reconciliation gap (issue #65)
 
-Four Sonnet runs against the `s16-resume` fixture; every load-bearing claim is machine-checked against archived transcripts (`tests/runs/artifacts/2026-07-17-scenario16-reconciliation-evidence.md`), including zero warehouse invocations and zero contaminating reads for all four runs.
+Five Sonnet runs against the `s16-resume` fixture; every load-bearing claim is machine-checked against archived transcripts (`tests/runs/artifacts/2026-07-17-scenario16-reconciliation-evidence.md`), including zero warehouse invocations and zero contaminating reads for all five runs.
 
 | Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
 | --- | --- | --- | --- | --- | --- | --- |

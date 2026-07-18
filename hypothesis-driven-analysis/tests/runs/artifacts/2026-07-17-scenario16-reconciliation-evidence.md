@@ -1,6 +1,6 @@
 # S16 reconciliation — archived transcript evidence
 
-Extracted from the harness JSONL transcripts of the four 2026-07-17 Scenario 16 runs, at scoring time.
+Extracted from the harness JSONL transcripts of the five 2026-07-17 Scenario 16 runs, at scoring time.
 Archived because Scenario 16's load-bearing claims are exactly the kind self-report cannot establish: that a verification *happened* (assertions 1 and 4), that it used only the free check (assertion 2), and that no run touched the metered tool, the fixture generator, or the scenario ground truth.
 The self-loaded-skill run below demonstrates why: it *claimed* the verification ran and reported "no discrepancies" against a packet holding two planted discrepancies.
 
