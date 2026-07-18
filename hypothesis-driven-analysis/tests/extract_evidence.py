@@ -26,7 +26,7 @@ Subcommands:
   claims must also scan, since ceremony can be emitted in the reply rather than
   a file.
 
-``--normalize`` replaces the repository root and harness scratch directories with
+``--normalize-root`` replaces the repository root and harness scratch directories with
 ``<REPO_ROOT>`` and ``<SCRATCH>`` in emitted text; with newline flattening in
 ``manifest``, these are the only transformations ever applied to extracted text.
 """
