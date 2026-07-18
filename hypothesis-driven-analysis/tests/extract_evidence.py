@@ -42,7 +42,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-SCRATCH_RE = re.compile(r"/private/tmp/claude-[0-9]+/[^/\s\"']+/[0-9a-f-]{36}/scratchpad")
+SCRATCH_RE = re.compile(r"(?:/private)?/tmp/claude-[0-9]+/[^/\s\"']+/[0-9a-f-]{36}/scratchpad")
 
 
 def _flatten(text: str) -> str:
@@ -85,11 +85,13 @@ def _tool_uses(entries: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any],
         for block in _content_blocks(entry):
             if block.get("type") == "tool_use":
                 use_id = block.get("id")
-                if isinstance(use_id, str):
-                    if use_id in seen_ids:
-                        msg = f"duplicate tool_use id {use_id!r}; refusing to extract"
-                        raise SystemExit(msg)
-                    seen_ids.add(use_id)
+                if not isinstance(use_id, str) or not use_id:
+                    msg = f"tool_use at position {len(uses) + 1} has no id; refusing to extract"
+                    raise SystemExit(msg)
+                if use_id in seen_ids:
+                    msg = f"duplicate tool_use id {use_id!r}; refusing to extract"
+                    raise SystemExit(msg)
+                seen_ids.add(use_id)
                 uses.append((len(uses) + 1, entry, block))
     return uses
 
