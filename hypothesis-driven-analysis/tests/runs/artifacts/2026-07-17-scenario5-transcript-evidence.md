@@ -26,16 +26,18 @@ Nothing below upgrades that: label occurrences and event orderings are machine f
 
 The two `error` results are ordinary command failures, not gate events: s5-baseline-corrected ordinal 8 and s5-with-skill-corrected ordinal 9 are pandas invocations that failed (`Invalid frequency: H`, a pandas 2.x deprecation) and were rerun successfully at the next ordinal.
 
-**s5-with-skill is the suite's clearest machine-checked preregistration ordering.**
-Its event order is: Reads 1–3 (skill, template, fixture), orientation Bash 4–5, **ledger Write at ordinal 6 containing a four-row hypothesis table**, test Bash 7–12, amendment Edit at ordinal 13.
-The hypothesis table was externalized before every test query — unlike the S1 runs, where all output postdates all queries.
+**s5-with-skill externalized its hypothesis table mid-run — but the ordering does not establish clean preregistration.**
+The machine-checked emission order is: Reads 1–3 (skill, template, fixture), Bash 4–5, **ledger Write at ordinal 6 containing a four-row hypothesis table**, test Bash 7–12, amendment Edit at ordinal 13 — so the table preceded every test query, unlike the S1 runs, where all output postdates all queries.
+But the pre-Write probes were not schema-only.
+Ordinal 5 ran `head -5 checkout_errors.csv`, `tail -5 orders.csv`, and `tail -5 sessions.csv`, and its result exposed four `2026-06-08 northbank timeout` rows and five `/lp/summer-sale` sessions all with `checkout_reached=no` — provider-error data and outcome-labeled campaign rows, seen before H1 (payment provider) and H3 (mix shift) were written.
+Under the skill's own line between orientation and cause–outcome inspection, that exposure means the transcript cannot classify these hypotheses as cleanly preregistered; what it establishes is the externalization ordering plus exactly what the agent had seen at Write time.
 The Write's H1 row is the payment-provider hypothesis:
 
 ```
 | H1 | Payment provider (northbank) reliability issue in week 2 caused checkout failures at payment step | checkout_errors concentrated in week 2 / northbank; orders/checkout_reached drops specifically for northbank while checkout_reached rate (top funnel) stays flat | errors flat or absent in week 2; northbank order share unchanged | T2 | checkout_errors.csv, orders.csv (payment_provider), sessions.csv (checkout_reached) |
 ```
 
-This is the machine evidence for the recorded invalidation: the payment hypothesis was *preregistered* at ordinal 6 (the contaminated prompt named the schema), so the post-peek path assertion 1 exists to test was never exercised.
+This is the machine evidence for the recorded invalidation: the payment hypothesis was written into the table at ordinal 6 (the contaminated prompt named the schema, and the ordinal-5 probe had already shown the error file's first rows), so the post-peek path assertion 1 exists to test was never exercised.
 
 **s5-with-skill's amendment mechanism fired, with reasons, as a mid-run Edit** (ordinal 13, after the tests it documents).
 The Edit's Amendments section, verbatim:
@@ -82,4 +84,4 @@ Ground truth attributes the tracking gap to the v3.4.2 logging-only deploy, not 
 ## Reconciliation with the Results tables
 
 - First-wave S5 with-skill tool-call cell corrected 12 → 13 in `tests/scenarios.md`; the other three rows' counts match as recorded.
-- The scenario-invalid finding and the `retrospective` rule's unverified status are confirmed, not weakened, by this evidence: the one run that could have exercised post-peek labeling preregistered the planted hypothesis at ordinal 6.
+- The scenario-invalid finding and the `retrospective` rule's unverified status are confirmed, not weakened, by this evidence: the one run that could have exercised post-peek labeling wrote the planted hypothesis into its table at ordinal 6, after a probe that had already shown the planted signal's first rows.

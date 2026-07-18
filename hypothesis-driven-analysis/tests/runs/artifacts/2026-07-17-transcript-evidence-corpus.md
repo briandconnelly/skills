@@ -112,5 +112,8 @@ Each per-scenario file separates four layers so judgment never masquerades as co
 
 One structural limit recurs and is worth stating once: most Sonnet runs in these waves emitted their entire ledger and answer as a single final message after all tool calls.
 For those runs the transcript's emission order cannot establish that hypotheses were written before analysis queries ran; that claim rests on the ledger's internal structure, which is self-report.
-Where a run externalized state mid-run (a hypothesis-table Write before its test queries, then an amendment Edit — s5-with-skill and s12-rerun are the two clean cases), the ordering is machine-checked and the per-scenario file says which case applies.
-s12-with-skill is not such a case: its first ledger Write (ordinal 9) both failed and already followed the analysis calls at ordinals 4–8.
+Where a run externalized state mid-run (a hypothesis-table Write before its test queries), the ordering is machine-checked and the per-scenario file says which case applies.
+Externalization alone does not establish clean preregistration — what the pre-Write probes' outputs contained matters, and the declared rule is that only output exposing the outcome conditioned on a candidate cause crosses from orientation into cause–outcome inspection.
+s5-with-skill externalized at ordinal 6, but its ordinal-5 probe had already exposed provider-error rows and outcome-labeled campaign sessions (see the S5 file), so it does not qualify.
+s12-rerun externalized at ordinal 6 with pre-Write probes limited to schema heads, marginal distributions, and exposure coverage, and is the only run that qualifies under that rule.
+s12-with-skill is not such a case either way: its first ledger Write (ordinal 9) both failed and already followed the analysis calls at ordinals 4–8.

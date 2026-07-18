@@ -23,7 +23,7 @@ These runs must not be aggregated into one scenario verdict: the fifth assertion
 
 All three counts match the recorded cells (12, 12, 9).
 s12-with-skill's `error` is its first ledger Write attempt (ordinal 9, rejected by the Write tool's read-before-write precondition: "File has not been read yet"); the Write was repeated successfully at ordinal 12 after a Read of the target at ordinal 11 — an attempt/execution distinction the manifest makes visible.
-s12-rerun is the suite's second machine-checked preregistration ordering: ledger Write at ordinal 6 precedes analysis Bash 7–8, with the amendment Edit at ordinal 9.
+s12-rerun is the suite's one qualifying machine-checked preregistration ordering: ledger Write at ordinal 6 precedes analysis Bash 7–8 (with the amendment Edit at ordinal 9), and its pre-Write probes stayed on the orientation side — schema heads, marginal distributions, exposure coverage — under the declared rule in the corpus file (s5-with-skill externalized mid-run too, but its pre-Write probe had already exposed outcome-bearing rows).
 
 ## The load-bearing status rows, verbatim from the ledger Writes
 

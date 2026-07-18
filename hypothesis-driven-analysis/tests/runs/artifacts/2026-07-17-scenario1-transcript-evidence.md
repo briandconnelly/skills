@@ -92,4 +92,4 @@ The recorded failure ("missed the undercount and wrongly marked H4 REFUTED") is 
 
 - First-wave S1 with-skill tool-call cell corrected 12 → 13 in `tests/scenarios.md`; the other four rows' counts match as recorded.
 - The recorded per-run judgments (2/6, 5/6, 6/6) are scorer conclusions; this file grounds their factual substrate (counts, ledger rows, quoted conclusions) but does not re-derive the scores.
-- Assertion 1's "before running analysis queries" is not establishable from any of these transcripts' emission order; future runs wanting that assertion machine-checked need mid-run ledger externalization (as S5 with-skill and S12 rerun did).
+- Assertion 1's "before running analysis queries" is not establishable from any of these transcripts' emission order; future runs wanting that assertion machine-checked need mid-run ledger externalization with orientation-only pre-Write probes (s12-rerun is the one qualifying example; s5-with-skill externalized mid-run but its pre-Write probe had already exposed outcome-bearing rows — see the corpus file).

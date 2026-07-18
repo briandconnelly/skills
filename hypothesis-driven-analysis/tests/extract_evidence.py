@@ -115,9 +115,12 @@ def _results_by_id(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         if entry.get("type") != "user":
             continue
         for block in blocks:
-            if block.get("type") != "tool_result" or not block.get("tool_use_id"):
+            if block.get("type") != "tool_result":
                 continue
-            result_id = block["tool_use_id"]
+            result_id = block.get("tool_use_id")
+            if not isinstance(result_id, str) or not result_id:
+                msg = "tool_result with missing/empty tool_use_id; refusing to extract"
+                raise SystemExit(msg)
             if result_id not in use_ids_so_far:
                 msg = f"tool_result {result_id!r} precedes or lacks its tool_use; refusing"
                 raise SystemExit(msg)
@@ -211,6 +214,8 @@ def cmd_events(
 
 def cmd_text(path: Path, repo_root: str | None) -> None:
     entries = _load(path)
+    _results_by_id(entries)  # same fail-closed validation as every other subcommand
+    _tool_uses(entries)
     block_num = 0
     tools_seen = 0
     for entry in entries:
