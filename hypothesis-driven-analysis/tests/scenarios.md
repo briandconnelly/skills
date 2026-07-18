@@ -749,6 +749,10 @@ ws-d produced a false `REFUTED` anyway, through the refinement's own new clause 
 The backstops held — the causal-status rule forbids the move and the committed `score_ledger.py` C1 check fails ws-d's ledger unaided — but the sensitivity wording itself did not prevent it, so binding "the value the claim predicts" to the interval's own estimand is a recorded follow-up candidate, not patched here so any change gets its own before/after.
 Cost: +100.5% (d) and +105.8% (e) against this wave's 37.0k baseline — the first measured premiums above SKILL.md's stated 11–99% band, so that band no longer covers the measured range on this fixture (same single-baseline-denominator caveat as above; revising the preamble's figure is follow-up work outside this tests-only addendum).
 
+**Second refinement (same day):** the ws-d failure above shows the discriminates clause licensing a cross-estimand reading — the claim's overall-median prediction read against a fast-subset interval, on an unresolved no-pre-existing-tail assumption — so the rule now binds the discriminating direction to the claim's own estimand at its own scope.
+The preamble's token band is amended to 11–106% in the same commit, since the final-wording runs measured +100.5% and +105.8% against the stated 11–99%.
+Validation runs against this second refinement are recorded below.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
