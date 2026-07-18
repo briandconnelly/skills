@@ -174,6 +174,8 @@ That costs nothing and catches what actually goes wrong — a wrong join, a unit
 Re-run the collection when it is cheap, or when the free check surfaces a doubt the return cannot settle and the budget covers the second charge; a metered re-pull is a legitimate spend, not a rule violation, and it needs a ledger amendment like any other unplanned collection.
 When neither is available — metered source, budget spent, and a return you cannot fault on its face — record that the verdict rests on an unverified worker return.
 That is a limitation to state, not a verification to claim.
+When the free check *does* fault a return — a command that does not implement its stated method, a quoted figure with no provenance in the output it cites — a benign explanation you can construct is not a verification: the same worker whose quote broke also attested that its quotes were exact, so the faulted return's remaining attestations cannot clear the fault they sit beside.
+Harmlessness needs evidence from outside the faulted return; without it, record the fault as a limitation and treat the outcome as resting on an unverified return, however plausible the innocent reading.
 Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
 
 ### Conclusion
