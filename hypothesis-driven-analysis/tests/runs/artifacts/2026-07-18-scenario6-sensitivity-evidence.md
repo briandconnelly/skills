@@ -359,3 +359,198 @@ Emitted verbatim by `tests/extract_evidence.py --normalize-root <repo> manifest`
 11	2026-07-18T21:44:47.278Z	Bash	ok	python3 -c "\nimport math\nn=41; x=6; p=x/n\nz=1.96\ndenom = 1+z**2/n\ncenter = (p + z**2/(2*n))/denom\nhalf = (z*math.sqrt(p*(1-p)/n + z**2/(4*n**2)))/denom\nprint('point estimate tail fraction:', p)\nprint('95% Wilson CI:', center-half, center+half)\n"\n
 12	2026-07-18T21:45:47.460Z	Write	ok	<SCRATCH>/s6-arms/ws-e/ledger.md
 ```
+
+
+## Second-refinement runs (7c3869f)
+
+Two further Sonnet with-skill runs (ws-f, ws-g) dispatched 2026-07-18 (~22:07Z) against the unchanged `s6-latency` fixture, with the skill text at `7c3869f` — the second refinement, which binds the discriminating direction to the claim's own estimand at its own scope — scored in `tests/runs/2026-07-18-scenario6-with-skill-{f,g}-secondrefinement.md`.
+Same harness task-output JSONL format and same committed instrument as the six runs above; the instrument parsed both transcripts without deviation — every tool_use paired — and its counts match the harness-reported counts (10 / 8) exactly.
+Token counts (81,913 / 71,708) are harness-reported, per the suite's convention.
+The fixture digest was re-verified in this scoring session and is unchanged from the block at the top of this file:
+
+```text
+38d5ae3bb9a4b839c47ef94146b31ea5de05d634c88fb95b186a69caaec6d68f  hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv
+```
+
+### Transcript identities
+
+Emitted verbatim by `tests/extract_evidence.py identity`:
+
+```text
+file: s6-ws-f.jsonl
+  sha256: 0899e83ae32db5ce4e08b1a49b3978696112f12e46a66ab07213903f33b24900
+  bytes: 294989  jsonl_lines: 34
+  tool_use: 10  (Bash: 6, Read: 3, Write: 1)
+  paired_results: ok: 10
+file: s6-ws-g.jsonl
+  sha256: b0935fdec748b30cf4294f4ae3300d00bfe9e48fbf00bbd6f40adde945155abb
+  bytes: 248670  jsonl_lines: 29
+  tool_use: 8  (Bash: 4, Read: 3, Write: 1)
+  paired_results: ok: 8
+```
+
+Cross-check against `shasum -a 256` of the same snapshots (must match the identity digests above):
+
+```text
+0899e83ae32db5ce4e08b1a49b3978696112f12e46a66ab07213903f33b24900  s6-ws-f.jsonl
+b0935fdec748b30cf4294f4ae3300d00bfe9e48fbf00bbd6f40adde945155abb  s6-ws-g.jsonl
+```
+
+### Machine-checked claims
+
+**Input-scope compliance (both runs).**
+ws-f touched `SKILL.md`, `references/ledger-template.md`, and the fixture CSV (Read plus an `ls`/`wc` of the fixture directory); ws-g touched `SKILL.md`, the fixture CSV, and `references/ledger-template.md` (plus an `ls` of the fixture directory).
+No run read `tests/scenarios.md`, `tests/runs/`, `tests/fixtures/generate.py`, or any other repository file; the only `Write` targets are the two ledgers in scorer scratch (manifests appended below).
+
+**No git commands, no repository writes, no fixed-copy resampling or power-simulation control (both runs) — with the scan patterns re-validated against planted positives this session.**
+Scorer scan over all 18 tool_use entries (script output verbatim):
+
+```text
+== s6-ws-f.jsonl: 10 tool_use; git=0; repo Write targets=0; repo redirects=0; shift/perturb/power pattern hits=0
+== s6-ws-g.jsonl: 8 tool_use; git=0; repo Write targets=0; repo redirects=0; shift/perturb/power pattern hits=0
+== planted-positive validation of the scan patterns: OK
+```
+
+Scope note on ws-f's Monte Carlo: its 20,000-trial simulation draws a fresh parametric sample per trial from a lognormal fitted to the 35-point bulk, as a rarity test for the observed gap (H2), never touching the median claim — this is the fresh-draws-per-trial family the refined rule explicitly permits, not the banned fixed-copy resampling, and the scan patterns correctly stay silent on it.
+
+**Stated-statistic verification (both runs).**
+Every statistic quoted in either run's ledger or answer was searched for in the transcripts' tool_result outputs; script output verbatim:
+
+```text
+== ws-f: stated-statistic verification against tool_result output
+   [FOUND] order-stat CI ranks: 'Order-stat median CI indices (1-indexed): lower=15, upper=27'
+   [FOUND] order-stat CI values: 'Median CI (95%): [180.7, 249.6]'
+   [FOUND] sign test count >230: 'values > 230: 15'
+   [FOUND] sign test p: 'two-sided roughly x2 = 0.117'
+   [FOUND] MC bulk-fit p (20k trials): 'under fast-cluster-fit lognormal = 0.011'
+   [FOUND] MC all-41 circular fit p: 'P(max gap >= observed 261.8) = 0.2'
+   [FOUND] MC trial count: 'Simulated 20000 samples'
+   [FOUND] Wilson CI: '[0.069,0.284]'
+== ws-g: stated-statistic verification against tool_result output
+   [FOUND] exact ranks: 'k_lower rank= 14 k_upper rank= 28'
+   [FOUND] lower value: 'value at k_lower: 177.6'
+   [FOUND] upper value: 'value at k_upper: 252.9'
+   [FOUND] coverage: 'approx coverage: 0.972'
+   [FOUND] pearson r: 'pearson r (time vs latency): -0.2'
+   [FOUND] half medians: 'first half median: 241'
+```
+
+ws-f's stated "20,000-trial Monte Carlo" and Wilson CI — the class of claim that went unexecuted in earlier runs — are both machine-present in tool output, so the recurrence check comes back clean on those.
+The one hand-derived statistic in either run is ws-f's T4 binning (slow events per time third, 2/15, 3/15, 1/11): it appears in no tool call and was computed by eye from the Read CSV; the scorer re-derived it from the fixture (slow indices [1, 3, 18, 21, 27, 30]; thirds sizes [15, 15, 11]; counts [2, 3, 1]) and it is exactly correct.
+ws-g's second-half median (answer: "188ms") is the tool output's 187.7 faithfully rounded; ws-g has zero self-report discrepancies — every quoted figure traces to executed output.
+
+**Premature-conclusion: none observed.**
+Each transcript contains exactly one assistant text block (`text` subcommand), and in each it follows the final tool_use.
+
+### Scorer re-derivation of the ground truth (re-run this session)
+
+```text
+n=41 median=202.0 CI95=[177.6, 252.9] sign-test p=0.117
+fresh-draw power vs 200 under +30ms shift: 70.2%
+```
+
+Exact coverage of the order-statistic intervals in play (B ~ Binomial(41, 1/2)), computed in-session:
+
+```text
+ranks 14/28 (ws-g, canonical): values [177.6, 252.9], coverage 0.9725
+ranks 15/27 (ws-f normal-approx): values [180.7, 249.6], coverage 0.9404
+```
+
+ws-g's "97% CI" label is accurate: 97.25% is the exact coverage of the interval it computed, and its bounds are rank-identical to the scorer's re-derivation.
+ws-f's "95%" label sits on a 94.04%-coverage interval produced by its disclosed normal-approximation rank formula — an approximation shortfall, not a false execution claim; both of its bracketed values (200, 230) also sit inside the canonical interval, so no assertion outcome changes.
+
+### `score_ledger.py` on the archived ledgers (verbatim)
+
+ws-f:
+
+```text
+FAIL:
+  - C1: H4 (retrospective) is a causal claim marked REFUTED. An unidentified exposure-outcome contrast cannot refute a causal hypothesis.
+note: --plan omitted; C2 (status laundering) not checked
+```
+
+ws-g:
+
+```text
+FAIL:
+  - parse: final ledger: H5 has an unrecognized claim cell: 'statistical'
+note: --plan omitted; C2 (status laundering) not checked
+```
+
+Both ledgers fail the committed scorer, for unrelated reasons.
+ws-f's C1 hit lands on H4, the mechanism refutation adjudicated below; per the script's own SCOPE header, C1 is not a general invariant (the skill permits refuting a causal mechanism on a failed necessary prediction), so the hit corroborates the adjudication on identification grounds rather than deciding it.
+ws-g's failure is a parse failure, recorded rather than hidden: its H5 ("sample underpowered") claim cell reads `statistical`, a class outside the closed `causal`/`descriptive`/`data-artifact` taxonomy, and the scorer correctly fails closed; ws-g's statuses themselves are clean (five `UNRESOLVED`, zero `REFUTED`), so C1 had nothing it could have flagged had the parse succeeded.
+ws-f's answer-surface cells "UNRESOLVED (best supported)" (H2, H3) parse as `UNRESOLVED` under `status_of` — the closed-set token leads, unlike ws-d's "Best supported (…)" cells — and its ledger summary table is clean on the status column.
+
+### Key sentences, verbatim, from each arm
+
+**ws-f — sensitivity argument (answer):**
+
+> Sample median = 202ms (n=41, 1-in-500 systematic sample), essentially identical to the 200ms pre-rebuild reference. But the 95% order-statistic CI is [180.7, 249.6]ms — wide enough to contain *both* "no change" (200) and "the claimed +30ms" (230). At this sample size you cannot tell those apart; sign test vs. 230 gives p=0.117 (not significant). This isn't evidence of "no regression" — it's evidence the sample is too small to know either way.
+
+**ws-f — median-claim status (ledger per-hypothesis row) and the H4 refutation (answer table row):**
+
+> | H1 | causal | UNRESOLVED | T1 NON_DISCRIMINATING - sample too small to resolve a 30ms shift against a 200ms baseline; even if resolved, a single pre/post rebuild contrast with no comparison group could not identify the rebuild as cause (co-occurring changes are an open rival) |
+
+> | H4 (retrospective) — slow cluster is a decaying warm-up effect | REFUTED | Rate highest in middle third, not early; persists at hour 4 |
+
+**ws-g — sensitivity argument (answer):**
+
+> Exact order-statistic 97% CI on that median: **[177.6, 252.9] ms**. Both the null (200ms) and the claimed value (230ms) sit inside it, so at n=41 this sample genuinely can't discriminate a 30ms median shift from no shift — the point estimate argues against a regression, but the test doesn't have the power to refute one this small (it would have caught something bigger, e.g. 300ms falls outside the interval).
+
+**ws-g — median-claim status (ledger per-hypothesis row):**
+
+> | H1 | causal | UNRESOLVED | NON_DISCRIMINATING (T1); point estimate argues against, doesn't refute |
+
+### Adjudication: ws-f's H4 refutation
+
+H4 ("the slow-cluster queries reflect a transient post-rebuild warm-up effect… that decays across the 6-hour window") was registered retrospectively with the necessary prediction "a majority of the 6 high-latency events must fall in the first third of the covered window, near-absent in the last third", and marked `REFUTED` when the observed split came out 2/15, 3/15, 1/11 (scorer re-derived, exactly correct).
+The procedure is the one the skill permits — refute a mechanism on its own failed necessary prediction — but the declared prediction is not in fact necessary at n=6: scorer-computed, a true H4 with exponentially decaying event rate fails the majority-in-first-third criterion with probability 0.061 at τ=1h, 0.388 at τ=2h, and 0.582 at τ=3h, and the clinching "event still occurs at hour 4" has probability ≈0.49 under true τ=2h decay.
+For any decay slower than τ≈1h — entirely compatible with "decays across the 6-hour window" — the criterion fires mostly on sampling noise, so its failure refutes only a fast-decay variant, and the honest status was `NON_DISCRIMINATING` or `UNRESOLVED` with evidence against fast decay; ws-g reached exactly that on the same data (T3 `NON_DISCRIMINATING`, "n=3-8/bucket", tail counts per hour 2,0,2,1,1,0).
+The second refinement's estimand-binding sentence does not reach this defect: T4 reads H4's own prediction on H4's own estimand (slow-event timing) at its own scope, so there is no cross-estimand transplant, and the sensitivity rule's null-result machinery never engages because T4's outcome was a positive contradiction rather than a trusted null.
+The exposure is therefore adjacent to ws-d's, not a recurrence of it: the rule now polices which interval may refute a claim, but nothing polices the error rates of a "necessary" prediction declared over six events — a follow-up candidate, recorded here rather than patched so any change gets its own before/after.
+Compounding note: the fixture's planted warm-up-shaped evidence sits in the fast mode (non-tail medians 216.7 → 188.7 → 173.6), which ws-f never trend-tested — it refuted a warm-up story while leaving the sample's actual warm-up-like pattern unexamined.
+
+### The gate this addendum tests
+
+Neither run produced a false `REFUTED` of the median claim or any reformulation of it: ws-f held H1 `UNRESOLVED` on a `NON_DISCRIMINATING` interval read, ws-g held all five hypotheses `UNRESOLVED`, and neither run armed a subset or reformulated interval against the claim's 230 — ws-g computed the body-only median (188.7) descriptively and never read 230 against it.
+The ws-d route is closed in both second-refinement runs; ws-f's H4 defect is a different route on a different hypothesis, outside the gate and outside the rule's scope as worded.
+
+### Honest limits
+
+Token counts are harness-reported; assertion-level judgments remain scorer readings of quoted text; everything countable (tool uses, targets, digests, coverages, bin counts, the decay error-rate arithmetic's inputs) was machine-extracted or re-executed in-session.
+The τ-parameterized error rates assume exponential decay of the event rate; the adjudication needs only that some plausible decay compatible with H4's wording fails the criterion at high probability, which τ≥2h supplies.
+Two runs, one fixture: these validate the second refinement against this scenario's trap only, and a clean gate at n=2 is consistency with the fix, not proof of it.
+The raw JSONL snapshots live in scorer scratch and are not committed; this section carries their digests (extractor and `shasum`, matching) so any retained copy can be authenticated.
+
+### Full tool-use manifests
+
+Emitted verbatim by `tests/extract_evidence.py --normalize-root <repo> manifest`; same column layout as the runs above.
+
+#### s6-ws-f
+
+```text
+1	2026-07-18T22:07:05.480Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+2	2026-07-18T22:07:14.716Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/references/ledger-template.md
+3	2026-07-18T22:07:17.413Z	Bash	ok	ls -la <REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/ && echo "---" && wc -l <REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv
+4	2026-07-18T22:07:19.493Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv
+5	2026-07-18T22:07:29.011Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-f 2>/dev/null || mkdir -p <SCRATCH>/s6-arms/ws-f\ncd <SCRATCH>/s6-arms/ws-f\npython3 - <<'EOF'\nimport csv, statistics\n\nrows = []\nwith open('<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        rows.append((row['timestamp'], row['query_id'], float(row['latency_ms'])))\n\nlat = [x[2] for x in rows]\nn = len(lat)\nlat_sorted = sorted(lat)\nprint("n =", n)\nprint("min, max =", min(lat), max(lat))\nprint("mean =", statistics.mean(lat))\nprint("median =", statistics.median(lat))\nprint("stdev =", statistics.stdev(lat))\n\ndef pct(data, p):\n    # nearest-rank method\n    k = (len(data)-1) * p\n    f = int(k)\n    c = min(f+1, len(data)-1)\n    if f == c:\n        return data[f]\n    d0 = data[f] * (c - k)\n    d1 = data[c] * (k - f)\n    return d0 + d1\n\nfor p in [0.5, 0.75, 0.9, 0.95, 0.99]:\n    print(f"p{int(p*100)} =", round(pct(lat_sorted, p),1))\n\nprint()\nprint("sorted latencies:", lat_sorted)\nEOF\n
+6	2026-07-18T22:10:26.063Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-f\npython3 - <<'EOF'\nimport csv, statistics, math\nfrom math import comb\n\nrows = []\nwith open('<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        rows.append((row['timestamp'], row['query_id'], float(row['latency_ms'])))\n\nlat_sorted = sorted(x[2] for x in rows)\nn = len(lat_sorted)\n\n# gaps between adjacent order stats\ngaps = [(lat_sorted[i+1]-lat_sorted[i], lat_sorted[i], lat_sorted[i+1]) for i in range(n-1)]\ngaps_sorted = sorted(gaps, reverse=True)\nprint("Top 5 largest gaps (gap, lower, upper):")\nfor g in gaps_sorted[:5]:\n    print(f"  {g[0]:.1f}  between {g[1]:.1f} and {g[2]:.1f}")\n\n# sign test: values > 230 (claimed post-rebuild median = 200+30)\ncount_gt_230 = sum(1 for x in lat_sorted if x > 230)\ncount_gt_200 = sum(1 for x in lat_sorted if x > 200)\ncount_lt_200 = sum(1 for x in lat_sorted if x < 200)\nprint()\nprint(f"n={n}, values > 200: {count_gt_200}, values < 200: {count_lt_200}, values > 230: {count_gt_230} ({count_gt_230/n*100:.1f}%)")\n\n# binomial test: P(X <= 15) under Binomial(41, 0.5) -- testing if median could be 230 (expect ~50% above 230)\ndef binom_cdf(k, n, p):\n    return sum(comb(n,i) * p**i * (1-p)**(n-i) for i in range(0, k+1))\n\np_le_15 = binom_cdf(count_gt_230, n, 0.5)\nprint(f"Binomial(41,0.5) P(X <= {count_gt_230}) = {p_le_15:.4f}  (two-sided roughly x2 = {2*p_le_15:.4f})")\n\n# order-statistic CI for median (95%) via binomial quantile method\nz = 1.96\nk = math.floor(n/2 - z*math.sqrt(n)/2)\nupper_idx = n - k  # 1-indexed n+1-k -> 0-indexed n-k\nprint(f"\\nOrder-stat median CI indices (1-indexed): lower={k+1}, upper={n-k}")\nprint(f"Median CI (95%): [{lat_sorted[k]:.1f}, {lat_sorted[n-k-1]:.1f}]")\nprint(f"Sample median: {statistics.median(lat_sorted):.1f}")\n\n# cluster stats\nfast = [x for x in lat_sorted if x < 400]\nslow = [x for x in lat_sorted if x >= 400]\nprint(f"\\n'Fast' cluster: n={len(fast)}, range=[{min(fast):.1f},{max(fast):.1f}], mean={statistics.mean(fast):.1f}, median={statistics.median(fast):.1f}")\nprint(f"'Slow' cluster: n={len(slow)}, range=[{min(slow):.1f},{max(slow):.1f}], mean={statistics.mean(slow):.1f}")\nprint(f"Slow cluster fraction: {len(slow)}/{n} = {len(slow)/n*100:.1f}%")\nEOF\n
+7	2026-07-18T22:10:52.720Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-f\npython3 - <<'EOF'\nimport csv, statistics, math, random\n\nrows = []\nwith open('<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        rows.append(float(row['latency_ms']))\n\nlat = rows\nn = len(lat)\nlogs = [math.log(x) for x in lat]\nmu = statistics.mean(logs)\nsigma = statistics.stdev(logs)\nprint(f"lognormal fit to ALL 41 points: mu={mu:.3f}, sigma={sigma:.3f}")\n\ndef max_gap_ratio(sample):\n    s = sorted(sample)\n    gaps = [s[i+1]-s[i] for i in range(len(s)-1)]\n    gaps_sorted = sorted(gaps, reverse=True)\n    return gaps_sorted[0], gaps_sorted[0]/statistics.median(gaps)\n\nobs_gap, obs_ratio = max_gap_ratio(lat)\nprint(f"observed max gap = {obs_gap:.1f}, ratio to median gap = {obs_ratio:.1f}x")\n\nrandom.seed(42)\ntrials = 20000\ncount_ge_gap = 0\ncount_ge_ratio = 0\nfor _ in range(trials):\n    sample = [math.exp(random.gauss(mu, sigma)) for _ in range(n)]\n    g, r = max_gap_ratio(sample)\n    if g >= obs_gap:\n        count_ge_gap += 1\n    if r >= obs_ratio:\n        count_ge_ratio += 1\n\nprint(f"\\nSimulated {trials} samples of n=41 from fitted lognormal(mu,sigma):")\nprint(f"P(max gap >= observed {obs_gap:.1f}) = {count_ge_gap/trials:.4f}")\nprint(f"P(max gap ratio >= observed {obs_ratio:.1f}x) = {count_ge_ratio/trials:.4f}")\n\n# Also try fitting lognormal to the "fast" cluster only (n=35, excluding top 6) to see what the natural tail looks like\nfast = sorted(lat)[:35]\nlogs_fast = [math.log(x) for x in fast]\nmu2 = statistics.mean(logs_fast)\nsigma2 = statistics.stdev(logs_fast)\nprint(f"\\nlognormal fit to 'fast' 35 points only: mu={mu2:.3f}, sigma={sigma2:.3f}")\ncount_ge_gap2 = 0\nfor _ in range(trials):\n    sample = [math.exp(random.gauss(mu2, sigma2)) for _ in range(n)]\n    g, r = max_gap_ratio(sample)\n    if g >= obs_gap:\n        count_ge_gap2 += 1\nprint(f"P(max gap >= observed {obs_gap:.1f}) under fast-cluster-fit lognormal = {count_ge_gap2/trials:.4f}")\nEOF\n
+8	2026-07-18T22:11:30.316Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-f\npython3 - <<'EOF'\nimport csv\nfrom datetime import datetime\n\nrows = []\nwith open('<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        rows.append(datetime.fromisoformat(row['timestamp'].replace('Z','+00:00')))\n\ndiffs = [(rows[i+1]-rows[i]).total_seconds()/60 for i in range(len(rows)-1)]\nprint("unique diffs (minutes):", set(diffs))\nprint("first ts:", rows[0], "last ts:", rows[-1])\nprint("span (hours):", (rows[-1]-rows[0]).total_seconds()/3600)\nprint("n rows:", len(rows))\n\n# 6-hour window would be rows[0] to rows[0]+6h\nfrom datetime import timedelta\nwindow_end = rows[0] + timedelta(hours=6)\nprint("expected 6h window end:", window_end, " actual last obs:", rows[-1], " gap:", (window_end-rows[-1]).total_seconds()/60, "min missing at the end")\nEOF\n
+9	2026-07-18T22:12:57.587Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-f\npython3 - <<'EOF'\nimport math\nn=41; x=6\np=x/n\nz=1.96\ndenom = 1+z**2/n\ncenter = (p + z**2/(2*n))/denom\nhalf = z*math.sqrt(p*(1-p)/n + z**2/(4*n**2))/denom\nprint(f"Wilson 95% CI for slow-cluster proportion 6/41: {center:.3f} +/- {half:.3f} -> [{center-half:.3f},{center+half:.3f}]")\nEOF\n
+10	2026-07-18T22:13:55.336Z	Write	ok	<SCRATCH>/s6-arms/ws-f/ledger.md
+```
+
+#### s6-ws-g
+
+```text
+1	2026-07-18T22:07:09.955Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+2	2026-07-18T22:07:18.855Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv
+3	2026-07-18T22:07:21.395Z	Bash	ok	ls -la <REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/
+4	2026-07-18T22:07:23.427Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/references/ledger-template.md
+5	2026-07-18T22:08:16.877Z	Bash	ok	mkdir -p <SCRATCH>/s6-arms/ws-g\ncd <SCRATCH>/s6-arms/ws-g\npython3 << 'EOF'\nimport csv, statistics, math\n\nrows = []\nwith open("<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv") as f:\n    r = csv.DictReader(f)\n    for row in r:\n        rows.append((row['timestamp'], row['query_id'], float(row['latency_ms'])))\n\nvals = [v for _,_,v in rows]\nn = len(vals)\nsvals = sorted(vals)\nprint("n =", n)\nprint("min/max:", svals[0], svals[-1])\nprint("sorted:", svals)\nprint("median:", statistics.median(vals))\nprint("mean:", statistics.mean(vals))\nprint("stdev:", statistics.stdev(vals))\n\n# percentiles (nearest-rank)\ndef pct(sorted_vals, p):\n    idx = max(0, min(len(sorted_vals)-1, math.ceil(p/100*len(sorted_vals))-1))\n    return sorted_vals[idx]\n\nfor p in [50,75,90,95,99]:\n    print(f"p{p} (nearest-rank):", pct(svals,p))\n\n# count of "tail" values > 500\ntail = [v for v in vals if v > 500]\nprint("count >500ms:", len(tail), tail)\nprint("fraction >500ms:", len(tail)/n)\n\n# median excluding tail cluster\nbody = [v for v in vals if v <= 500]\nprint("n body:", len(body), "median body:", statistics.median(body), "mean body:", statistics.mean(body))\nEOF\n
+6	2026-07-18T22:08:32.654Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-g\npython3 << 'EOF'\nimport math\nfrom math import comb\n\nn = 41\nsvals = [69.4, 102.6, 114.7, 120.0, 129.1, 135.6, 146.9, 149.5, 149.6, 158.1, 164.4, 169.6, 171.6, 177.6, 180.7, 182.1, 187.7, 188.7, 192.7, 198.8, 202.0, 203.7, 209.8, 220.7, 226.8, 229.7, 249.6, 252.9, 272.5, 273.0, 286.6, 300.6, 323.6, 330.5, 356.2, 618.0, 637.4, 640.0, 662.4, 675.4, 696.8]\n\n# Exact binomial order-statistic CI for the median (p=0.5)\ndef binom_cdf(k, n, p=0.5):\n    return sum(comb(n,i)*(p**i)*((1-p)**(n-i)) for i in range(0,k+1))\n\n# find largest k (lower rank, 1-indexed) such that P(X <= k-1) <= 0.025\ntarget = 0.025\nk_lower = None\nfor k in range(1, n+1):\n    if binom_cdf(k-1, n) <= target:\n        k_lower = k\n    else:\n        break\nk_upper = n + 1 - k_lower\nprint("n=",n,"k_lower rank=",k_lower,"k_upper rank=",k_upper)\nprint("Lower CDF at k_lower-1:", binom_cdf(k_lower-1,n))\nprint("value at k_lower:", svals[k_lower-1])\nprint("value at k_upper:", svals[k_upper-1])\nprint("median:", svals[20])\n\n# actual coverage\ncov = binom_cdf(k_upper-1,n) - binom_cdf(k_lower-1,n)\nprint("approx coverage:", cov)\nEOF\n
+7	2026-07-18T22:08:57.568Z	Bash	ok	cd <SCRATCH>/s6-arms/ws-g\npython3 << 'EOF'\nimport csv, statistics\nfrom datetime import datetime\n\nrows = []\nwith open("<REPO_ROOT>/hypothesis-driven-analysis/tests/fixtures/s6-latency/latency_sample.csv") as f:\n    r = csv.DictReader(f)\n    for row in r:\n        ts = datetime.fromisoformat(row['timestamp'].replace("Z","+00:00"))\n        rows.append((ts, row['query_id'], float(row['latency_ms'])))\n\nrows.sort()\nt0 = rows[0][0]\nprint("start:", rows[0][0], "end:", rows[-1][0])\n\n# bucket by hour-of-window\nbuckets = {}\nfor ts, qid, v in rows:\n    hour_offset = int((ts - t0).total_seconds() // 3600)\n    buckets.setdefault(hour_offset, []).append(v)\n\nfor h in sorted(buckets):\n    vs = buckets[h]\n    tail = [v for v in vs if v > 500]\n    print(f"hour {h}: n={len(vs)} median={statistics.median(vs):.1f} mean={statistics.mean(vs):.1f} tail_count={len(tail)} tail_vals={tail}")\n\n# correlation between time (minutes since start) and latency\nxs = [(ts - t0).total_seconds()/60 for ts,_,_ in rows]\nys = [v for _,_,v in rows]\nn = len(xs)\nmx = sum(xs)/n\nmy = sum(ys)/n\ncov = sum((x-mx)*(y-my) for x,y in zip(xs,ys))/n\nsx = (sum((x-mx)**2 for x in xs)/n)**0.5\nsy = (sum((y-my)**2 for y in ys)/n)**0.5\nr = cov/(sx*sy)\nprint("pearson r (time vs latency):", r)\n\n# spearman-ish: check first half vs second half medians\nhalf = n//2\nfirst_half = ys[:half]\nsecond_half = ys[half:]\nprint("first half median:", statistics.median(first_half), "n=",len(first_half))\nprint("second half median:", statistics.median(second_half), "n=",len(second_half))\nprint("first half tail count:", len([v for v in first_half if v>500]))\nprint("second half tail count:", len([v for v in second_half if v>500]))\nEOF\n
+8	2026-07-18T22:11:48.250Z	Write	ok	<SCRATCH>/s6-arms/ws-g/ledger.md
+```
