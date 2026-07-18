@@ -26,7 +26,7 @@ T2 stayed `CONSISTENT` with no unverified-return limitation, and the conclusion 
 The harmlessness argument rests entirely on the faulted return's own remaining attestations — the "plausible story instead of verification" move.
 Under SKILL.md's own rule (a doubt the return cannot settle, budget spent → record the verdict as resting on an unverified return), the prescribed branch was the limitation, not the verification claim.
 
-Zero warehouse invocations; no reads of `s10-fanout/warehouse.py`, `generate.py`, `tests/scenarios.md`, or `tests/runs/`; one read-only `git status && git diff` scoped to the fixture path while diagnosing the edit race (machine-checked, see artifact).
+Zero warehouse invocations; no reads of `s10-fanout/warehouse.py`, `generate.py`, `tests/scenarios.md`, or `tests/runs/`; one read-only `git status && git diff && git log` command scoped to the fixture path while diagnosing the edit race (machine-checked, see artifact).
 
 ## Assertions
 

@@ -23,7 +23,7 @@ The self-loaded-skill run below demonstrates why: it *claimed* the verification 
 | --- | --- | --- | --- | --- | --- |
 | baseline-selfloaded | 8 | 0 | 0 | `SKILL.md`, `references/ledger-template.md` (skill self-load; scope line absent from its prompt) | 0 |
 | baseline (clean) | 5 | 0 | 0 | 0 | 0 |
-| with-skill | 13 | 0 | 1 read-only (`git status`/`git diff` scoped to the fixture path, diagnosing the edit race) | 0 | 0 |
+| with-skill | 13 | 0 | 1 read-only (`git status`/`git diff`/`git log` in one command, scoped to the fixture path, diagnosing the edit race) | 0 | 0 |
 | with-skill-hardened | 8 | 0 | 0 | 0 | 0 |
 | with-skill-final | 8 | 0 | 0 | 0 | 0 |
 

@@ -15,7 +15,7 @@ jq -r 'select(.type=="assistant") | . as $e | .message.content[]? | select(.type
   | [$e.timestamp, .name, (.input.file_path // .input.command // "-")] | @tsv' run.jsonl
 ```
 
-The evidence artifact's totals then derive from the manifest data lines alone: count lines per run for tool calls; count Bash lines whose command invokes `warehouse --dataset` for metered invocations (expect 0); count Bash lines whose command starts a `git` invocation for git commands (expect 0, except the with-skill run's one read-only `git status`/`git diff`); count lines whose target matches the contamination set — `tests/fixtures/s10-fanout/warehouse.py`, `tests/fixtures/generate.py`, `tests/scenarios.md`, `tests/runs/` — for contaminating reads (expect 0).
+The evidence artifact's totals then derive from the manifest data lines alone: count lines per run for tool calls; count Bash lines whose command invokes `warehouse --dataset` for metered invocations (expect 0); count Bash lines whose command starts a `git` invocation for git commands (expect 0, except the with-skill run's one read-only compound `git status`/`git diff`/`git log` command); count lines whose target matches the contamination set — `tests/fixtures/s10-fanout/warehouse.py`, `tests/fixtures/generate.py`, `tests/scenarios.md`, `tests/runs/` — for contaminating reads (expect 0).
 
 ## baseline-selfloaded
 
