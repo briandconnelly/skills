@@ -294,18 +294,16 @@ def build_latency_fixture(outdir: Path) -> None:
     for i in range(S6_N):
         values.append(next(slow_iter) if i in slow_positions else next(fast_iter))
 
-    # Assert the documented ground truth actually holds for the emitted bytes.
+    # Assert the documented ground truth on the pre-mix mode lists (values is
+    # the same multiset reordered), so a correlated drift — one slow sample
+    # out of band while a fast sample lands in band — cannot cancel out.
     med = sorted(values)[S6_N // 2]
     lo, hi = _median_ci95(values)
     slow_lo, slow_hi = S6_SLOW_BAND
-    in_slow_band = [v for v in values if slow_lo <= v <= slow_hi]
     assert S6_MEDIAN_BAND[0] <= med <= S6_MEDIAN_BAND[1], f"S6 median drifted: {med}"
-    assert len(in_slow_band) == S6_SLOW_COUNT, "S6 slow cluster is not exactly its band"
-    # Only reduce over the filtered subsets after the count assert has proven
-    # both modes populated, so drift fails as an assertion, not a ValueError.
-    fast_max = max(v for v in values if v < slow_lo)
-    gap = min(in_slow_band) - fast_max
-    assert fast_max < S6_GAP_CEILING, "S6 fast mode entered the gap"
+    assert all(slow_lo <= v <= slow_hi for v in slow), "a slow sample left its band"
+    assert all(v < S6_GAP_CEILING for v in fast), "S6 fast mode entered the gap"
+    gap = min(slow) - max(fast)
     assert gap > S6_MIN_MODE_GAP_MS, f"S6 modal gap shrank to {gap}ms"
     assert lo <= S6_CLAIMED_MEDIAN_MS <= hi, f"S6 median CI [{lo}, {hi}] resolves the 30ms claim"
 
@@ -496,7 +494,7 @@ def _write_redis_metrics(outdir: Path, rng: random.Random, stamp) -> None:
     assert all(
         int(row[1]) <= S8_HEALTHY_P99_CEILING_MS
         for row in metrics_rows
-        if row[0] >= "2026-07-14T03:20:30"
+        if row[0] >= "2026-07-14T03:20:30Z"
     ), "redis not recovered after the failover"
     write_csv(
         outdir / "redis-metrics.csv",
