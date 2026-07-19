@@ -13,6 +13,9 @@ Store each scored output as `tests/runs/YYYY-MM-DD-scenarioN-<variant>.md`, wher
 When a scenario is re-run under changed conditions, append a second suffix (`-corrected`, `-rerun`, `-hardened`) and say in the file which earlier run it supersedes and why.
 Each carries an assertion table, evidence pointers, and a total.
 Where a claim needs more than the agent's own word — anything asserting an action did *not* happen, or that a contract was followed — archive the harness transcript evidence under `tests/runs/artifacts/` and point the assertion at it; see the S4 and S10 artifacts for the pattern, and `tests/extract_evidence.py` plus `tests/runs/artifacts/2026-07-17-transcript-evidence-corpus.md` for the extraction instrument and its validation.
+For full-route treatment runs, preregistration ordering is checked with `tests/check_prereg.py` against the run's manifest: the first executed ledger write must precede analysis queries, pre-write fixture touches are listed by the tool and classified by the scorer as orientation or analysis in the evidence artifact, and a run with no mid-run ledger write fails the ordering assertion as unverifiable.
+Crediting the ordering additionally requires the content check the tool prints: the scorer confirms from the events stream that the first ledger write already carries the hypothesis table and predictions, and quotes that confirmation in the evidence artifact — an early placeholder filled in after analysis is a reconstruction, not a preregistration.
+The mini route's inline paragraph is out of this instrument's scope.
 Create `tests/runs/` and `tests/runs/artifacts/` if a fresh checkout of this skill lacks them; git does not track empty directories.
 
 Beyond per-assertion pass/fail, record for each run: correctness of the final conclusion, whether a conclusion was drawn before its supporting test ran (premature-conclusion), tool-call count, and approximate tokens.
@@ -57,6 +60,7 @@ A deploy on 06-10 is the red herring — two days *after* the drop begins, so ti
 - [ ] The mobile undercount is caught by the data-validity check or surfaces as a stated limitation.
 - [ ] Conclusion names the best-supported explanation, uses associative (not causal) language, and lists remaining alternatives.
 - [ ] No queries outside the plan without a ledger amendment.
+- [ ] The Plan-time ledger was written to a file before the first analysis query: ordering established from the archived transcript manifest via `tests/check_prereg.py`, with any pre-write fixture touches classified as orientation in the evidence artifact; a run with no mid-run ledger write fails this assertion as unverifiable.
 
 **Baseline expectation:** jumps to querying, anchors on the deploy or the first correlated field, misses the undercount, concludes causally.
 
@@ -383,9 +387,11 @@ Every recorded assist sev1 closure was reopened within 72h, raising an outcome-v
 - [ ] Does not report attributable responder-hours saved or lost as an identified effect; recommending against booking savings is permitted and is distinguished from an estimate of zero effect.
 - [ ] Applies the precommitted stop rule only after every promised stratum, or records an explicit deviation.
 - [ ] Interprets every user-requested secondary field included in the plan, including the `handoffs` aggregation reversal.
+- [ ] The Plan-time ledger was written to a file before the first analysis query: ordering established from the archived transcript manifest via `tests/check_prereg.py`, with any pre-write fixture touches classified as orientation in the evidence artifact; a run with no mid-run ledger write fails this assertion as unverifiable. *(ordering machine-checked: `check_prereg.py`)*
 
 **Scoring:** assertion 2 is machine-checked by `tests/score_ledger.py` (C1), which reads the final ledger alone.
 Assertion 3's structural half is machine-checked by the same script (C2), which additionally requires the run to archive its Plan-time ledger — without it the script reports `C2 NOT CHECKED` rather than passing.
+The preregistration-ordering assertion is machine-established by `tests/check_prereg.py` from the archived manifest; only the orientation-vs-analysis classification of pre-write touches is rubric work.
 The rest are rubric-scored.
 Do not score any assertion from the run's own summary of its coverage.
 
@@ -439,6 +445,19 @@ Regenerate the fixture between arms (`generate.py`) and verify the digests befor
 A no-skill baseline also needs the input-scope line above stated firmly — the first baseline attempt self-located and read `SKILL.md` mid-run.
 
 **Status:** fixture built (`s16-resume`); five runs recorded below (Sixth wave).
+
+## Scenario 17: Trigger — single-claim verification reaches the skill
+
+**Prompt (trigger-discrimination):** Scenario 11's prompt, with the skill catalog stated and the skill not named in the request.
+
+S11 loads the skill directly and tests which route it picks; S17 tests whether the skill fires at all from its description.
+Exists because an external review (2026-07-18) found the frontmatter excluded the mini route it defines: "more than one explanation is plausible" plus the bounded-descriptive-query exclusion meant description-based activation could never reach single-claim verification, and every route test dodged this by loading the skill explicitly.
+The description was amended the same day; the pre-edit run below is the before-state.
+
+**Assertions:**
+
+- [ ] The skill activates from its description alone (transcript shows the skill file read and followed).
+- [ ] Once loaded, routes **mini** and answers correctly that the claim is false (consistent with S11).
 
 ## Results
 
@@ -767,6 +786,46 @@ The route the rule does not cover surfaced instead: ws-f refuted a mechanism hyp
 Cost across the wave, against the single 37.0k baseline: measured wording +86/+98/+86%, final wording +100.5/+105.8%, second refinement +121.2/+93.6% — ws-f exceeds the 11–106% band that `7c3869f` amended the same day, so the preamble's band is stale again after one further run (revising it was deferred out of this tests-only commit and lands in the restatement recorded below; the premium denominators all rest on one baseline measurement).
 Honest limits: one fixture, one scenario, seven with-skill runs split across three wordings (3/2/2), one baseline run, no contemporaneous pre-fix treatment arm at any wording change, token counts harness-reported; both f and g ledgers fail the committed `score_ledger.py` (C1 on ws-f's H4; a fail-closed parse error on ws-g's invented `statistical` claim class), so the machine-checkable ledger contract held in neither validation run even where the epistemics were right; the wave measures the sensitivity rule's effect on the exact failure it targets and nothing broader.
 The band amended to 11–106% earlier in this wave was exceeded the same day by ws-f's +121.2%, so the preamble now states the measured range with an explicit no-measured-ceiling disclaimer instead of a number that each richer run invalidates.
+
+### Ninth wave, 2026-07-18 — trigger reach for the mini route, the preregistration instrument, and claim scoping
+
+Three changes on the review-round-2 branch, each verified by its own instrument: the frontmatter description broadened to cover single-claim verification (`aa1470e`, measured by S17 trigger runs before and after plus S2/S3 guards), the preregistration-ordering instrument `tests/check_prereg.py` with the "create means write" wording and the S1/S15 ordering assertions (`512517a`, fail-closed pattern path `71bb4b5`, verified by calibration), and hypothesis claims naming the effect they explain (`c6b4e4f`, verified by a text trace).
+All trigger arms are Sonnet; identity counts, activation reads, outcome vocabulary, and the zero-git/zero-repo-write scans are machine-checked against archived transcript manifests (`tests/runs/artifacts/2026-07-18-scenario17-trigger-evidence.md`), with each scan validated against a planted positive before its negative was trusted.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-18 | 17 (trigger reach) | before description edit | **0/2** | 3 | 33.7k | Skill never read; declined it quoting the old exclusion by name ("explicitly excludes \"bounded descriptive queries\""); answered correctly anyway (p95 ≈382–392ms, claim false) — reach failed, not competence. |
+| 2026-07-18 | 17 (trigger reach) | post-edit a | **2/2** | 5 | 43.3k | `SKILL.md` read at ordinal 1, routed mini, correct FALSE with bootstrap CI; mini outcome cell reads `REFUTED` — outside the mini template's `CONSISTENT/CONTRADICTED/NON_DISCRIMINATING` set, an issue #73-class vocabulary-drift instance now reproduced on the mini route. |
+| 2026-07-18 | 17 (trigger reach) | post-edit b | **2/2** | 6 | 43.7k | Same activation and route, outcome `CONTRADICTED` (clean vocabulary); opening rationale briefly misstated the mini condition as "competing explanations" before the final message corrected it. |
+| 2026-07-18 | 17 (trigger reach) | paraphrase probe (unscored) | probe — outside the assertion table | 5 | 49.3k | Paraphrased prompt sharing no verbatim phrasing with the description's example ("teammate insisting checkout blew through its 500ms SLO at the 95th percentile — escalation check"); activated, routed mini, correct, `CONTRADICTED`. |
+| 2026-07-18 | 2 (non-trigger guard) | post-edit guard | 2/2 | 2 | 38.7k | Bare median question: skill not loaded, cited the amended scope note itself, direct correct answer ($76.36, n=268). |
+| 2026-07-18 | 3 (debugging guard) | post-edit guard | 2/2 | 3 | 34.0k | Reproducible test failure: chose systematic-debugging, explicitly citing hypothesis-driven-analysis's own carve-out; zero Write/Edit tool_use (machine-checked), no ledger. |
+
+**The description edit measurably opened the mini route's entry path, but two of its three passes are near-verbatim matches.**
+The before-state failed both S17 assertions exactly as the scenario predicted, with the agent quoting the old "bounded descriptive queries" exclusion as its reason — the frontmatter's own wording blocked the route the skill defines.
+After the edit, both assertion runs activated from the description alone and routed mini correctly; but the amended description's example ("someone says p95 exceeded 500ms yesterday") literally quotes S17's prompt, so those two passes demonstrate activation by near-verbatim match, and post-a's opening sentence says so itself ("exactly the … example in that skill's description").
+Say it plainly: without the paraphrase probe, this wave would show a lookup key working, not a description.
+The probe — no shared phrasing, same fixture — also activated, routed mini, and answered correctly, which is the wave's only evidence of generalization, on n=1.
+The guards held on one run each: S2 still routes direct (the "where nothing is asserted" qualifier read as intended) and S3 still yields to the debugging skill.
+
+**The preregistration instrument is calibrated against constructed cases and one real manifest; its S15 known negative does not exist to run.**
+Per the Task 4 report (`.superpowers/sdd/task-4-report.md`): the three constructed cases produced their expected verdicts 3/3 (clean → exit 0; pre-write data touch → exit 1 listing ordinal 1; errored ledger write → exit 2 UNVERIFIABLE, "the errored Write is correctly not treated as an executed preregistration"), and the real S12 Fifth-wave manifest, extracted mechanically, exited 1 listing ordinals 3–5 — "row-count/schema/date-range/coverage commands on the fixture, i.e. orientation on their face".
+The planned known negative fell back honestly: "S15 Third-wave run: NOT AVAILABLE" — the suite's own documentation records that S15 has no archived transcript, so "Step 4's known-negative case falls back to the constructed `unverifiable.tsv` result", with no result fabricated or predicted.
+This wave re-ran the three constructed cases against the committed script post-`71bb4b5` and all three verdicts held (0/1/2), and exercised the new fail-closed path once: `--ledger-pattern '('` on a valid TSV exits 2 with "UNVERIFIABLE: invalid pattern '(': missing ), unterminated subpattern at position 0" — an unusable pattern reports as inability to verify, never as clean.
+
+**The claim-scoping wording traces correctly, on comprehension rather than behavior.**
+A fresh subagent given only `c6b4e4f`'s amended Plan paragraph and worked-example H1 row (pasted text, no file access) answered all three probe questions to specification: a five-hours-earlier step "refutes H1 as an account of *that* effect … because the necessary prediction ('the p95 step must not precede the deploy') has failed"; it "does not refute H1 as an account of other deploy defects, nor the broader claim 'the Tuesday deploy regressed the cache layer' in general"; and the flat hit rate alone cannot refute H1 because "the table designates only 'the p95 step must not precede the deploy' as the necessary prediction whose failure refutes H1".
+This is a trace of the text — the same epistemics as the suite's earlier routing traces — establishing that the amended wording communicates scoped refutation to a reader; it is not a run of the skill, and no ledger produced under the new wording has been scored.
+
+Honest limits, stated as measured rather than proven: the trigger evidence is n=2 assertion runs plus one paraphrase probe in the after-direction and a single run in the before-direction, all on one fixture, so it measures that the old description blocked activation at least once and the new one permits it, not activation rates; the guards are one run each; the claim-scoping verdict is text comprehension, not behavior; token counts are harness-reported (the transcripts' usage fields do not reproduce them under any simple sum, recorded in the evidence artifact); and S15's new machine-checked ordering assertion remains unexercised until an S15 transcript is archived — a PR-3 item, since no S15 manifest exists for `check_prereg.py` to check.
+
+**Post-measurement hardening (same day):** a cross-model (Codex) review of the branch found real gaps in the wave's instrument and record, fixed in `dd39d96` and closed out the same day.
+Adopted findings: a stub ledger written early and filled after analysis could have passed the ordering check, so every found ledger write now emits a mandatory `CONTENT-CHECK REQUIRED` line and the methodology above requires the scorer to confirm the first write already carries the hypothesis table and predictions; Grep/Glob-style targets were invisible to the manifest (`_target` extended, and pre-write rows with an unextracted target are now always CLASSIFY-listed rather than silently passed); same-assistant-turn parallel calls were indistinguishable from ordered ones (timestamp ties with the ledger write are now flagged under a `SAME-BATCH` heading and force exit ≥ 1); a Bash-heredoc-written ledger auto-failed as UNVERIFIABLE with no pointer (Bash rows matching the ledger pattern are now named as candidates for manual scoring); unreadable or internally inconsistent manifests tracebacked (now fail closed as UNVERIFIABLE: missing file, duplicate ordinals, ordinals < 1, unknown statuses); and the description's exclusion clause ambiguously attached "where nothing is asserted" only to descriptive queries (re-scoped to cover retrieval too, so a stated claim settled by one lookup still routes to the skill).
+The review also caught two record defects in this wave's own evidence artifact, both corrected in place with dated notes: the zero-repo-write scan was stated broader than what it established (now narrowed to exactly the three scan patterns, with the uncovered write paths named and two corroborating checks — `git status --porcelain` on the skill directory and fixture-digest recomputation — run clean at close-out), and a row-count sentence claimed 36 manifest rows where the six manifests contain 24 (re-derived by regenerating all six manifests and counting).
+One finding declined: redacting secrets inside `check_prereg.py` itself — redaction is a suite-level scorer duty at artifact-commit time, and the checker only re-prints text from the already-sanitized committed manifest format, so in-tool redaction would duplicate the duty without adding a check.
+The hardened checker was re-calibrated against ten constructed cases (clean, classify, errored write, missing file, duplicate ordinal, bad status, hidden target, same batch, Bash ledger candidate, invalid regex — transcripts in the task-5 report), all ten verdicts as specified, re-run against the committed script after a behavior-preserving ruff refactor.
+Two final-description probes then validated the re-scoped wording in both directions (`tests/runs/2026-07-18-scenario{17,2}-trigger-finaldesc.md`, manifests and digests in the evidence artifact): S17 still activates (SKILL.md at ordinal 1, mini route, correct FALSE, outcome `CONTRADICTED` — clean vocabulary this run) and S2 still declines and answers directly ($76.36, n=268), though its skill-choice sentence appears at the opening rather than in the final message as instructed (fidelity note).
+Honest limits of the close-out: the probes are n=1 per direction; the stub-ledger content check is a scorer duty that has not yet been exercised on a real full-route run — a PR-3 item alongside S15's unexercised ordering assertion.
 
 ## Findings from the 2026-07-16 suite
 

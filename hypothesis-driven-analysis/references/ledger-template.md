@@ -1,7 +1,8 @@
 # Investigation Ledger Templates
 
 Create the ledger at Plan time, before any planned data is collected.
-Keep it in scratch space by default; put it in the project directory when the user wants a durable artifact.
+Create means write: the ledger exists as a file before the first planned collection runs, so the preregistration leaves a record the transcript can verify — a ledger first materialized in the final report is a reconstruction, not a preregistration.
+Keep it in scratch space by default, named recognizably (e.g. `ledger.md`); put it in the project directory when the user wants a durable artifact.
 The ledger is append-only where integrity matters: preregistered predictions and amendment entries are immutable once written.
 A test entry's outcome and evidence fields are the only sanctioned in-place updates: they transition once from `NOT_TESTED` to a terminal value when the test runs, and any later revision requires a dated amendment instead of an edit.
 
@@ -27,6 +28,7 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 
 The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
 Every row must carry one, and it must be able to fail — it follows from the hypothesis's own mechanism, and you could observe it failing while the rest of the data stays as it is.
+The explanation also names the exact effect it explains: a necessary prediction refutes only at the scope the claim states, so "the deploy caused the observed step" is refutable by timing, while a system-wide "the deploy regressed the cache layer" is broader than any single prediction can refute.
 A row whose necessary prediction cannot fail is not a testable hypothesis: move it to Limitations as an open possibility rather than leaving it in the table to sit `UNRESOLVED` forever while competing for "best supported".
 Each row declares its claim as `causal`, `descriptive`, or `data-artifact`, and a descriptive row names the estimand its prediction is about.
 A `data-artifact` row claims the records themselves are wrong — missing, miscounted, mis-instrumented — and per the skill it can only be `REFUTED` by a check that actually probed coverage and missingness.
@@ -141,7 +143,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 
 | id | claim | Candidate explanation | Prediction if true | Prediction if false | Necessary prediction (failure refutes) | Cheapest adequate test | Data needed |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| H1 | causal | Tuesday deploy regressed the cache layer | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
+| H1 | causal | Tuesday deploy regressed the cache layer, causing the observed p95 step | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
 | H2 | causal | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
 | H4 (retrospective) | causal | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
 | H5 | data-artifact | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |

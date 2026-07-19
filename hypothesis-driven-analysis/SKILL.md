@@ -1,6 +1,6 @@
 ---
 name: hypothesis-driven-analysis
-description: 'Use when investigating an unresolved explanatory, diagnostic, or comparative question that data or evidence can answer and more than one explanation is plausible — "why did this metric change", incident or log forensics, performance investigations, observational dataset questions, or "how much / which is better" estimation questions. Structures the investigation with PPDAC (Problem, Plan, Data, Analysis, Conclusion): competing hypotheses with preregistered discriminating predictions, cheapest-adequate-test ordering, an authorization gate that headless operation never bypasses, optional read-only subagent fan-out returning structured per-test outcomes, and a precommitted stop rule. Do not use for direct retrieval, summarization, or bounded descriptive queries (answer those directly), or for reproducible software failures when a dedicated debugging skill is available.'
+description: 'Use when investigating an unresolved explanatory, diagnostic, or comparative question that data or evidence can answer and more than one explanation is plausible — "why did this metric change", incident or log forensics, performance investigations, observational dataset questions, or "how much / which is better" estimation questions — or when a stated claim about the data needs adjudication ("someone says p95 exceeded 500ms yesterday"). Structures the investigation with PPDAC (Problem, Plan, Data, Analysis, Conclusion): competing hypotheses with preregistered discriminating predictions, cheapest-adequate-test ordering, an authorization gate that headless operation never bypasses, optional read-only subagent fan-out returning structured per-test outcomes, and a precommitted stop rule. Do not use for summarization, or for direct retrieval and bounded descriptive queries where nothing is asserted (answer those directly), or for reproducible software failures when a dedicated debugging skill is available.'
 ---
 
 # Hypothesis-Driven Analysis
@@ -130,6 +130,7 @@ Orientation findings belong in the plan; they are not amendments.
 
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
+State each explanation as an account of the named effect — "the deploy caused the 09:10 step", not "the deploy regressed the cache layer" — because refutation acts only at the scope the claim names: an earlier step refutes the deploy as that step's cause while saying nothing about other deploy defects, and a claim broader than its necessary prediction cannot be refuted by it.
 Perform a mandatory data-validity check: how was the data collected, what does it cover, what instrument failures are known.
 A schema audit is not this check — nulls, duplicates, and type drift cannot detect a row that is simply absent.
 Build a coverage matrix at the grain your analysis actually uses: every time bucket you compare, crossed with every segment that appears in a denominator, a contrast, or a hypothesis, plus the population rate of each field you rely on at that same crossed grain.
@@ -137,7 +138,7 @@ Separate totals do not substitute. A per-week total and a per-device total can b
 Compare the matrix against an expected schedule or an independent denominator; where neither exists, record coverage as unverifiable rather than clean.
 Promote a data-artifact hypothesis into the table only when you can state a concrete failure mechanism, not as a ritual entry.
 Rank tests cheapest-adequate-first, and prefer tests that discriminate between explanations over tests that merely confirm one.
-Create the investigation ledger from [references/ledger-template.md](references/ledger-template.md).
+Write the investigation ledger to a file from [references/ledger-template.md](references/ledger-template.md) before executing the plan; a ledger that first appears in the final report was not preregistered.
 Apply both gates before executing the plan.
 
 ### Data
