@@ -170,6 +170,8 @@ Prefer effect sizes over bare significance, and watch for confounds and aggregat
 When two quantities you compare differ in denominator, weighting, aggregation, or censoring, name what each one measures rather than presenting them as versions of the same number.
 A sign change between a marginal and a standardized quantity shows sensitivity to composition and estimand; it is not the standardized quantity correcting the marginal one, and claiming that requires stating the standardization assumptions — including that the stratifier is not itself downstream of the exposure.
 An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias.
+Completeness semantics are established in the ledger's Data Validity section, not in passing: what an absent record means in this source — event absent, event unrecorded, or export incomplete — and the evidence for that reading, such as an export contract, sentinel rows, or a cross-source reconciliation.
+When that entry is `UNKNOWN`, report the affected quantity as selection-sensitive with the direction unknown; a maturity or recency argument ("the data had time to arrive") addresses timing, not export completeness, and does not license a direction.
 Spot-verify the evidence behind the leading explanation and the strongest rival.
 **Verifying does not mean paying twice.** Re-running a metered query to check a metered query is the expensive form, and it is rarely the one that catches anything.
 Start with the free check: read the worker's stated method and command against the prediction it claims to test, and against its own return.
