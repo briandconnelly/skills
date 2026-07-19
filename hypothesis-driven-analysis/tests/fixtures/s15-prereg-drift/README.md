@@ -14,9 +14,12 @@ The pair is recovered from the archived scenario-15 arm e transcript `s15-post-e
 
 ## Expected results
 
+Run from the repository root (paths are repo-root-relative, matching the rest of the suite):
+
 ```
-uv run tests/compare_prereg.py --plan .../arm-e-plan.md --final .../arm-e-final.md        # exit 1 — 8 CHANGED cells
-uv run tests/compare_prereg.py --plan .../arm-e-plan.md --final .../arm-e-final-clean.md   # exit 0 — no cell changed
+D=hypothesis-driven-analysis/tests/fixtures/s15-prereg-drift
+uv run hypothesis-driven-analysis/tests/compare_prereg.py --plan $D/arm-e-plan.md --final $D/arm-e-final.md        # exit 1 — 8 CHANGED cells
+uv run hypothesis-driven-analysis/tests/compare_prereg.py --plan $D/arm-e-plan.md --final $D/arm-e-final-clean.md   # exit 0 — no cell changed
 ```
 
 Verbatim tool output for both is archived in `tests/runs/artifacts/2026-07-19-scenario15-prereg-comparator-evidence.md`.
