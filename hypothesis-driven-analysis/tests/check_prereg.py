@@ -88,13 +88,19 @@ def main() -> int:
     ap.add_argument("--ledger-pattern", required=True)
     ap.add_argument("--data-pattern", required=True)
     a = ap.parse_args()
+    try:
+        ledger_pattern = re.compile(a.ledger_pattern)
+        data = re.compile(a.data_pattern)
+    except re.error as exc:
+        print(f"UNVERIFIABLE: invalid pattern {exc.pattern!r}: {exc}")
+        return 2
     rows, fails = parse_manifest(a.manifest.read_text(encoding="utf-8"))
     if fails:
         print("UNVERIFIABLE:")
         for f in fails:
             print(f"  - {f}")
         return 2
-    ledger = first_ledger_write(rows, re.compile(a.ledger_pattern))
+    ledger = first_ledger_write(rows, ledger_pattern)
     if ledger is None:
         print(
             f"UNVERIFIABLE: no executed Write/Edit matches --ledger-pattern "
@@ -103,7 +109,6 @@ def main() -> int:
         )
         return 2
     print(f"PREREG_WRITE: ordinal {ledger.ordinal} ({ledger.tool} -> {ledger.target})")
-    data = re.compile(a.data_pattern)
     earlier = [r for r in rows if r.ordinal < ledger.ordinal and data.search(r.target)]
     if not earlier:
         print("CLEAN: no data-matching tool_use precedes the ledger write")
