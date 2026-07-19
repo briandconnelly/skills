@@ -55,6 +55,7 @@ Every evidence cell in Tests references a source id, so results stay reproducibl
 - Field population: <the populated rate of each field relied on, at that same crossed grain; a field present for only part of the data is a coverage gap, not a null problem>
 - Coverage baseline: <the expected schedule or independent denominator the matrix was compared against; if neither exists, record coverage as unverifiable rather than clean>
 - Known instrument failures: <dashboards, exporters, sampling quirks>
+- Source completeness semantics: <per source whose absent records bear on any conclusion: what an absent record means — event absent, event unrecorded, or export incomplete — and the evidence for that reading; `UNKNOWN` when no evidence exists or the evidence does not discriminate between the live readings — the source's own missingness pattern never does — which blocks inferring event status or any directional missingness claim from that source's absent records>
 - Sensitivity checks performed: <intervals computed and known positives surfaced — fresh draws per trial or independent data, never intervals recomputed from one fixed shifted copy — plus detection limits>
 
 ## Tests
@@ -166,6 +167,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 - Coverage matrix, trace spans (S4): H4/T4 contrasts payment spans against other spans, so span type is a segment the analysis uses and needs its own matrix at hour × span-type. Every hour carries 40–70 sampled traces per span type across both days, with `span_name` and `duration_ms` 100% populated — no hole, so T4's span breakdown rests on checked coverage rather than on S4's global "1% sampling" note, which describes the sample rate and says nothing about whether the sample is evenly spread.
 - Coverage baseline: compared against the load balancer's independent request counter, which shows no dip in the 07-07 21:00–23:00 window — so the shortfall is in the logging pipeline, not in real traffic. Promoted to H5 (see Amendments) rather than analyzed as a traffic change.
 - Known instrument failures: dashboard p95 is computed over 5-minute windows and hides sub-window spikes.
+- Source completeness semantics: S3 request logs — an absent row means the logging pipeline dropped it, not that no request occurred (established by the independent LB counter, S5/T6); S2 dashboard export and S4 trace spans — designed samples (10% and 1%, stated in Sources), so absence means unsampled by design; S1, S5 — `UNKNOWN`, no completeness contract checked, so no conclusion infers event status or bias direction from absence in them.
 - Sensitivity checks performed: dashboard step cross-checked against raw logs (known positive: the step appears in both), so the dashboard is not blind to steps of this size.
 
 ## Tests

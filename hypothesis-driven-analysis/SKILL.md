@@ -7,7 +7,7 @@ description: 'Use when investigating an unresolved explanatory, diagnostic, or c
 
 Guide empirical investigations through PPDAC (Problem, Plan, Data, Analysis, Conclusion) and the scientific method.
 The framework buys accuracy and auditability: competing explanations are tested against predictions written down before the data is seen, instead of confirming the first idea that fits, and every rejected alternative leaves a record of why.
-Expect it to cost more tokens than an unstructured investigation, not fewer — the premium measured so far spans 11% to 121.2% on small local datasets, rises with analysis complexity, and has no measured ceiling yet (`tests/scenarios.md`).
+Expect it to cost more tokens than an unstructured investigation, not fewer — the premium measured so far spans 11% to 138.4% on small local datasets, rises with analysis complexity, and has no measured ceiling yet (`tests/scenarios.md`).
 It may pay for itself where collection is expensive enough that fishing expeditions and re-pulls dominate the bill — paid APIs, slow warehouse queries, large remote logs — but treat that as the claim it is: a metered fixture now exists (`tests/scenarios.md` S14), but no paired baseline-vs-skill run has measured whether the ceremony saves more than it costs there, so the saving remains unmeasured rather than shown.
 That trade is why routing matters — spend the ceremony where a wrong answer or a wasted pull is costly, and take the direct route everywhere else.
 
@@ -170,6 +170,10 @@ Prefer effect sizes over bare significance, and watch for confounds and aggregat
 When two quantities you compare differ in denominator, weighting, aggregation, or censoring, name what each one measures rather than presenting them as versions of the same number.
 A sign change between a marginal and a standardized quantity shows sensitivity to composition and estimand; it is not the standardized quantity correcting the marginal one, and claiming that requires stating the standardization assumptions — including that the stratifier is not itself downstream of the exposure.
 An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias.
+Completeness semantics are established in the ledger's Data Validity section, not in passing: what an absent record means in this source — event absent, event unrecorded, or export incomplete — and the evidence for that reading, such as an export contract, sentinel rows, or a cross-source reconciliation.
+The evidence must discriminate between the readings that are live for this source: a statement describing the file's contents does not establish that every event reached it, and the source's own missingness pattern can never establish its own completeness — evidence that fails to separate the readings leaves the entry `UNKNOWN`.
+When that entry is `UNKNOWN`, report the affected quantity as selection-sensitive with the direction unknown; a maturity or recency argument ("the data had time to arrive") addresses timing, not export completeness, and does not license a direction.
+A direction asserted under established semantics still names, adjacent to the claim, the estimand-specific bound or assumption it rests on — an unqualified direction in the conclusion violates this rule even when the ledger entry carries the caveat.
 Spot-verify the evidence behind the leading explanation and the strongest rival.
 **Verifying does not mean paying twice.** Re-running a metered query to check a metered query is the expensive form, and it is rarely the one that catches anything.
 Start with the free check: read the worker's stated method and command against the prediction it claims to test, and against its own return.
