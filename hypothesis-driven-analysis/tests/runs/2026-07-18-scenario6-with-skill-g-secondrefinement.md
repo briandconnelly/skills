@@ -1,0 +1,29 @@
+# Scenario 6 — Underpowered null with a distributional trap, With-Skill Run G Scoring (Eighth wave, second refinement)
+
+Date: 2026-07-18 (Eighth wave close-out, issue #71).
+Run: with-skill treatment against the skill text at `7c3869f` — the second refinement, which binds the discriminating direction to the claim's own estimand at its own scope.
+Model: Sonnet.
+Fixture: `tests/fixtures/s6-latency/` (sha256 `38d5ae3b…`, re-verified unchanged at scoring time; see the sensitivity-evidence artifact).
+Files read (machine-checked from the transcript manifest): `SKILL.md`, the fixture CSV, `references/ledger-template.md` (plus an `ls` of the fixture directory) — nothing else.
+This run tests whether the ws-d route — a false `REFUTED` of the median claim via a substituted estimand — recurs under the shipped wording.
+
+| # | Assertion | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Recognizes the sample cannot resolve a 30ms median shift, via a median-appropriate sensitivity argument (or a demonstrated known-positive check before trusting a null) | PASS | Exact binomial order-statistic CI machine-executed rank-exact: tool output "k_lower rank= 14 k_upper rank= 28", "value at k_lower: 177.6", "value at k_upper: 252.9", "approx coverage: 0.9725" — identical to the scorer's re-derivation; answer: "Exact order-statistic 97% CI on that median: **[177.6, 252.9] ms**. Both the null (200ms) and the claimed value (230ms) sit inside it, so at n=41 this sample genuinely can't discriminate a 30ms median shift from no shift." Calling it a "97% CI" is accurate, not an error: 97.25% is the exact coverage of the 14th/28th order statistics, stated to the coverage the run actually computed. No fixed-copy resampling or power simulation anywhere (machine-checked, patterns validated against planted positives). |
+| 2 | No-difference result recorded as `NON_DISCRIMINATING` with detection limit, not as refutation | PASS | Ledger T1 outcome `NON_DISCRIMINATING` ("median=202.0, CI [177.6,252.9] contains 200 and 230"); H1 status `UNRESOLVED`; the resolving power is stated concretely via T5 — "would exclude e.g. 300ms, so not powerless generally" — and the answer's "it would have caught something bigger, e.g. 300ms falls outside the interval", bounding the detection limit between the claimed 30ms and ~100ms rather than quoting a single figure. No `REFUTED` appears anywhere in the run — all five hypotheses land `UNRESOLVED`. |
+| 3 | Distinguishes "no evidence of regression" from "evidence of no regression" | PASS | Headline: "Can't confirm the claimed regression, and can't rule it out either"; "the point estimate argues against a regression, but the test doesn't have the power to refute one this small". |
+| 4 | Surfaces the slow cluster with count and range, not blended into pooled statistics | PASS | "There **is** a real, distinct tail: 6/41 requests (14.6%) cluster at 618–697ms, cleanly separated from the rest of the body (max 356ms, a >260ms gap)"; the core/tail split and per-hour tail counts appear in executed tool output. |
+| 5 | Does not attribute the cluster to the rebuild; novelty unresolved; missing reference named; median stability not used to dismiss users | PASS | "No pre-rebuild p95/p99/distribution survived — only a single median. So there's no way to tell whether that 15% tail is *new* (introduced by the rebuild) or was already there"; H2 `(retrospective)` `UNRESOLVED`; and the users' complaints are credited, not dismissed: "That's a much more plausible source of 'feels slower' complaints than the median." |
+
+Total: 5/5.
+
+Conclusion correctness: correct on every load-bearing point, including the fixture's incidental drift — the run surfaced the downward time trend as executed statistics (pearson r = −0.207, first-half median 241.3 vs second-half 187.7, hourly tail counts 2,0,2,1,1,0, all verbatim in tool output), framed it as "suggestive but not resolvable — only 3–8 points per hourly bucket", labeled H3 `(retrospective)` at plan time with the exploration disclosed, and left it `UNRESOLVED`, which is the handling the scenario's ground truth prescribes.
+Self-report discrepancies: none — every figure quoted in the ledger and answer traces to executed tool output, making this and ws-b the wave's only with-skill runs with a fully machine-confirmed statistics trail.
+`score_ledger.py --final` FAILs the ledger on parsing, not on C1: "parse: final ledger: H5 has an unrecognized claim cell: 'statistical'" (verbatim output in the evidence artifact) — the run invented a claim class outside the closed `causal`/`descriptive`/`data-artifact` taxonomy for its underpowered-sample hypothesis, and the committed scorer correctly fails closed rather than guessing; claim-taxonomy drift on the answer's own bookkeeping is a recorded finding even though no assertion covers it.
+Status vocabulary: all five ledger status cells are clean closed-set `UNRESOLVED`; "best supported" appears only in basis cells and conclusion prose.
+Premature-conclusion: no — exactly one assistant text block, after the final tool call (machine-checked).
+Cost: 8 tool calls (machine-counted, matches harness), ~71.7k subagent tokens (harness-reported), +93.6% vs this wave's baseline (37.0k) — inside the amended 11–106% band.
+
+**The second refinement's intended path held end-to-end, with the wave's cleanest statistics trail.**
+Interval computed first, exact and rank-correct, read directly against the claim's own estimand at its own scope; the subset median (188.7 for the body) was computed descriptively but never armed against 230 — precisely the move the new sentence forbids, not taken; every hypothesis left `UNRESOLVED` with the causal-attribution limit stated ("one non-randomized before/after around one deployment").
+The one defect on record is taxonomic (the `statistical` claim class), which breaks the machine-checkable contract the suite relies on even while the epistemics are right.
