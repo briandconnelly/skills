@@ -13,6 +13,8 @@ Store each scored output as `tests/runs/YYYY-MM-DD-scenarioN-<variant>.md`, wher
 When a scenario is re-run under changed conditions, append a second suffix (`-corrected`, `-rerun`, `-hardened`) and say in the file which earlier run it supersedes and why.
 Each carries an assertion table, evidence pointers, and a total.
 Where a claim needs more than the agent's own word — anything asserting an action did *not* happen, or that a contract was followed — archive the harness transcript evidence under `tests/runs/artifacts/` and point the assertion at it; see the S4 and S10 artifacts for the pattern, and `tests/extract_evidence.py` plus `tests/runs/artifacts/2026-07-17-transcript-evidence-corpus.md` for the extraction instrument and its validation.
+For full-route treatment runs, preregistration ordering is checked with `tests/check_prereg.py` against the run's manifest: the first executed ledger write must precede analysis queries, pre-write fixture touches are listed by the tool and classified by the scorer as orientation or analysis in the evidence artifact, and a run with no mid-run ledger write fails the ordering assertion as unverifiable.
+The mini route's inline paragraph is out of this instrument's scope.
 Create `tests/runs/` and `tests/runs/artifacts/` if a fresh checkout of this skill lacks them; git does not track empty directories.
 
 Beyond per-assertion pass/fail, record for each run: correctness of the final conclusion, whether a conclusion was drawn before its supporting test ran (premature-conclusion), tool-call count, and approximate tokens.
@@ -57,6 +59,7 @@ A deploy on 06-10 is the red herring — two days *after* the drop begins, so ti
 - [ ] The mobile undercount is caught by the data-validity check or surfaces as a stated limitation.
 - [ ] Conclusion names the best-supported explanation, uses associative (not causal) language, and lists remaining alternatives.
 - [ ] No queries outside the plan without a ledger amendment.
+- [ ] The Plan-time ledger was written to a file before the first analysis query: ordering established from the archived transcript manifest via `tests/check_prereg.py`, with any pre-write fixture touches classified as orientation in the evidence artifact; a run with no mid-run ledger write fails this assertion as unverifiable.
 
 **Baseline expectation:** jumps to querying, anchors on the deploy or the first correlated field, misses the undercount, concludes causally.
 
@@ -383,9 +386,11 @@ Every recorded assist sev1 closure was reopened within 72h, raising an outcome-v
 - [ ] Does not report attributable responder-hours saved or lost as an identified effect; recommending against booking savings is permitted and is distinguished from an estimate of zero effect.
 - [ ] Applies the precommitted stop rule only after every promised stratum, or records an explicit deviation.
 - [ ] Interprets every user-requested secondary field included in the plan, including the `handoffs` aggregation reversal.
+- [ ] The Plan-time ledger was written to a file before the first analysis query: ordering established from the archived transcript manifest via `tests/check_prereg.py`, with any pre-write fixture touches classified as orientation in the evidence artifact; a run with no mid-run ledger write fails this assertion as unverifiable. *(ordering machine-checked: `check_prereg.py`)*
 
 **Scoring:** assertion 2 is machine-checked by `tests/score_ledger.py` (C1), which reads the final ledger alone.
 Assertion 3's structural half is machine-checked by the same script (C2), which additionally requires the run to archive its Plan-time ledger — without it the script reports `C2 NOT CHECKED` rather than passing.
+The preregistration-ordering assertion is machine-established by `tests/check_prereg.py` from the archived manifest; only the orientation-vs-analysis classification of pre-write touches is rubric work.
 The rest are rubric-scored.
 Do not score any assertion from the run's own summary of its coverage.
 

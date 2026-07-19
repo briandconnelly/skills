@@ -1,7 +1,8 @@
 # Investigation Ledger Templates
 
 Create the ledger at Plan time, before any planned data is collected.
-Keep it in scratch space by default; put it in the project directory when the user wants a durable artifact.
+Create means write: the ledger exists as a file before the first planned collection runs, so the preregistration leaves a record the transcript can verify — a ledger first materialized in the final report is a reconstruction, not a preregistration.
+Keep it in scratch space by default, named recognizably (e.g. `ledger.md`); put it in the project directory when the user wants a durable artifact.
 The ledger is append-only where integrity matters: preregistered predictions and amendment entries are immutable once written.
 A test entry's outcome and evidence fields are the only sanctioned in-place updates: they transition once from `NOT_TESTED` to a terminal value when the test runs, and any later revision requires a dated amendment instead of an edit.
 

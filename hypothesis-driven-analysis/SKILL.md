@@ -137,7 +137,7 @@ Separate totals do not substitute. A per-week total and a per-device total can b
 Compare the matrix against an expected schedule or an independent denominator; where neither exists, record coverage as unverifiable rather than clean.
 Promote a data-artifact hypothesis into the table only when you can state a concrete failure mechanism, not as a ritual entry.
 Rank tests cheapest-adequate-first, and prefer tests that discriminate between explanations over tests that merely confirm one.
-Create the investigation ledger from [references/ledger-template.md](references/ledger-template.md).
+Write the investigation ledger to a file from [references/ledger-template.md](references/ledger-template.md) before executing the plan; a ledger that first appears in the final report was not preregistered.
 Apply both gates before executing the plan.
 
 ### Data
