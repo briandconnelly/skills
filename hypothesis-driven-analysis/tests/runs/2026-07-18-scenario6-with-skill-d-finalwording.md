@@ -21,7 +21,7 @@ Conclusion correctness: partially correct — matches ground truth on the cluste
 The run never examined the fast-mode time drift (its only temporal test was slow-row periodicity for H5), so the fixture's retrospective warm-up pattern went unsurfaced — which also removed the observation that would have made the masking rival concrete.
 Status vocabulary: the answer table puts "Best supported (…)" in 2 of 5 status cells — not in the closed status set (`REFUTED`/`UNRESOLVED`); the ledger's own per-hypothesis table is clean (5/5 closed-set), so unlike the Third wave the violation sits on the answer surface, where `score_ledger.py` does not look; recorded per the Third-wave precedent.
 Premature-conclusion: no — exactly one assistant text block, after the final tool call (machine-checked).
-Cost: 7 tool calls (machine-counted, matches harness), ~74.3k subagent tokens (harness-reported), +100.5% vs this wave's baseline (37.0k) — above SKILL.md's stated 11–99% band.
+Cost: 7 tool calls (machine-counted, matches harness), ~74.3k subagent tokens (harness-reported), +100.5% vs this wave's baseline (37.0k) — above SKILL.md's then-stated 11–99% band (current when this run was scored; restated twice later the same day — see the wave close-out).
 
 **Adjudication of the subset refutation: the post-hoc split is the lesser issue; the transplanted predicted value is the defect.**
 The split at the observed 261.8ms gap is disclosed as post hoc, and for H1's location-shift alternative it is close to benign — the subset statistic is shift-equivariant, so the threshold choice does not by itself bias the test.

@@ -21,7 +21,7 @@ Conclusion correctness: correct on every load-bearing point, including the fixtu
 `score_ledger.py` on the ledger: C1 checked and passed (4 summary rows, 0 causal `REFUTED`).
 "Best supported" is used only as conclusion language and correctly declined ("no hypothesis clears the 'best supported' bar as stated by the skill"); the one loose status cell is the answer table's "untested" for H3, which the ledger records as `UNRESOLVED (untested)` and carries to limitations per the skill's untestable-hypothesis rule.
 Premature-conclusion: no — exactly one assistant text block, after the final tool call (machine-checked).
-Cost: 12 tool calls (machine-counted, matches harness), ~76.2k subagent tokens (harness-reported), +105.8% vs this wave's baseline (37.0k) — above SKILL.md's stated 11–99% band.
+Cost: 12 tool calls (machine-counted, matches harness), ~76.2k subagent tokens (harness-reported), +105.8% vs this wave's baseline (37.0k) — above SKILL.md's then-stated 11–99% band (current when this run was scored; restated twice later the same day — see the wave close-out).
 
 **The final wording's intended path held end-to-end here, and the run's one defect is the wave's recurring self-report class, not an epistemic one.**
 Interval computed first and read directly, `NON_DISCRIMINATING` with a stated limit, every hypothesis left `UNRESOLVED`, retrospective labels applied at first writing, the uncontrolled-rival limitation stated ("any co-occurring change in the same 6-hour window… is an uncontrolled rival explanation") — the mirror image of ws-d's H1 handling on the same evidence.
