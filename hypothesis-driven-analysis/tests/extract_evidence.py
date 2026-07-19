@@ -17,8 +17,9 @@ Subcommands:
   by tool, and paired-result ok/error/missing tallies.
 - ``manifest``: TSV, one line per tool_use: ordinal, timestamp, tool, result
   status, target (``file_path`` for file tools, full ``command`` for Bash,
-  ``description`` for Agent dispatches). Embedded newlines are flattened to
-  literal ``\\n``.
+  ``path``/``pattern``/``query``/``url`` for search-style tools such as Grep,
+  Glob, WebSearch, and WebFetch, ``description`` for Agent dispatches).
+  Embedded newlines are flattened to literal ``\\n``.
 - ``events``: full canonical JSON per tool_use (complete input, result status),
   for recovering Write/Edit contents verbatim. ``--ordinal`` selects one;
   ``--with-result-text`` includes the paired result's text.
@@ -151,7 +152,17 @@ def _target(block: dict[str, Any]) -> str:
     inp = block.get("input", {})
     if not isinstance(inp, dict):
         return "-"
-    for key in ("file_path", "command", "description", "notebook_path", "prompt"):
+    for key in (
+        "file_path",
+        "path",
+        "notebook_path",
+        "command",
+        "pattern",
+        "query",
+        "url",
+        "description",
+        "prompt",
+    ):
         value = inp.get(key)
         if isinstance(value, str) and value:
             return value

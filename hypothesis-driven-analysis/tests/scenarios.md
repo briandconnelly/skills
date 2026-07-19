@@ -14,6 +14,7 @@ When a scenario is re-run under changed conditions, append a second suffix (`-co
 Each carries an assertion table, evidence pointers, and a total.
 Where a claim needs more than the agent's own word — anything asserting an action did *not* happen, or that a contract was followed — archive the harness transcript evidence under `tests/runs/artifacts/` and point the assertion at it; see the S4 and S10 artifacts for the pattern, and `tests/extract_evidence.py` plus `tests/runs/artifacts/2026-07-17-transcript-evidence-corpus.md` for the extraction instrument and its validation.
 For full-route treatment runs, preregistration ordering is checked with `tests/check_prereg.py` against the run's manifest: the first executed ledger write must precede analysis queries, pre-write fixture touches are listed by the tool and classified by the scorer as orientation or analysis in the evidence artifact, and a run with no mid-run ledger write fails the ordering assertion as unverifiable.
+Crediting the ordering additionally requires the content check the tool prints: the scorer confirms from the events stream that the first ledger write already carries the hypothesis table and predictions, and quotes that confirmation in the evidence artifact — an early placeholder filled in after analysis is a reconstruction, not a preregistration.
 The mini route's inline paragraph is out of this instrument's scope.
 Create `tests/runs/` and `tests/runs/artifacts/` if a fresh checkout of this skill lacks them; git does not track empty directories.
 
