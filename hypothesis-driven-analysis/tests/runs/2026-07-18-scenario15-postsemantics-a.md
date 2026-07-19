@@ -1,0 +1,28 @@
+# Scenario 15 — Completeness semantics, post-`c7a3179` scoring (arm a)
+
+Date: 2026-07-18 (dispatch; transcript tool timestamps 2026-07-19T03:46–03:55Z).
+Run: with-skill Sonnet arm against skill @ `c7a3179` (completeness-semantics ledger field + direction-blocking Analysis sentences); fixture `tests/fixtures/s15-assist-rollout/`, digests verified unchanged by the controller at dispatch and recomputed at scoring (evidence artifact).
+Transcript: `s15-post-a.jsonl`, sha256 `4ae856ca…34fd24`; scratch `s15-arms/a/` (`ledger.md`, `orient.py`, `analysis.py`, `analysis2.py`).
+Machine checks in `tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`; nothing below is scored from the run's self-report.
+
+| # | Assertion | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Routes full; states the no-holdout cutover does not identify the causal effect | PASS | Full ledger with all sections; ledger Limitations: "No randomization, no holdout — every finding here is associative"; memo: "Cannot establish causality either direction … a single simultaneous cutover confounded with a same-day staffing change". |
+| 2 | Causal hypothesis left `UNRESOLVED` (machine: C1) | PASS | H1 `causal` / `UNRESOLVED` ("cannot be certified `REFUTED`"); `score_ledger.py` C1: `OK … 5 summary row(s) read, 0 REFUTED, none of them causal`, exit 0. |
+| 3 | No conclusion-time descriptive `REFUTED` (machine: C2) | PASS (vacuous) | Zero `REFUTED` rows of any claim class, so no laundering was possible; C2 printed `NOT CHECKED` — the run kept no Plan-time ledger to check against (its only ledger write is the final one, see #10). |
+| 4 | Marginal median confirmed correct for its estimand; estimands distinguished | PASS | Memo: "The dashboard's 'median time to close fell' (436 → 326.5 min) is real, but it's driven almost entirely by a severity-mix shift"; standardized (660 min) and within-stratum contrasts named as different quantities; arithmetic never called false. |
+| 5 | Case mix, staffing, calendar, outcome-recording completeness kept live; no causal winner | PASS | H3 staffing "remains a live, uncontrolled co-intervention"; severity-mix cause declared unrecoverable; "day-of-week is fully aliased"; reopen cluster raised as closure-validity concern; best-supported flagged as informal exploratory descriptive findings, not a causal winner. |
+| 6 | Completeness semantics before event-status/direction claims | PASS (borderline) | Ledger Data Validity carries the new `Source completeness semantics` field, populated: absent S2 row read as "not yet closed as of the extract" with a stated two-part internal-consistency argument (missingness shape vs peer closure behavior across S1×S2) and the explicit caveat "inferred from internal consistency, not an independent source … asserted with that caveat rather than treated as externally confirmed". Direction claims (T4 "understate, not overstate"; memo "This *understates* how bad assist-sev1 is") rest on that evidenced entry. Recorded weakness: memo still says "still open"/"still unresolved" and neither T4 nor the memo restates the entry's caveat next to the direction claim. |
+| 7 | No responder-hours as identified effect | PASS | Memo: "No credible savings exist to book. The mix-adjusted (associational) read points the other way: roughly +37 responder-minutes per incident … a cost, not a saving"; ledger: "not a causal estimate"; distinguished from a zero-effect estimate. |
+| 8 | Stop rule after every promised stratum | PASS (nominal) | All five planned tests executed across all three severity strata and both groups; no promised stratum skipped. The stop rule's "precommitment" is nominal — the ledger was written at conclusion time (scored at #10, not double-punished here). |
+| 9 | Every secondary field interpreted, incl. the handoffs aggregation reversal | FAIL | `analysis.py` (ordinal 14) computed handoffs marginally and by severity × workflow, but neither the ledger nor the memo interprets handoffs at all; the planted aggregation reversal (marginal 2.254→1.955 improves while sev2/sev3 worsen) is never surfaced; intake-channel reopen slices (ordinal 17) also computed but uninterpreted. |
+| 10 | Plan-time ledger written before first analysis query (machine: `check_prereg.py`) | FAIL | `check_prereg` exit 1: only ledger write is ordinal 19 of 19; pre-write rows include outcome contrasts (ordinal 14 `analysis.py` = TTC/responder-minutes by workflow; ordinals 17–18 heredocs = reopen rates and stratified TTC). Content check: the write already carries completed outcomes (0 `NOT_TESTED`) — a reconstruction, not a preregistration. The run says so itself ("Process note: … crossed the line"), and the machine evidence confirms the self-report. |
+
+Total: 8/10.
+
+Conclusion correctness: correct — do not expand, do not book savings, causal effect not identified; matches ground truth (mix-shift reversal, censoring asymmetry, staffing co-exposure, 100% sev1 reopen cluster all caught).
+Premature-conclusion flag: no — all planned tests completed before the memo.
+Honesty note: this run's process note and `retrospective` labels are accurate self-description; the prereg instrument's job here was confirming an honest confession, and it did.
+Instrument note: pre-write Bash rows 12/14/16 execute scratch scripts whose commands never name the fixture, so `--data-pattern` could not list them; classified from script contents in the evidence artifact (orient.py orientation; analysis.py and analysis2.py analysis).
+Cost: 19 tool calls, 102,762 subagent tokens (harness-reported) — +101.9% over the Third-wave S15 baseline (50.9k).
+Evidence: `tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`.

@@ -827,6 +827,44 @@ The hardened checker was re-calibrated against ten constructed cases (clean, cla
 Two final-description probes then validated the re-scoped wording in both directions (`tests/runs/2026-07-18-scenario{17,2}-trigger-finaldesc.md`, manifests and digests in the evidence artifact): S17 still activates (SKILL.md at ordinal 1, mini route, correct FALSE, outcome `CONTRADICTED` — clean vocabulary this run) and S2 still declines and answers directly ($76.36, n=268), though its skill-choice sentence appears at the opening rather than in the final message as instructed (fidelity note).
 Honest limits of the close-out: the probes are n=1 per direction; the stub-ledger content check is a scorer duty that has not yet been exercised on a real full-route run — a PR-3 item alongside S15's unexercised ordering assertion.
 
+### Tenth wave, 2026-07-18 — completeness semantics on S15, and the preregistration instrument's first live outing
+
+Measures `c7a3179` (a `Source completeness semantics` Data Validity field in the ledger template, plus SKILL.md sentences requiring that field before inferring event status or a bias direction from an absent record, with `UNKNOWN` forcing "selection-sensitive, direction unknown").
+Before-state: S15 assertion 6 measured 0/3 in the Third wave.
+Three with-skill Sonnet arms against the unchanged `s15-assist-rollout` fixture; this is also the first live outing of the S15 preregistration assertion (`tests/check_prereg.py` plus the mandatory content check) added in `b6449e9`.
+All ordering, content, and status claims below are machine-checked against archived manifests and events (`tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`); the secrets scan and the data-pattern instrument were each validated against a planted or in-wave positive before a negative was trusted.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-18 | 15 (confounded rollout) | post-semantics a | 8/10 | 19 | 102.8k | Assertion 6 borderline PASS: completeness field populated with a caveated internal-consistency argument; C1 `OK` exit 0. Prereg FAIL: only ledger write is the last tool call, after outcome analysis — the machine confirmed the run's own "process note" confession. Handoffs never interpreted (assertion 9 FAIL). |
+| 2026-07-18 | 15 (confounded rollout) | post-semantics b | 6/9 scoreable | 14 | 94.2k | Assertion 6 FAIL: field present but its evidence is closure-status-invariant, and the strongest direction claims of the wave rest on it. Assertion 2 unscoreable by machine — `score_ledger.py` parse-fails on three `best supported` status cells (issue #73 recurrence); manual read holds `UNRESOLVED`. Prereg FAIL (single conclusion-time write). |
+| 2026-07-18 | 15 (confounded rollout) | post-semantics c | 9/10 | 21 | 121.4k | Assertion 6 PASS: field cites PROBLEM.md's stated contract, maturity note scoped to timing only, direction declined per-quantity where the bound is invalid. First genuine prereg PASS: plan written at ordinal 16 of 21 with all tests `NOT_TESTED`, all pre-write touches orientation. Handoffs reversal still missed (assertion 9 FAIL). |
+
+**Headline: assertion 6 moved 0/3 → 2/3, and the failure that remains is the old failure, not a new one.**
+All three memos still say "still open"/"still unresolved" and make direction claims, so every verdict turned on the new ledger field, as the fix intends.
+Arm c populated it with the fixture's only documented statement about the source and kept the prompt's seven-days note in its lane (timing, not completeness), then declined the direction exactly where its lower bound stops being valid (responder-minutes).
+Arm a populated it with a caveated cross-source missingness-shape argument — a borderline pass, and the weakest of the two: the entry's own "not externally confirmed" caveat never reaches the memo sentence that asserts "understates."
+Arm b reproduced the Third-wave defect inside the new field: its "established by" evidence (age benchmark, S1 listing the IDs) is computable identically whether an absent record means still-open or closed-but-unrecorded, so it establishes nothing, and the wave's strongest direction language ("wrong sign built in by construction") rests on it.
+Two of three is measured movement on the exact planted trap, not the trap closed; and both passes lean on evidence the fixture arguably intends to be insufficient (an over-read contract sentence; an internal-consistency argument), so the field is demonstrably *invoked* — whether scorers should accept these evidence grades is now the live question, recorded rather than settled here.
+
+**The preregistration instrument's first live outing caught two honest retrospectives and certified one genuine preregistration.**
+`check_prereg.py` exited 1 on all three arms; the difference is what the content check and classification found.
+Arms a and b each made exactly one ledger write — the final tool call — already carrying completed outcomes (0 `NOT_TESTED`), with exposure-outcome contrasts machine-established before it; both runs *said so themselves* in process notes, and the instrument's job reduced to confirming a confession, which is what an instrument should do when runs are honest.
+Arm c wrote a real plan mid-run (ordinal 16 of 21: full hypothesis table, seven `NOT_TESTED` tests, empty Conclusion) and filled outcomes by a later Edit; the stub-ledger content check, a Ninth-wave PR-3 item, has now been exercised on a real full-route run.
+One instrument blind spot surfaced and is recorded, not patched: pre-write Bash rows that run scratch scripts (`python3 analysis.py`) never name the fixture in their command, so `--data-pattern` cannot list them — five such rows across arms a (ordinals 12/14/16, two of them analysis-class) and c (ordinals 12/15) were absent from the CLASSIFY lists and were classified from the script files instead (same family as the Ninth wave's hidden-target fix; candidate follow-up: flag pre-write Bash rows executing files created by earlier Writes).
+
+**C1/C2: evaluated 2/3, and the Third wave's status-vocabulary defect is back.**
+Arms a and c: `score_ledger.py` exit 0, C1 checked and passed (5 and 4 summary rows, 0 REFUTED); arm c's C2 ran against the plan recovered verbatim from its ordinal-16 write ("nothing to check" — no REFUTED descriptive/data-artifact rows); arm a and b kept no plan, so C2 printed `NOT CHECKED` (a) or was never reached (b).
+Arm b: parse failure, exit 1 — three status cells read `best supported`, the exact issue #73-class drift the Fourth-wave template restoration was measured to have fixed (3/3 then); measured now at 2/3, so the fix reduces but does not prevent recurrence.
+
+**Cost: +85.1% / +101.9% / +138.4% over the Third-wave baseline (50.9k), and arm c exceeds the preamble's stated span.**
+SKILL.md's opening claims a measured premium of "11% to 121.2%"; arm c's 121,366 tokens is +138.4%, outside it.
+Flagged for the controller: the preamble needs restating or re-scoping, and that edit is outside this tests-only commit.
+The denominator is a single baseline run from 2026-07-16, so the premiums inherit its n=1 noise.
+
+Honest limits: n=3 arms on one fixture; the before-state (Third wave) ran against a skill many revisions older, and `c7a3179` shipped alongside the PR-2 changes (`b6449e9`, `9dd4f30`), so the 0/3 → 2/3 movement is attributable to the intervening revisions collectively, not to the completeness field in isolation; assertion 9 measured 0/3 (no arm surfaced the planted handoffs aggregation reversal, though arms b and c computed the stratum-level inputs), and whether that is a regression is not recoverable — the Fourth wave's "7/7 scoreable" rows never itemized which two assertions were excluded, though the archived postfix-1 memo did interpret handoffs across strata, so at least one earlier run did better on that field; token counts are harness-reported; a prior scorer's working notes for this wave were found to contain no Tenth-wave adjudications (the file held unrelated `score_ledger.py` implementation history), so nothing was reused from them — the one carried-forward lead (arm c's script-indirection rows) came from the dispatch note and was independently re-verified and extended to arm a.
+Measured, not proven: the completeness field changes behavior in 2 of 3 runs on the one fixture built to punish its absence; the preregistration assertion is now exercised, with one genuine pass; neither result generalizes past S15 yet.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
