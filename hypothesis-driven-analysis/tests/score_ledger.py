@@ -35,11 +35,15 @@ Checks exactly two things, both syntactic:
       exempt from C1: the skill permits refuting one once coverage and
       missingness have been probed -- but see C2, which still applies to it.
   C2  Every REFUTED `descriptive` or `data-artifact` row existed in the
-      Plan-time ledger under the same id. A `descriptive` row must also have
-      named a non-empty estimand there; a `data-artifact` row need not, since
-      a data-artifact claim (records missing or miscounted) has no estimand
-      to name. Catches status laundering: inventing or relabelling a claim at
-      conclusion time to house a REFUTED. Does not apply to `causal` rows.
+      Plan-time ledger under the same id AND the same claim class. A
+      `descriptive` row must also have named a non-empty estimand there; a
+      `data-artifact` row need not, since a data-artifact claim (records
+      missing or miscounted) has no estimand to name. Catches status
+      laundering in both its shapes: inventing a claim at conclusion time (a
+      new id), and relabelling an existing row's class (e.g. a Plan-time
+      `causal` row re-dressed as `data-artifact`, which cannot be C1-REFUTED
+      under scope) to house a REFUTED. Runs on `descriptive`/`data-artifact`
+      conclusion rows; a `causal` conclusion row is C1's, not C2's.
 
 WHY IT IS BUILT THE WAY IT IS
 
@@ -54,6 +58,16 @@ that is none of `causal`, `descriptive`, or `data-artifact`, or a status cell
 carrying neither REFUTED nor UNRESOLVED. It never drops or waves through
 input it failed to understand, and it never reports C2 against a --plan it
 could not parse.
+
+Fail closed row-locally, not audit-wide. A structural failure -- no identifiable
+table, a missing or ambiguous id -- means no row can be trusted, so the run bails
+before any policy check. But an unrecognized claim or status *cell* is a
+row-local fault: the run reports it and still applies C1/C2 to every sibling row
+that parses. This exists because ledgers drift their claim/status vocabulary
+(issue #73), and the fail-closed-audit-wide version let one drifted token in an
+UNRESOLVED row suppress C1 on a genuine causal-REFUTED row beside it -- exit 1,
+but the violation the scorer exists to catch went unreported. A near-miss cell
+carries a non-authoritative repair hint; the scorer never coerces it to a class.
 
 Report only what was earned. Success output states, per check, whether it was
 checked and passed, had nothing to check, or was not checked at all — a run with
@@ -318,23 +332,84 @@ def check_claims(rows: list[dict[str, str]], label: str) -> list[str]:
     return fails
 
 
+# Non-authoritative repair hints for the exact drift tokens the suite has
+# measured landing in a claim cell (issue #73): they arrive because SKILL.md uses
+# "associative" for conclusion wording and statistical language for methods. The
+# scorer never *coerces* a drift token to a class -- that could exempt a real
+# causal row from C1 -- it only points the producer at where the word belongs,
+# and still fails the row closed.
+_CLAIM_DRIFT_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (
+        ("associative", "associational", "correlational", "observational"),
+        "`associative` is conclusion wording (SKILL.md Conclusion), not a claim "
+        "class; a non-causal explanation is `descriptive` or `data-artifact`",
+    ),
+    (
+        ("statistical", "inferential", "quantitative"),
+        "`statistical` is not a claim class; if it names a quantity write "
+        "`descriptive (estimand: ...)`, otherwise it belongs in Limitations",
+    ),
+)
+
+
+def _claim_hint(cell: str) -> str:
+    """A non-authoritative repair hint for a known claim-cell drift token, or ''.
+
+    Read through the same emphasis/case normalization as `claim_of`, so a hint
+    fires on exactly the forms that fail classification. It never changes the
+    verdict -- the row still fails closed.
+    """
+    words = EMPHASIS.sub("", cell).strip().lower().split()
+    if not words:
+        return ""
+    head = words[0].strip(",;:.()")
+    for tokens, hint in _CLAIM_DRIFT_HINTS:
+        if head in tokens:
+            return f" -- {hint}"
+    return ""
+
+
+def _status_hint(cell: str) -> str:
+    """A non-authoritative hint for the measured status-cell drift, or ''."""
+    text = EMPHASIS.sub("", cell).strip().lower()
+    if "best" in text and "support" in text:
+        return (
+            ' -- "best supported" is conclusion language for the `basis` column, '
+            "not a status; the status set is `REFUTED` or `UNRESOLVED`"
+        )
+    return ""
+
+
 def _check_laundering(
     row: dict[str, str], claim: str, planned: dict[str, dict[str, str]]
 ) -> list[str]:
     """C2: a REFUTED descriptive or data-artifact row must trace back to the
-    Plan-time ledger under the same id.
+    Plan-time ledger under the same id and the same claim class.
 
     A descriptive row must also have named a non-empty estimand there. A
     data-artifact row need not: a data-artifact claim ("these records are
     missing or miscounted") has no estimand to name, and demanding one would
-    be cry-wolf. Either way, the row must have existed at Plan time -- that
-    is the laundering check.
+    be cry-wolf. Either way, the row must have existed at Plan time under this
+    class -- inventing an id and relabelling an existing row's class are the
+    two shapes of the laundering this catches. A causal row re-dressed as
+    data-artifact to house a REFUTED (a causal row cannot be C1-REFUTED under
+    scope) is the relabel case, and it traces to the same id, so the id check
+    alone would wave it through.
     """
     p = planned.get(normalize_key(row["id"]))
     if p is None:
         return [
             f"C2: {row['id']} carries a {claim} REFUTED but does not appear in the "
             f"Plan-time ledger. A {claim} row created at conclusion time is laundering."
+        ]
+    plan_claim = claim_of(p["claim"])
+    if plan_claim != claim:
+        # planned is only non-None when every Plan-time claim classified, so
+        # plan_claim is a real class here, not None.
+        return [
+            f"C2: {row['id']} carries a {claim} REFUTED but was {plan_claim} at Plan time. "
+            f"Relabelling a hypothesis's claim class at conclusion time to house a REFUTED "
+            f"is laundering."
         ]
     if claim == "descriptive" and estimand_of(p["claim"]) is None:
         return [
@@ -344,19 +419,36 @@ def _check_laundering(
 
 
 def _check_row(row: dict[str, str], planned: dict[str, dict[str, str]] | None) -> list[str]:
-    """Score a single summary row against C1/C2, returning any failures."""
+    """Score a single summary row against C1/C2, returning any failures.
+
+    A row's own claim and status cells are validated here, per row. An
+    unrecognized cell fails *this* row (still exit 1), but must not suppress
+    C1/C2 on sibling rows that parse cleanly: one drifted vocabulary token in
+    a status or basis-adjacent cell would otherwise blind the audit to a real
+    causal-REFUTED violation elsewhere in the same table (issue #73). Both
+    cells are checked before the REFUTED short-circuit so a drift token in an
+    UNRESOLVED row is still reported.
+    """
+    fails: list[str] = []
     status = status_of(row["status"])
     if status is None:
-        return [f"parse: {FINAL}: {row['id']} has an unrecognized status cell: {row['status']!r}"]
+        fails.append(
+            f"parse: {FINAL}: {row['id']} has an unrecognized status cell: "
+            f"{row['status']!r}{_status_hint(row['status'])}"
+        )
+    claim = claim_of(row["claim"])
+    if claim is None:
+        fails.append(
+            f"parse: {FINAL}: {row['id']} has an unrecognized claim cell: "
+            f"{row['claim']!r}{_claim_hint(row['claim'])}"
+        )
+    if status is None or claim is None:
+        # A row we could not parse cannot be policy-checked; the rows that did
+        # parse still are -- see score().
+        return fails
     if status != "REFUTED":
         return []
 
-    claim = claim_of(row["claim"])
-    if claim is None:
-        # Unreachable: check_claims runs first and score() stops on any failure.
-        # Kept so a descriptive/data-artifact branch can never inherit an
-        # unclassified cell.
-        return [f"parse: {FINAL}: {row['id']} has an unrecognized claim cell: {row['claim']!r}"]
     if claim == "causal":
         return [
             f"C1: {row['id']} is a causal claim marked REFUTED. "
@@ -418,16 +510,27 @@ def score(final: str, plan: str | None) -> Outcome:
     """Score a final ledger, optionally against its Plan-time ledger."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
     fails += check_ids(summary, FINAL)
-    fails += check_claims(summary, FINAL)
+    # Everything read_table and check_ids catch is audit-wide: a malformed table
+    # grid (no table with the required columns, more than one, a repeated column
+    # name, a row whose cell count does not match the header) or a missing or
+    # ambiguous id leaves no trustworthy row grid to police, so bail before any
+    # per-row check. Only an unrecognized claim or status *value* in an
+    # otherwise well-formed row is row-local: _check_row reports it and still
+    # applies C1/C2 to the sibling rows that parse, so one drifted vocabulary
+    # token cannot blind the audit to a real causal-REFUTED violation (issue
+    # #73). Making a cell-count mismatch row-local too would need read_table to
+    # yield its good rows alongside the bad one; left audit-wide for now, since
+    # no measured run has drifted cell counts.
+    if fails:
+        return Outcome(fails, [])
 
     planned: dict[str, dict[str, str]] | None = None
     if plan is not None:
         planned, plan_fails = _read_plan(plan)
         fails += plan_fails
 
-    if not fails:
-        for row in summary:
-            fails += _check_row(row, planned)
+    for row in summary:
+        fails += _check_row(row, planned)
     if fails:
         return Outcome(fails, [])
     return Outcome([], _describe(summary, plan is not None))
