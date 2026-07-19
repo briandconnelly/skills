@@ -15,6 +15,8 @@ Each carries an assertion table, evidence pointers, and a total.
 Where a claim needs more than the agent's own word — anything asserting an action did *not* happen, or that a contract was followed — archive the harness transcript evidence under `tests/runs/artifacts/` and point the assertion at it; see the S4 and S10 artifacts for the pattern, and `tests/extract_evidence.py` plus `tests/runs/artifacts/2026-07-17-transcript-evidence-corpus.md` for the extraction instrument and its validation.
 For full-route treatment runs, preregistration ordering is checked with `tests/check_prereg.py` against the run's manifest: the first executed ledger write must precede analysis queries, pre-write fixture touches are listed by the tool and classified by the scorer as orientation or analysis in the evidence artifact, and a run with no mid-run ledger write fails the ordering assertion as unverifiable.
 Crediting the ordering additionally requires the content check the tool prints: the scorer confirms from the events stream that the first ledger write already carries the hypothesis table and predictions, and quotes that confirmation in the evidence artifact — an early placeholder filled in after analysis is a reconstruction, not a preregistration.
+Ordering proves *when* the plan was written; it does not prove the preregistered cells were left alone afterward.
+`tests/compare_prereg.py` closes that gap: given the recovered Plan-time ledger and the final ledger, it fails closed if any Hypotheses cell or any Tests cell other than `outcome`/`evidence` was reworded for a row that existed at Plan time, unless a dated Amendment names the row — the silent outcome-fill rewording that a manual diff first caught in scenario 15 arm e (`tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`), now calibrated against the archived plan/final pair in `tests/fixtures/s15-prereg-drift/` (`tests/runs/artifacts/2026-07-19-scenario15-prereg-comparator-evidence.md`).
 The mini route's inline paragraph is out of this instrument's scope.
 Create `tests/runs/` and `tests/runs/artifacts/` if a fresh checkout of this skill lacks them; git does not track empty directories.
 
@@ -392,6 +394,8 @@ Every recorded assist sev1 closure was reopened within 72h, raising an outcome-v
 **Scoring:** assertion 2 is machine-checked by `tests/score_ledger.py` (C1), which reads the final ledger alone.
 Assertion 3's structural half is machine-checked by the same script (C2), which additionally requires the run to archive its Plan-time ledger — without it the script reports `C2 NOT CHECKED` rather than passing.
 The preregistration-ordering assertion is machine-established by `tests/check_prereg.py` from the archived manifest; only the orientation-vs-analysis classification of pre-write touches is rubric work.
+Separately, `tests/compare_prereg.py` diffs the run's recovered Plan-time ledger against its final ledger and fails closed on any conclusion-time rewording of a preregistered cell (Hypotheses cells and Tests cells other than `outcome`/`evidence`) not covered by a dated Amendment; it is calibrated against `tests/fixtures/s15-prereg-drift/` (arm e as the known positive, an outcome/evidence-only fill as the known negative).
+When a run archives both ledgers, run it as part of scoring so a silent prediction/method reword cannot pass unrecorded.
 The rest are rubric-scored.
 Do not score any assertion from the run's own summary of its coverage.
 
