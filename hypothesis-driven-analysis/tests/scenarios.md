@@ -874,6 +874,33 @@ Corrected headline: assertion 6 is 1/3 under the rewritten assertion (0/3 under 
 Corrected totals: arm a 7/10, arm b 6/9 scoreable, arm c 9/10.
 The wave's "machine-checked throughout" phrasing also overstated: ordering facts, hashes, and script outputs are machine-extracted, while content checks, orientation-vs-analysis classification, five script-indirection rows, and arm b's status vocabulary were manual adjudications of machine-extracted evidence.
 
+**Post-strengthening runs (2026-07-19):** three fresh with-skill Sonnet arms against skill @ `b8602fb` (discriminating evidence required, circular evidence forced to `UNKNOWN`, adjacent bounds required), same fixture (digests recomputed unchanged), assertion 6 scored under the rewritten text; evidence in the same artifact's Post-strengthening section.
+
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-19 | 15 (confounded rollout) | post-strengthening d | 5/9 scoreable | 15 | 92.5k | Assertion 6 FAIL: entry argues in the rule's own vocabulary ("discriminates between the two live readings") on evidence that is entirely the source's own missingness pattern. Assertion 2 unscoreable — `score_ledger.py` parse-fails on an `'associative'` claim cell (issue #73 family, first appearance in the claim column). Prereg FAIL (reconstruction at ordinal 14 of 15). Handoffs reversal held in outputs, never surfaced. |
+| 2026-07-19 | 15 (confounded rollout) | post-strengthening e | 8/10 | 18 | 97.2k | Assertion 6 FAIL: establishment claimed on missingness shape one line after conceding no contract or sentinel exists — the exact `UNKNOWN` trigger. Prereg PASS, the suite's second genuine preregistration (plan at ordinal 11 of 18, all pre-write touches orientation); but the outcome-fill Edit silently reworded four preregistered prediction/method cells while Amendments reads "none" (see below). C1 and C2 both exit 0. Handoffs reversal missed. |
+| 2026-07-19 | 15 (confounded rollout) | post-strengthening f | 6/10 | 16 | 100.8k | Assertion 6 FAIL: elapsed-age signature plus an S1-side reconciliation offered as establishing S2's semantics; the one genuinely adjacent estimand-specific bound of the wave, unlicensed. Prereg FAIL (reconstruction at ordinal 14 of 16; memo admits it, machine confirms). C1 exit 0 (1 REFUTED, descriptive H0); assertion 3 FAIL — conclusion-time descriptive `REFUTED` with no plan to check against. Handoffs reversal held in outputs, never surfaced. |
+
+Assertion-6 verdicts under the rewritten assertion: d FAIL (circular evidence presented as discriminating, direction claims with no adjacent bound), e FAIL (missingness-shape evidence asserted as establishing after conceding the no-contract condition, "likely worse" uncaveated at the claim site), f FAIL (cross-source evidence aimed at the wrong source, bound adjacent but unlicensed) — 0/3.
+**Gate arithmetic: 0/3 against a ≥2/3 bar — the gate is NOT met.**
+The strengthened rule produced zero passes on the fixture built to elicit `UNKNOWN`, below even the re-adjudicated 1/3 before-state on `c7a3179`, and no post-`c7a3179` arm (a–f) has yet written the `UNKNOWN`-class entry the ground truth expects.
+The failure mode also shifted rather than closed: all three arms visibly engage the new rule — d adopts its vocabulary, e names the exact condition that forces `UNKNOWN`, f scopes its claim to one source — and then assert establishment anyway from the evidence classes the rule names as insufficient; the rule is being argued with, not followed.
+Whether the fix is a worked negative example in the template (an `UNKNOWN` entry for exactly this shape), a stronger rule, or acceptance that this fixture's bar is above what wording changes buy, is a controller decision outside this tests-only commit.
+
+Prereg: `check_prereg.py` exit 1 on all three; d and f are machine-confirmed reconstructions (0 `NOT_TESTED`, filled Conclusions, exposure-outcome contrasts from ordinals 9 and 10 respectively), both confessed — f in its memo, d in its ledger only (the dispatch note's "both memos" was half right).
+Arm e is the second genuine preregistration after Tenth-wave arm c, and it surfaced a new instrument gap: diffing the recovered plan against the final ledger shows the outcome-fill Edit also reworded T1/T4/T5/T6's preregistered prediction/method cells (the promised worst-case censoring bound dropped from T1's method; T4 medians→means; T6 "/" → "and/or", the reading its `CONSISTENT` relies on) while Amendments claims none — no committed instrument performs that diff, this one was manual, and no assertion's letter covers it, so e's totals stand with the finding recorded.
+Script-indirection (issue #76 class): zero pre-write script executions this wave — d/f ran inline fixture-naming commands (all CLASSIFY-listed), e's script ran only post-write — so the blind spot went unexercised.
+
+`score_ledger.py`: e and f exit 0 with C1 passed (f's one `REFUTED` is the descriptive H0 at its own estimand); d fails at parse on H5's `'associative'` claim cell — the issue #73 vocabulary family now reaching the claim column — leaving the post-restoration parse record at 4/6 arms.
+C2 had a plan to run against only on e ("nothing to check"; no `REFUTED` descriptive rows); d and f each carry a conclusion-time descriptive `REFUTED` that no plan exists to clear, so both fail assertion 3 as unverifiable — the first occurrences of that combination in the suite.
+
+Cost: +81.8% / +91.0% / +98.0% over the Third-wave baseline (50.9k) — all inside the corrected 11–138.4% preamble span, none approaching arm c's 138.4% ceiling.
+The denominator remains the single 2026-07-16 baseline run, so the premiums inherit its n=1 noise.
+
+Honest limits: n=3 arms on one fixture; the assertion-6 verdicts are one scorer's reading of the rewritten text (the same scorer lineage that produced the rewrite — no independent adjudicator has yet scored these arms); token counts are harness-reported; and the 0/3 is measured against a ground truth ("the fixture contains no adequate completeness evidence") that the fixture's authors set, which a run could reasonably contest — arm f's S1-side reconciliation is real evidence, just not about S2.
+Measured, not proven: strengthening the rule's wording did not change the behavior the rule targets on this fixture; what did change is that the runs now argue their evidence in the rule's terms, which makes the failures easier to adjudicate but no less frequent.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
