@@ -860,7 +860,7 @@ Arms a and c: `score_ledger.py` exit 0, C1 checked and passed (5 and 4 summary r
 Arm b: parse failure, exit 1 — three status cells read `best supported`, the exact issue #73-class drift the Fourth-wave template restoration was measured to have fixed (3/3 then); measured now at 2/3, so the fix reduces but does not prevent recurrence.
 
 **Cost: +85.1% / +101.9% / +138.4% over the Third-wave baseline (50.9k), and arm c exceeds the preamble's stated span.**
-SKILL.md's opening claims a measured premium of "11% to 121.2%"; arm c's 121,366 tokens is +138.4%, outside it.
+SKILL.md's opening claimed, at the time of scoring, a measured premium of "11% to 121.2%"; arm c's 121,366 tokens is +138.4%, outside it.
 Flagged for the controller: the preamble needs restating or re-scoping, and that edit is outside this tests-only commit.
 *(Done in the following commit: the preamble's span now reads 11% to 138.4%, the no-measured-ceiling disclaimer unchanged.)*
 The denominator is a single baseline run from 2026-07-16, so the premiums inherit its n=1 noise.
