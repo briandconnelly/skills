@@ -24,3 +24,10 @@ Conclusion correctness: correct — do not expand, do not book savings, causal e
 Premature-conclusion flag: no.
 Cost: 21 tool calls, 121,366 subagent tokens (harness-reported) — +138.4% over the Third-wave S15 baseline (50.9k), above the preamble's stated 11–121.2% span (flagged for the controller; the preamble is outside this tests-only commit).
 Evidence: `tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`.
+
+## Correction (2026-07-19, Codex cross-review)
+
+Assertion 6 remains PASS under the rewritten assertion but is recorded as borderline.
+The cited PROBLEM.md sentence ("activity.csv contains the recorded resolution activity as of the extract") is a content description rather than a completeness guarantee, so the evidence grade is the weakest a pass can rest on; the pass survives because the run's direction discipline is per-quantity and its estimand-specific bound is stated adjacent to the claim.
+Total unchanged: 9/10.
+See the Tenth wave's re-adjudication block in `tests/scenarios.md` for the wave-level correction.

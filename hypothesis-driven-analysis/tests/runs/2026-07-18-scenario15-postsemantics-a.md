@@ -26,3 +26,11 @@ Honesty note: this run's process note and `retrospective` labels are accurate se
 Instrument note: pre-write Bash rows 12/14/16 execute scratch scripts whose commands never name the fixture, so `--data-pattern` could not list them; classified from script contents in the evidence artifact (orient.py orientation; analysis.py and analysis2.py analysis).
 Cost: 19 tool calls, 102,762 subagent tokens (harness-reported) — +101.9% over the Third-wave S15 baseline (50.9k).
 Evidence: `tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`.
+
+## Correction (2026-07-19, Codex cross-review)
+
+Assertion 6 is re-adjudicated FAIL.
+The entry's evidence is the source's own missingness pattern — an internal-consistency argument computed from S1×S2 itself — which is circular: a source's own missingness pattern cannot establish that source's completeness, so under the rewritten assertion the entry should read `UNKNOWN` and license no direction.
+The memo's direction claim ("This *understates* how bad assist-sev1 is") is also uncaveated at the claim site: the ledger entry's "not externally confirmed" caveat never reaches the memo sentence that asserts the direction.
+Total: 8/10 → 7/10.
+The original table above is preserved as recorded; see the Tenth wave's re-adjudication block in `tests/scenarios.md` for the wave-level correction.
