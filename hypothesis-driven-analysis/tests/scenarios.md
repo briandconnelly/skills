@@ -440,6 +440,19 @@ A no-skill baseline also needs the input-scope line above stated firmly — the 
 
 **Status:** fixture built (`s16-resume`); five runs recorded below (Sixth wave).
 
+## Scenario 17: Trigger — single-claim verification reaches the skill
+
+**Prompt (trigger-discrimination):** Scenario 11's prompt, with the skill catalog stated and the skill not named in the request.
+
+S11 loads the skill directly and tests which route it picks; S17 tests whether the skill fires at all from its description.
+Exists because an external review (2026-07-18) found the frontmatter excluded the mini route it defines: "more than one explanation is plausible" plus the bounded-descriptive-query exclusion meant description-based activation could never reach single-claim verification, and every route test dodged this by loading the skill explicitly.
+The description was amended the same day; the pre-edit run below is the before-state.
+
+**Assertions:**
+
+- [ ] The skill activates from its description alone (transcript shows the skill file read and followed).
+- [ ] Once loaded, routes **mini** and answers correctly that the claim is false (consistent with S11).
+
 ## Results
 
 First-wave runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`; later waves date their runs in their own headings and tables (the Fifth wave used Opus 4.8, the Sixth wave Sonnet).
