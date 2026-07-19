@@ -131,6 +131,8 @@ Orientation findings belong in the plan; they are not amendments.
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
 State each explanation as an account of the named effect — "the deploy caused the 09:10 step", not "the deploy regressed the cache layer" — because refutation acts only at the scope the claim names: an earlier step refutes the deploy as that step's cause while saying nothing about other deploy defects, and a claim broader than its necessary prediction cannot be refuted by it.
+Label each hypothesis with its claim class — exactly one of `causal`, `descriptive` (a `descriptive` row also names its estimand), or `data-artifact` — in the ledger's `claim` column: those three are the only classes the machine check reads, so a drifted value like `statistical` or `associative` fails it.
+`associative` is not a claim class; it is how a *conclusion* is worded when no design identifies a cause (see Conclusion), so a non-causal explanation is `descriptive` or `data-artifact`, never `associative` or `correlational`.
 Perform a mandatory data-validity check: how was the data collected, what does it cover, what instrument failures are known.
 A schema audit is not this check — nulls, duplicates, and type drift cannot detect a row that is simply absent.
 Build a coverage matrix at the grain your analysis actually uses: every time bucket you compare, crossed with every segment that appears in a denominator, a contrast, or a hypothesis, plus the population rate of each field you rely on at that same crossed grain.
@@ -212,6 +214,7 @@ Precedence when tests disagree:
 A data-artifact hypothesis is never `REFUTED` on a validity check that did not probe coverage and missingness.
 
 `SUPPORTED` is not a status; "best supported" is conclusion language and must clear a stated bar: the hypothesis is not `REFUTED`, at least one `CONSISTENT` outcome came from a test that discriminates it from the named rivals, and no unrefuted rival explains the same observations equally well.
+The per-hypothesis summary table repeats each row's Plan-time claim class in its `claim` column unchanged, and fills its `status` column with `REFUTED` or `UNRESOLVED` alone: "best supported" is basis text, so it goes in the `basis` cell, never the `status` cell, and a claim class is never invented or relabelled here to house an outcome.
 A `retrospective` hypothesis clears that bar only on evidence that did not inform it — a held-out slice, a later window, a source you had not looked at, or a new measurement.
 Such evidence need not come from a different system: a slice of the same source you had not seen when you framed the hypothesis qualifies, because what disqualifies evidence here is having already shaped the guess, not sharing an origin with it.
 Re-running a fresh statistic over the same records you were already staring at is a new query, not new evidence: it changes the order of operations, not what those records can tell you.
