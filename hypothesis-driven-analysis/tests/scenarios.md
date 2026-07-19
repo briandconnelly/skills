@@ -833,6 +833,7 @@ Measures `c7a3179` (a `Source completeness semantics` Data Validity field in the
 Before-state: S15 assertion 6 measured 0/3 in the Third wave.
 Three with-skill Sonnet arms against the unchanged `s15-assist-rollout` fixture; this is also the first live outing of the S15 preregistration assertion (`tests/check_prereg.py` plus the mandatory content check) added in `b6449e9`.
 All ordering, content, and status claims below are machine-checked against archived manifests and events (`tests/runs/artifacts/2026-07-18-scenario15-completeness-evidence.md`); the secrets scan and the data-pattern instrument were each validated against a planted or in-wave positive before a negative was trusted.
+*(Since corrected — see the Re-adjudication block below: ordering facts, hashes, and script outputs are machine-extracted, while content checks, orientation-vs-analysis classification, and status vocabulary were manual adjudications of that machine-extracted evidence.)*
 
 | Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -841,6 +842,7 @@ All ordering, content, and status claims below are machine-checked against archi
 | 2026-07-18 | 15 (confounded rollout) | post-semantics c | 9/10 | 21 | 121.4k | Assertion 6 PASS: field cites PROBLEM.md's stated contract, maturity note scoped to timing only, direction declined per-quantity where the bound is invalid. First genuine prereg PASS: plan written at ordinal 16 of 21 with all tests `NOT_TESTED`, all pre-write touches orientation. Handoffs reversal still missed (assertion 9 FAIL). |
 
 **Headline: assertion 6 moved 0/3 → 2/3, and the failure that remains is the old failure, not a new one.**
+*(Initial reading, since corrected: 1/3 under the rewritten assertion, 0/3 under the original letter — see the Re-adjudication block below; the original text stands as the record of what was first scored.)*
 All three memos still say "still open"/"still unresolved" and make direction claims, so every verdict turned on the new ledger field, as the fix intends.
 Arm c populated it with the fixture's only documented statement about the source and kept the prompt's seven-days note in its lane (timing, not completeness), then declined the direction exactly where its lower bound stops being valid (responder-minutes).
 Arm a populated it with a caveated cross-source missingness-shape argument — a borderline pass, and the weakest of the two: the entry's own "not externally confirmed" caveat never reaches the memo sentence that asserts "understates."
@@ -865,6 +867,7 @@ The denominator is a single baseline run from 2026-07-16, so the premiums inheri
 
 Honest limits: n=3 arms on one fixture; the before-state (Third wave) ran against a skill many revisions older, and `c7a3179` shipped alongside the PR-2 changes (`b6449e9`, `9dd4f30`), so the 0/3 → 2/3 movement is attributable to the intervening revisions collectively, not to the completeness field in isolation; assertion 9 measured 0/3 (no arm surfaced the planted handoffs aggregation reversal, though arms b and c computed the stratum-level inputs), and whether that is a regression is not recoverable — the Fourth wave's "7/7 scoreable" rows never itemized which two assertions were excluded, though the archived postfix-1 memo did interpret handoffs across strata, so at least one earlier run did better on that field; token counts are harness-reported; a prior scorer's working notes for this wave were found to contain no Tenth-wave adjudications (the file held unrelated `score_ledger.py` implementation history), so nothing was reused from them — the one carried-forward lead (arm c's script-indirection rows) came from the dispatch note and was independently re-verified and extended to arm a.
 Measured, not proven: the completeness field changes behavior in 2 of 3 runs on the one fixture built to punish its absence; the preregistration assertion is now exercised, with one genuine pass; neither result generalizes past S15 yet.
+*(Since corrected to 1/3 — see the Re-adjudication block below.)*
 
 **Re-adjudication (2026-07-19, Codex cross-review of this branch):** the wave above scored assertion 6 on a conditional reading — "no-recorded-closure phrasing OR an evidenced completeness entry" — that the committed assertion did not say; the scorer's dispatch supplied that reading, the evidence artifact recorded the substitution openly, and the headline did not.
 Under the assertion's original letter all three arms fail (all three memos say "still open"), making the wave 0/3, not 2/3.
