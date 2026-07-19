@@ -130,6 +130,7 @@ Orientation findings belong in the plan; they are not amendments.
 
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
+State each explanation as an account of the named effect — "the deploy caused the 09:10 step", not "the deploy regressed the cache layer" — because refutation acts only at the scope the claim names: an earlier step refutes the deploy as that step's cause while saying nothing about other deploy defects, and a claim broader than its necessary prediction cannot be refuted by it.
 Perform a mandatory data-validity check: how was the data collected, what does it cover, what instrument failures are known.
 A schema audit is not this check — nulls, duplicates, and type drift cannot detect a row that is simply absent.
 Build a coverage matrix at the grain your analysis actually uses: every time bucket you compare, crossed with every segment that appears in a denominator, a contrast, or a hypothesis, plus the population rate of each field you rely on at that same crossed grain.
