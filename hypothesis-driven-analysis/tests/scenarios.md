@@ -910,6 +910,28 @@ The denominator remains the single 2026-07-16 baseline run, so the premiums inhe
 Honest limits: n=3 arms on one fixture; the assertion-6 verdicts are one scorer's reading of the rewritten text (the same scorer lineage that produced the rewrite — no independent adjudicator has yet scored these arms); token counts are harness-reported; and the 0/3 is measured against a ground truth ("the fixture contains no adequate completeness evidence") that the fixture's authors set, which a run could reasonably contest — arm f's S1-side reconciliation is real evidence, just not about S2.
 Measured, not proven: strengthening the rule's wording did not change the behavior the rule targets on this fixture; what did change is that the runs now argue their evidence in the rule's terms, which makes the failures easier to adjudicate but no less frequent.
 
+### Eleventh wave, 2026-07-19 — necessary-prediction variant scope (issue #72)
+
+Fixes the Eighth-wave close-out finding (S6 ws-f, `2026-07-18-scenario6-sensitivity-evidence.md`): a run can mark a general mechanism `REFUTED` on a prediction only its fastest variant implies.
+The change adds two SKILL.md clauses — Site 1 (status rule: a necessary prediction must hold across every variant the Plan-time wording permits) and Site 2 (sensitivity: a positive/distributional contradiction must clear a worst-case, fresh-realization adequacy bound, ≤5% by default, recorded beside the outcome) — committed in `d2a2c5c` after a Codex review tightened the worst-case, census, prospective-narrowing, upper-bound, and deterministic-escape wording.
+
+This failure cannot be measured by a free-investigation before/after: it rides a minority route (the run must spontaneously raise a retrospective decay hypothesis *and* over-refute it). Three free baseline arms confirmed it — **0/3 raised** a retrospective decay hypothesis at all, all three correctly `UNRESOLVED` on the median claim. So the measurement is a **focused decision-point probe**: the arm is handed the retrospective hypothesis, its declared necessary prediction, and the observed 2/3/1 timing split, and asked for the skill-dictated status. Prompts are identical across the old- and new-wording batches; only the committed skill differs. Full record, verbatim reasoning, ground-truth re-derivation, and transcript digests in `tests/runs/artifacts/2026-07-19-scenario6-variant-evidence.md`.
+
+| Date | Batch | Wording | Verdict | Reading |
+| --- | --- | --- | --- | --- |
+| 2026-07-19 | free-investigation a,b,c | old | 3× `UNRESOLVED` | 0/3 raised the retrospective decay hypothesis — minority route confirmed |
+| 2026-07-19 | leading probe 1–5 | old | 5× `UNRESOLVED` | control: told to run the check, arms get it right — the failure is check-skip, not check-failure |
+| 2026-07-19 | neutral probe 1–5 | old | **5× `REFUTED`** | **known positive** — every arm skipped adequacy: "positive contradiction, not a null, so no check applies" / "a census, not a sample" |
+| 2026-07-19 | neutral probe 1–5 | new | **5× `UNRESOLVED`** | **fix** — every arm ran Site 2's worst-case fresh-realization bound → `NON_DISCRIMINATING`; census escape explicitly closed |
+| 2026-07-19 | S1 over-correction 1–3 | new | **3× `REFUTED`** | legitimate deterministic refutation (deploy postdates the drop) preserved via Site 2's deterministic-zero-rate clause |
+
+**The identical neutral probe flips 5/5 `REFUTED` (old) → 5/5 `UNRESOLVED` (new), while the S1 legitimate-refutation control holds 3/3 `REFUTED`.**
+The known positive was reproduced first and confirmed before the post-edit negative was trusted; every new-wording arm cited Site 2 (fresh realizations of the whole window, worst-case over variants, the 5% complement of 95% coverage) by mechanism, and every S1 arm cited the deterministic-prediction escape by name.
+
+Ground truth (re-derived at scoring time from the shipped CSV, `gt.py`): median 95% CI [177.6, 249.6] contains 230 (`NON_DISCRIMINATING`); a true decay compatible with "decays across the window" fails the majority-in-first-third criterion 32% of the time at τ=2h and 53% at τ=3h — far above the 5% bar.
+
+Honest limits: the probe measures the reasoning step in isolation, not how often a free run reaches it (rarely — 0/3); S1's refutation is *flagrant*, so subtle over-correction stays unmeasured (no fixture for it, scenarios.md:641); verdicts are one scorer's reading of the arms' first-line status token and quoted reasoning; τ rates assume exponential rate decay. A follow-up issue proposes a `score_ledger.py` check for the recorded adequacy bound Site 2 now requires, so a weak future measurement has a pre-planned escalation.
+
 ## Findings from the 2026-07-16 suite
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
