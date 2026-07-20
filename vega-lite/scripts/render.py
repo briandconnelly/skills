@@ -103,7 +103,14 @@ def run_all(
     results.append(StageResult("compile", Status.PASS))
 
     # Stage 4: render
-    fmt = infer_format(out_path) if out_path else "png"
+    if out_path:
+        try:
+            fmt = infer_format(out_path)
+        except ValueError as exc:
+            results.append(StageResult("render", Status.FAIL, str(exc)))
+            return results
+    else:
+        fmt = "png"
     try:
         image = deps.render_fn(spec_text, fmt)
     except Exception as exc:
@@ -117,8 +124,8 @@ def run_all(
 
 
 def exit_code(results: list[StageResult]) -> int:
-    fatal = {"parse", "schema", "compile", "render"}
-    return 1 if any(r.name in fatal and r.status is Status.FAIL for r in results) else 0
+    # Any stage FAIL fails the run; a schema SKIP (offline / uncached) does not.
+    return 1 if any(r.status is Status.FAIL for r in results) else 0
 
 
 def load_schema(vl_version: str | None) -> dict | None:

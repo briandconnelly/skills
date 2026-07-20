@@ -19,7 +19,7 @@ Every fixture is inline data with no `data.url` fetch, so every run is reproduci
 ## Scoring criteria (apply to every scenario)
 
 - **(a) Validation stages.** The produced spec passes every stage `scripts/render.py` runs: `parse`, `schema`, `compile`, `render` (a `schema` `SKIP` from an uncached/offline schema is allowed; a `FAIL` at any stage is not).
-- **(b) Semantic typing.** Every encoded field has the correct explicit semantic type (`nominal`/`ordinal`/`quantitative`/`temporal`), and `data.format.parse` is present wherever the raw data needs it (non-ISO or ambiguous date strings, numeric-as-string fields meant to be quantitative).
+- **(b) Semantic typing.** Every encoded field has the correct explicit semantic type (`nominal`/`ordinal`/`quantitative`/`temporal`), and `data.format.parse` is present wherever the raw data genuinely needs it — a non-ISO or ambiguous date string, or a field being forced to stay a string. A plain ISO-8601 date and a numeric-looking string need no `parse` (their `type` coerces them automatically), so adding one there is neither required nor a defect.
 - **(c) Idiomatic choice.** The mark, composition (`layer`/`facet`/`resolve`), and scale/axis choices match what the reference files recommend for this data shape — a semantic judgment about correctness and honesty of the chart, not merely "it rendered."
 - **(d) Validation performed.** `render.py` (or `check_specs.py`) was actually run against the final spec, and the rendered image exists on disk — not just claimed.
 
@@ -43,11 +43,11 @@ Every fixture is inline data with no `data.url` fetch, so every run is reproduci
 **Success criteria:**
 
 - (a) The final spec passes `parse`/`schema`/`compile`/`render`.
-- (b) `x` is `"type": "temporal"` with `data.format.parse` mapping `day` to `"date:'%m/%d/%Y'"` (the default `toDate()` would misread `01/06/2024`, since day/month order is locale-dependent for a slash-separated date); `y` is `"type": "quantitative"` with `errors` parsed via `format.parse: {"errors": "number"}` so the string values are treated as numbers rather than left as unparsed strings.
+- (b) `x` is `"type": "temporal"` with `data.format.parse` mapping `day` to `"date:'%m/%d/%Y'"` — the default `toDate()` would misread `01/06/2024`, since day/month order is locale-dependent for a slash-separated date, so this parse pattern is required. `y` is `"type": "quantitative"` for `errors`; the string counts coerce to numbers automatically under a quantitative scale/aggregate, so an explicit `format.parse: {"errors": "number"}` is acceptable but not required — what the criterion checks is the explicit quantitative type, not the parse.
 - (c) The mark is `line` (a trend over a continuous/temporal axis), not `bar` or `point`, since the task is showing a count trending over time.
 - (d) `render.py` was run against the final spec and the output image exists.
 
-**Expected baseline failure:** a skill-less run often trusts `"type": "temporal"` alone to fix the date parsing (missing that `01/06/2024` is ambiguous without an explicit pattern), and frequently leaves `errors` as a raw string field, relying on undeclared inference rather than an explicit `quantitative` type plus `format.parse`.
+**Expected baseline failure:** a skill-less run often trusts `"type": "temporal"` alone to fix the date parsing, missing that `01/06/2024` is ambiguous without an explicit `%m/%d/%Y` pattern and so plotting the points on the wrong dates; it may also leave `errors` with no explicit `type` at all, relying on undeclared inference instead of declaring it `quantitative`.
 
 ## Scenario 2: Fix a broken spec
 
@@ -106,7 +106,7 @@ Every fixture is inline data with no `data.url` fetch, so every run is reproduci
 
 - (a) The final spec passes `parse`/`schema`/`compile`/`render`.
 - (b) `month` is `nominal`, `signups` and `conversion_rate` are both `quantitative`.
-- (c) The spec uses `layer` (a `bar` layer for `signups`, a `line` layer for `conversion_rate`) with `resolve.scale.y` set to `"independent"`, since the two fields have unrelated magnitudes and sharing one `y` scale would flatten `conversion_rate` to a thin band near the bottom of the chart; each layer gets its own `y` axis and title.
+- (c) The spec uses `layer` (a `bar` layer for `signups`, a `line` layer for `conversion_rate`) with `resolve.scale.y` set to `"independent"`, since the two fields have unrelated magnitudes and sharing one `y` scale would flatten `conversion_rate` to a thin band near the bottom of the chart; each layer gets its own `y` axis and title. The months stay in calendar order (Jan/Feb/Mar/Apr) rather than alphabetized — the nominal `month` field is kept in data order (e.g. `"sort": null`) rather than left to the default alphabetical sort, which would reorder the axis to Apr/Feb/Jan/Mar.
 - (d) `render.py` was run and the rendered image shows two distinct y-axes (confirmed by inspecting the image, not just assumed from the spec).
 
 **Expected baseline failure:** a skill-less run commonly layers both fields on a shared `y` scale (or omits `resolve` entirely), producing a chart where the conversion-rate line is visually flat and unreadable against the signups bars.
@@ -157,6 +157,9 @@ Every fixture is inline data with no `data.url` fetch, so every run is reproduci
 | — | 2 (fix a broken spec) | baseline | — | Baseline run pending. |
 | — | 3 (layer + resolve) | not yet run | — | Baseline and with-skill runs pending. |
 | — | 4 (truncated axis) | not yet run | — | Baseline and with-skill runs pending. |
+
+The 2026-07-19 seed run was authored and scored by the skill author with full knowledge of the criteria, so it is a smoke test that the scenario and skill hang together — not blind evidence the skill outperforms no-skill.
+Until the paired baseline (no-skill) and with-skill runs above are executed blind per the methodology, this file records no efficacy evidence, only that the skill's own examples and validator work.
 
 ## Continuous checks
 

@@ -1,9 +1,9 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
-  "description": "Temporal axis from raw string dates via data.format.parse.",
+  "description": "Daily hits from day-first date strings, which the default toDate() would misparse onto the wrong dates without an explicit parse pattern.",
   "data": {
-    "values": [{"day": "2024-05-01", "hits": 120}, {"day": "2024-05-02", "hits": 150}, {"day": "2024-05-03", "hits": 90}],
-    "format": {"parse": {"day": "date"}}
+    "values": [{"day": "01-05-2024", "hits": 120}, {"day": "02-05-2024", "hits": 150}, {"day": "03-05-2024", "hits": 90}],
+    "format": {"parse": {"day": "date:'%d-%m-%Y'"}}
   },
   "mark": "area",
   "encoding": {

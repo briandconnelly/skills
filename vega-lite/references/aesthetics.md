@@ -35,7 +35,8 @@ Keep axis, legend, and chart `title` values concise — a short noun phrase (`"R
 Set a top-level `description` on every spec that ships to an end audience: it doesn't render visually, and write it as a complete sentence describing the chart's content, not a restatement of the title.
 It's good documentation, and in a live `vega-embed` mount it becomes the container's ARIA label — but it does not appear in a static PNG/SVG export (this skill's primary output), so it doesn't reach a screen-reader user of a static chart on its own.
 For screen-reader text that survives static export, add a mark-level `description` to `encoding` (e.g. `"encoding": {"description": {"field": "status", "type": "nominal"}}`): Vega-Lite bakes its value into a per-mark `aria-label` attribute in the rendered SVG, alongside the automatic per-mark `aria-roledescription`.
-Set both: a top-level `description` for documentation and live embedding, and a mark-level `encoding.description` when the chart's output is static and a screen reader needs to read individual marks.
+This survives **SVG** export only — a PNG is a raster image and carries no ARIA at all, so a screen-reader-accessible static chart must be exported as SVG, not PNG.
+Set both: a top-level `description` for documentation and live embedding, and a mark-level `encoding.description` when the chart's output is static SVG and a screen reader needs to read individual marks.
 
 ## Labels over tooltips
 
@@ -81,5 +82,5 @@ Every mark on the plot draws with the color and the shape that match its own `st
 ## Pitfalls
 
 - **Redundant color that repeats an axis isn't automatically wrong, but it isn't automatically helpful either.** Check whether the second channel does independent work (accessibility, tracking off-axis) before adding it, and prefer `"legend": null` or dropping the encoding when it doesn't (see `references/scales-axes-legends.md`).
-- **A top-level `description` doesn't help a static export's screen-reader audience on its own.** It never renders on-screen and there's no visual cue reminding an author to add it, so set it as a habit for documentation and live embedding — but for a static PNG/SVG, add a mark-level `encoding.description` too, since the top-level field is dropped entirely from that output.
+- **A top-level `description` doesn't help a static export's screen-reader audience on its own.** It never renders on-screen and there's no visual cue reminding an author to add it, so set it as a habit for documentation and live embedding — but for a static **SVG**, add a mark-level `encoding.description` too, since the top-level field is dropped entirely from that output (and a PNG carries no ARIA either way, so screen-reader accessibility requires exporting SVG).
 - **Tooltip fields are not accounting-neutral.** An un-aggregated field added only for `tooltip` still changes the implicit grouping key next to an aggregated channel; verify aggregated values after adding one (see `references/authoring-basics.md`).

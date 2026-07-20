@@ -54,6 +54,18 @@ Every field used in an encoding needs an explicit semantic type: nominal (`N`), 
 Nominal and ordinal both partition data into discrete groups; the only difference is whether Vega-Lite should sort and scale them by an inherent order (ordinal) or treat their order as arbitrary (nominal, sorted alphabetically by default unless you override `sort`).
 Getting this choice wrong doesn't error — it silently mis-sorts categories or picks the wrong color scale (categorical vs. sequential), so choose deliberately rather than by whatever the field happens to look like.
 
+### Sorting discrete categories
+
+A nominal field — and, for string values, an ordinal one — is sorted alphabetically on its axis unless you say otherwise, which silently reorders human-meaningful sequences: month abbreviations `Jan, Feb, Mar, Apr` render as `Apr, Feb, Jan, Mar`, and sizes `S, M, L` as `L, M, S`.
+This is one of the most common Vega-Lite surprises, and it never raises an error — the chart just comes out in the wrong order.
+Control it with the encoding channel's `sort` property:
+
+- `"sort": null` keeps the data's own row order — use when the values already arrive in the order you want (e.g. rows pre-sorted into calendar months).
+- `"sort": ["Jan", "Feb", "Mar", "Apr"]` pins an explicit category order regardless of the data's row order.
+- `"sort": "-y"` (or `"x"`, `"color"`, or a `{"field": ..., "op": ...}` object) orders categories by another channel's value — e.g. bars sorted descending by their own height.
+
+Always check the rendered axis order against what the data means rather than trusting the alphabetical default; a chart that mis-orders months or sizes is wrong even though every stage passed.
+
 Secondary range channels — `x2`, `y2`, and the error-representation channels (`xError`, `xError2`, `yError`, `yError2`) — take no `type` of their own:
 
 ```jsonc

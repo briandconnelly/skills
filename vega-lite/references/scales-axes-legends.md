@@ -53,7 +53,7 @@ An axis renders the ticks, labels, and gridlines for a position (`x`/`y`) scale;
 
 - **`title`** — the label shown along the axis; defaults to the field name (plus any `aggregate`/`bin`/`timeUnit` annotation, e.g. `"Sum of Profit"`); set an explicit string for a clearer label, or `null` to remove the title entirely.
 - **`format`** — a d3 format string controlling how tick labels render numbers or dates; see Formatting below.
-- **`labelAngle`** — rotates tick labels in degrees; defaults to `-90` for nominal/ordinal fields (to fit long category names without overlapping) and `0` otherwise; set explicitly (e.g. `-45`) when default rotation still overlaps or wastes space.
+- **`labelAngle`** — rotates tick labels in degrees; on a nominal/ordinal **x**-axis it defaults to `-90` (to fit long category names without overlapping), while y-axis labels and quantitative/temporal axes default to `0`; set it explicitly (e.g. `-45`) when the default rotation still overlaps or wastes space. Don't "fix" an already-horizontal y-axis label by rotating it — the `-90` default is x-axis only.
 - **`grid`** — whether gridlines extend from this axis's ticks across the plot; defaults to `true` for continuous, unbinned scales and `false` otherwise; turn it off (`"grid": false`) when gridlines add clutter without helping comparison, or turn it on for a binned/discrete axis where alignment across categories matters.
 
 ## Legends
