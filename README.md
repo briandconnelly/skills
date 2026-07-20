@@ -17,6 +17,7 @@ Agent harnesses load a skill when its description matches the task at hand.
 | [bundle-uv-mcp-server](bundle-uv-mcp-server/) | Package an existing uv + Python MCP server as an MCPB bundle (.mcpb) using the uv runtime. |
 | [hypothesis-driven-analysis](hypothesis-driven-analysis/) | Guide empirical investigations with PPDAC and the scientific method — competing hypotheses, preregistered predictions, adequate tests, and a precommitted stop rule. |
 | [separating-context-from-constraints](separating-context-from-constraints/) | Audit skills, prompts, and agent instruction documents for separation of binding rules from context, with findings and semantic-preserving rewrites. |
+| [vega-lite](vega-lite/) | Author, repair, and review correct, idiomatic static Vega-Lite v6 JSON specs, gated by a parse-schema-compile-render-inspect loop run through bundled vl-convert. |
 
 ## Installation
 

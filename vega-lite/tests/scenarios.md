@@ -157,3 +157,10 @@ Every fixture is inline data with no `data.url` fetch, so every run is reproduci
 | — | 2 (fix a broken spec) | baseline | — | Baseline run pending. |
 | — | 3 (layer + resolve) | not yet run | — | Baseline and with-skill runs pending. |
 | — | 4 (truncated axis) | not yet run | — | Baseline and with-skill runs pending. |
+
+## Continuous checks
+
+This skill is checked by `tests/check_specs.py`, which renders every example under `examples/` plus every embedded reference spec, and by `tests/test_render.py`, which unit-tests `render.py`.
+Both are run manually or in CI.
+A `prek` commit hook is deliberately NOT added for spec rendering: it would download the ~30 MB `vl-convert` wheel and need network access on every relevant commit, making commits slow and offline-hostile.
+The existing `check-skill-frontmatter` prek hook already covers `SKILL.md` frontmatter.
