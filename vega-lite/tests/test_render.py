@@ -125,6 +125,11 @@ def test_main_rejects_bad_output_extension_before_any_stage(tmp_path):
     assert not out.exists()
 
 
+def test_main_reports_missing_spec_file_cleanly():
+    usage_error = 2
+    assert render.main(["/no/such/spec.json", "out.png"]) == usage_error
+
+
 def test_load_schema_returns_none_on_corrupt_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(render, "_CACHE_DIR", tmp_path)
     (tmp_path / "vega-lite-v6.json").write_text("{ not valid json")

@@ -185,7 +185,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     print(preflight(), file=sys.stderr)
-    spec_text = sys.stdin.read() if args.spec == "-" else Path(args.spec).read_text()
+    try:
+        spec_text = sys.stdin.read() if args.spec == "-" else Path(args.spec).read_text()
+    except OSError as exc:
+        print(f"error: cannot read spec: {args.spec} ({exc})", file=sys.stderr)
+        return 2
     results = run_all(spec_text, args.out, default_deps(), vl_version=args.vl_version)
     for r in results:
         suffix = f" — {r.detail}" if r.detail else ""

@@ -9,7 +9,7 @@ Author correct, idiomatic, static Vega-Lite v6 JSON specifications, and validate
 
 ## Scope
 
-This skill covers static Vega-Lite v1: single or composed (layer/facet) views, encodings, scales/axes/legends, and in-spec transforms.
+This is v1 of the skill, and it covers static Vega-Lite only: single or composed (layer/facet) views, encodings, scales/axes/legends, and in-spec transforms.
 It defers interactivity (params, selections, signals), `repeat`/`concat` composition, advanced transforms (e.g. `regression`, `loess`, `window` folds beyond simple cases), and geospatial specs (`projection`, `geoshape`) to a future v2.
 If a task needs any of those, say so explicitly and proceed only with the static subset that remains in scope.
 
@@ -43,7 +43,7 @@ Work through these steps in order for any new or edited spec.
 - Give every primary encoding channel (`x`, `y`, `color`, `size`, `shape`, `text`, etc.) an explicit semantic `type`; never rely on inference, and never substitute `x2`/`y2`/error-range encodings for a primary channel's own type.
 - Never conflate type with parsing: a field's `type` says how to treat it, `data.format.parse` says how to read it — a temporal field backed by a raw string still needs `parse` or it will be typed wrong.
 - Default to in-spec transforms (`filter`, `calculate`, `bin`, `timeUnit`, `aggregate`) for chart-local derivations; only pre-process data outside the spec for a named exception (e.g. joins, heavy reshaping, or data too large to inline).
-- Pin `$schema` to the exact Vega-Lite version in use; never omit it or leave it generic.
+- Pin `$schema` to the major Vega-Lite version (e.g. `https://vega.github.io/schema/vega-lite/v6.json`); never omit it or leave it generic.
 - Choose accessible color deliberately: pick a colorblind-safe scheme, and when you add a redundant encoding (shape, position, text) alongside color, do it intentionally to carry meaning, not as an accidental side effect; always set `title` and `description`.
 - Put essential facts directly in visible labels (axis titles, legend titles, text marks), not only in tooltips, since tooltips are not always available or discoverable.
 

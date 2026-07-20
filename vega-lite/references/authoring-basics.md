@@ -92,7 +92,7 @@ Every one of these channels needs the explicit `type` from the table above — s
 
 ## Encoding-level transforms
 
-`bin`, `timeUnit`, and `aggregate` are transforms attached directly to an encoding channel, so they travel with the field they modify instead of living in a separate `transform` array (that's where view-level `filter`/`calculate`/`window` live — see `references/transforms.md`).
+`bin`, `timeUnit`, and `aggregate` are transforms attached directly to an encoding channel, so they travel with the field they modify instead of living in a separate `transform` array (that's where view-level `filter`/`calculate` — and deferred transforms like `window` — live; see `references/transforms.md`).
 
 - **`bin`** — groups a quantitative field into discrete intervals (`"bin": true` or `"bin": {"maxbins": 10}`), typically paired with a `count` aggregate on the other axis to build a histogram.
 - **`timeUnit`** — groups a temporal field to a coarser granularity (`"timeUnit": "month"`, `"year"`, `"day"`, etc.) without a separate derived column; requires the field to already be a real temporal value (parsed per the Data sources section above), not a raw string.
