@@ -728,3 +728,29 @@ def test_main_c3_note_on_stderr_when_flag_absent(monkeypatch, capsys, tmp_path):
     sl.main()
     err = capsys.readouterr().err
     assert "c3-unknown-source" in err
+
+
+# --------------------------------------------------------------------------- #
+# C3 — the documented template form is what C3b/C3a expect (Task 5)
+# --------------------------------------------------------------------------- #
+TEMPLATE = (Path(sl.__file__).parent.parent / "references" / "ledger-template.md").read_text()
+
+
+def test_template_documents_the_unknown_atom():
+    # the template must show the machine-checkable `<source>: UNKNOWN — <reason>` form
+    assert sl.C3B_DECL.search(TEMPLATE) is not None
+    # and at least one documented declaration parses to canonical UNKNOWN
+    md = (
+        "## Data Validity\n\n"
+        "- Source completeness semantics: S1: UNKNOWN — no completeness contract checked\n"
+    )
+    assert sl.check_c3b(md, "S1") == []
+
+
+def test_worked_example_conclusion_is_a_c3a_negative():
+    # the template's worked-example Conclusion is a LICENSED directional scenario
+    # (S3 gap established by the independent LB counter): C3a must not fire on it.
+    body = sl.section_body(TEMPLATE, "Conclusion")
+    assert body is not None
+    # wrap it as a standalone Conclusion and confirm zero C3a violations
+    assert sl.check_c3a("## Conclusion\n" + body + "\n") == []
