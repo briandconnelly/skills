@@ -1,6 +1,6 @@
 ---
 name: hypothesis-driven-analysis
-description: 'Use when investigating an unresolved explanatory, diagnostic, or comparative question that data or evidence can answer and more than one explanation is plausible — "why did this metric change", incident or log forensics, performance investigations, observational dataset questions, or "how much / which is better" estimation questions — or when a stated claim about the data needs adjudication ("someone says p95 exceeded 500ms yesterday"). Structures the investigation with PPDAC (Problem, Plan, Data, Analysis, Conclusion): competing hypotheses with preregistered discriminating predictions, cheapest-adequate-test ordering, an authorization gate that headless operation never bypasses, optional read-only subagent fan-out returning structured per-test outcomes, and a precommitted stop rule. Do not use for summarization, or for direct retrieval and bounded descriptive queries where nothing is asserted (answer those directly), or for reproducible software failures when a dedicated debugging skill is available.'
+description: 'Use when investigating an unresolved explanatory, diagnostic, or comparative question that data or evidence can answer and more than one explanation is plausible — "why did this metric change / what''s driving it / break it down", incident or log forensics, performance investigations, or "how much / which is better" estimation questions — or when a stated claim about the data needs adjudication ("someone says p95 exceeded 500ms yesterday"). Use it even when an analytics or data-access skill is also loaded and claims the ask: get the data through that skill, do the reasoning here — a diagnostic why composes the two, not a lookup. Runs PPDAC: competing hypotheses tested on preregistered discriminating predictions, a precommitted stop rule, and an authorization gate that binds even headless. Do not use for summarization, or for direct retrieval and bounded descriptive queries where nothing is asserted (answer those directly), or for reproducible software failures when a dedicated debugging skill is available.'
 ---
 
 # Hypothesis-Driven Analysis
@@ -28,6 +28,13 @@ If nothing matches, this is probably not an investigation: answer it directly an
 Summarization, retrieval, and one-off artifacts are Non-Goals, not routes — they have no record to fill, and `mini` is not a home for them.
 Leave that only when orientation surfaces something to adjudicate — a claim, a second live explanation, a causal question nothing identifies — and then re-enter the table above rather than guessing from here; record why you promoted.
 Do not fall through to `full` by default: the loop costs more than it saves on small questions, and a question you struggled to classify is not evidence that it needs 2–5 hypotheses.
+
+### A co-loaded data or analytics skill is a tool, not a route
+
+A skill that tells you where the data lives, how to query it, or how to shape the result answers *where* and *how* — never *which of several explanations is true*.
+It is a tool for collection, whichever route you take, not an entry in this table, so it does not replace routing.
+When one is loaded alongside this skill, compose: use it to reach and shape the data, and still run the route the question's inferential shape selects.
+Deferring to it wholesale is how a multi-explanation question gets answered as a bare lookup — the failure this skill exists to prevent.
 
 ### A causal question routes on its design, not its wording
 
@@ -129,6 +136,18 @@ Cross that line and every hypothesis written afterwards is `retrospective`, and 
 Orientation findings belong in the plan; they are not amendments.
 
 Enumerate 2–5 candidate explanations; they may coexist rather than compete.
+Candidate explanations the user named, or the one obvious cause, are the seed of this list, not its census: a question that arrives pre-decomposed ("was it customers, products, or config?") has handed you a few hypotheses and hidden the rest, and a lone obvious cause hands you one and hides them the same way.
+Before preregistering, deliberately widen the field with the rivals a narrow framing routinely omits:
+
+- definitional or framing effects that move a number without any underlying change (calendar length, a timezone boundary, a shifted denominator or population);
+- movement in the other factor of a moved total — the rate rather than the count it multiplies, or the reverse;
+- the other side of an assumed one-sided mechanism (availability when demand is presumed);
+- a shift in composition rather than in any component's own value;
+- the same activity displaced to outside the slice you measured.
+
+These are candidates to weigh, not entries to add: the 2–5 cap still binds, so promote only the rivals you can give a discriminating prediction and that most need telling apart.
+Attaching a cause to a residual you have not tested is not a finding: "the rest is demand" assigns a leftover to a cause no test separated from those rivals — the confirmation the loop exists to prevent.
+A residual reported as unattributed is a valid conclusion; only naming its cause without a discriminating test is not.
 For each, preregister a discriminating prediction — what would be observed if it is true AND what would be observed if it is false — and identify its cheapest adequate discriminating test.
 State each explanation as an account of the named effect — "the deploy caused the 09:10 step", not "the deploy regressed the cache layer" — because refutation acts only at the scope the claim names: an earlier step refutes the deploy as that step's cause while saying nothing about other deploy defects, and a claim broader than its necessary prediction cannot be refuted by it.
 Label each hypothesis with its claim class — exactly one of `causal`, `descriptive` (a `descriptive` row also names its estimand), or `data-artifact` — in the ledger's `claim` column: those three are the only classes the machine check reads, so a drifted value like `statistical` or `associative` fails it.
@@ -231,6 +250,7 @@ Such evidence need not come from a different system: a slice of the same source 
 Re-running a fresh statistic over the same records you were already staring at is a new query, not new evidence: it changes the order of operations, not what those records can tell you.
 If no evidence that did not inform it exists, the hypothesis stays exploratory and is reported as an open possibility, never as the answer.
 If two explanations both clear the bar, report both rather than picking one.
+A residual attributed to a cause that never entered the table is "best supported" language with no row behind it: report an untested residual as unattributed — see Plan — rather than naming its cause.
 Apply the precommitted stop rule:
 
 - **Conclude** when the success criterion is met and no named unresolved alternative could reverse the answer.
