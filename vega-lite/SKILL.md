@@ -15,7 +15,8 @@ If a task needs any of those, say so explicitly and proceed only with the static
 
 ## Spine
 
-Work through these steps in order for any new or edited spec.
+These steps are the recommended order for authoring or editing a spec, not a rigid sequence — expect to loop back as the rendered image reveals problems (step 7).
+The one hard requirement here is step 6: no spec is done until it has been rendered and inspected, and that requirement is enforced separately under Enforced rules below.
 
 1. **Understand the data.**
    Determine the shape of the data, the semantic type of each field used in an encoding, and whether raw values need `data.format.parse` before they can be typed correctly.
@@ -40,11 +41,16 @@ Work through these steps in order for any new or edited spec.
 
 ## Enforced rules
 
+These are the always-applicable rules that hold for every spec.
+Each reference file also states rules local to its own area — log scales with `bar`/`area` marks (`references/scales-axes-legends.md`), relative `data.url` paths silently fetching the wrong data (`references/validation-and-debugging.md`), tooltip fields acting as implicit grouping keys (`references/aesthetics.md`), and others — and those bind just as firmly when you are working in that area, even though they are not repeated here.
+
 - Give every primary encoding channel (`x`, `y`, `color`, `size`, `shape`, `text`, etc.) an explicit semantic `type`; never rely on inference, and never substitute `x2`/`y2`/error-range encodings for a primary channel's own type.
 - Never conflate type with parsing: a field's `type` says how to treat it, `data.format.parse` says how to read it — a temporal field backed by a raw string still needs `parse` or it will be typed wrong.
 - Default to in-spec transforms (`filter`, `calculate`, `bin`, `timeUnit`, `aggregate`) for chart-local derivations; only pre-process data outside the spec for a named exception (e.g. joins, heavy reshaping, or data too large to inline).
 - Pin `$schema` to the major Vega-Lite version (e.g. `https://vega.github.io/schema/vega-lite/v6.json`); never omit it or leave it generic.
-- Choose accessible color deliberately: pick a colorblind-safe scheme, and when you add a redundant encoding (shape, position, text) alongside color, do it intentionally to carry meaning, not as an accidental side effect; always set `title` and `description`.
+- Pick a colorblind-safe color scheme; do not rely on the default categorical palette for accessibility.
+- Always set a top-level `description` on every spec that ships; set a chart-level `title` when the auto-generated default reads awkwardly or ambiguously (see `references/aesthetics.md`).
+- Add a redundant encoding (shape, position, text) alongside color only to carry meaning intentionally, never as an accidental side effect; see `references/aesthetics.md` for intentional vs. accidental redundancy.
 - Put essential facts directly in visible labels (axis titles, legend titles, text marks), not only in tooltips, since tooltips are not always available or discoverable.
 
 ### Validate
