@@ -629,3 +629,21 @@ def test_c3a_reports_suppressed_count():
     violations, suppressed = sl.c3a_report(concl(body))
     assert violations == []
     assert suppressed >= 1
+
+
+def test_c3a_anaphora_does_not_leak_across_unrelated_unit():
+    # adjacent-only inheritance: an anchor two units back must NOT be inherited
+    body = (
+        "- The 11 sev1 incidents are still open at extract.\n"
+        "- Assist handled 40% of incidents this quarter.\n"
+        "- This overstates how good assist looks."
+    )
+    assert sl.check_c3a(concl(body)) == []
+
+
+def test_c3a_no_recorded_closure_is_an_anchor():
+    # the exact phrase the tool's remediation message recommends must be an anchor
+    unit = (
+        "These incidents have no recorded closure, so the median understates assist's true speed."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))

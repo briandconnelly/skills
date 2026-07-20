@@ -162,7 +162,7 @@ _C3A_ANCHOR = [
     for p in (
         r"\bmissing\s+(?:\w+\s+)?(?:rows?|records?|cases?|incidents?|closures?|outcomes?|exposure)\b",
         r"\babsent\s+(?:rows?|records?)\b",
-        r"\bno\s+(?:recorded\s+)?(?:close|closure|resolution)\s+record\b",
+        r"\bno\s+(?:recorded\s+(?:close|closure|resolution)|(?:close|closure|resolution)\s+record)\b",
         r"\bright[-\s]?censor\w*\b",
         r"\bclosed[-\s]?only\b",
         r"\bstill[-\s]+(?:open|unresolved)\b",
@@ -408,23 +408,20 @@ def c3a_report(final: str) -> tuple[list[str], int]:
         return fails, 0
     violations: list[str] = []
     suppressed = 0
-    anchor_in_scope = False
+    prev_had_anchor = False
     for unit in units:
         has_anchor = _c3a_has_anchor(unit)
-        if has_anchor:
-            anchor_in_scope = True
-        if not _c3a_has_direction(unit):
-            continue
-        if _c3a_suppressed(unit):
-            suppressed += 1
-            continue
-        if has_anchor or (_C3A_ANAPHOR.search(unit) and anchor_in_scope):
-            violations.append(
-                f"C3a: the Conclusion asserts a missingness-direction claim without "
-                f"licensing evidence: {unit!r}. Under --c3-unknown-source scope the "
-                f"direction is unknown by construction; state 'no recorded closure, "
-                f"direction unknown' instead."
-            )
+        if _c3a_has_direction(unit):
+            if _c3a_suppressed(unit):
+                suppressed += 1
+            elif has_anchor or (_C3A_ANAPHOR.search(unit) and prev_had_anchor):
+                violations.append(
+                    f"C3a: the Conclusion asserts a missingness-direction claim without "
+                    f"licensing evidence: {unit!r}. Under --c3-unknown-source scope the "
+                    f"direction is unknown by construction; state 'no recorded closure, "
+                    f"direction unknown' instead."
+                )
+        prev_had_anchor = has_anchor
     return violations, suppressed
 
 
