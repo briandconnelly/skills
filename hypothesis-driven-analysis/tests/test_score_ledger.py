@@ -647,3 +647,84 @@ def test_c3a_no_recorded_closure_is_an_anchor():
         "These incidents have no recorded closure, so the median understates assist's true speed."
     )
     assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+# --------------------------------------------------------------------------- #
+# C3 — integration into score()/main() and reporting (Task 4)
+# --------------------------------------------------------------------------- #
+COMPLIANT_C3 = (
+    "## Data Validity\n\n"
+    "- Source completeness semantics: S2: UNKNOWN — no independent denominator "
+    "discriminates the live readings\n\n"
+    "## Conclusion\n\n"
+    "- Answer: no recorded closure for 11 incidents; the missingness direction is "
+    "unknown, so no responder-hours figure is credibly attributable.\n\n"
+    "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+    "| H1 | causal | UNRESOLVED | unidentified pre/post contrast |\n"
+)
+VIOLATING_C3 = (
+    "## Data Validity\n\n"
+    '- Source completeness semantics: for S2, an absent row is read as "still open" '
+    "— right-censored\n\n"
+    "## Conclusion\n\n"
+    "- Limitations: the true gap is likely understated because the hardest "
+    "incidents are censored out of the sample.\n\n"
+    "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+    "| H1 | causal | UNRESOLVED | unidentified pre/post contrast |\n"
+)
+
+
+def test_c3_not_run_without_flag():
+    out = sl.score(VIOLATING_C3, None, c3_source=None)
+    assert out.fails == []
+    assert has("C3 NOT CHECKED", out.checked)
+
+
+def test_c3_compliant_ledger_passes_both_subchecks():
+    out = sl.score(COMPLIANT_C3, None, c3_source="S2")
+    assert out.fails == []
+    assert has("C3a checked and passed", out.checked)
+    assert has("C3b checked and passed", out.checked)
+
+
+def test_c3_violating_ledger_fails_both_subchecks():
+    out = sl.score(VIOLATING_C3, None, c3_source="S2")
+    assert has("C3a:", out.fails)  # ledger direction claim
+    assert has("C3b:", out.fails)  # non-canonical S2 entry
+
+
+def test_c3_note_prints_on_stderr_even_when_another_check_fails(monkeypatch, capsys, tmp_path):
+    # A C1 violation must not suppress the C3-not-checked stderr note (it prints
+    # before scoring, so a later FAIL cannot mask that C3 never ran).
+    p = tmp_path / "final.md"
+    p.write_text(
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | REFUTED | naive contrast |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys, "argv", ["score_ledger.py", "--final", str(p)])
+    assert sl.main() == 1  # C1 violation -> exit 1
+    captured = capsys.readouterr()
+    assert "C1: H1" in captured.out  # the failing check reported...
+    assert "c3-unknown-source" in captured.err  # ...and the C3-not-checked note still printed
+
+
+def test_main_c3_flag_exit_1_on_violation(monkeypatch, capsys, tmp_path):
+    p = tmp_path / "final.md"
+    p.write_text(VIOLATING_C3, encoding="utf-8")
+    monkeypatch.setattr(
+        sys, "argv", ["score_ledger.py", "--final", str(p), "--c3-unknown-source", "S2"]
+    )
+    assert sl.main() == 1
+    out = capsys.readouterr().out
+    assert "C3a:" in out
+    assert "C3b:" in out
+
+
+def test_main_c3_note_on_stderr_when_flag_absent(monkeypatch, capsys, tmp_path):
+    p = tmp_path / "final.md"
+    p.write_text(COMPLIANT_C3, encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["score_ledger.py", "--final", str(p)])
+    sl.main()
+    err = capsys.readouterr().err
+    assert "c3-unknown-source" in err

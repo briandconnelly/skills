@@ -20,6 +20,23 @@ SCOPE — read before pointing this at a new scenario:
   conclude anything — the top regression risk this revision is trying to avoid.
   A should-refute scenario needs its own check, not this one.
 
+  C3's precondition is stronger than C1's, and it is opt-in for that reason.
+  C1 only needs that ground truth contain no legitimate causal refutation; C3
+  needs that the named source's absent records have no independent
+  completeness contract at all -- no other source, review, or process
+  establishes what an absent row means, so UNKNOWN is the only reading the
+  evidence licenses. Nothing in the ledger can establish that for the scorer;
+  --c3-unknown-source is the caller's attestation that it holds for this
+  fixture. A scenario where some sources carry an independent completeness
+  contract and the named one does not -- a mixed fixture -- is out of scope
+  for this flag; pointing it at one would fail closed on a precondition the
+  scorer never verified.
+
+  C3 reads the ledger only -- its Data Validity and Conclusion sections, never
+  a companion memo. A missingness-direction claim moved out of the ledger and
+  into memo prose is invisible to C3, but rubric assertion 6 still scores the
+  memo, so a memo-displaced claim stays covered somewhere, just not here.
+
 SYNTACTIC CHECKS ONLY
 
   This scorer verifies syntactic presence, not semantic quality. For example,
@@ -27,7 +44,7 @@ SYNTACTIC CHECKS ONLY
   by design; judging whether a named estimand is meaningful is the rubric
   grader's job, not this script's.
 
-Checks exactly two things, both syntactic:
+Checks three things, all syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
@@ -44,6 +61,11 @@ Checks exactly two things, both syntactic:
       `causal` row re-dressed as `data-artifact`, which cannot be C1-REFUTED
       under scope) to house a REFUTED. Runs on `descriptive`/`data-artifact`
       conclusion rows; a `causal` conclusion row is C1's, not C2's.
+  C3  Opt-in via --c3-unknown-source S<n>: the Conclusion carries no
+      unconditional missingness-direction claim (C3a), and S<n>'s completeness
+      bullet declares canonical `UNKNOWN` (C3b). Not run unless the flag is
+      given -- see SCOPE for why its precondition cannot be checked from the
+      ledger alone.
 
 WHY IT IS BUILT THE WAY IT IS
 
@@ -748,7 +770,9 @@ def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
     return {normalize_key(r["id"]): r for r in rows}, []
 
 
-def _describe(summary: list[dict[str, str]], plan_supplied: bool) -> list[str]:
+def _describe(
+    summary: list[dict[str, str]], plan_supplied: bool, final: str, c3_source: str | None
+) -> list[str]:
     """Say what was actually checked. Called only when nothing failed."""
     refuted = [r for r in summary if status_of(r["status"]) == "REFUTED"]
     laundering_candidates = [
@@ -772,11 +796,27 @@ def _describe(summary: list[dict[str, str]], plan_supplied: bool) -> list[str]:
             f"data-artifact row(s) ({ids}) each traced to a Plan-time id, the descriptive "
             f"ones naming a non-empty estimand there"
         )
+    if c3_source is None:
+        lines.append(
+            "C3 NOT CHECKED: no --c3-unknown-source supplied; completeness-direction "
+            "consistency was not verified"
+        )
+    else:
+        _, suppressed = c3a_report(final)
+        tail = f" ({suppressed} unit(s) suppressed as conditional/declined)" if suppressed else ""
+        lines.append(
+            f"C3a checked and passed: no unconditional missingness-direction claim in the "
+            f"Conclusion{tail}"
+        )
+        lines.append(
+            f"C3b checked and passed: {c3_source} declares canonical `UNKNOWN` completeness"
+        )
     return lines
 
 
-def score(final: str, plan: str | None) -> Outcome:
-    """Score a final ledger, optionally against its Plan-time ledger."""
+def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome:
+    """Score a final ledger, optionally against its Plan-time ledger and, when
+    c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
     fails += check_ids(summary, FINAL)
     # Everything read_table and check_ids catch is audit-wide: a malformed table
@@ -800,20 +840,37 @@ def score(final: str, plan: str | None) -> Outcome:
 
     for row in summary:
         fails += _check_row(row, planned)
+
+    if c3_source is not None:
+        fails += check_c3a(final)
+        fails += check_c3b(final, c3_source)
+
     if fails:
         return Outcome(fails, [])
-    return Outcome([], _describe(summary, plan is not None))
+    return Outcome([], _describe(summary, plan is not None, final, c3_source))
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--final", required=True, type=Path)
     ap.add_argument("--plan", type=Path, default=None)
+    ap.add_argument(
+        "--c3-unknown-source",
+        dest="c3_source",
+        default=None,
+        help="Source id (e.g. S2) whose absent records have no independent completeness "
+        "contract; enables C3. Valid only in an s15-class fixture (see SCOPE).",
+    )
     a = ap.parse_args()
     plan = a.plan.read_text() if a.plan is not None else None
     if plan is None:
         print("note: --plan omitted; C2 (status laundering) not checked", file=sys.stderr)
-    outcome = score(a.final.read_text(), plan)
+    if a.c3_source is None:
+        print(
+            "note: --c3-unknown-source omitted; C3 (completeness-direction) not checked",
+            file=sys.stderr,
+        )
+    outcome = score(a.final.read_text(), plan, a.c3_source)
     if outcome.fails:
         print("FAIL:")
         for f in outcome.fails:
