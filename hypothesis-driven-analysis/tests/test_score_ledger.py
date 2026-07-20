@@ -12,9 +12,9 @@ leniency boundary (`startswith`/first-token/parenthesised-estimand) so it cannot
 drift silently.
 
 score_ledger is import-safe (compare_prereg.py already imports from it). We load
-it by path with importlib — matching vega-lite/tests/test_check_specs.py — so no
-sys.path mutation is needed at all. score_ledger imports only the standard
-library, so executing it here has no side effects.
+it by path with importlib (as vega-lite/tests also does) so no sys.path mutation
+is needed at all. score_ledger imports only the standard library, so executing it
+here has no side effects.
 """
 
 from __future__ import annotations
@@ -105,7 +105,9 @@ def test_c1_rowlocal_under_status_drift_fixture():
     # redirect, and the allowed status set.
     f = fails(read_fixture("c1-rowlocal", "final-status-drift.md"))
     assert has("C1: H1", f)
-    assert in_one(['"best supported" is conclusion language', "basis", "REFUTED", "UNRESOLVED"], f)
+    assert in_one(
+        ["H2", '"best supported" is conclusion language', "basis", "REFUTED", "UNRESOLVED"], f
+    )
 
 
 def test_claim_drift_in_unresolved_row_never_exempts_a_sibling_c1():
@@ -153,7 +155,7 @@ def test_c2_invented_id_is_laundering():
 def test_c2_descriptive_refuted_without_plan_estimand_fails():
     final = summary("| H1 | descriptive (estimand: rate) | REFUTED | ok |")
     plan = plan_table("| H1 | descriptive | x |")  # no estimand at plan time
-    assert has("named no estimand at Plan time", fails(final, plan))
+    assert in_one(["C2: H1", "named no estimand at Plan time"], fails(final, plan))
 
 
 def test_c2_data_artifact_needs_no_estimand():
@@ -222,9 +224,12 @@ def test_unparseable_plan_fails_and_never_reports_c2():
         "| H1 | causal | REFUTED | contrast |\n| H2 | descriptive (estimand: rate) | REFUTED | x |"
     )
     out = sl.score(final, "# prose only, no Plan table\n")
-    assert has("no table found", out.fails)  # Plan failure propagated...
+    assert in_one(["plan ledger", "no table found"], out.fails)  # Plan failure propagated...
     assert has("C1: H1", out.fails)  # ...C1 still audited on the final
-    assert not has("C2 checked and passed", out.checked)
+    # ...and NO C2 verdict is rendered against a plan that could not be parsed.
+    # (Without this, a scorer that returned rows-plus-fails instead of None would
+    # emit a bogus "C2: ... does not appear in the Plan-time ledger" and pass.)
+    assert not has("C2:", out.fails)
     assert out.checked == []  # nothing earned while a failure stands
 
 
@@ -235,6 +240,7 @@ def test_plan_with_unrecognized_claim_fails_closed():
     plan = plan_table("| H1 | associative | x |")
     out = sl.score(final, plan)
     assert in_one(["plan ledger", "H1", "unrecognized claim cell"], out.fails)
+    assert not has("C2:", out.fails)  # no C2 verdict against an unparseable plan
     assert out.checked == []
 
 
@@ -283,7 +289,29 @@ def test_normalized_id_collision_bails_as_repeated_id():
 
 
 def test_empty_id_bails():
-    assert has("empty id cell", fails(summary("|  | causal | REFUTED | x |")))
+    f = fails(summary("|  | causal | REFUTED | x |"))
+    assert has("empty id cell", f)
+    assert not has("C1:", f)  # bailed before C1 ran
+
+
+def test_header_without_data_rows_bails():
+    # A table with the required header but zero data rows is fail-closed, not an
+    # empty pass: without this guard the scorer would score an empty ledger exit 0
+    # ("C1 checked and passed: 0 rows") — a green that could never have failed.
+    out = sl.score(summary(""), None)  # header + separator, no data rows
+    assert has("header but no data rows", out.fails)
+    assert out.checked == []
+
+
+def test_plan_side_duplicate_id_fails_closed():
+    # check_ids runs on the Plan too (via _read_plan): a duplicated Plan id makes
+    # its id-keyed C2 lookup ambiguous, so the Plan must fail closed rather than
+    # silently pick a row.
+    final = summary("| H1 | descriptive (estimand: rate) | REFUTED | ok |")
+    plan = plan_table("| H1 | descriptive (estimand: rate) | a |\n| H1 | causal | b |")
+    out = sl.score(final, plan)
+    assert in_one(["plan ledger", "appears on data rows"], out.fails)
+    assert out.checked == []
 
 
 def test_repeated_header_bails_audit_wide():
@@ -307,23 +335,15 @@ def test_cell_count_mismatch_bails():
     # stable contract — the parse failure is surfaced and nothing is earned —
     # and deliberately leave C1 visibility on the sibling UNSPECIFIED so #81's
     # improvement does not redden this characterization test.
-    f = fails(
+    out = sl.score(
         summary(
             "| H1 | causal | REFUTED | violation |\n"
             "| H2 | descriptive | UNRESOLVED | a | b stray pipe |"
-        )
+        ),
+        None,
     )
-    assert has("cell(s) but the header", f)
-    assert (
-        sl.score(
-            summary(
-                "| H1 | causal | REFUTED | violation |\n"
-                "| H2 | descriptive | UNRESOLVED | a | b stray pipe |"
-            ),
-            None,
-        ).checked
-        == []
-    )
+    assert has("cell(s) but the header", out.fails)
+    assert out.checked == []  # nothing earned behind the parse failure
 
 
 # --------------------------------------------------------------------------- #
@@ -365,6 +385,10 @@ def test_estimand_of_requires_the_parenthesised_syntax():
     assert sl.estimand_of("descriptive") is None
     assert sl.estimand_of("descriptive (estimand: )") is None  # empty content
     assert sl.estimand_of("descriptive - no estimand named") is None  # word, not the syntax
+    # Content that is only Unicode Cf format chars (here a zero-width space, written
+    # as an explicit escape so it is visible in source) is stripped to empty and
+    # reads as no estimand — pins the deliberate Cf handling.
+    assert sl.estimand_of("descriptive (estimand: \u200b)") is None
 
 
 def test_escaped_pipe_is_a_literal_not_a_column_break():
