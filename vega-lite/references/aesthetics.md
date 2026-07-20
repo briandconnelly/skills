@@ -31,7 +31,9 @@ When redundant color genuinely adds nothing, either drop the encoding or set `"l
 
 ## Typography & titles
 
-Keep axis, legend, and chart `title` values concise — a short noun phrase (`"Revenue"`, `"Region"`) rather than a full sentence; Vega-Lite auto-generates a `title` from the field name and any aggregate/bin/timeUnit annotation when none is set, so an explicit `title` is worth setting whenever that default reads awkwardly or ambiguously (e.g. relabeling `"sum_revenue"` to `"Revenue"`).
+Keep title values concise — a short noun phrase (`"Revenue"`, `"Region"`) rather than a full sentence.
+Vega-Lite auto-generates **axis, legend, and header** titles from the field name and any aggregate/bin/timeUnit annotation, so override one with an explicit string whenever that default reads awkwardly or ambiguously (e.g. relabeling `"sum_revenue"` to `"Revenue"`).
+The top-level view `title` is never auto-generated — a chart has a headline only if you set one — so add it when the chart needs framing on its own.
 Set a top-level `description` on every spec that ships to an end audience: it doesn't render visually, and write it as a complete sentence describing the chart's content, not a restatement of the title.
 It's good documentation, and in a live `vega-embed` mount it becomes the container's ARIA label — but it does not appear in a static PNG/SVG export (this skill's primary output), so it doesn't reach a screen-reader user of a static chart on its own.
 For screen-reader text that survives static export, add a mark-level `description` to `encoding` (e.g. `"encoding": {"description": {"field": "status", "type": "nominal"}}`): Vega-Lite bakes its value into a per-mark `aria-label` attribute in the rendered SVG, alongside the automatic per-mark `aria-roledescription`.

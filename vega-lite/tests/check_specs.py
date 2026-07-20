@@ -46,6 +46,11 @@ def extract_specs(path: Path) -> list[tuple[str, str]]:
             try:
                 obj = json.loads(block)
             except json.JSONDecodeError:
+                # A ```json fence is asserted to be a real spec by convention
+                # (illustrative or intentionally-broken snippets use ```jsonc, which
+                # this regex never matches). A malformed one must surface as a failure,
+                # not be silently skipped — hand it to run_all so its parse stage fails.
+                out.append((f"{path.name}#json[{i}] (malformed JSON)", block))
                 continue
             if _looks_like_spec(obj):
                 out.append((f"{path.name}#json[{i}]", block))

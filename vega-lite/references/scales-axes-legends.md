@@ -6,19 +6,22 @@ Which color scheme to choose for accessibility is `references/aesthetics.md`'s t
 
 ## Scales
 
-Every encoded field gets a scale that maps its data domain onto a visual range — position, size, or color.
+Every *scale-bearing* channel gets a scale that maps its data domain onto a visual range: the position channels (`x`/`y`) and the mark-property channels (`color`, `size`, `shape`, `opacity`).
+Grouping- and text-only channels — `text`, `tooltip`, `detail`, `order`, `href`, `description` — carry data with no scale, so scale properties do not apply to them.
 Vega-Lite infers a default scale type from the field's semantic type and the mark, but the type can always be set explicitly with `"scale": {"type": "..."}`:
 
 | Scale type | When it's the default | Use it for |
 | --- | --- | --- |
 | `linear` | Quantitative fields | Evenly-spaced continuous magnitude; the default for almost every quantitative axis |
 | `log` | Never (opt-in) | Data spanning multiple orders of magnitude, where equal ratios (not equal differences) should look equally spaced |
-| `sqrt` | Never (opt-in) | A `size` encoding where the mark's *area* (not its radius) should scale linearly with the value |
+| `sqrt` | Never (opt-in) | Deliberately compressing a `size` encoding — rarely wanted, since a `size` value is already the mark's pixel *area*, so the default `linear` scale already makes area proportional to the value; `sqrt` makes area track √value instead (use it only for an intentional non-linear/radius-oriented mapping) |
 | `point` | Nominal/ordinal fields on `x`/`y`, when the mark has no width (`point`, `line`, `text`) | Evenly-spaced categories with no reserved band width |
 | `band` | Nominal/ordinal fields on `x`/`y`, when the mark has width (`bar`, `rect`) | Categories reserved as discrete bands so bars/rects have room to draw |
 | `time` / `utc` | Temporal fields (`time` is the default; `utc` is opt-in) | Date/time position; use `utc` instead of the default `time` when the data is UTC-serialized and renders must be timezone-independent, since `time` interprets ticks in the local/browser timezone |
 
-These defaults were confirmed directly by compiling minimal specs: a nominal `x` on a `point` mark compiles to an `x` scale of type `point`, the same field on a `bar` mark compiles to `band`, a temporal `x` compiles to `time`, and a quantitative `size` encoding compiles to `linear` — not `sqrt` — so area-proportional sizing always needs an explicit `"scale": {"type": "sqrt"}`, never assume it's automatic.
+These defaults were confirmed directly by compiling minimal specs: a nominal `x` on a `point` mark compiles to an `x` scale of type `point`, the same field on a `bar` mark compiles to `band`, a temporal `x` compiles to `time`, and a quantitative `size` encoding compiles to `linear`.
+Because Vega-Lite's `size` channel is the mark's pixel *area*, that linear default already makes area proportional to the value — confirmed by rendering `size` values `100` and `400`, which draw at symbol radii `5` and `10` (a 4:1 area ratio, exactly the value ratio).
+Do **not** reach for `sqrt` to "fix" area-proportionality: it does the opposite, compressing area to track √value; use `sqrt` only when you deliberately want a non-linear (radius-oriented) size mapping.
 
 ### `domain`
 
@@ -158,10 +161,12 @@ Second, the y-axis range changes from the default's auto-computed `[0, 80]` (zer
   Confirmed by rendering a `bar` mark with a `log` y-scale against the same all-positive data (`[5, 15, 21]`, no zero anywhere): every bar path came out zero-height (`d="M1,0h18v0h-18Z"`) and the y-axis rendered with no tick marks and no tick labels at all — the identical clean-render-but-broken-chart failure, with data that has no zero or negative values to filter.
   A clean render is not proof the chart is correct (see `references/validation-and-debugging.md`), and this is the sharpest case of that rule.
   The fix differs by mark type: for `point`/`line`/`text`, filter or shift the non-positive values out and keep `log`; for `bar`/`area`, filtering the data does nothing — switch the scale to `linear` or `sqrt`, or switch the mark to `point`/`line`.
-- **Truncating a bar/area length-axis domain doesn't cleanly "zoom in" — it overflows the frame, or actively misleads if clipped.** Bars and areas encode magnitude as length from a baseline, and that baseline is always literal `0` regardless of the scale's `domain` — bar/area marks have an implicit stack/offset of `"zero"` that ignores `domain`.
+- **Truncating a single-value bar/area length-axis domain doesn't cleanly "zoom in" — it overflows the frame, or actively misleads if clipped.** A *single-value* bar or area (only `y`, or only `x`) encodes magnitude as length from a baseline, and that baseline is always literal `0` regardless of the scale's `domain` — such marks have an implicit stack/offset of `"zero"` that ignores `domain`. (A *ranged* bar/area that also encodes `y2`/`x2` is the exception; see the end of this pitfall.)
   Setting an explicit `domain` that excludes zero (e.g. `[90, 100]` for values in the 90s) does not move that baseline; it just changes where `0` falls relative to the visible frame, so each bar is drawn at its full from-zero length and only the part inside `[90, 100]` is supposed to show.
   Confirmed by rendering the same three scores (92, 95, 98) with `domain: [90, 100]` and no `clip`: bar marks are not `clip: true` by default, so the chart doesn't crop to the frame — instead the whole canvas balloons to accommodate the full-length bars (observed height 3015px, versus 343px for the same chart with the default zero-baseline domain), and the bars visibly overflow far past the axis into that extra space — a glitched-looking render, not a clean-but-misleading one.
   Adding `"mark": {"type": "bar", "clip": true}` restores a normal-sized canvas by cropping the overflow, but now the three bars (whose true spread is 92–98, about 6%) span nearly the full plot height — clean to look at, and actively misleading about the magnitude of the difference.
-  Bars (and areas, for the same reason) should keep `0` in the domain for their length axis — this is the `zero` default described above, and there's no safe way to override it for these mark types.
+  A single-value bar (and area) should keep `0` in the domain for its length axis — this is the `zero` default described above, and there's no safe way to override it for that mark shape.
+  The exception is a *ranged* bar or area encoding both ends of the interval (`y`+`y2`, or `x`+`x2`): it draws between its two endpoints, not from a zero baseline, so it sits anywhere on the axis without this overflow — verified by rendering a ranged bar with a zero-excluding `domain: [88, 101]`, which draws cleanly (canvas 339px) where the equivalent single-value bar balloons (2341px).
+  To show an interval, or a magnitude band that legitimately doesn't touch zero, reach for a ranged bar/area (or a `line`/`point`) rather than truncating a single-value bar's domain.
   The honest way to reveal a small relative change on a non-zero baseline is to use a `line` or `point` mark instead, where the reader tracks relative change or position rather than reading bar length as absolute magnitude from a baseline — a temperature or stock-price line zoomed to its own range is standard practice, not misleading, as long as the axis labels make the actual range visible.
   This exact failure mode — a truncated bar-chart length-axis domain — is what `tests/scenarios.md`'s misleading-scale eval scenario exercises; see that file for the scored case.

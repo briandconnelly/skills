@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -130,7 +131,49 @@ def test_main_reports_missing_spec_file_cleanly():
     assert render.main(["/no/such/spec.json", "out.png"]) == usage_error
 
 
-def test_load_schema_returns_none_on_corrupt_cache(tmp_path, monkeypatch):
+class _FakeResp:
+    def __init__(self, data):
+        self._data = data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def read(self):
+        return self._data
+
+
+def test_load_schema_refetches_and_repairs_corrupt_cache(tmp_path, monkeypatch):
+    # A corrupt cache must not disable schema validation forever: re-fetch and repair it.
     monkeypatch.setattr(render, "_CACHE_DIR", tmp_path)
     (tmp_path / "vega-lite-v6.json").write_text("{ not valid json")
+    schema = {"title": "vega-lite"}
+    monkeypatch.setattr(
+        render.urllib.request,
+        "urlopen",
+        lambda url, timeout=0: _FakeResp(json.dumps(schema).encode()),  # noqa: ARG005
+    )
+    assert render.load_schema("6") == schema
+    assert json.loads((tmp_path / "vega-lite-v6.json").read_text()) == schema
+
+
+def test_load_schema_returns_none_when_offline_and_uncached(tmp_path, monkeypatch):
+    monkeypatch.setattr(render, "_CACHE_DIR", tmp_path)
+
+    def boom(url, timeout=0):  # noqa: ARG001
+        raise render.urllib.error.URLError("offline")
+
+    monkeypatch.setattr(render.urllib.request, "urlopen", boom)
     assert render.load_schema("6") is None
+
+
+def test_output_write_failure_is_reported_not_raised(tmp_path):
+    # Render succeeds but the artifact can't be written (missing parent dir):
+    # a clean render FAIL, not an uncaught traceback.
+    missing = tmp_path / "no_such_dir" / "out.png"
+    results = render.run_all('{"mark": "bar"}', out_path=str(missing), deps=OK)
+    status = {r.name: r.status for r in results}
+    assert status["render"] is Status.FAIL
+    assert not missing.exists()

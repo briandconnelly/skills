@@ -76,6 +76,29 @@ def _schema_stage(spec: dict, schema_fn, vl_version) -> StageResult:
     return StageResult("schema", Status.PASS)
 
 
+def _render_stage(spec_text: str, out_path: str | None, render_fn) -> StageResult:
+    if out_path:
+        try:
+            fmt = infer_format(out_path)
+        except ValueError as exc:
+            return StageResult("render", Status.FAIL, str(exc))
+    else:
+        fmt = "png"
+    try:
+        image = render_fn(spec_text, fmt)
+    except Exception as exc:
+        return StageResult("render", Status.FAIL, str(exc))
+    if out_path:
+        try:
+            with Path(out_path).open("wb") as fh:
+                fh.write(image if isinstance(image, (bytes, bytearray)) else image.encode())
+        except OSError as exc:
+            # Render succeeded but the artifact couldn't be written; surface a clean
+            # stage failure rather than an uncaught traceback.
+            return StageResult("render", Status.FAIL, f"cannot write output {out_path}: {exc}")
+    return StageResult("render", Status.PASS)
+
+
 def run_all(
     spec_text: str, out_path: str | None, deps: Deps, vl_version: str | None = None
 ) -> list[StageResult]:
@@ -103,23 +126,7 @@ def run_all(
     results.append(StageResult("compile", Status.PASS))
 
     # Stage 4: render
-    if out_path:
-        try:
-            fmt = infer_format(out_path)
-        except ValueError as exc:
-            results.append(StageResult("render", Status.FAIL, str(exc)))
-            return results
-    else:
-        fmt = "png"
-    try:
-        image = deps.render_fn(spec_text, fmt)
-    except Exception as exc:
-        results.append(StageResult("render", Status.FAIL, str(exc)))
-        return results
-    if out_path:
-        with Path(out_path).open("wb") as fh:
-            fh.write(image if isinstance(image, (bytes, bytearray)) else image.encode())
-    results.append(StageResult("render", Status.PASS))
+    results.append(_render_stage(spec_text, out_path, deps.render_fn))
     return results
 
 
@@ -135,7 +142,7 @@ def load_schema(vl_version: str | None) -> dict | None:
         try:
             return json.loads(cache.read_text())
         except (OSError, ValueError):
-            return None
+            pass  # corrupt/unreadable cache: fall through to re-fetch, don't fail forever
     url = f"https://vega.github.io/schema/vega-lite/v{major}.json"
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:  # fixed https host
