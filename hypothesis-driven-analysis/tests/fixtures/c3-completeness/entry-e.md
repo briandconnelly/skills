@@ -1,0 +1,3 @@
+## Data Validity
+
+- Source completeness semantics: for S2, an absent incident_id is read as "incident not yet closed as of the extract" (event not yet occurred), not "event occurred but unrecorded" or "export incomplete" — supported by (a) every missing incident's opened_at falling in the tail of its own arm's window (see T3), and (b) the missing rows skewing toward sev1, the severity independently known (via severity's own distribution) to run longest — a pattern consistent with real unresolved incidents and not with a random export drop. This reading is the basis for treating the 11 missing rows as right-censored durations (≥ extract time − opened_at) rather than excludable at random.

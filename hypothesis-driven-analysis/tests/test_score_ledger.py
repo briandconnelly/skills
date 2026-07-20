@@ -763,3 +763,33 @@ def test_worked_example_conclusion_is_a_c3a_negative():
     assert body is not None
     # wrap it as a standalone Conclusion and confirm zero C3a violations
     assert sl.check_c3a("## Conclusion\n" + body + "\n") == []
+
+
+# --------------------------------------------------------------------------- #
+# C3 — end-to-end on the archived arm-e ledger and reconstructed entries (Task 6)
+# --------------------------------------------------------------------------- #
+def test_c3_fails_archived_arm_e_final():
+    # arm-e-final.md is a real s15 ledger: Conclusion Limitations carries
+    # "likely understated ... censored out of the sample" (C3a) and its S2
+    # completeness entry is prose, not the canonical atom (C3b).
+    arm_e = read_fixture("s15-prereg-drift", "arm-e-final.md")
+    out = sl.score(arm_e, None, c3_source="S2")
+    assert has("C3a:", out.fails) or has("C3b:", out.fails)
+    # both, in fact:
+    assert has("C3a:", out.fails)
+    assert has("C3b:", out.fails)
+
+
+def test_c3_reconstructed_entries_fail_c3b():
+    # the six measured completeness entries, reconstructed verbatim, each fail C3b
+    for name in (
+        "entry-a.md",
+        "entry-b.md",
+        "entry-c.md",
+        "entry-d.md",
+        "entry-e.md",
+        "entry-f.md",
+    ):
+        md = read_fixture("c3-completeness", name)
+        f = sl.check_c3b(md, "S2")
+        assert f, f"{name} should fail C3b"
