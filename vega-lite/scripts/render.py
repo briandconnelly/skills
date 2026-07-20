@@ -177,6 +177,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    if args.out is not None:
+        try:
+            infer_format(args.out)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
     print(preflight(), file=sys.stderr)
     spec_text = sys.stdin.read() if args.spec == "-" else Path(args.spec).read_text()
     results = run_all(spec_text, args.out, default_deps(), vl_version=args.vl_version)

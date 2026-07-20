@@ -111,6 +111,20 @@ def test_preflight_reports_versions():
     assert "Vega-Lite" in line
 
 
+def test_main_rejects_bad_output_extension_before_any_stage(tmp_path):
+    spec = tmp_path / "spec.json"
+    spec.write_text(
+        '{"$schema": "https://vega.github.io/schema/vega-lite/v6.json",'
+        ' "data": {"values": [{"a": 1}]},'
+        ' "mark": "point",'
+        ' "encoding": {"x": {"field": "a", "type": "quantitative"}}}'
+    )
+    out = tmp_path / "out.badext"
+    usage_error = 2
+    assert render.main([str(spec), str(out)]) == usage_error
+    assert not out.exists()
+
+
 def test_load_schema_returns_none_on_corrupt_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(render, "_CACHE_DIR", tmp_path)
     (tmp_path / "vega-lite-v6.json").write_text("{ not valid json")

@@ -28,7 +28,7 @@ uv run vega-lite/scripts/render.py <spec.json> <out.png>
 uv run vega-lite/scripts/render.py <spec.json> <out.svg>
 ```
 
-The output format is inferred from the extension you give (`.png` or `.svg`); anything else raises an error before any stage runs.
+The output format is inferred from the extension you give (`.png` or `.svg`); anything else is rejected up front — before any stage runs — with a one-line `error: unsupported output extension: ...` message on stderr and exit code `2`.
 Pipe a spec through stdin with `-` in place of a path:
 
 ```
@@ -42,7 +42,9 @@ uv run vega-lite/scripts/render.py <spec.json>
 ```
 
 `--vl-version` picks which schema version the `schema` stage validates against (e.g. `--vl-version 6`); it does not change what `compile`/`render` target, since that's fixed by the bundled vl-convert version.
-Every stage result prints to stderr as one `[STATUS] stage — detail` line, preceded by a preflight line reporting the vl-convert and embedded-Vega-Lite versions in use; the process exits `1` if `parse`, `schema`, `compile`, or `render` `FAIL`ed, and `0` otherwise (a `SKIP` on `schema` does not fail the run).
+Every stage result prints to stderr as one `[STATUS] stage — detail` line, preceded by a preflight line reporting the vl-convert and embedded-Vega-Lite versions in use.
+An unsupported output extension is a usage error caught before `preflight` or any stage runs, and exits `2`.
+Otherwise the process exits `1` if `parse`, `schema`, `compile`, or `render` `FAIL`ed, and `0` otherwise (a `SKIP` on `schema` does not fail the run).
 
 ## Reading errors
 
@@ -50,7 +52,7 @@ The table below shows real `render.py` output, not paraphrased messages.
 
 | Symptom | Stage that catches it | What `render.py` actually prints | Fix |
 | --- | --- | --- | --- |
-| Malformed JSON (unclosed object, trailing comma) | `parse` | `[FAIL] parse — Expecting property name enclosed in double quotes: line 4 column 1 (char 83)` | Fix the JSON syntax; `python -m json.tool spec.json` or an editor's JSON linter localizes it faster than the exception text does. |
+| Malformed JSON (unclosed object, trailing comma) | `parse` | `[FAIL] parse — Expecting property name enclosed in double quotes: line 4 column 1 (char 83)` (the line/column/char position varies with the spec's own content — the message shape is the point) | Fix the JSON syntax; `python -m json.tool spec.json` or an editor's JSON linter localizes it faster than the exception text does. |
 | Invalid value for a known property, e.g. `"type": "nominl"` | `schema` | `[FAIL] schema — <root>: {...the entire spec, echoed back...} is not valid under any of the given schemas` | See the caveat below — the message won't point at the bad key. Check every `type` against the four values `authoring-basics.md` covers (`nominal`/`ordinal`/`quantitative`/`temporal`), and every enum-valued property against the schema. |
 | Unknown top-level or nested property, e.g. `"marks"` instead of `"mark"` | `schema` | Same shape of message: `[FAIL] schema — <root>: {...entire spec...} is not valid under any of the given schemas` | Check the property name against `references/authoring-basics.md`, `transforms.md`, `composition.md`, or `scales-axes-legends.md` (whichever area it belongs to) for the correct key. |
 | Field name typo'd against the data, e.g. encoding `"amoutn"` when the data has `"amount"` | none — all four stages `PASS` | `OK` (the field just resolves to `undefined` for every row) | Not caught by any stage. Cross-check every `field` value in `encoding` against the actual keys in `data.values` (or your data source), and inspect the rendered image — it will be missing marks or show them at a degenerate position. |
@@ -88,7 +90,7 @@ FAILED
 
 - **First run needs a network connection and downloads vl-convert's compiled wheel (roughly 30 MB), plus the Vega-Lite schema on first use (cached after to `~/.cache/vega-lite-skill/`).** After both are cached, subsequent runs work offline; without a cached schema and no network, the `schema` stage reports `SKIP` rather than blocking the other stages.
 - **Font resolution is silent, not validated.** Setting `config.font` (or a mark-level `font`) to a family that isn't installed on the machine running `render.py` does not fail any stage — `schema`/`compile`/`render` all still `PASS` — it just falls back to whatever default the renderer finds, so the same spec can render with different label width/wrapping on a different machine; don't assume a font name is honored just because the run reports `OK`.
-- **Vega-Editor-style relative data paths (`{"url": "data/cars.json"}`) are not supported here, and the failure is silent.** There is no bundled `data/` directory and no server serving one, and confirmed above: pointing `data.url` at one does not fail any stage — `parse`/`schema`/`compile`/`render` all `PASS` — it just renders an empty chart (axes and frame, zero marks), because the fetch silently resolves to no rows. Use `data.values` (inline data) or an absolute URL (`https://...`) instead.
+- **Vega-Editor-style relative data paths (`{"url": "data/cars.json"}`) are not resolved against your local files, and neither outcome tells you that.** There is no bundled `data/` directory and no server serving one, but `vl_convert` resolves an unqualified relative `data/...` URL against its own default base (the vega-datasets CDN), not against anything on this machine. Confirmed above: `{"url": "data/cars.json"}` fetches the real, unrelated 402-row vega-datasets `cars.json` from that CDN and renders it — a fully populated, plausible-looking chart with data you never provided. A relative path that doesn't happen to match a hosted dataset name (e.g. `data/zzz-nonexistent-dataset-xyz.json`) instead renders blank (axes and frame, zero marks). Either way — silently wrong data or silently no data — the chart is not reading what you intended. Use `data.values` (inline data) or an explicit absolute URL (`https://...`) instead.
 
 ## Blank-but-valid
 
