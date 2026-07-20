@@ -49,7 +49,10 @@ def test_schema_violation_fails_schema_stage():
     }
     deps = Deps(compile_fn=OK.compile_fn, render_fn=OK.render_fn, schema_fn=lambda v: schema)  # noqa: ARG005
     results = render.run_all('{"mark": "bar", "bogus": 1}', out_path=None, deps=deps)
-    assert _by_name(results)["schema"] is Status.FAIL
+    status = _by_name(results)
+    assert status["schema"] is Status.FAIL
+    assert "compile" not in status
+    assert "render" not in status
 
 
 def test_compile_error_fails_compile_and_skips_render():

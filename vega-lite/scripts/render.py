@@ -19,6 +19,10 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Status(StrEnum):
@@ -36,9 +40,9 @@ class StageResult:
 
 @dataclass
 class Deps:
-    compile_fn: callable  # (spec_text: str) -> str (Vega JSON); may raise
-    render_fn: callable  # (spec_text: str, fmt: str) -> bytes; may raise
-    schema_fn: callable  # (vl_version: str | None) -> dict | None
+    compile_fn: Callable[[str], str]  # (spec_text: str) -> str (Vega JSON); may raise
+    render_fn: Callable[[str, str], bytes]  # (spec_text: str, fmt: str) -> bytes; may raise
+    schema_fn: Callable[[str | None], dict | None]  # (vl_version: str | None) -> dict | None
 
 
 def infer_format(out_path: str) -> str:
@@ -80,6 +84,8 @@ def run_all(
 
     # Stage 2: schema
     results.append(_schema_stage(spec, deps.schema_fn, vl_version))
+    if results[-1].status is Status.FAIL:
+        return results
 
     # Stage 3: compile
     try:
@@ -97,8 +103,7 @@ def run_all(
         results.append(StageResult("render", Status.FAIL, str(exc)))
         return results
     if out_path:
-        mode = "wb"
-        with Path(out_path).open(mode) as fh:
+        with Path(out_path).open("wb") as fh:
             fh.write(image if isinstance(image, (bytes, bytearray)) else image.encode())
     results.append(StageResult("render", Status.PASS))
     return results
