@@ -11,26 +11,26 @@ C2 relabel/laundering checks, audit-wide structural bail, and the deliberate
 leniency boundary (`startswith`/first-token/parenthesised-estimand) so it cannot
 drift silently.
 
-Import-safety of the module is already relied on in production: compare_prereg.py
-imports from it (see compare_prereg.py:110). We import it by path the same way,
-but restore sys.path immediately so the insertion cannot shadow same-named
-modules elsewhere in a full-suite run.
+score_ledger is import-safe (compare_prereg.py already imports from it). We load
+it by path with importlib — matching vega-lite/tests/test_check_specs.py — so no
+sys.path mutation is needed at all. score_ledger imports only the standard
+library, so executing it here has no side effects.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
 FIX = HERE / "fixtures"
 
-_saved_path = list(sys.path)
-sys.path.insert(0, str(HERE))
-try:
-    import score_ledger as sl
-finally:
-    sys.path[:] = _saved_path
+_spec = importlib.util.spec_from_file_location("score_ledger", HERE / "score_ledger.py")
+assert _spec is not None
+assert _spec.loader is not None
+sl = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(sl)
 
 
 # --------------------------------------------------------------------------- #
