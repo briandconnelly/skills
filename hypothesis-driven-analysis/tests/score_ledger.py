@@ -176,7 +176,7 @@ _C3A_DIRECTION = [
 _C3A_TARGETED = re.compile(r"\b(?:bias|skew|push|shift|mask)\w*\b", re.IGNORECASE)
 _C3A_OUTCOME_TARGET = re.compile(
     r"\b(?:estimate|result|comparison|effect|performance|median|mean|"
-    r"figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)\b",
+    r"figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)s?\b",
     re.IGNORECASE,
 )
 _C3A_ANCHOR = [
@@ -198,10 +198,14 @@ _C3A_ANAPHOR = re.compile(
 )
 # A real conditional clause, not the idioms "if anything/at all/ever/nothing".
 _C3A_CONDITIONAL = re.compile(r"\bif\s+(?!anything\b|at all\b|ever\b|nothing\b)", re.IGNORECASE)
+# Assumption/sensitivity-scoped conditionals: "assuming", "were it", "should ... turn
+# out", "treating X as Y", and "under <any adjective> assumption/reading/scenario"
+# (the adjective slot lets "under the still-open scenario" read as the licensed
+# conditional it is, not an unconditional claim).
 _C3A_UNDER_COND = re.compile(
-    r"\b(?:assuming|were (?:it|they|the)|should .* turn out|"
-    r"under (?:the |one |a |each |either )?(?:assumption|reading|scenario|hypothesis|"
-    r"interpretation|premise|case)|treat(?:ing|s|ed)?\b[^.;]*\bas\b)\b",
+    r"(?:\bassuming\b|\bwere (?:it|they|the)\b|\bshould .* turn out\b|"
+    r"\bunder\b[^,;.]{0,40}?\b(?:assumption|reading|scenario|hypothesis|"
+    r"interpretation|premise|case)\b|\btreat(?:ing|s|ed)?\b[^.;]*\bas\b)",
     re.IGNORECASE,
 )
 _C3A_OPPOSING = [
@@ -211,16 +215,30 @@ _C3A_OPPOSING = [
     (re.compile(r"\bworse\b", re.I), re.compile(r"\bbetter\b", re.I)),
 ]
 _C3A_UNKNOWN = re.compile(r"\bunknown\b", re.IGNORECASE)
+# A unit that DECLINES the direction claim, not merely one that contains a stray
+# negation. A bare auxiliary negating a coverage verb ("does not include ... so it
+# understates") must NOT suppress -- only a negation governing a conclusion/claim
+# verb ("cannot conclude", "does not show", "no evidence that") declines. The
+# consequence-split (CONSEQUENCE_SPLIT) sends the asserted "so it understates"
+# clause to its own unit, where no decline governs it.
 _C3A_NEGATION = re.compile(
-    r"\b(?:cannot|can't|can not|could not|couldn't|does not|doesn't|do not|don't|"
-    r"did not|didn't|will not|won't|no evidence|not (?:licensed|licence|established|"
-    r"shown|show|supported?|conclude|claim|imply|implied|warranted?)|unable to|"
-    r"fails? to|declines? to|rather than|instead of|nothing (?:here|in these|licenses))\b",
+    r"\bno evidence\b|"
+    r"\b(?:cannot|can't|can not|could not|couldn't|do(?:es)? not|do(?:es)?n't|"
+    r"did not|didn't|will not|won't|unable to|fails? to|declines? to)\s+"
+    r"(?:\w+\s+){0,2}?(?:conclude|say|show|shown|establish|support|prove|"
+    r"demonstrate|license|licence|warrant|imply|mean|claim|determine|"
+    r"distinguish|tell|rule out)\b|"
+    r"\bnot (?:licensed|licence|established|shown|supported?|conclusive|"
+    r"warranted?|able to)\b|"
+    r"\bnothing (?:here|in these|licenses|establishes|shows)\b",
     re.IGNORECASE,
 )
+# Attribution to a third party (which may be a claim the analyst is rebutting, not
+# adopting) suppresses -- but only clear attribution structure, not a bare noun like
+# "stakeholders" or verb like "argues" that also head ordinary assertions.
 _C3A_ATTRIBUTION = re.compile(
-    r"\b(?:claims?|claimed|asserts?|asserted|alleges?|alleged|argues?|argued|"
-    r"purports?|the memo|dashboard team|stakeholders?|finance (?:says|reports|translated))\b",
+    r"\b(?:claims?|claimed|asserts?|asserted|alleges?|alleged|purports?|"
+    r"the memo|dashboard team|finance (?:says|reports|translated))\b",
     re.IGNORECASE,
 )
 
@@ -466,7 +484,7 @@ def check_c3b(final: str, source_id: str) -> list[str]:
             f"`UNKNOWN`. Under --c3-unknown-source scope no evidence can discriminate "
             f"{source_id}'s missingness, so its only licensed declaration is `UNKNOWN`."
         ]
-    smuggled = _c3b_smuggled_direction(bullet)
+    smuggled = _c3b_smuggled_direction(bullet, source_id)
     if smuggled is not None:
         return [
             f"C3b: {source_id}'s completeness entry declares UNKNOWN but its reason "
@@ -508,7 +526,13 @@ def _c3a_units_of(text: str) -> list[str]:
     """Split a logical line into claim units: sentences/semicolons, then `, and`
     coordination, then strong contrastive/concessive clauses, and strip a leading
     concessive clause so a subordinate `while X is unknown,` cannot suppress the
-    main assertion Y."""
+    main assertion Y.
+
+    Deliberately does NOT split on consequence clauses (`, so Y`): a real violation
+    whose effect clause is not anaphor-led ("...no recorded closure, so the median
+    understates") would lose its anchor. The narrowed negation regex (which no longer
+    suppresses on a coverage verb like "does not include") is what keeps a cause
+    clause's incidental negation from eating the assertion instead."""
     out: list[str] = []
     for sent in SENTENCE_SPLIT.split(text):
         for part in AND_SPLIT.split(sent):
@@ -516,7 +540,7 @@ def _c3a_units_of(text: str) -> list[str]:
                 stripped = LEADING_CONCESSIVE.sub("", piece)
                 if stripped.strip():
                     out.append(stripped)
-                # keep the stripped-off concessive too, so a decline in it is still visible
+                # keep the stripped-off concessive too, so a decline in it stays visible
                 if stripped != piece and piece.strip():
                     out.append(piece[: len(piece) - len(stripped)])
     return [u for u in out if u.strip()]
@@ -664,16 +688,19 @@ def check_c3a(final: str) -> list[str]:
     return c3a_report(final)[0]
 
 
-def _c3b_smuggled_direction(bullet: str) -> str | None:
+def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
     """The first unit of a completeness bullet's own text that itself fires an
     unconditional missingness-direction claim (B1/I1), or None.
 
     Applies the identical per-unit C3a fire test to the bullet's own claim
     units: an UNKNOWN atom's reason clause is not exempt from the claim it
-    would otherwise police in the Conclusion.
+    would otherwise police in the Conclusion. The `<sid>: UNKNOWN` atom itself is
+    stripped first, so its own `UNKNOWN` token cannot suppress the very scan meant
+    to police the reason clause that follows it.
     """
+    scan = re.sub(rf"\b{re.escape(source_id)}\s*[:\u2013\u2014-]\s*UNKNOWN\b", " ", bullet)
     prev_had_anchor = False
-    for unit in _c3a_units_of(bullet):
+    for unit in _c3a_units_of(scan):
         fires, has_anchor = _c3a_unit_fires(unit, prev_had_anchor)
         if fires:
             return unit

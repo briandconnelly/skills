@@ -929,3 +929,87 @@ def test_c3_reconstructed_entries_fail_c3b():
         md = read_fixture("c3-completeness", name)
         f = sl.check_c3b(md, "S2")
         assert f, f"{name} should fail C3b"
+
+
+# --------------------------------------------------------------------------- #
+# C3 — second critical-review pass: over-correction regressions and residual FP
+# --------------------------------------------------------------------------- #
+def test_c3a_coverage_negation_does_not_suppress_the_assertion():
+    # "does not include ..." is a coverage negation, not a decline of the direction;
+    # the narrowed negation regex must let the assertion fire.
+    unit = (
+        "The closed-only median does not include the 11 still-open incidents, "
+        "so it understates the true time-to-close."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_cannot_ignore_is_not_a_decline():
+    unit = "We cannot ignore that the missing rows understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_still_suppresses_a_genuine_decline():
+    # the narrowing must NOT reopen the cardinal false positive: a real refusal stays silent
+    assert (
+        sl.check_c3a(concl("- We cannot conclude that the missing rows understate the median."))
+        == []
+    )
+    assert (
+        sl.check_c3a(
+            concl("- The evidence does not show that the missing rows understate the median.")
+        )
+        == []
+    )
+
+
+def test_c3a_plural_outcome_target_fires():
+    assert any(
+        "C3a" in m for m in sl.check_c3a(concl("- The missing rows bias the estimates downward."))
+    )
+    assert any(
+        "C3a" in m
+        for m in sl.check_c3a(
+            concl("- Excluding the still-open cases skews the results in assist's favor.")
+        )
+    )
+
+
+def test_c3a_bare_attribution_noun_does_not_suppress_an_assertion():
+    # "stakeholders should note that X" / "the timing evidence argues that X" assert X;
+    # only clear attribution structure (claims/asserts/the memo) suppresses.
+    assert any(
+        "C3a" in m
+        for m in sl.check_c3a(
+            concl("- Stakeholders should note that the still-open cases understate the median.")
+        )
+    )
+    # but an attributed-and-rebutted claim still does not fire
+    assert (
+        sl.check_c3a(
+            concl(
+                "- The stakeholder memo claims the missing rows understate the median; "
+                "these files cannot license that claim."
+            )
+        )
+        == []
+    )
+
+
+def test_c3a_under_named_scenario_is_a_conditional_decline():
+    # "under the <adjective> scenario ... understates" is a licensed two-branch sensitivity
+    unit = (
+        "Under the still-open scenario the median understates time-to-close; "
+        "under the closed-unlogged scenario it does not."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3b_reason_smuggling_without_a_sentence_boundary_fails_closed():
+    # the smuggle must fail even without a `;`/`.` separating the atom from the claim:
+    # the `S2: UNKNOWN` atom is stripped before scanning so its own token can't suppress.
+    md = (
+        "## Data Validity\n\n- Source completeness semantics: S2: UNKNOWN — the absent "
+        "rows are still-open incidents so the closed-only median understates true time-to-close\n"
+    )
+    assert sl.check_c3b(md, "S2") != []
