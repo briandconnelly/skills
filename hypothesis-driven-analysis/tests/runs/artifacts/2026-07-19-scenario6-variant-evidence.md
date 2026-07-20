@@ -5,7 +5,7 @@ The change adds two clauses — Site 1 (status rule, variant-necessity) and Site
 
 ## The failure, and why a decision-point probe
 
-The Eighth-wave close-out (`2026-07-18-scenario6-sensitivity-evidence.md`, §"Adjudication: ws-f's H4 refutation") recorded one run marking a retrospective "warm-up effect that decays across the 6-hour window" hypothesis `REFUTED` because the 6 slow events were not concentrated in the first third — a false refutation of the general mechanism, since a true decay with τ ≥ 2h fails that early-concentration criterion 30–58% of the time at n=6.
+The Eighth-wave close-out (`2026-07-18-scenario6-sensitivity-evidence.md`, §"Adjudication: ws-f's H4 refutation") recorded one run marking a retrospective "warm-up effect that decays across the 6-hour window" hypothesis `REFUTED` because the 6 slow events were not concentrated in the first third — a false refutation of the general mechanism, since a true decay with τ ≥ 2h fails that early-concentration criterion 32–53% of the time at n=6 (τ = 2–3h; see ground truth below).
 
 A free-investigation before/after cannot measure this: the failure rides a **minority route** (the run must spontaneously raise the retrospective decay hypothesis *and* over-refute it). Three fresh free-investigation baseline arms (a/b/c) on the current wording confirmed this — **0 of 3 even raised** a retrospective decay/warm-up hypothesis; all three correctly answered `UNRESOLVED` on the median claim via the interval-first check. A clean post-edit free run would therefore prove nothing (the known positive never appears).
 
