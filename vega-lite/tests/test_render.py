@@ -109,3 +109,9 @@ def test_preflight_reports_versions():
     line = render.preflight()
     assert "vl-convert" in line
     assert "Vega-Lite" in line
+
+
+def test_load_schema_returns_none_on_corrupt_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(render, "_CACHE_DIR", tmp_path)
+    (tmp_path / "vega-lite-v6.json").write_text("{ not valid json")
+    assert render.load_schema("6") is None

@@ -125,15 +125,19 @@ def load_schema(vl_version: str | None) -> dict | None:
     major = (vl_version or "6").lstrip("v").split(".")[0]
     cache = _CACHE_DIR / f"vega-lite-v{major}.json"
     if cache.exists():
-        return json.loads(cache.read_text())
+        try:
+            return json.loads(cache.read_text())
+        except (OSError, ValueError):
+            return None
     url = f"https://vega.github.io/schema/vega-lite/v{major}.json"
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:  # fixed https host
             data = resp.read()
+        schema = json.loads(data)  # parse BEFORE caching so we never cache garbage
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cache.write_bytes(data)
-        return json.loads(data)
-    except (urllib.error.URLError, TimeoutError, OSError):
+        return schema
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         return None
 
 
@@ -163,7 +167,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate and render a Vega-Lite spec.")
     parser.add_argument("spec", help="path to a Vega-Lite JSON spec, or '-' for stdin")
     parser.add_argument("out", nargs="?", help="output image path (.png or .svg)")
-    parser.add_argument("--vl-version", default=None, help="override target Vega-Lite version")
+    parser.add_argument(
+        "--vl-version",
+        default=None,
+        help=(
+            "Vega-Lite schema version to validate against (e.g. '6'). "
+            "Does not change the compile/render target (set by vl-convert)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     print(preflight(), file=sys.stderr)
