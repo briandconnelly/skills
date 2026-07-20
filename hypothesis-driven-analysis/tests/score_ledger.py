@@ -175,8 +175,8 @@ _C3A_DIRECTION = [
 # bias/skew are directional only with an outcome target in the same unit.
 _C3A_BIAS_SKEW = re.compile(r"\b(?:bias|skew)\w*\b", re.IGNORECASE)
 _C3A_OUTCOME_TARGET = re.compile(
-    r"\b(?:estimate|result|comparison|effect|performance|median|mean|rate|"
-    r"number|headline|figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)\b",
+    r"\b(?:estimate|result|comparison|effect|performance|median|mean|"
+    r"headline|figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)\b",
     re.IGNORECASE,
 )
 _C3A_ANCHOR = [
@@ -189,7 +189,7 @@ _C3A_ANCHOR = [
         r"\bclosed[-\s]?only\b",
         r"\bstill[-\s]+(?:open|unresolved)\b",
         r"\bnot\s+yet\s+(?:closed|resolved)\b",
-        r"\bcensored\s+(?:out|from)\b",
+        r"\bcensored[-\s]+(?:out|from)\b",
         r"\b(?:excluded|omitted|dropped)\s+(?:rows?|records?|cases?|incidents?)\b",
     )
 ]
@@ -199,7 +199,10 @@ _C3A_ANAPHOR = re.compile(
 # A real conditional clause, not the idioms "if anything/at all/ever/nothing".
 _C3A_CONDITIONAL = re.compile(r"\bif\s+(?!anything\b|at all\b|ever\b|nothing\b)", re.IGNORECASE)
 _C3A_UNDER_COND = re.compile(
-    r"\b(?:assuming|were (?:it|they|the)|should .* turn out)\b", re.IGNORECASE
+    r"\b(?:assuming|were (?:it|they|the)|should .* turn out|"
+    r"under (?:the |one |a |each |either )?(?:assumption|reading|scenario|hypothesis|"
+    r"interpretation|premise|case))\b",
+    re.IGNORECASE,
 )
 _C3A_OPPOSING = [
     (re.compile(r"\bunder-?stat", re.I), re.compile(r"\bover-?stat", re.I)),
@@ -316,8 +319,19 @@ def _c3b_value(final: str, source_id: str) -> tuple[str | None, list[str]]:
     when the bullet is missing, the source is undeclared, or two declarations for
     the source conflict. The value is read through emphasis/backtick stripping but
     its case is preserved so the caller can require uppercase UNKNOWN.
+
+    Reads the bullet from the `## Data Validity` section only, never the whole
+    document: a `Source completeness semantics` bullet placed under some other
+    heading (e.g. `## Notes`) is not the documented declaration site, and reading
+    the whole file would accept it anyway.
     """
-    bullet = completeness_bullet(final)
+    dv = section_body(final, "Data Validity")
+    if dv is None:
+        return None, [
+            "parse: final ledger: C3b: no `## Data Validity` section found; "
+            "cannot verify the completeness declaration"
+        ]
+    bullet = completeness_bullet(dv)
     if bullet is None:
         return None, [
             "parse: final ledger: C3b: no `Source completeness semantics` bullet found; "
@@ -382,6 +396,19 @@ def _c3a_suppressed(unit: str) -> bool:
     return any(a.search(unit) and b.search(unit) for a, b in _C3A_OPPOSING)
 
 
+CONTRASTIVE_SPLIT = re.compile(r",?\s+\b(?:but|however|yet)\b\s+", re.IGNORECASE)
+
+
+def _c3a_units_of(text: str) -> list[str]:
+    """Split a logical line into claim units: sentences/semicolons, then strong
+    contrastive clauses (so `X is unknown, but Y understates` separates the
+    decline from the assertion)."""
+    out: list[str] = []
+    for sent in SENTENCE_SPLIT.split(text):
+        out.extend(p for p in CONTRASTIVE_SPLIT.split(sent) if p.strip())
+    return out
+
+
 def conclusion_units(final: str) -> tuple[list[str], list[str]]:
     """Ordered claim-unit texts of the `## Conclusion`, plus a fail-closed list.
 
@@ -397,23 +424,41 @@ def conclusion_units(final: str) -> tuple[list[str], list[str]]:
         ]
     units: list[str] = []
     basis_idx: int | None = None
+    pending = ""
+
+    def flush() -> None:
+        nonlocal pending
+        if pending.strip():
+            units.extend(u for u in _c3a_units_of(pending) if u.strip())
+        pending = ""
+
     for line in body.splitlines():
         m = ROW.match(line)
         if m:
+            flush()
             cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
             if all(set(c) <= {"-", ":"} and c for c in cells):
-                continue  # separator
+                continue
             names = [normalize_key(c) for c in cells]
             if "basis" in names and ("status" in names or "claim" in names):
                 basis_idx = names.index("basis")
-                continue  # header row
+                continue
             if basis_idx is not None and basis_idx < len(cells):
-                units.extend(s for s in SENTENCE_SPLIT.split(cells[basis_idx]) if s.strip())
+                units.extend(u for u in _c3a_units_of(cells[basis_idx]) if u.strip())
             continue
-        for raw in SENTENCE_SPLIT.split(line):
-            s = raw.strip().lstrip("-*").strip()
-            if s:
-                units.append(s)
+        if HEADING.match(line):
+            flush()
+            continue
+        stripped = line.strip()
+        if not stripped:
+            flush()
+            continue
+        if re.match(r"^\s*[-*+]\s", line):
+            flush()
+            pending = re.sub(r"^\s*[-*+]\s+", "", line).strip()
+        else:
+            pending = f"{pending} {stripped}".strip() if pending else stripped
+    flush()
     return units, []
 
 

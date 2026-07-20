@@ -535,6 +535,12 @@ def test_c3b_fails_conflicting_declarations():
     assert any("conflict" in m.lower() or "S2" in m for m in f)
 
 
+def test_c3b_completeness_bullet_must_be_in_data_validity():
+    # a canonical-looking bullet outside Data Validity must fail closed
+    md = "## Notes\n\n- Source completeness semantics: S2: UNKNOWN — reason\n"
+    assert sl.check_c3b(md, "S2") != []
+
+
 # --------------------------------------------------------------------------- #
 # C3a — missingness-direction assertions in the Conclusion (Task 3)
 # --------------------------------------------------------------------------- #
@@ -646,6 +652,39 @@ def test_c3a_no_recorded_closure_is_an_anchor():
     unit = (
         "These incidents have no recorded closure, so the median understates assist's true speed."
     )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_under_the_assumption_is_a_conditional_decline():
+    unit = (
+        "Under the assumption that missing rows are still open, the closed-only "
+        "estimate understates time-to-close."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_skew_of_a_composition_rate_is_not_an_outcome_direction():
+    assert sl.check_c3a(concl("- The missing rows skew the observed sev1 rate upward.")) == []
+
+
+def test_c3a_confound_bias_of_an_estimate_still_needs_no_missingness_anchor():
+    # guard the fix-2 narrowing did not break a real bias-of-estimate case pairing
+    assert sl.check_c3a(concl("- The confound biases the estimate high.")) == []
+
+
+def test_c3a_hyphenated_censored_out_is_an_anchor():
+    assert any(
+        "C3a" in m for m in sl.check_c3a(concl("- The censored-out cases understate the median."))
+    )
+
+
+def test_c3a_soft_wrapped_sentence_is_one_unit():
+    body = "- The missing rows systematically\n  understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_unknown_does_not_suppress_a_contradictory_direction():
+    unit = "Completeness is unknown, but the missing rows understate the median."
     assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
 
 
