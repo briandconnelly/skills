@@ -11,10 +11,12 @@ Beyond roughly ten categories, a categorical scheme stops helping — group or f
 For quantitative or ordered data, reach for a sequential scheme (one hue ramping in lightness, e.g. `"viridis"`, `"blues"`) when values run low-to-high with no meaningful midpoint, or a diverging scheme (two hues meeting at a neutral center) when values run negative-to-positive around a meaningful zero or baseline.
 This is a default, not an absolute: a categorical palette can still suit a small number of ordered bins where discreteness matters more than gradient (e.g. a five-point rating rendered as distinct colors rather than a ramp).
 
-`"tableau10"` and `"viridis"` are this skill's two default named schemes, and each is colorblind-safe by design:
+`"tableau10"` and `"viridis"` are this skill's two default named schemes:
 
-- **`"tableau10"`** — ten qualitative hues, chosen to stay distinguishable under the common forms of color vision deficiency; reach for it as the default categorical scheme for nominal fields with up to ten values.
-- **`"viridis"`** — a perceptually-uniform sequential ramp (dark purple to yellow) that also degrades gracefully to grayscale; reach for it as the default for quantitative or ordered fields, including as a diverging-adjacent choice when a true diverging scheme isn't needed.
+- **`"tableau10"`** — ten qualitative hues; Vega-Lite's general-purpose default categorical scheme, good for nominal fields with up to ten values.
+  It is not purpose-built for color vision deficiency: some of its hues (e.g. red/green, blue/purple) can be hard to distinguish under common forms of CVD, so don't rely on the palette alone for categorical accessibility.
+  Instead keep the category count small and pair `color` with a second channel — `shape` or `strokeDash` on the same field — as covered in Intentional redundancy below.
+- **`"viridis"`** — a perceptually-uniform sequential ramp (dark purple to yellow) that is genuinely colorblind-safe and also degrades gracefully to grayscale; reach for it as the default for quantitative or ordered fields, including as a diverging-adjacent choice when a true diverging scheme isn't needed.
 
 Setting either is a one-line `scale.scheme`; see `references/scales-axes-legends.md` for the mechanic and for how discrete vs. continuous schemes map onto scale types.
 
@@ -30,7 +32,10 @@ When redundant color genuinely adds nothing, either drop the encoding or set `"l
 ## Typography & titles
 
 Keep axis, legend, and chart `title` values concise — a short noun phrase (`"Revenue"`, `"Region"`) rather than a full sentence; Vega-Lite auto-generates a `title` from the field name and any aggregate/bin/timeUnit annotation when none is set, so an explicit `title` is worth setting whenever that default reads awkwardly or ambiguously (e.g. relabeling `"sum_revenue"` to `"Revenue"`).
-Set a top-level `description` on every spec that ships to an end audience: it doesn't render visually, but it's exposed as ARIA text to screen readers and is the only way a non-visual user gets a summary of what the chart shows — write it as a complete sentence describing the chart's content, not a restatement of the title.
+Set a top-level `description` on every spec that ships to an end audience: it doesn't render visually, and write it as a complete sentence describing the chart's content, not a restatement of the title.
+It's good documentation, and in a live `vega-embed` mount it becomes the container's ARIA label — but it does not appear in a static PNG/SVG export (this skill's primary output), so it doesn't reach a screen-reader user of a static chart on its own.
+For screen-reader text that survives static export, add a mark-level `description` to `encoding` (e.g. `"encoding": {"description": {"field": "status", "type": "nominal"}}`): Vega-Lite bakes its value into a per-mark `aria-label` attribute in the rendered SVG, alongside the automatic per-mark `aria-roledescription`.
+Set both: a top-level `description` for documentation and live embedding, and a mark-level `encoding.description` when the chart's output is static and a screen reader needs to read individual marks.
 
 ## Labels over tooltips
 
@@ -40,7 +45,7 @@ Adding a field to `tooltip` also isn't free of side effects: an un-aggregated fi
 
 ## Note
 
-A shipped `config` house theme (a top-level `config` block setting default fonts, colors, and mark styling once for every chart in a set) is out of scope for this skill's v1 — the guidance above (restrained palettes, colorblind-safe schemes, concise titles) should be applied per-spec for now, with a shared theme a candidate for a future version.
+A shipped `config` house theme (a top-level `config` block setting default fonts, colors, and mark styling once for every chart in a set) is out of scope for this skill's v1 — the guidance above (restrained palettes, colorblind-safe sequential schemes, redundant encoding, concise titles) should be applied per-spec for now, with a shared theme a candidate for a future version.
 
 A complete spec pairing `color` and `shape` on the same nominal field — order status, shown with both a distinct color and a distinct point shape per status so the distinction survives grayscale printing or color vision deficiency:
 
@@ -76,5 +81,5 @@ Every mark on the plot draws with the color and the shape that match its own `st
 ## Pitfalls
 
 - **Redundant color that repeats an axis isn't automatically wrong, but it isn't automatically helpful either.** Check whether the second channel does independent work (accessibility, tracking off-axis) before adding it, and prefer `"legend": null` or dropping the encoding when it doesn't (see `references/scales-axes-legends.md`).
-- **A missing `description` is invisible until a screen reader is the audience.** It costs one line and never renders on-screen, so there's no visual cue reminding an author to add it — set it as a habit on every spec, not just ones with a known accessibility requirement.
+- **A top-level `description` doesn't help a static export's screen-reader audience on its own.** It never renders on-screen and there's no visual cue reminding an author to add it, so set it as a habit for documentation and live embedding — but for a static PNG/SVG, add a mark-level `encoding.description` too, since the top-level field is dropped entirely from that output.
 - **Tooltip fields are not accounting-neutral.** An un-aggregated field added only for `tooltip` still changes the implicit grouping key next to an aggregated channel; verify aggregated values after adding one (see `references/authoring-basics.md`).
