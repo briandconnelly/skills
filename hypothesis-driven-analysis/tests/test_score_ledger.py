@@ -737,9 +737,18 @@ TEMPLATE = (Path(sl.__file__).parent.parent / "references" / "ledger-template.md
 
 
 def test_template_documents_the_unknown_atom():
-    # the template must show the machine-checkable `<source>: UNKNOWN — <reason>` form
-    assert sl.C3B_DECL.search(TEMPLATE) is not None
-    # and at least one documented declaration parses to canonical UNKNOWN
+    # Guard the doc edit specifically: S1 parses as a canonical UNKNOWN
+    # declaration only after the grouped "S1, S5 — UNKNOWN" line was rewritten to
+    # the documented "S1: UNKNOWN" atom (the comma form does not parse). This is
+    # red on the pre-edit template, unlike a bare C3B_DECL.search(TEMPLATE) which
+    # matches unrelated text elsewhere in the file.
+    s1_declared = any(
+        sl.normalize_key(m.group("sid")) == "s1"
+        and sl.EMPHASIS.sub("", m.group("val")).strip() == "UNKNOWN"
+        for m in sl.C3B_DECL.finditer(TEMPLATE)
+    )
+    assert s1_declared, "template must declare `S1: UNKNOWN` in the documented atom form"
+    # and check_c3b accepts that documented form
     md = (
         "## Data Validity\n\n"
         "- Source completeness semantics: S1: UNKNOWN — no completeness contract checked\n"
