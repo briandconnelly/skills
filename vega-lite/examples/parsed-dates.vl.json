@@ -1,0 +1,13 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Temporal axis from raw string dates via data.format.parse.",
+  "data": {
+    "values": [{"day": "2024-05-01", "hits": 120}, {"day": "2024-05-02", "hits": 150}, {"day": "2024-05-03", "hits": 90}],
+    "format": {"parse": {"day": "date"}}
+  },
+  "mark": "area",
+  "encoding": {
+    "x": {"field": "day", "type": "temporal", "title": "Day"},
+    "y": {"field": "hits", "type": "quantitative", "title": "Hits"}
+  }
+}

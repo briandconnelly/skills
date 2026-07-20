@@ -1,0 +1,12 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Scatter plot with a categorical color encoding.",
+  "data": {"values": [{"x": 1, "y": 2, "group": "a"}, {"x": 3, "y": 1, "group": "b"}, {"x": 2, "y": 4, "group": "a"}]},
+  "mark": "point",
+  "encoding": {
+    "x": {"field": "x", "type": "quantitative"},
+    "y": {"field": "y", "type": "quantitative"},
+    "color": {"field": "group", "type": "nominal"},
+    "shape": {"field": "group", "type": "nominal"}
+  }
+}

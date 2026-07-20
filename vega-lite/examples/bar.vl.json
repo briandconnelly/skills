@@ -1,0 +1,10 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Bar chart of category totals.",
+  "data": {"values": [{"category": "A", "amount": 28}, {"category": "B", "amount": 55}, {"category": "C", "amount": 43}]},
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "category", "type": "nominal", "title": "Category"},
+    "y": {"field": "amount", "type": "quantitative", "title": "Amount"}
+  }
+}
