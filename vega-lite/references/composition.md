@@ -7,18 +7,20 @@ It does not cover encoding-level transforms or `data.format.parse` (`references/
 ## `layer`
 
 `layer` draws two or more marks in the same coordinate space, one on top of the other.
-Put fields that every layer shares — typically the shared `x` — on the top-level `encoding`; each entry in the `layer` array gets its own `mark` and can add or override encoding channels that only apply to that layer.
-A layer's own encoding is merged with the shared top-level encoding, not replacing it: a layer that declares only `y` still inherits the shared `x`.
+An encoding placed on the top-level `encoding` is shared: it is inherited by *every* layer and always applied to it, whether or not that layer's own mark would naturally use it.
+An encoding placed inside one layer's own `encoding` applies only to that layer.
+A layer's own encoding is merged with the shared top-level encoding, not replacing it — so if a shared `x` is present at the top level, every layer is positioned by it, even a layer that only declares `y` itself.
+There is no way for a layer to opt out of an inherited channel: put a channel at the top level only when every layer should genuinely use it, and keep everything else scoped to the layer that needs it.
 
 Layers draw in array order, and later layers draw on top of earlier ones — this is drawing order, not a suggestion.
 A bar chart with a target-threshold rule drawn afterward sits visibly above the bars; reverse the array and the bars would cover the rule instead.
 
-A complete two-layer spec — bars plus a fixed threshold rule that shares the bars' `x` but supplies its own `y`:
+A complete two-layer spec — bars with their own `x`/`y`, plus a mean-threshold rule layer with only its own `y` and no `x` anywhere, so it spans the full plot width:
 
 ```json
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
-  "description": "Monthly sales as bars with a shared sales target drawn as a rule layer on top.",
+  "description": "Monthly sales as bars with a mean-sales threshold rule spanning the full width on top.",
   "data": {
     "values": [
       {"month": "Jan", "sales": 80},
@@ -27,28 +29,27 @@ A complete two-layer spec — bars plus a fixed threshold rule that shares the b
       {"month": "Apr", "sales": 110}
     ]
   },
-  "encoding": {
-    "x": {"field": "month", "type": "nominal", "sort": null, "title": "Month"}
-  },
   "layer": [
     {
       "mark": "bar",
       "encoding": {
+        "x": {"field": "month", "type": "nominal", "sort": null, "title": "Month"},
         "y": {"field": "sales", "type": "quantitative", "title": "Sales"}
       }
     },
     {
       "mark": {"type": "rule", "color": "firebrick", "strokeWidth": 2, "strokeDash": [4, 4]},
       "encoding": {
-        "y": {"datum": 100, "type": "quantitative"}
+        "y": {"aggregate": "mean", "field": "sales", "type": "quantitative"}
       }
     }
   ]
 }
 ```
 
-The rule layer has no `x` of its own, so it inherits the shared `month` field from the top-level encoding but ignores it for positioning since a `rule` with only `y` (no `x`/`x2`) spans the full width of the plot — that is what makes it read as a single horizontal threshold line rather than one short mark per month.
-Rendering this spec shows four bars with a single dashed red line crossing all of them at `sales = 100`, drawn on top of every bar it crosses.
+The rule layer has no `x` at the top level and adds none of its own, so nothing positions it along `x`; a `rule` with only `y` (no `x`/`x2`) spans the full width of the plot.
+That is what makes it read as a single horizontal threshold line rather than one mark per month — if `x` were shared at the top level instead, the rule would inherit it too and draw one short vertical dash per month rather than a full-width line.
+Rendering this spec shows four bars with a single dashed red line crossing all of them at the mean of `sales` (≈ 103.75), drawn on top of every bar it crosses.
 
 By default the two layers also share their `y` scale — both draw into the same `sales`-only domain here, which is fine since they measure the same quantity.
 When layered fields measure different things (a count and a rate, say), sharing a scale distorts one of them; see `resolve` below.
@@ -184,5 +185,6 @@ Both are named here only so an author knows they exist and where they'd go looki
 
 ## Pitfalls
 
-- **Mismatched layer scales.** Layering fields with very different magnitudes or units on a shared scale (a count layered with a rate, a price layered with a percentage) silently squashes the smaller-magnitude layer flat against the axis baseline — it is still being drawn, just at a scale where its real variation is invisible. Reach for `resolve.scale` set to `"independent"` on that channel once two layers stop measuring comparable things.
+- **Mismatched layer scales.** Layering fields with very different magnitudes or units on a shared scale (a count layered with a rate, a price layered with a percentage) silently squashes the smaller-magnitude layer flat against the axis baseline — it is still being drawn, just at a scale where its real variation is invisible.
+  Reach for `resolve.scale` set to `"independent"` on that channel once two layers stop measuring comparable things.
 - **Faceting a field that should just be a color/column encoding.** Faceting splits a field into fully separate panels, each with its own axes and (by default) shared scales; that is the right call when panels genuinely need separate scales or would be too cluttered overlaid in one view, but a field with few categories that *should* be directly compared point-for-point (e.g. a handful of product lines on the same axes) is usually clearer as a single view with `color` (or `column` as a lighter-weight single-row facet) than as a wall of near-identical small panels.
