@@ -25,11 +25,12 @@ from pathlib import Path
 HERE = Path(__file__).parent
 FIX = HERE / "fixtures"
 
+_saved_path = list(sys.path)
 sys.path.insert(0, str(HERE))
 try:
     import score_ledger as sl
 finally:
-    sys.path.remove(str(HERE))
+    sys.path[:] = _saved_path
 
 
 # --------------------------------------------------------------------------- #
