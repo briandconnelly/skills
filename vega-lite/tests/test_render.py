@@ -5,8 +5,10 @@ from pathlib import Path
 _spec = importlib.util.spec_from_file_location(
     "render", Path(__file__).parent.parent / "scripts" / "render.py"
 )
+assert _spec is not None
 render = importlib.util.module_from_spec(_spec)
 sys.modules["render"] = render
+assert _spec.loader is not None
 _spec.loader.exec_module(render)
 
 Status, StageResult, Deps = render.Status, render.StageResult, render.Deps
@@ -84,3 +86,26 @@ def test_infer_format_and_exit_code():
     assert render.exit_code(passing) == 0
     failing = [*passing[:2], StageResult("compile", Status.FAIL)]
     assert render.exit_code(failing) == 1
+
+
+def test_integration_renders_inline_bar_png(tmp_path):
+    spec = (
+        '{"$schema": "https://vega.github.io/schema/vega-lite/v6.json",'
+        ' "data": {"values": [{"a": "A", "b": 3}, {"a": "B", "b": 5}]},'
+        ' "mark": "bar",'
+        ' "encoding": {"x": {"field": "a", "type": "nominal"},'
+        '              "y": {"field": "b", "type": "quantitative"}}}'
+    )
+    out = tmp_path / "bar.png"
+    results = render.run_all(spec, out_path=str(out), deps=render.default_deps())
+    status = {r.name: r.status for r in results}
+    assert status["parse"] is Status.PASS
+    assert status["compile"] is Status.PASS
+    assert status["render"] is Status.PASS
+    assert out.read_bytes()[:4] == b"\x89PNG"
+
+
+def test_preflight_reports_versions():
+    line = render.preflight()
+    assert "vl-convert" in line
+    assert "Vega-Lite" in line

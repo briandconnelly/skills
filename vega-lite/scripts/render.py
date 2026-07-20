@@ -15,7 +15,11 @@ inspect the produced image before trusting the chart.
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -23,6 +27,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+_CACHE_DIR = Path.home() / ".cache" / "vega-lite-skill"
 
 
 class Status(StrEnum):
@@ -41,7 +47,8 @@ class StageResult:
 @dataclass
 class Deps:
     compile_fn: Callable[[str], str]  # (spec_text: str) -> str (Vega JSON); may raise
-    render_fn: Callable[[str, str], bytes]  # (spec_text: str, fmt: str) -> bytes; may raise
+    # (spec_text: str, fmt: str) -> bytes|str (svg returns str); may raise
+    render_fn: Callable[[str, str], bytes | str]
     schema_fn: Callable[[str | None], dict | None]  # (vl_version: str | None) -> dict | None
 
 
@@ -112,3 +119,63 @@ def run_all(
 def exit_code(results: list[StageResult]) -> int:
     fatal = {"parse", "schema", "compile", "render"}
     return 1 if any(r.name in fatal and r.status is Status.FAIL for r in results) else 0
+
+
+def load_schema(vl_version: str | None) -> dict | None:
+    major = (vl_version or "6").lstrip("v").split(".")[0]
+    cache = _CACHE_DIR / f"vega-lite-v{major}.json"
+    if cache.exists():
+        return json.loads(cache.read_text())
+    url = f"https://vega.github.io/schema/vega-lite/v{major}.json"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:  # fixed https host
+            data = resp.read()
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(data)
+        return json.loads(data)
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+
+def default_deps() -> Deps:
+    import vl_convert as vlc  # noqa: PLC0415 - lazy load so stub tests don't need it installed
+
+    return Deps(
+        # vegalite_to_vega returns a dict; re-serialize to match compile_fn's str contract.
+        compile_fn=lambda text: json.dumps(vlc.vegalite_to_vega(text)),
+        render_fn=lambda text, fmt: (
+            vlc.vegalite_to_png(text) if fmt == "png" else vlc.vegalite_to_svg(text)
+        ),
+        schema_fn=load_schema,
+    )
+
+
+def preflight() -> str:
+    import vl_convert as vlc  # noqa: PLC0415 - lazy load so stub tests don't need it installed
+
+    versions = vlc.get_vegalite_versions()
+    # vl_convert's compiled-extension version stub omits __version__; it exists at runtime.
+    vlc_version = getattr(vlc, "__version__", "unknown")
+    return f"vl-convert {vlc_version} | embedded Vega-Lite {', '.join(versions)}"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Validate and render a Vega-Lite spec.")
+    parser.add_argument("spec", help="path to a Vega-Lite JSON spec, or '-' for stdin")
+    parser.add_argument("out", nargs="?", help="output image path (.png or .svg)")
+    parser.add_argument("--vl-version", default=None, help="override target Vega-Lite version")
+    args = parser.parse_args(argv)
+
+    print(preflight(), file=sys.stderr)
+    spec_text = sys.stdin.read() if args.spec == "-" else Path(args.spec).read_text()
+    results = run_all(spec_text, args.out, default_deps(), vl_version=args.vl_version)
+    for r in results:
+        suffix = f" — {r.detail}" if r.detail else ""
+        print(f"[{r.status.value:4}] {r.name}{suffix}", file=sys.stderr)
+    code = exit_code(results)
+    print("OK" if code == 0 else "FAILED", file=sys.stderr)
+    return code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
