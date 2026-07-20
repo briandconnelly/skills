@@ -20,6 +20,23 @@ SCOPE — read before pointing this at a new scenario:
   conclude anything — the top regression risk this revision is trying to avoid.
   A should-refute scenario needs its own check, not this one.
 
+  C3's precondition is stronger than C1's, and it is opt-in for that reason.
+  C1 only needs that ground truth contain no legitimate causal refutation; C3
+  needs that the named source's absent records have no independent
+  completeness contract at all -- no other source, review, or process
+  establishes what an absent row means, so UNKNOWN is the only reading the
+  evidence licenses. Nothing in the ledger can establish that for the scorer;
+  --c3-unknown-source is the caller's attestation that it holds for this
+  fixture. A scenario where some sources carry an independent completeness
+  contract and the named one does not -- a mixed fixture -- is out of scope
+  for this flag; pointing it at one would fail closed on a precondition the
+  scorer never verified.
+
+  C3 reads the ledger only -- its Data Validity and Conclusion sections, never
+  a companion memo. A missingness-direction claim moved out of the ledger and
+  into memo prose is invisible to C3, but rubric assertion 6 still scores the
+  memo, so a memo-displaced claim stays covered somewhere, just not here.
+
 SYNTACTIC CHECKS ONLY
 
   This scorer verifies syntactic presence, not semantic quality. For example,
@@ -27,7 +44,7 @@ SYNTACTIC CHECKS ONLY
   by design; judging whether a named estimand is meaningful is the rubric
   grader's job, not this script's.
 
-Checks exactly two things, both syntactic:
+Checks three things, all syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
@@ -44,6 +61,11 @@ Checks exactly two things, both syntactic:
       `causal` row re-dressed as `data-artifact`, which cannot be C1-REFUTED
       under scope) to house a REFUTED. Runs on `descriptive`/`data-artifact`
       conclusion rows; a `causal` conclusion row is C1's, not C2's.
+  C3  Opt-in via --c3-unknown-source S<n>: the Conclusion carries no
+      unconditional missingness-direction claim (C3a), and S<n>'s completeness
+      bullet declares canonical `UNKNOWN` (C3b). Not run unless the flag is
+      given -- see SCOPE for why its precondition cannot be checked from the
+      ledger alone.
 
 WHY IT IS BUILT THE WAY IT IS
 
@@ -110,6 +132,116 @@ ESTIMAND = re.compile(r"^descriptive\s*\(\s*estimand\s*:\s*(?P<rest>[^)]*)\)", r
 # enclosing parenthesis: ASCII punctuation plus U+2013 en dash, U+2014 em
 # dash, U+2026 ellipsis.
 ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
+HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.*?)\s*#*\s*$")
+COMPLETENESS_LABEL = re.compile(
+    r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
+)
+BULLET_OR_HEADING = re.compile(r"^\s*(?:[-*]\s|#{1,6}\s)")
+# A documented per-source completeness declaration: a source id (letters+digits)
+# immediately followed by a `:` or em/en-dash key-separator, then the value up to
+# the first reason delimiter. Anchored so a prose mention of the id (`S2,` /
+# `S2 (activity.csv)`) is not read as a declaration.
+C3B_DECL = re.compile(
+    r"(?P<sid>\b[A-Za-z]{1,4}\s*\d+\b)\s*[:\u2013\u2014]\s*(?P<val>[^\u2013\u2014;,\n]+)"
+)
+
+# ---- C3a vocabulary (a closed ratchet against measured phrasings, not a
+# semantic guarantee; extended only when a new evasion is measured, as
+# _CLAIM_DRIFT_HINTS is). All matched case-insensitively over one claim unit. ----
+SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\s+")
+
+_C3A_DIRECTION = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bunder-?stat",
+        r"\bover-?stat",
+        r"\binflat",
+        r"\bdeflat",
+        r"\battenuat",
+        r"\bexaggerat",
+        r"\b(?:lower|upper)\s+bound\b",
+        r"\bbounded\s+(?:below|above)\b",
+        r"\bat least as (?:bad|good|slow|fast|high|low)\b",
+        r"\blikely (?:worse|better)\b",
+        r"\bfurther (?:behind|ahead)\b",
+        r"\bcan only (?:push|make|move|drive|widen)\b",
+        r"\b(?:conservativ|optimistic)\w*\s+(?:estimate|picture|view|read\w*)\b",
+        r"\bmanufactures?\s+an?\s+improvement\b",
+        r"\bdirection is known\b",
+    )
+]
+# bias/skew/push/shift/mask are directional only with an outcome target in the
+# same unit -- otherwise they describe observed composition, not a claim about
+# which way an estimate is wrong.
+_C3A_TARGETED = re.compile(r"\b(?:bias|skew|push|shift|mask)\w*\b", re.IGNORECASE)
+_C3A_OUTCOME_TARGET = re.compile(
+    r"\b(?:estimate|result|comparison|effect|performance|median|mean|"
+    r"figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)s?\b",
+    re.IGNORECASE,
+)
+_C3A_ANCHOR = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bmissing\s+(?:\w+\s+)?(?:rows?|records?|cases?|incidents?|closures?|outcomes?|exposure)\b",
+        r"\babsent\s+(?:rows?|records?)\b",
+        r"\bno\s+(?:recorded\s+(?:close|closure|resolution)|(?:close|closure|resolution)\s+record)\b",
+        r"\bright[-\s]?censor\w*\b",
+        r"\bclosed[-\s]?only\b",
+        r"\bstill[-\s]+(?:open|unresolved)\b",
+        r"\bnot\s+yet\s+(?:closed|resolved)\b",
+        r"\bcensored[-\s]+(?:out|from)\b",
+        r"\b(?:excluded|omitted|dropped)\s+(?:rows?|records?|cases?|incidents?)\b",
+    )
+]
+_C3A_ANAPHOR = re.compile(
+    r"^\W*(?:this|these|those|they|them|it|excluding (?:them|these|those))\b", re.IGNORECASE
+)
+# A real conditional clause, not the idioms "if anything/at all/ever/nothing".
+_C3A_CONDITIONAL = re.compile(r"\bif\s+(?!anything\b|at all\b|ever\b|nothing\b)", re.IGNORECASE)
+# Assumption/sensitivity-scoped conditionals: "assuming", "were it", "should ... turn
+# out", "treating X as Y", and "under <any adjective> assumption/reading/scenario"
+# (the adjective slot lets "under the still-open scenario" read as the licensed
+# conditional it is, not an unconditional claim).
+_C3A_UNDER_COND = re.compile(
+    r"(?:\bassuming\b|\bwere (?:it|they|the)\b|\bshould .* turn out\b|"
+    r"\bunder\b[^,;.]{0,40}?\b(?:assumption|reading|scenario|hypothesis|"
+    r"interpretation|premise|case)\b|\btreat(?:ing|s|ed)?\b[^.;]*\bas\b)",
+    re.IGNORECASE,
+)
+_C3A_OPPOSING = [
+    (re.compile(r"\bunder-?stat", re.I), re.compile(r"\bover-?stat", re.I)),
+    (re.compile(r"\binflat", re.I), re.compile(r"\bdeflat", re.I)),
+    (re.compile(r"\bhigher\b", re.I), re.compile(r"\blower\b", re.I)),
+    (re.compile(r"\bworse\b", re.I), re.compile(r"\bbetter\b", re.I)),
+]
+_C3A_UNKNOWN = re.compile(r"\bunknown\b", re.IGNORECASE)
+# A unit that DECLINES the direction claim, not merely one that contains a stray
+# negation. A bare auxiliary negating a coverage verb ("does not include ... so it
+# understates") must NOT suppress -- only a negation governing a conclusion/claim
+# verb ("cannot conclude", "does not show", "no evidence that") declines. Units are
+# deliberately NOT split on the consequence clause (see _c3a_units_of), so it is this
+# narrow governing-verb list -- not any clause split -- that lets the asserted "so it
+# understates" fire while a genuine refusal still suppresses.
+_C3A_NEGATION = re.compile(
+    r"\bno evidence\b|"
+    r"\b(?:cannot|can't|can not|could not|couldn't|do(?:es)? not|do(?:es)?n't|"
+    r"did not|didn't|will not|won't|unable to|fails? to|declines? to)\s+"
+    r"(?:\w+\s+){0,2}?(?:conclude|say|show|shown|establish|support|prove|"
+    r"demonstrate|license|licence|warrant|imply|mean|claim|determine|"
+    r"distinguish|tell|rule out)\b|"
+    r"\bnot (?:licensed|licence|established|shown|supported?|conclusive|"
+    r"warranted?|able to)\b|"
+    r"\bnothing (?:here|in these|licenses|establishes|shows)\b",
+    re.IGNORECASE,
+)
+# Attribution to a third party (which may be a claim the analyst is rebutting, not
+# adopting) suppresses -- but only clear attribution structure, not a bare noun like
+# "stakeholders" or verb like "argues" that also head ordinary assertions.
+_C3A_ATTRIBUTION = re.compile(
+    r"\b(?:claims?|claimed|asserts?|asserted|alleges?|alleged|purports?|"
+    r"the memo|dashboard team|finance (?:says|reports|translated))\b",
+    re.IGNORECASE,
+)
 
 FINAL = "final ledger"
 PLAN = "plan ledger"
@@ -159,6 +291,429 @@ def parse_tables(md: str) -> list[list[list[str]]]:
     if current:
         tables.append(current)
     return tables
+
+
+def section_body(md: str, name: str) -> str | None:
+    """The body under the `## <name>` heading, up to the next heading of the
+    same or higher level, or None if no such heading exists.
+
+    Heading titles are matched through the same emphasis/whitespace/case folding
+    as ids, so `## Conclusion`, `## conclusion`, and `## **Conclusion**` are one.
+    A deeper subheading (### …) stays inside the section; a sibling or higher one
+    ends it.
+    """
+    target = normalize_key(name)
+    out: list[str] = []
+    capturing = False
+    start_level = 0
+    for line in md.split("\n"):
+        m = HEADING.match(line)
+        if m:
+            level = len(m.group("hashes"))
+            if capturing and level <= start_level:
+                break
+            if not capturing and normalize_key(m.group("title")) == target:
+                capturing = True
+                start_level = level
+                continue
+        if capturing:
+            out.append(line)
+    return "\n".join(out) if capturing else None
+
+
+def section_bodies(md: str, name: str) -> list[str]:
+    """Every `## <name>` section's body (see `section_body`), in document order.
+
+    `section_body` silently returns only the first match, which is fine when a
+    document is well-formed but hides an accidental duplicate section. Callers
+    that must be sure there is exactly one (C3a's Conclusion, C3b's Data
+    Validity) use this instead so a duplicate can fail closed rather than
+    silently score the first one.
+    """
+    target = normalize_key(name)
+    out: list[str] = []
+    current: list[str] | None = None
+    start_level = 0
+    for line in md.split("\n"):
+        m = HEADING.match(line)
+        if m:
+            level = len(m.group("hashes"))
+            if current is not None and level <= start_level:
+                out.append("\n".join(current))
+                current = None
+            if current is None and normalize_key(m.group("title")) == target:
+                current = []
+                start_level = level
+                continue
+        if current is not None:
+            current.append(line)
+    if current is not None:
+        out.append("\n".join(current))
+    return out
+
+
+def _completeness_bullet_count(dv: str) -> int:
+    """How many `Source completeness semantics` bullet label lines appear in a
+    Data Validity section body (B2): more than one means C3b cannot tell which
+    one declares the source's completeness reading."""
+    return sum(1 for line in dv.splitlines() if COMPLETENESS_LABEL.match(EMPHASIS.sub("", line)))
+
+
+def completeness_bullet(md: str) -> str | None:
+    """The content of the `- Source completeness semantics: …` bullet with its
+    label removed, or None if the bullet is absent.
+
+    Captures the label line plus any continuation lines until the next bullet,
+    heading, or blank line, so a bullet wrapped across lines is read whole. The
+    label match tolerates markdown emphasis and an optional trailing colon.
+    """
+    lines = md.splitlines()
+    for i, line in enumerate(lines):
+        if COMPLETENESS_LABEL.match(EMPHASIS.sub("", line)):
+            first = COMPLETENESS_LABEL.sub("", EMPHASIS.sub("", line)).strip()
+            parts = [first] if first else []
+            for cont in lines[i + 1 :]:
+                if not cont.strip() or BULLET_OR_HEADING.match(cont):
+                    break
+                parts.append(cont.strip())
+            return " ".join(parts).strip() or None
+    return None
+
+
+def _c3b_value(final: str, source_id: str) -> tuple[str | None, str | None, list[str]]:
+    """The declared completeness value for `source_id` and the completeness
+    bullet's own text, read from the documented `<sid>: <value>` atoms, or a
+    fail-closed message.
+
+    Returns (value, bullet, []) on exactly one declaration for the source;
+    (None, None, [fail]) when the Data Validity section is missing or
+    duplicated, the completeness bullet is missing or duplicated, the source is
+    undeclared, or two declarations for the source conflict. The value is read
+    through emphasis/backtick stripping but its case is preserved so the caller
+    can require uppercase UNKNOWN. The bullet text is returned so the caller can
+    also check it for a smuggled direction claim (B1).
+
+    Reads the bullet from the `## Data Validity` section only, never the whole
+    document: a `Source completeness semantics` bullet placed under some other
+    heading (e.g. `## Notes`) is not the documented declaration site, and reading
+    the whole file would accept it anyway. More than one `## Data Validity`
+    section, or more than one completeness bullet inside the one section, fails
+    closed (B2): neither leaves the scorer able to say which one declares the
+    source's reading.
+    """
+    dv_sections = section_bodies(final, "Data Validity")
+    fail: str | None = None
+    bullet: str | None = None
+    if not dv_sections:
+        fail = (
+            "parse: final ledger: C3b: no `## Data Validity` section found; "
+            "cannot verify the completeness declaration"
+        )
+    elif len(dv_sections) > 1:
+        fail = (
+            f"parse: final ledger: C3b: {len(dv_sections)} `## Data Validity` sections; "
+            f"cannot tell which declares {source_id}'s completeness reading"
+        )
+    else:
+        dv = dv_sections[0]
+        bullet_count = _completeness_bullet_count(dv)
+        if bullet_count > 1:
+            fail = (
+                f"parse: final ledger: C3b: {bullet_count} `Source completeness semantics` "
+                f"bullets in `## Data Validity`; cannot tell which declares "
+                f"{source_id}'s completeness reading"
+            )
+        else:
+            bullet = completeness_bullet(dv)
+            if bullet is None:
+                fail = (
+                    "parse: final ledger: C3b: no `Source completeness semantics` bullet "
+                    "found; cannot verify the completeness declaration"
+                )
+    if fail is not None:
+        return None, None, [fail]
+
+    assert bullet is not None
+    key = normalize_key(source_id)
+    values = [
+        EMPHASIS.sub("", m.group("val")).strip()
+        for m in C3B_DECL.finditer(bullet)
+        if normalize_key(m.group("sid")) == key
+    ]
+    if not values:
+        return (
+            None,
+            None,
+            [
+                f"parse: final ledger: C3b: {source_id} has no `{source_id}: <reading>` "
+                f"declaration in the completeness bullet; the documented form is "
+                f"`{source_id}: UNKNOWN — <why no evidence discriminates>`"
+            ],
+        )
+    if len(set(values)) > 1:
+        return (
+            None,
+            None,
+            [
+                f"parse: final ledger: C3b: {source_id} carries conflicting completeness "
+                f"declarations {values!r}; cannot tell which reading is asserted"
+            ],
+        )
+    return values[0], bullet, []
+
+
+def check_c3b(final: str, source_id: str) -> list[str]:
+    """C3b: the implicated source's completeness entry must declare canonical
+    `UNKNOWN`, with a reason clause that does not itself smuggle a missingness
+    direction claim. Fail closed on anything else.
+
+    Uppercase-exact on the value token: a lowercase `unknown`, a negated
+    `not UNKNOWN`, or a definite reading (`still-open`) each fails, because under
+    the flag's scope the only licensed reading is a declared UNKNOWN. An
+    UNKNOWN atom whose reason text asserts an unconditional missingness
+    direction (I1) fails too -- the reason clause would otherwise take back in
+    prose what the atom concedes.
+    """
+    value, bullet, fails = _c3b_value(final, source_id)
+    if fails:
+        return fails
+    assert value is not None
+    assert bullet is not None
+    if value != "UNKNOWN":
+        return [
+            f"C3b: {source_id}'s completeness reading is {value!r}, not the canonical "
+            f"`UNKNOWN`. Under --c3-unknown-source scope no evidence can discriminate "
+            f"{source_id}'s missingness, so its only licensed declaration is `UNKNOWN`."
+        ]
+    smuggled = _c3b_smuggled_direction(bullet, source_id)
+    if smuggled is not None:
+        return [
+            f"C3b: {source_id}'s completeness entry declares UNKNOWN but its reason "
+            f"asserts a missingness direction ({smuggled!r}); an UNKNOWN declaration may "
+            f"not carry a directional reading."
+        ]
+    return []
+
+
+def _c3a_has_direction(unit: str) -> bool:
+    if any(p.search(unit) for p in _C3A_DIRECTION):
+        return True
+    return bool(_C3A_TARGETED.search(unit) and _C3A_OUTCOME_TARGET.search(unit))
+
+
+def _c3a_has_anchor(unit: str) -> bool:
+    return any(p.search(unit) for p in _C3A_ANCHOR)
+
+
+def _c3a_suppressed(unit: str) -> bool:
+    if _C3A_NEGATION.search(unit) or _C3A_ATTRIBUTION.search(unit):
+        return True
+    if _C3A_CONDITIONAL.search(unit) or _C3A_UNDER_COND.search(unit):
+        return True
+    if _C3A_UNKNOWN.search(unit):
+        return True
+    return any(a.search(unit) and b.search(unit) for a, b in _C3A_OPPOSING)
+
+
+CONTRASTIVE_SPLIT = re.compile(
+    r",?\s+\b(?:but|however|yet|whereas|even if|even though|although|though)\b\s+",
+    re.IGNORECASE,
+)
+AND_SPLIT = re.compile(r",\s+and\s+", re.IGNORECASE)
+LEADING_CONCESSIVE = re.compile(r"^\W*(?:while|although|though)\b[^,]*,\s*", re.IGNORECASE)
+
+
+def _c3a_units_of(text: str) -> list[str]:
+    """Split a logical line into claim units: sentences/semicolons, then `, and`
+    coordination, then strong contrastive/concessive clauses, and strip a leading
+    concessive clause so a subordinate `while X is unknown,` cannot suppress the
+    main assertion Y.
+
+    Deliberately does NOT split on consequence clauses (`, so Y`): a real violation
+    whose effect clause is not anaphor-led ("...no recorded closure, so the median
+    understates") would lose its anchor. The narrowed negation regex (which no longer
+    suppresses on a coverage verb like "does not include") is what keeps a cause
+    clause's incidental negation from eating the assertion instead."""
+    out: list[str] = []
+    for sent in SENTENCE_SPLIT.split(text):
+        for part in AND_SPLIT.split(sent):
+            for piece in CONTRASTIVE_SPLIT.split(part):
+                stripped = LEADING_CONCESSIVE.sub("", piece)
+                if stripped.strip():
+                    out.append(stripped)
+                # keep the stripped-off concessive too, so a decline in it stays visible
+                if stripped != piece and piece.strip():
+                    out.append(piece[: len(piece) - len(stripped)])
+    return [u for u in out if u.strip()]
+
+
+def _conclusion_row_units(
+    cells: list[str], basis_idx: int | None, is_new_table: bool
+) -> tuple[int | None, list[str]]:
+    """Process one Conclusion table row: update the basis-column index and
+    return any claim units its basis cell contributes.
+
+    A new table's basis index is never inherited from a prior table (B4/I4): a
+    header row with a differently-ordered or absent `basis` column leaves
+    `basis_idx` unset rather than reusing the previous table's. A separator
+    row and a fresh header row (`basis` + `status`/`claim` columns) contribute
+    no units of their own.
+    """
+    if is_new_table:
+        basis_idx = None
+    if all(set(c) <= {"-", ":"} and c for c in cells):
+        return basis_idx, []
+    names = [normalize_key(c) for c in cells]
+    if "basis" in names and ("status" in names or "claim" in names):
+        return names.index("basis"), []
+    if basis_idx is not None and basis_idx < len(cells):
+        return basis_idx, [u for u in _c3a_units_of(cells[basis_idx]) if u.strip()]
+    return basis_idx, []
+
+
+def conclusion_units(final: str) -> tuple[list[str], list[str]]:
+    """Ordered claim-unit texts of the `## Conclusion`, plus a fail-closed list.
+
+    Prose lines are split into sentence/`;` units. Summary-table rows contribute
+    only their `basis` cell text (the `id`/`claim`/`status` cells are never
+    scanned, so the status column's `UNRESOLVED` is not mistaken for an anchor).
+
+    More than one `## Conclusion` section fails closed (B3/I3): nothing tells
+    the scorer which one to score. A `## Conclusion` that yields zero scannable
+    units -- no prose, no basis cells -- fails closed too, rather than a vacuous
+    pass, mirroring the existing "header but no data rows" philosophy.
+    """
+    bodies = section_bodies(final, "Conclusion")
+    if not bodies:
+        return [], [
+            "parse: final ledger: C3a: no `## Conclusion` section found; cannot "
+            "verify completeness-direction consistency"
+        ]
+    if len(bodies) > 1:
+        return [], [
+            f"parse: final ledger: C3a: {len(bodies)} `## Conclusion` sections; "
+            f"cannot tell which to score"
+        ]
+    body = bodies[0]
+    units: list[str] = []
+    basis_idx: int | None = None
+    pending = ""
+    in_table = False
+
+    def flush() -> None:
+        nonlocal pending
+        if pending.strip():
+            units.extend(u for u in _c3a_units_of(pending) if u.strip())
+        pending = ""
+
+    for line in body.splitlines():
+        m = ROW.match(line)
+        if m:
+            is_new_table = not in_table
+            in_table = True
+            flush()
+            cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
+            basis_idx, row_units = _conclusion_row_units(cells, basis_idx, is_new_table)
+            units.extend(row_units)
+            continue
+        in_table = False
+        if HEADING.match(line):
+            flush()
+            continue
+        stripped = line.strip()
+        if not stripped:
+            flush()
+            continue
+        if re.match(r"^\s*[-*+]\s", line):
+            flush()
+            pending = re.sub(r"^\s*[-*+]\s+", "", line).strip()
+        else:
+            pending = f"{pending} {stripped}".strip() if pending else stripped
+    flush()
+    if not units:
+        return [], [
+            "parse: final ledger: C3a: the Conclusion section has no scannable prose or basis cells"
+        ]
+    return units, []
+
+
+def _c3a_unit_fires(unit: str, prev_had_anchor: bool) -> tuple[bool, bool]:
+    """(fires, has_anchor) for a single claim unit.
+
+    Fires when the unit carries a direction predicate and a qualified
+    missingness anchor -- its own, or inherited via a leading anaphor from the
+    previous unit's anchor -- and is not suppressed (negation, attribution,
+    conditional, decline, or an opposing pair). Factored out of `c3a_report` so
+    `check_c3b` can apply the identical per-unit test to a completeness
+    bullet's own reason text (B1).
+    """
+    has_anchor = _c3a_has_anchor(unit)
+    if not _c3a_has_direction(unit) or _c3a_suppressed(unit):
+        return False, has_anchor
+    if has_anchor or (_C3A_ANAPHOR.search(unit) and prev_had_anchor):
+        return True, has_anchor
+    return False, has_anchor
+
+
+def c3a_report(final: str) -> tuple[list[str], int]:
+    """C3a: report each unconditional missingness-direction claim in the
+    Conclusion, plus the count of units suppressed as conditional/declined.
+
+    A unit fires when it carries a direction predicate and a qualified missingness
+    anchor (or is anaphor-led and the anchor is in scope from a preceding unit in
+    the same Conclusion), and is not suppressed.
+    """
+    units, fails = conclusion_units(final)
+    if fails:
+        return fails, 0
+    violations: list[str] = []
+    suppressed = 0
+    prev_had_anchor = False
+    for unit in units:
+        fires, has_anchor = _c3a_unit_fires(unit, prev_had_anchor)
+        if fires:
+            violations.append(
+                f"C3a: the Conclusion asserts a missingness-direction claim without "
+                f"licensing evidence: {unit!r}. Under --c3-unknown-source scope the "
+                f"direction is unknown by construction; state 'no recorded closure, "
+                f"direction unknown' instead."
+            )
+        elif _c3a_has_direction(unit) and _c3a_suppressed(unit):
+            suppressed += 1
+        prev_had_anchor = has_anchor
+    return violations, suppressed
+
+
+def check_c3a(final: str) -> list[str]:
+    """C3a violations only (see c3a_report for the suppressed-unit count)."""
+    return c3a_report(final)[0]
+
+
+def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
+    """The first unit of a completeness bullet's own text that itself fires an
+    unconditional missingness-direction claim (B1/I1), or None.
+
+    Applies the identical per-unit C3a fire test to the bullet's own claim
+    units: an UNKNOWN atom's reason clause is not exempt from the claim it
+    would otherwise police in the Conclusion. The source's declaration atom is
+    stripped first, so its own `UNKNOWN` token cannot suppress the very scan meant
+    to police the reason clause that follows it. The strip matches the atom through
+    the same `C3B_DECL` + `normalize_key` path `_c3b_value` accepts it by, so a
+    case- or spacing-variant declaration (`s2` vs `S2`, `S 2`) that `_c3b_value`
+    still accepts cannot leave its `UNKNOWN` token behind to fail this scan open.
+    """
+    key = normalize_key(source_id)
+    scan = C3B_DECL.sub(
+        lambda m: " " if normalize_key(m.group("sid")) == key else m.group(0),
+        bullet,
+    )
+    prev_had_anchor = False
+    for unit in _c3a_units_of(scan):
+        fires, has_anchor = _c3a_unit_fires(unit, prev_had_anchor)
+        if fires:
+            return unit
+        prev_had_anchor = has_anchor
+    return None
 
 
 def _select_table(
@@ -479,7 +1034,9 @@ def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
     return {normalize_key(r["id"]): r for r in rows}, []
 
 
-def _describe(summary: list[dict[str, str]], plan_supplied: bool) -> list[str]:
+def _describe(
+    summary: list[dict[str, str]], plan_supplied: bool, final: str, c3_source: str | None
+) -> list[str]:
     """Say what was actually checked. Called only when nothing failed."""
     refuted = [r for r in summary if status_of(r["status"]) == "REFUTED"]
     laundering_candidates = [
@@ -503,11 +1060,27 @@ def _describe(summary: list[dict[str, str]], plan_supplied: bool) -> list[str]:
             f"data-artifact row(s) ({ids}) each traced to a Plan-time id, the descriptive "
             f"ones naming a non-empty estimand there"
         )
+    if c3_source is None:
+        lines.append(
+            "C3 NOT CHECKED: no --c3-unknown-source supplied; completeness-direction "
+            "consistency was not verified"
+        )
+    else:
+        _, suppressed = c3a_report(final)
+        tail = f" ({suppressed} unit(s) suppressed as conditional/declined)" if suppressed else ""
+        lines.append(
+            f"C3a checked and passed: no unconditional missingness-direction claim in the "
+            f"Conclusion{tail}"
+        )
+        lines.append(
+            f"C3b checked and passed: {c3_source} declares canonical `UNKNOWN` completeness"
+        )
     return lines
 
 
-def score(final: str, plan: str | None) -> Outcome:
-    """Score a final ledger, optionally against its Plan-time ledger."""
+def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome:
+    """Score a final ledger, optionally against its Plan-time ledger and, when
+    c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
     fails += check_ids(summary, FINAL)
     # Everything read_table and check_ids catch is audit-wide: a malformed table
@@ -531,20 +1104,37 @@ def score(final: str, plan: str | None) -> Outcome:
 
     for row in summary:
         fails += _check_row(row, planned)
+
+    if c3_source is not None:
+        fails += check_c3a(final)
+        fails += check_c3b(final, c3_source)
+
     if fails:
         return Outcome(fails, [])
-    return Outcome([], _describe(summary, plan is not None))
+    return Outcome([], _describe(summary, plan is not None, final, c3_source))
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--final", required=True, type=Path)
     ap.add_argument("--plan", type=Path, default=None)
+    ap.add_argument(
+        "--c3-unknown-source",
+        dest="c3_source",
+        default=None,
+        help="Source id (e.g. S2) whose absent records have no independent completeness "
+        "contract; enables C3. Valid only in an s15-class fixture (see SCOPE).",
+    )
     a = ap.parse_args()
     plan = a.plan.read_text() if a.plan is not None else None
     if plan is None:
         print("note: --plan omitted; C2 (status laundering) not checked", file=sys.stderr)
-    outcome = score(a.final.read_text(), plan)
+    if a.c3_source is None:
+        print(
+            "note: --c3-unknown-source omitted; C3 (completeness-direction) not checked",
+            file=sys.stderr,
+        )
+    outcome = score(a.final.read_text(), plan, a.c3_source)
     if outcome.fails:
         print("FAIL:")
         for f in outcome.fails:

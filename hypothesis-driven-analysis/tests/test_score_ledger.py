@@ -23,6 +23,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 HERE = Path(__file__).parent
 FIX = HERE / "fixtures"
 
@@ -447,3 +449,569 @@ def test_main_exit_0_on_clean_ledger(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "OK:" in out
     assert "C2 checked and passed" in out
+
+
+# --------------------------------------------------------------------------- #
+# C3 — section and completeness-bullet extraction (Task 1)
+# --------------------------------------------------------------------------- #
+def test_section_body_extracts_named_section():
+    md = "# Title\n\n## Data Validity\n\n- a\n- b\n\n## Conclusion\n\n- answer\n- limits\n"
+    assert sl.section_body(md, "Conclusion") == "\n- answer\n- limits\n"
+    assert "answer" in sl.section_body(md, "conclusion")  # case/emphasis folded
+
+
+def test_section_body_stops_at_next_heading_of_same_or_higher_level():
+    md = "## Conclusion\n\n- answer\n\n### Sub\n\n- deep\n\n## After\n\n- x\n"
+    body = sl.section_body(md, "Conclusion")
+    assert "answer" in body  # own content stays inside
+    assert "deep" in body  # deeper heading stays inside
+    assert "x" not in body  # the sibling `## After` ends it
+
+
+def test_section_body_absent_is_none():
+    assert sl.section_body("# Title\n\n## Sources\n\n- s\n", "Conclusion") is None
+
+
+def test_completeness_bullet_extracts_content_without_label():
+    md = (
+        "## Data Validity\n\n- Coverage matrix: rows\n"
+        "- Source completeness semantics: S2: UNKNOWN — no contract\n"
+        "- Sensitivity checks performed: none\n"
+    )
+    assert sl.completeness_bullet(md) == "S2: UNKNOWN — no contract"
+
+
+def test_completeness_bullet_absent_is_none():
+    assert sl.completeness_bullet("## Data Validity\n\n- Coverage matrix: rows\n") is None
+
+
+# --------------------------------------------------------------------------- #
+# C3b — canonical UNKNOWN atom (Task 2)
+# --------------------------------------------------------------------------- #
+def dv(bullet: str) -> str:
+    """A minimal ledger carrying one Source completeness semantics bullet."""
+    return f"## Data Validity\n\n- Source completeness semantics: {bullet}\n"
+
+
+def test_c3b_passes_canonical_unknown_atom():
+    assert sl.check_c3b(dv("S2: UNKNOWN — no completeness contract in these files"), "S2") == []
+
+
+def test_c3b_passes_emdash_separator_and_emphasis():
+    assert sl.check_c3b(dv("**S2** — `UNKNOWN` — no independent denominator"), "S2") == []
+
+
+def test_c3b_fails_lowercase_unknown_casesensitive():
+    # arm b's near-miss: lowercase "unknown" must not pass.
+    f = sl.check_c3b(dv("S2: unknown-direction problem, treat as right-censored"), "S2")
+    assert any("C3b" in m and "S2" in m for m in f)
+
+
+def test_c3b_fails_prose_reading_no_atom():
+    # arm-e-class prose: names S2 but never in the documented declaration form.
+    f = sl.check_c3b(
+        dv('for S2, an absent incident_id is read as "not yet closed" — right-censored'), "S2"
+    )
+    assert any(("C3b" in m) or ("no" in m and "S2" in m) for m in f)
+
+
+def test_c3b_fails_definite_reading_value():
+    f = sl.check_c3b(dv("S2: still-open — the missing rows are unresolved incidents"), "S2")
+    assert any("S2" in m for m in f)
+
+
+def test_c3b_fails_no_completeness_bullet():
+    f = sl.check_c3b("## Data Validity\n\n- Coverage matrix: rows\n", "S2")
+    assert any("completeness" in m.lower() for m in f)
+
+
+def test_c3b_fails_source_not_declared():
+    f = sl.check_c3b(dv("S3: UNKNOWN — sampled by design"), "S2")
+    assert any("S2" in m for m in f)
+
+
+def test_c3b_fails_conflicting_declarations():
+    f = sl.check_c3b(dv("S2: UNKNOWN — no contract; S2: still-open — but really open"), "S2")
+    assert any("conflict" in m.lower() or "S2" in m for m in f)
+
+
+def test_c3b_completeness_bullet_must_be_in_data_validity():
+    # a canonical-looking bullet outside Data Validity must fail closed
+    md = "## Notes\n\n- Source completeness semantics: S2: UNKNOWN — reason\n"
+    assert sl.check_c3b(md, "S2") != []
+
+
+def test_c3b_reason_clause_smuggling_a_direction_fails_closed():
+    # I1: an UNKNOWN atom whose reason text itself asserts an unconditional
+    # missingness direction takes back in prose what the atom concedes.
+    f = sl.check_c3b(
+        dv(
+            "S2: UNKNOWN — formally; in practice every absent row is a "
+            "still-open incident and the closed-only median understates true "
+            "time-to-close"
+        ),
+        "S2",
+    )
+    assert any("C3b" in m and "S2" in m for m in f)
+
+
+def test_c3b_duplicate_data_validity_sections_fail_closed():
+    # I2: two `## Data Validity` sections leave no way to tell which declares
+    # the source's completeness reading, even when the second is a definite
+    # (non-UNKNOWN) reading that would otherwise fail on its own merits too.
+    md = (
+        "## Data Validity\n\n- Source completeness semantics: S2: UNKNOWN — one\n\n"
+        "## Data Validity\n\n- Source completeness semantics: S2: still-open — two\n"
+    )
+    f = sl.check_c3b(md, "S2")
+    assert f != []
+    assert any("Data Validity" in m for m in f)
+
+
+# --------------------------------------------------------------------------- #
+# C3a — missingness-direction assertions in the Conclusion (Task 3)
+# --------------------------------------------------------------------------- #
+def concl(body: str) -> str:
+    return "## Conclusion\n\n" + body + "\n"
+
+
+# --- known positives: the six measured constructions must each fire ---
+@pytest.mark.parametrize(
+    "unit",
+    [
+        "The 11 incidents are still open; this understates how bad assist is.",
+        "Excluding the still-open cases can only push assist further behind manual.",
+        "The missing sev1 cases give a lower bound on eventual time-to-close; direction is known.",
+        "The gap is likely understated because the hardest incidents are censored "
+        "out of the sample.",
+        "The still-open incidents mean the true picture is at least as bad as shown, likely worse.",
+        "Right-censoring inflates the assist improvement; the true value is bounded "
+        "below by their current elapsed time.",
+    ],
+)
+def test_c3a_fires_on_each_measured_construction(unit):
+    f = sl.check_c3a(concl("- " + unit))
+    assert any("C3a" in m for m in f), f"expected C3a to fire on: {unit!r}"
+
+
+# --- known negatives: correct work must NOT fire ---
+@pytest.mark.parametrize(
+    "unit",
+    [
+        # licensed conditional sensitivity — decline suppressor rescues it
+        "If S2 absence means still-open, the closed-only estimate understates time; "
+        "if closed-but-unrecorded, direction is unidentified; overall direction is UNKNOWN.",
+        # legitimate confound-direction claim: direction but no missingness anchor
+        "The severity-mix confound biases the naive estimate high.",
+        # observed composition fact: anchor but skew has no outcome target
+        "The missing rows skew toward sev1.",
+        # opposing pair present
+        "The missing cases could understate or overstate the true assist median.",
+        # anchor but no direction predicate
+        "The 11 incidents have no recorded closure at the extract.",
+        # 'if anything' idiom must NOT be conditional; here no anchor -> still no fire
+        "If anything, the confound points to a larger severity effect.",
+    ],
+)
+def test_c3a_does_not_fire_on_correct_work(unit):
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_anaphora_inherits_prior_anchor():
+    # direction unit led by an anaphor inherits the previous unit's missingness anchor
+    body = (
+        "- The 11 sev1 incidents are still open at extract.\n- These understate how bad assist is."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_if_anything_idiom_not_suppressed():
+    # 'if anything ... likely understated ... censored out' (arm e's real ledger sentence)
+    unit = (
+        "If anything the direction points toward more cost, with the true gap "
+        "likely understated because the hardest incidents are censored out of the sample."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_ignores_summary_status_cells():
+    # an UNRESOLVED status cell is not a missingness anchor; a clean basis cell does not fire
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported, no direction claimed |\n"
+    )
+    assert sl.check_c3a(concl(body)) == []
+
+
+def test_c3a_scans_basis_cell_text():
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_fails_closed_without_conclusion():
+    f = sl.check_c3a("## Sources\n\n| id | x |\n| --- | --- |\n| S1 | y |\n")
+    assert any("Conclusion" in m for m in f)
+
+
+def test_c3a_fails_closed_on_empty_conclusion():
+    # I3: a `## Conclusion` heading with no scannable prose or basis cells must
+    # be a parse failure, not a vacuous pass -- mirrors the "header but no data
+    # rows" philosophy elsewhere in the scorer.
+    f = sl.check_c3a("## Conclusion\n\n\n")
+    assert any(m.startswith("parse:") and "Conclusion" in m for m in f)
+
+
+def test_c3a_fails_closed_on_duplicate_conclusion():
+    # I3: two `## Conclusion` sections leave no way to tell which to score.
+    md = "## Conclusion\n\n- ok\n\n## Conclusion\n\n- ok2\n"
+    f = sl.check_c3a(md)
+    assert any(m.startswith("parse:") and "Conclusion" in m for m in f)
+
+
+def test_c3a_reports_suppressed_count():
+    body = "- The missing cases could understate or overstate the assist median."
+    violations, suppressed = sl.c3a_report(concl(body))
+    assert violations == []
+    assert suppressed >= 1
+
+
+def test_c3a_anaphora_does_not_leak_across_unrelated_unit():
+    # adjacent-only inheritance: an anchor two units back must NOT be inherited
+    body = (
+        "- The 11 sev1 incidents are still open at extract.\n"
+        "- Assist handled 40% of incidents this quarter.\n"
+        "- This overstates how good assist looks."
+    )
+    assert sl.check_c3a(concl(body)) == []
+
+
+def test_c3a_no_recorded_closure_is_an_anchor():
+    # the exact phrase the tool's remediation message recommends must be an anchor
+    unit = (
+        "These incidents have no recorded closure, so the median understates assist's true speed."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_under_the_assumption_is_a_conditional_decline():
+    unit = (
+        "Under the assumption that missing rows are still open, the closed-only "
+        "estimate understates time-to-close."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_skew_of_a_composition_rate_is_not_an_outcome_direction():
+    assert sl.check_c3a(concl("- The missing rows skew the observed sev1 rate upward.")) == []
+
+
+def test_c3a_confound_bias_of_an_estimate_still_needs_no_missingness_anchor():
+    # guard the fix-2 narrowing did not break a real bias-of-estimate case pairing
+    assert sl.check_c3a(concl("- The confound biases the estimate high.")) == []
+
+
+def test_c3a_hyphenated_censored_out_is_an_anchor():
+    assert any(
+        "C3a" in m for m in sl.check_c3a(concl("- The censored-out cases understate the median."))
+    )
+
+
+def test_c3a_soft_wrapped_sentence_is_one_unit():
+    body = "- The missing rows systematically\n  understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_unknown_does_not_suppress_a_contradictory_direction():
+    unit = "Completeness is unknown, but the missing rows understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+# --------------------------------------------------------------------------- #
+# C3a hardening (#77 critical review) — negation, composition, treating-as,
+# `, and`, and leading-concessive cases (battery 7/10/13/15/16)
+# --------------------------------------------------------------------------- #
+def test_c3a_negation_does_not_fire_the_cardinal_fp():
+    # The cardinal false positive the review found: a sentence that NEGATES the
+    # direction claim must not fire just because the direction/anchor vocabulary
+    # is present.
+    unit = "We cannot conclude that the missing rows understate the median."
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_composition_shift_does_not_fire():
+    # "shifts" describes an observed composition change, not a claim about which
+    # way an estimate is wrong -- no outcome target co-occurs with `shifts`.
+    unit = (
+        "Dropping the 11 cases with no recorded closure shifts the closed-only "
+        "sample toward lower-severity incidents."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_treating_as_sensitivity_does_not_fire():
+    # A worst-case sensitivity check that explicitly conditions on "treating X as
+    # Y" is a licensed conditional, not an unconditional direction claim.
+    unit = (
+        "A worst-case sensitivity check: treating the 11 as still-open yields a "
+        "lower bound of 41 minutes on the assist median."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_and_joined_pair_splits_into_separate_units():
+    # A `, and`-joined pair must not let the direction half of the sentence
+    # borrow the missingness half's anchor (or vice versa) as if they were one
+    # claim unit.
+    unit = (
+        "The severity-mix confound biases the naive estimate high, and the "
+        "missing rows are concentrated in the assist week."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_leading_concessive_still_fires_the_main_clause():
+    # A subordinate "While X is unknown," concessive must not suppress the main
+    # clause's own unconditional direction claim (I5).
+    unit = "While the direction is formally unknown, the missing rows understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+# --------------------------------------------------------------------------- #
+# C3 — integration into score()/main() and reporting (Task 4)
+# --------------------------------------------------------------------------- #
+COMPLIANT_C3 = (
+    "## Data Validity\n\n"
+    "- Source completeness semantics: S2: UNKNOWN — no independent denominator "
+    "discriminates the live readings\n\n"
+    "## Conclusion\n\n"
+    "- Answer: no recorded closure for 11 incidents; the missingness direction is "
+    "unknown, so no responder-hours figure is credibly attributable.\n\n"
+    "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+    "| H1 | causal | UNRESOLVED | unidentified pre/post contrast |\n"
+)
+VIOLATING_C3 = (
+    "## Data Validity\n\n"
+    '- Source completeness semantics: for S2, an absent row is read as "still open" '
+    "— right-censored\n\n"
+    "## Conclusion\n\n"
+    "- Limitations: the true gap is likely understated because the hardest "
+    "incidents are censored out of the sample.\n\n"
+    "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+    "| H1 | causal | UNRESOLVED | unidentified pre/post contrast |\n"
+)
+
+
+def test_c3_not_run_without_flag():
+    out = sl.score(VIOLATING_C3, None, c3_source=None)
+    assert out.fails == []
+    assert has("C3 NOT CHECKED", out.checked)
+
+
+def test_c3_compliant_ledger_passes_both_subchecks():
+    out = sl.score(COMPLIANT_C3, None, c3_source="S2")
+    assert out.fails == []
+    assert has("C3a checked and passed", out.checked)
+    assert has("C3b checked and passed", out.checked)
+
+
+def test_c3_violating_ledger_fails_both_subchecks():
+    out = sl.score(VIOLATING_C3, None, c3_source="S2")
+    assert has("C3a:", out.fails)  # ledger direction claim
+    assert has("C3b:", out.fails)  # non-canonical S2 entry
+
+
+def test_c3_note_prints_on_stderr_even_when_another_check_fails(monkeypatch, capsys, tmp_path):
+    # A C1 violation must not suppress the C3-not-checked stderr note (it prints
+    # before scoring, so a later FAIL cannot mask that C3 never ran).
+    p = tmp_path / "final.md"
+    p.write_text(
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | REFUTED | naive contrast |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys, "argv", ["score_ledger.py", "--final", str(p)])
+    assert sl.main() == 1  # C1 violation -> exit 1
+    captured = capsys.readouterr()
+    assert "C1: H1" in captured.out  # the failing check reported...
+    assert "c3-unknown-source" in captured.err  # ...and the C3-not-checked note still printed
+
+
+def test_main_c3_flag_exit_1_on_violation(monkeypatch, capsys, tmp_path):
+    p = tmp_path / "final.md"
+    p.write_text(VIOLATING_C3, encoding="utf-8")
+    monkeypatch.setattr(
+        sys, "argv", ["score_ledger.py", "--final", str(p), "--c3-unknown-source", "S2"]
+    )
+    assert sl.main() == 1
+    out = capsys.readouterr().out
+    assert "C3a:" in out
+    assert "C3b:" in out
+
+
+def test_main_c3_note_on_stderr_when_flag_absent(monkeypatch, capsys, tmp_path):
+    p = tmp_path / "final.md"
+    p.write_text(COMPLIANT_C3, encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["score_ledger.py", "--final", str(p)])
+    sl.main()
+    err = capsys.readouterr().err
+    assert "c3-unknown-source" in err
+
+
+# --------------------------------------------------------------------------- #
+# C3 — the documented template form is what C3b/C3a expect (Task 5)
+# --------------------------------------------------------------------------- #
+TEMPLATE = (Path(sl.__file__).parent.parent / "references" / "ledger-template.md").read_text(
+    encoding="utf-8"
+)
+
+
+def test_template_documents_the_unknown_atom():
+    # Guard the doc edit specifically: S1 parses as a canonical UNKNOWN
+    # declaration only after the grouped "S1, S5 — UNKNOWN" line was rewritten to
+    # the documented "S1: UNKNOWN" atom (the comma form does not parse). This is
+    # red on the pre-edit template, unlike a bare C3B_DECL.search(TEMPLATE) which
+    # matches unrelated text elsewhere in the file.
+    s1_declared = any(
+        sl.normalize_key(m.group("sid")) == "s1"
+        and sl.EMPHASIS.sub("", m.group("val")).strip() == "UNKNOWN"
+        for m in sl.C3B_DECL.finditer(TEMPLATE)
+    )
+    assert s1_declared, "template must declare `S1: UNKNOWN` in the documented atom form"
+    # and check_c3b accepts that documented form
+    md = (
+        "## Data Validity\n\n"
+        "- Source completeness semantics: S1: UNKNOWN — no completeness contract checked\n"
+    )
+    assert sl.check_c3b(md, "S1") == []
+
+
+def test_worked_example_conclusion_is_a_c3a_negative():
+    # Extract the worked example's own Conclusion (the SECOND `## Conclusion` in the
+    # file, inside the "## Worked Example" block), not the Full Route Template's
+    # placeholder Conclusion (which sl.section_body would return first, and which
+    # is not prose at all -- `- Answer: <answer first>` -- proving nothing).
+    split_count = 2
+    worked = TEMPLATE.split("## Worked Example", 1)
+    assert len(worked) == split_count, "template must contain a Worked Example section"
+    body = sl.section_body(worked[1], "Conclusion")
+    assert body is not None, "must scan the worked-example Conclusion"
+    assert "roll back" in body, "must scan the worked-example Conclusion"
+    assert sl.check_c3a("## Conclusion\n" + body + "\n") == []
+
+
+# --------------------------------------------------------------------------- #
+# C3 — end-to-end on the archived arm-e ledger and reconstructed entries (Task 6)
+# --------------------------------------------------------------------------- #
+def test_c3_fails_archived_arm_e_final():
+    # arm-e-final.md is a real s15 ledger: Conclusion Limitations carries
+    # "likely understated ... censored out of the sample" (C3a) and its S2
+    # completeness entry is prose, not the canonical atom (C3b).
+    arm_e = read_fixture("s15-prereg-drift", "arm-e-final.md")
+    out = sl.score(arm_e, None, c3_source="S2")
+    assert has("C3a:", out.fails) or has("C3b:", out.fails)
+    # both, in fact:
+    assert has("C3a:", out.fails)
+    assert has("C3b:", out.fails)
+
+
+def test_c3_reconstructed_entries_fail_c3b():
+    # the six measured completeness entries, reconstructed verbatim, each fail C3b
+    for name in (
+        "entry-a.md",
+        "entry-b.md",
+        "entry-c.md",
+        "entry-d.md",
+        "entry-e.md",
+        "entry-f.md",
+    ):
+        md = read_fixture("c3-completeness", name)
+        f = sl.check_c3b(md, "S2")
+        assert f, f"{name} should fail C3b"
+
+
+# --------------------------------------------------------------------------- #
+# C3 — second critical-review pass: over-correction regressions and residual FP
+# --------------------------------------------------------------------------- #
+def test_c3a_coverage_negation_does_not_suppress_the_assertion():
+    # "does not include ..." is a coverage negation, not a decline of the direction;
+    # the narrowed negation regex must let the assertion fire.
+    unit = (
+        "The closed-only median does not include the 11 still-open incidents, "
+        "so it understates the true time-to-close."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_cannot_ignore_is_not_a_decline():
+    unit = "We cannot ignore that the missing rows understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_still_suppresses_a_genuine_decline():
+    # the narrowing must NOT reopen the cardinal false positive: a real refusal stays silent
+    assert (
+        sl.check_c3a(concl("- We cannot conclude that the missing rows understate the median."))
+        == []
+    )
+    assert (
+        sl.check_c3a(
+            concl("- The evidence does not show that the missing rows understate the median.")
+        )
+        == []
+    )
+
+
+def test_c3a_plural_outcome_target_fires():
+    assert any(
+        "C3a" in m for m in sl.check_c3a(concl("- The missing rows bias the estimates downward."))
+    )
+    assert any(
+        "C3a" in m
+        for m in sl.check_c3a(
+            concl("- Excluding the still-open cases skews the results in assist's favor.")
+        )
+    )
+
+
+def test_c3a_bare_attribution_noun_does_not_suppress_an_assertion():
+    # "stakeholders should note that X" / "the timing evidence argues that X" assert X;
+    # only clear attribution structure (claims/asserts/the memo) suppresses.
+    assert any(
+        "C3a" in m
+        for m in sl.check_c3a(
+            concl("- Stakeholders should note that the still-open cases understate the median.")
+        )
+    )
+    # but an attributed-and-rebutted claim still does not fire
+    assert (
+        sl.check_c3a(
+            concl(
+                "- The stakeholder memo claims the missing rows understate the median; "
+                "these files cannot license that claim."
+            )
+        )
+        == []
+    )
+
+
+def test_c3a_under_named_scenario_is_a_conditional_decline():
+    # "under the <adjective> scenario ... understates" is a licensed two-branch sensitivity
+    unit = (
+        "Under the still-open scenario the median understates time-to-close; "
+        "under the closed-unlogged scenario it does not."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3b_reason_smuggling_without_a_sentence_boundary_fails_closed():
+    # the smuggle must fail even without a `;`/`.` separating the atom from the claim:
+    # the `S2: UNKNOWN` atom is stripped before scanning so its own token can't suppress.
+    md = (
+        "## Data Validity\n\n- Source completeness semantics: S2: UNKNOWN — the absent "
+        "rows are still-open incidents so the closed-only median understates true time-to-close\n"
+    )
+    assert sl.check_c3b(md, "S2") != []
