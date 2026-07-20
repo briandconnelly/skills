@@ -864,7 +864,9 @@ def test_main_c3_note_on_stderr_when_flag_absent(monkeypatch, capsys, tmp_path):
 # --------------------------------------------------------------------------- #
 # C3 — the documented template form is what C3b/C3a expect (Task 5)
 # --------------------------------------------------------------------------- #
-TEMPLATE = (Path(sl.__file__).parent.parent / "references" / "ledger-template.md").read_text()
+TEMPLATE = (Path(sl.__file__).parent.parent / "references" / "ledger-template.md").read_text(
+    encoding="utf-8"
+)
 
 
 def test_template_documents_the_unknown_atom():

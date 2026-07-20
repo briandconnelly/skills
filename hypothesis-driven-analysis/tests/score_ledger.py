@@ -218,9 +218,10 @@ _C3A_UNKNOWN = re.compile(r"\bunknown\b", re.IGNORECASE)
 # A unit that DECLINES the direction claim, not merely one that contains a stray
 # negation. A bare auxiliary negating a coverage verb ("does not include ... so it
 # understates") must NOT suppress -- only a negation governing a conclusion/claim
-# verb ("cannot conclude", "does not show", "no evidence that") declines. The
-# consequence-split (CONSEQUENCE_SPLIT) sends the asserted "so it understates"
-# clause to its own unit, where no decline governs it.
+# verb ("cannot conclude", "does not show", "no evidence that") declines. Units are
+# deliberately NOT split on the consequence clause (see _c3a_units_of), so it is this
+# narrow governing-verb list -- not any clause split -- that lets the asserted "so it
+# understates" fire while a genuine refusal still suppresses.
 _C3A_NEGATION = re.compile(
     r"\bno evidence\b|"
     r"\b(?:cannot|can't|can not|could not|couldn't|do(?:es)? not|do(?:es)?n't|"
@@ -694,11 +695,18 @@ def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
 
     Applies the identical per-unit C3a fire test to the bullet's own claim
     units: an UNKNOWN atom's reason clause is not exempt from the claim it
-    would otherwise police in the Conclusion. The `<sid>: UNKNOWN` atom itself is
+    would otherwise police in the Conclusion. The source's declaration atom is
     stripped first, so its own `UNKNOWN` token cannot suppress the very scan meant
-    to police the reason clause that follows it.
+    to police the reason clause that follows it. The strip matches the atom through
+    the same `C3B_DECL` + `normalize_key` path `_c3b_value` accepts it by, so a
+    case- or spacing-variant declaration (`s2` vs `S2`, `S 2`) that `_c3b_value`
+    still accepts cannot leave its `UNKNOWN` token behind to fail this scan open.
     """
-    scan = re.sub(rf"\b{re.escape(source_id)}\s*[:\u2013\u2014-]\s*UNKNOWN\b", " ", bullet)
+    key = normalize_key(source_id)
+    scan = C3B_DECL.sub(
+        lambda m: " " if normalize_key(m.group("sid")) == key else m.group(0),
+        bullet,
+    )
     prev_had_anchor = False
     for unit in _c3a_units_of(scan):
         fires, has_anchor = _c3a_unit_fires(unit, prev_had_anchor)
