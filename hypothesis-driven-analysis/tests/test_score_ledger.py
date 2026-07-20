@@ -12,7 +12,9 @@ leniency boundary (`startswith`/first-token/parenthesised-estimand) so it cannot
 drift silently.
 
 Import-safety of the module is already relied on in production: compare_prereg.py
-imports from it (score_ledger.py:110 caller). We import it the same way.
+imports from it (see compare_prereg.py:110). We import it by path the same way,
+but restore sys.path immediately so the insertion cannot shadow same-named
+modules elsewhere in a full-suite run.
 """
 
 from __future__ import annotations
@@ -24,7 +26,10 @@ HERE = Path(__file__).parent
 FIX = HERE / "fixtures"
 
 sys.path.insert(0, str(HERE))
-import score_ledger as sl  # noqa: E402
+try:
+    import score_ledger as sl
+finally:
+    sys.path.remove(str(HERE))
 
 
 # --------------------------------------------------------------------------- #
