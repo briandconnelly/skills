@@ -23,6 +23,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 HERE = Path(__file__).parent
 FIX = HERE / "fixtures"
 
@@ -531,3 +533,99 @@ def test_c3b_fails_source_not_declared():
 def test_c3b_fails_conflicting_declarations():
     f = sl.check_c3b(dv("S2: UNKNOWN — no contract; S2: still-open — but really open"), "S2")
     assert any("conflict" in m.lower() or "S2" in m for m in f)
+
+
+# --------------------------------------------------------------------------- #
+# C3a — missingness-direction assertions in the Conclusion (Task 3)
+# --------------------------------------------------------------------------- #
+def concl(body: str) -> str:
+    return "## Conclusion\n\n" + body + "\n"
+
+
+# --- known positives: the six measured constructions must each fire ---
+@pytest.mark.parametrize(
+    "unit",
+    [
+        "The 11 incidents are still open; this understates how bad assist is.",
+        "Excluding the still-open cases can only push assist further behind manual.",
+        "The missing sev1 cases give a lower bound on eventual time-to-close; direction is known.",
+        "The gap is likely understated because the hardest incidents are censored "
+        "out of the sample.",
+        "The still-open incidents mean the true picture is at least as bad as shown, likely worse.",
+        "Right-censoring inflates the assist improvement; the true value is bounded "
+        "below by their current elapsed time.",
+    ],
+)
+def test_c3a_fires_on_each_measured_construction(unit):
+    f = sl.check_c3a(concl("- " + unit))
+    assert any("C3a" in m for m in f), f"expected C3a to fire on: {unit!r}"
+
+
+# --- known negatives: correct work must NOT fire ---
+@pytest.mark.parametrize(
+    "unit",
+    [
+        # licensed conditional sensitivity — decline suppressor rescues it
+        "If S2 absence means still-open, the closed-only estimate understates time; "
+        "if closed-but-unrecorded, direction is unidentified; overall direction is UNKNOWN.",
+        # legitimate confound-direction claim: direction but no missingness anchor
+        "The severity-mix confound biases the naive estimate high.",
+        # observed composition fact: anchor but skew has no outcome target
+        "The missing rows skew toward sev1.",
+        # opposing pair present
+        "The missing cases could understate or overstate the true assist median.",
+        # anchor but no direction predicate
+        "The 11 incidents have no recorded closure at the extract.",
+        # 'if anything' idiom must NOT be conditional; here no anchor -> still no fire
+        "If anything, the confound points to a larger severity effect.",
+    ],
+)
+def test_c3a_does_not_fire_on_correct_work(unit):
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_anaphora_inherits_prior_anchor():
+    # direction unit led by an anaphor inherits the previous unit's missingness anchor
+    body = (
+        "- The 11 sev1 incidents are still open at extract.\n- These understate how bad assist is."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_if_anything_idiom_not_suppressed():
+    # 'if anything ... likely understated ... censored out' (arm e's real ledger sentence)
+    unit = (
+        "If anything the direction points toward more cost, with the true gap "
+        "likely understated because the hardest incidents are censored out of the sample."
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+def test_c3a_ignores_summary_status_cells():
+    # an UNRESOLVED status cell is not a missingness anchor; a clean basis cell does not fire
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported, no direction claimed |\n"
+    )
+    assert sl.check_c3a(concl(body)) == []
+
+
+def test_c3a_scans_basis_cell_text():
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+    )
+    assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_fails_closed_without_conclusion():
+    f = sl.check_c3a("## Sources\n\n| id | x |\n| --- | --- |\n| S1 | y |\n")
+    assert any("Conclusion" in m for m in f)
+
+
+def test_c3a_reports_suppressed_count():
+    body = "- The missing cases could understate or overstate the assist median."
+    violations, suppressed = sl.c3a_report(concl(body))
+    assert violations == []
+    assert suppressed >= 1

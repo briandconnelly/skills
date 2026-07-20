@@ -123,6 +123,70 @@ C3B_DECL = re.compile(
     r"(?P<sid>\b[A-Za-z]{1,4}\s*\d+\b)\s*[:\u2013\u2014]\s*(?P<val>[^\u2013\u2014;,\n]+)"
 )
 
+# ---- C3a vocabulary (a closed ratchet against measured phrasings, not a
+# semantic guarantee; extended only when a new evasion is measured, as
+# _CLAIM_DRIFT_HINTS is). All matched case-insensitively over one claim unit. ----
+SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\s+")
+
+_C3A_DIRECTION = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bunder-?stat",
+        r"\bover-?stat",
+        r"\binflat",
+        r"\bdeflat",
+        r"\battenuat",
+        r"\bexaggerat",
+        r"\bmask(?:s|ed|ing)?\b",
+        r"\b(?:lower|upper)\s+bound\b",
+        r"\bbounded\s+(?:below|above)\b",
+        r"\bat least as (?:bad|good|slow|fast|high|low)\b",
+        r"\blikely (?:worse|better)\b",
+        r"\bfurther (?:behind|ahead)\b",
+        r"\bcan only (?:push|make|move|drive|widen)\b",
+        r"\b(?:conservativ|optimistic)\w*\s+(?:estimate|picture|view|read\w*)\b",
+        r"\bmanufactures?\s+an?\s+improvement\b",
+        r"\bdirection is known\b",
+        r"\b(?:push|shift)\w*\b[^.;]*\b(?:up|down|higher|lower|behind|ahead|worse)\b",
+    )
+]
+# bias/skew are directional only with an outcome target in the same unit.
+_C3A_BIAS_SKEW = re.compile(r"\b(?:bias|skew)\w*\b", re.IGNORECASE)
+_C3A_OUTCOME_TARGET = re.compile(
+    r"\b(?:estimate|result|comparison|effect|performance|median|mean|rate|"
+    r"number|headline|figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)\b",
+    re.IGNORECASE,
+)
+_C3A_ANCHOR = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bmissing\s+(?:\w+\s+)?(?:rows?|records?|cases?|incidents?|closures?|outcomes?|exposure)\b",
+        r"\babsent\s+(?:rows?|records?)\b",
+        r"\bno\s+(?:recorded\s+)?(?:close|closure|resolution)\s+record\b",
+        r"\bright[-\s]?censor\w*\b",
+        r"\bclosed[-\s]?only\b",
+        r"\bstill[-\s]+(?:open|unresolved)\b",
+        r"\bnot\s+yet\s+(?:closed|resolved)\b",
+        r"\bcensored\s+(?:out|from)\b",
+        r"\b(?:excluded|omitted|dropped)\s+(?:rows?|records?|cases?|incidents?)\b",
+    )
+]
+_C3A_ANAPHOR = re.compile(
+    r"^\W*(?:this|these|those|they|them|it|excluding (?:them|these|those))\b", re.IGNORECASE
+)
+# A real conditional clause, not the idioms "if anything/at all/ever/nothing".
+_C3A_CONDITIONAL = re.compile(r"\bif\s+(?!anything\b|at all\b|ever\b|nothing\b)", re.IGNORECASE)
+_C3A_UNDER_COND = re.compile(
+    r"\b(?:assuming|were (?:it|they|the)|should .* turn out)\b", re.IGNORECASE
+)
+_C3A_OPPOSING = [
+    (re.compile(r"\bunder-?stat", re.I), re.compile(r"\bover-?stat", re.I)),
+    (re.compile(r"\binflat", re.I), re.compile(r"\bdeflat", re.I)),
+    (re.compile(r"\bhigher\b", re.I), re.compile(r"\blower\b", re.I)),
+    (re.compile(r"\bworse\b", re.I), re.compile(r"\bbetter\b", re.I)),
+]
+_C3A_UNKNOWN = re.compile(r"\bunknown\b", re.IGNORECASE)
+
 FINAL = "final ledger"
 PLAN = "plan ledger"
 
@@ -276,6 +340,97 @@ def check_c3b(final: str, source_id: str) -> list[str]:
         f"`UNKNOWN`. Under --c3-unknown-source scope no evidence can discriminate "
         f"{source_id}'s missingness, so its only licensed declaration is `UNKNOWN`."
     ]
+
+
+def _c3a_has_direction(unit: str) -> bool:
+    if any(p.search(unit) for p in _C3A_DIRECTION):
+        return True
+    return bool(_C3A_BIAS_SKEW.search(unit) and _C3A_OUTCOME_TARGET.search(unit))
+
+
+def _c3a_has_anchor(unit: str) -> bool:
+    return any(p.search(unit) for p in _C3A_ANCHOR)
+
+
+def _c3a_suppressed(unit: str) -> bool:
+    if _C3A_CONDITIONAL.search(unit) or _C3A_UNDER_COND.search(unit):
+        return True
+    if _C3A_UNKNOWN.search(unit):
+        return True
+    return any(a.search(unit) and b.search(unit) for a, b in _C3A_OPPOSING)
+
+
+def conclusion_units(final: str) -> tuple[list[str], list[str]]:
+    """Ordered claim-unit texts of the `## Conclusion`, plus a fail-closed list.
+
+    Prose lines are split into sentence/`;` units. Summary-table rows contribute
+    only their `basis` cell text (the `id`/`claim`/`status` cells are never
+    scanned, so the status column's `UNRESOLVED` is not mistaken for an anchor).
+    """
+    body = section_body(final, "Conclusion")
+    if body is None:
+        return [], [
+            "parse: final ledger: C3a: no `## Conclusion` section found; cannot "
+            "verify completeness-direction consistency"
+        ]
+    units: list[str] = []
+    basis_idx: int | None = None
+    for line in body.splitlines():
+        m = ROW.match(line)
+        if m:
+            cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
+            if all(set(c) <= {"-", ":"} and c for c in cells):
+                continue  # separator
+            names = [normalize_key(c) for c in cells]
+            if "basis" in names and ("status" in names or "claim" in names):
+                basis_idx = names.index("basis")
+                continue  # header row
+            if basis_idx is not None and basis_idx < len(cells):
+                units.extend(s for s in SENTENCE_SPLIT.split(cells[basis_idx]) if s.strip())
+            continue
+        for raw in SENTENCE_SPLIT.split(line):
+            s = raw.strip().lstrip("-*").strip()
+            if s:
+                units.append(s)
+    return units, []
+
+
+def c3a_report(final: str) -> tuple[list[str], int]:
+    """C3a: report each unconditional missingness-direction claim in the
+    Conclusion, plus the count of units suppressed as conditional/declined.
+
+    A unit fires when it carries a direction predicate and a qualified missingness
+    anchor (or is anaphor-led and the anchor is in scope from a preceding unit in
+    the same Conclusion), and is not suppressed.
+    """
+    units, fails = conclusion_units(final)
+    if fails:
+        return fails, 0
+    violations: list[str] = []
+    suppressed = 0
+    anchor_in_scope = False
+    for unit in units:
+        has_anchor = _c3a_has_anchor(unit)
+        if has_anchor:
+            anchor_in_scope = True
+        if not _c3a_has_direction(unit):
+            continue
+        if _c3a_suppressed(unit):
+            suppressed += 1
+            continue
+        if has_anchor or (_C3A_ANAPHOR.search(unit) and anchor_in_scope):
+            violations.append(
+                f"C3a: the Conclusion asserts a missingness-direction claim without "
+                f"licensing evidence: {unit!r}. Under --c3-unknown-source scope the "
+                f"direction is unknown by construction; state 'no recorded closure, "
+                f"direction unknown' instead."
+            )
+    return violations, suppressed
+
+
+def check_c3a(final: str) -> list[str]:
+    """C3a violations only (see c3a_report for the suppressed-unit count)."""
+    return c3a_report(final)[0]
 
 
 def _select_table(
