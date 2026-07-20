@@ -1,0 +1,11 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Small multiples with facet.",
+  "data": {"values": [{"g": "x", "a": "A", "n": 3}, {"g": "x", "a": "B", "n": 5}, {"g": "y", "a": "A", "n": 2}, {"g": "y", "a": "B", "n": 8}]},
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "a", "type": "nominal"},
+    "y": {"field": "n", "type": "quantitative"},
+    "facet": {"field": "g", "type": "nominal", "columns": 2}
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Daily hits from day-first date strings, which the default toDate() would misparse onto the wrong dates without an explicit parse pattern.",
+  "data": {
+    "values": [{"day": "01-05-2024", "hits": 120}, {"day": "02-05-2024", "hits": 150}, {"day": "03-05-2024", "hits": 90}],
+    "format": {"parse": {"day": "date:'%d-%m-%Y'"}}
+  },
+  "mark": "area",
+  "encoding": {
+    "x": {"field": "day", "type": "temporal", "title": "Day"},
+    "y": {"field": "hits", "type": "quantitative", "title": "Hits"}
+  }
+}

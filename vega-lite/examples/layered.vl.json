@@ -1,0 +1,10 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Line with point markers using layer.",
+  "data": {"values": [{"t": 1, "v": 5}, {"t": 2, "v": 9}, {"t": 3, "v": 7}]},
+  "encoding": {
+    "x": {"field": "t", "type": "quantitative"},
+    "y": {"field": "v", "type": "quantitative"}
+  },
+  "layer": [{"mark": "line"}, {"mark": {"type": "point", "filled": true}}]
+}
