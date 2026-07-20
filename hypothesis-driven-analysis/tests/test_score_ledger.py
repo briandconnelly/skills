@@ -541,6 +541,33 @@ def test_c3b_completeness_bullet_must_be_in_data_validity():
     assert sl.check_c3b(md, "S2") != []
 
 
+def test_c3b_reason_clause_smuggling_a_direction_fails_closed():
+    # I1: an UNKNOWN atom whose reason text itself asserts an unconditional
+    # missingness direction takes back in prose what the atom concedes.
+    f = sl.check_c3b(
+        dv(
+            "S2: UNKNOWN — formally; in practice every absent row is a "
+            "still-open incident and the closed-only median understates true "
+            "time-to-close"
+        ),
+        "S2",
+    )
+    assert any("C3b" in m and "S2" in m for m in f)
+
+
+def test_c3b_duplicate_data_validity_sections_fail_closed():
+    # I2: two `## Data Validity` sections leave no way to tell which declares
+    # the source's completeness reading, even when the second is a definite
+    # (non-UNKNOWN) reading that would otherwise fail on its own merits too.
+    md = (
+        "## Data Validity\n\n- Source completeness semantics: S2: UNKNOWN — one\n\n"
+        "## Data Validity\n\n- Source completeness semantics: S2: still-open — two\n"
+    )
+    f = sl.check_c3b(md, "S2")
+    assert f != []
+    assert any("Data Validity" in m for m in f)
+
+
 # --------------------------------------------------------------------------- #
 # C3a — missingness-direction assertions in the Conclusion (Task 3)
 # --------------------------------------------------------------------------- #
@@ -630,6 +657,21 @@ def test_c3a_fails_closed_without_conclusion():
     assert any("Conclusion" in m for m in f)
 
 
+def test_c3a_fails_closed_on_empty_conclusion():
+    # I3: a `## Conclusion` heading with no scannable prose or basis cells must
+    # be a parse failure, not a vacuous pass -- mirrors the "header but no data
+    # rows" philosophy elsewhere in the scorer.
+    f = sl.check_c3a("## Conclusion\n\n\n")
+    assert any(m.startswith("parse:") and "Conclusion" in m for m in f)
+
+
+def test_c3a_fails_closed_on_duplicate_conclusion():
+    # I3: two `## Conclusion` sections leave no way to tell which to score.
+    md = "## Conclusion\n\n- ok\n\n## Conclusion\n\n- ok2\n"
+    f = sl.check_c3a(md)
+    assert any(m.startswith("parse:") and "Conclusion" in m for m in f)
+
+
 def test_c3a_reports_suppressed_count():
     body = "- The missing cases could understate or overstate the assist median."
     violations, suppressed = sl.c3a_report(concl(body))
@@ -685,6 +727,56 @@ def test_c3a_soft_wrapped_sentence_is_one_unit():
 
 def test_c3a_unknown_does_not_suppress_a_contradictory_direction():
     unit = "Completeness is unknown, but the missing rows understate the median."
+    assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
+
+
+# --------------------------------------------------------------------------- #
+# C3a hardening (#77 critical review) — negation, composition, treating-as,
+# `, and`, and leading-concessive cases (battery 7/10/13/15/16)
+# --------------------------------------------------------------------------- #
+def test_c3a_negation_does_not_fire_the_cardinal_fp():
+    # The cardinal false positive the review found: a sentence that NEGATES the
+    # direction claim must not fire just because the direction/anchor vocabulary
+    # is present.
+    unit = "We cannot conclude that the missing rows understate the median."
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_composition_shift_does_not_fire():
+    # "shifts" describes an observed composition change, not a claim about which
+    # way an estimate is wrong -- no outcome target co-occurs with `shifts`.
+    unit = (
+        "Dropping the 11 cases with no recorded closure shifts the closed-only "
+        "sample toward lower-severity incidents."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_treating_as_sensitivity_does_not_fire():
+    # A worst-case sensitivity check that explicitly conditions on "treating X as
+    # Y" is a licensed conditional, not an unconditional direction claim.
+    unit = (
+        "A worst-case sensitivity check: treating the 11 as still-open yields a "
+        "lower bound of 41 minutes on the assist median."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_and_joined_pair_splits_into_separate_units():
+    # A `, and`-joined pair must not let the direction half of the sentence
+    # borrow the missingness half's anchor (or vice versa) as if they were one
+    # claim unit.
+    unit = (
+        "The severity-mix confound biases the naive estimate high, and the "
+        "missing rows are concentrated in the assist week."
+    )
+    assert sl.check_c3a(concl("- " + unit)) == []
+
+
+def test_c3a_leading_concessive_still_fires_the_main_clause():
+    # A subordinate "While X is unknown," concessive must not suppress the main
+    # clause's own unconditional direction claim (I5).
+    unit = "While the direction is formally unknown, the missing rows understate the median."
     assert any("C3a" in m for m in sl.check_c3a(concl("- " + unit)))
 
 
@@ -796,11 +888,16 @@ def test_template_documents_the_unknown_atom():
 
 
 def test_worked_example_conclusion_is_a_c3a_negative():
-    # the template's worked-example Conclusion is a LICENSED directional scenario
-    # (S3 gap established by the independent LB counter): C3a must not fire on it.
-    body = sl.section_body(TEMPLATE, "Conclusion")
-    assert body is not None
-    # wrap it as a standalone Conclusion and confirm zero C3a violations
+    # Extract the worked example's own Conclusion (the SECOND `## Conclusion` in the
+    # file, inside the "## Worked Example" block), not the Full Route Template's
+    # placeholder Conclusion (which sl.section_body would return first, and which
+    # is not prose at all -- `- Answer: <answer first>` -- proving nothing).
+    split_count = 2
+    worked = TEMPLATE.split("## Worked Example", 1)
+    assert len(worked) == split_count, "template must contain a Worked Example section"
+    body = sl.section_body(worked[1], "Conclusion")
+    assert body is not None, "must scan the worked-example Conclusion"
+    assert "roll back" in body, "must scan the worked-example Conclusion"
     assert sl.check_c3a("## Conclusion\n" + body + "\n") == []
 
 
