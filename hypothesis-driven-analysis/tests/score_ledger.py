@@ -110,6 +110,11 @@ ESTIMAND = re.compile(r"^descriptive\s*\(\s*estimand\s*:\s*(?P<rest>[^)]*)\)", r
 # enclosing parenthesis: ASCII punctuation plus U+2013 en dash, U+2014 em
 # dash, U+2026 ellipsis.
 ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
+HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.*?)\s*#*\s*$")
+COMPLETENESS_LABEL = re.compile(
+    r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
+)
+BULLET_OR_HEADING = re.compile(r"^\s*(?:[-*]\s|#{1,6}\s)")
 
 FINAL = "final ledger"
 PLAN = "plan ledger"
@@ -159,6 +164,55 @@ def parse_tables(md: str) -> list[list[list[str]]]:
     if current:
         tables.append(current)
     return tables
+
+
+def section_body(md: str, name: str) -> str | None:
+    """The body under the `## <name>` heading, up to the next heading of the
+    same or higher level, or None if no such heading exists.
+
+    Heading titles are matched through the same emphasis/whitespace/case folding
+    as ids, so `## Conclusion`, `## conclusion`, and `## **Conclusion**` are one.
+    A deeper subheading (### …) stays inside the section; a sibling or higher one
+    ends it.
+    """
+    target = normalize_key(name)
+    out: list[str] = []
+    capturing = False
+    start_level = 0
+    for line in md.split("\n"):
+        m = HEADING.match(line)
+        if m:
+            level = len(m.group("hashes"))
+            if capturing and level <= start_level:
+                break
+            if not capturing and normalize_key(m.group("title")) == target:
+                capturing = True
+                start_level = level
+                continue
+        if capturing:
+            out.append(line)
+    return "\n".join(out) if capturing else None
+
+
+def completeness_bullet(md: str) -> str | None:
+    """The content of the `- Source completeness semantics: …` bullet with its
+    label removed, or None if the bullet is absent.
+
+    Captures the label line plus any continuation lines until the next bullet,
+    heading, or blank line, so a bullet wrapped across lines is read whole. The
+    label match tolerates markdown emphasis and an optional trailing colon.
+    """
+    lines = md.splitlines()
+    for i, line in enumerate(lines):
+        if COMPLETENESS_LABEL.match(EMPHASIS.sub("", line)):
+            first = COMPLETENESS_LABEL.sub("", EMPHASIS.sub("", line)).strip()
+            parts = [first] if first else []
+            for cont in lines[i + 1 :]:
+                if not cont.strip() or BULLET_OR_HEADING.match(cont):
+                    break
+                parts.append(cont.strip())
+            return " ".join(parts).strip() or None
+    return None
 
 
 def _select_table(

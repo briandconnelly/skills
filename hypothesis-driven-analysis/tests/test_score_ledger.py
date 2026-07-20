@@ -447,3 +447,37 @@ def test_main_exit_0_on_clean_ledger(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "OK:" in out
     assert "C2 checked and passed" in out
+
+
+# --------------------------------------------------------------------------- #
+# C3 — section and completeness-bullet extraction (Task 1)
+# --------------------------------------------------------------------------- #
+def test_section_body_extracts_named_section():
+    md = "# Title\n\n## Data Validity\n\n- a\n- b\n\n## Conclusion\n\n- answer\n- limits\n"
+    assert sl.section_body(md, "Conclusion") == "\n- answer\n- limits\n"
+    assert "answer" in sl.section_body(md, "conclusion")  # case/emphasis folded
+
+
+def test_section_body_stops_at_next_heading_of_same_or_higher_level():
+    md = "## Conclusion\n\n- answer\n\n### Sub\n\n- deep\n\n## After\n\n- x\n"
+    body = sl.section_body(md, "Conclusion")
+    assert "answer" in body  # own content stays inside
+    assert "deep" in body  # deeper heading stays inside
+    assert "x" not in body  # the sibling `## After` ends it
+
+
+def test_section_body_absent_is_none():
+    assert sl.section_body("# Title\n\n## Sources\n\n- s\n", "Conclusion") is None
+
+
+def test_completeness_bullet_extracts_content_without_label():
+    md = (
+        "## Data Validity\n\n- Coverage matrix: rows\n"
+        "- Source completeness semantics: S2: UNKNOWN — no contract\n"
+        "- Sensitivity checks performed: none\n"
+    )
+    assert sl.completeness_bullet(md) == "S2: UNKNOWN — no contract"
+
+
+def test_completeness_bullet_absent_is_none():
+    assert sl.completeness_bullet("## Data Validity\n\n- Coverage matrix: rows\n") is None
