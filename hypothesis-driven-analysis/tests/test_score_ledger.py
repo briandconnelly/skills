@@ -481,3 +481,53 @@ def test_completeness_bullet_extracts_content_without_label():
 
 def test_completeness_bullet_absent_is_none():
     assert sl.completeness_bullet("## Data Validity\n\n- Coverage matrix: rows\n") is None
+
+
+# --------------------------------------------------------------------------- #
+# C3b — canonical UNKNOWN atom (Task 2)
+# --------------------------------------------------------------------------- #
+def dv(bullet: str) -> str:
+    """A minimal ledger carrying one Source completeness semantics bullet."""
+    return f"## Data Validity\n\n- Source completeness semantics: {bullet}\n"
+
+
+def test_c3b_passes_canonical_unknown_atom():
+    assert sl.check_c3b(dv("S2: UNKNOWN — no completeness contract in these files"), "S2") == []
+
+
+def test_c3b_passes_emdash_separator_and_emphasis():
+    assert sl.check_c3b(dv("**S2** — `UNKNOWN` — no independent denominator"), "S2") == []
+
+
+def test_c3b_fails_lowercase_unknown_casesensitive():
+    # arm b's near-miss: lowercase "unknown" must not pass.
+    f = sl.check_c3b(dv("S2: unknown-direction problem, treat as right-censored"), "S2")
+    assert any("C3b" in m and "S2" in m for m in f)
+
+
+def test_c3b_fails_prose_reading_no_atom():
+    # arm-e-class prose: names S2 but never in the documented declaration form.
+    f = sl.check_c3b(
+        dv('for S2, an absent incident_id is read as "not yet closed" — right-censored'), "S2"
+    )
+    assert any(("C3b" in m) or ("no" in m and "S2" in m) for m in f)
+
+
+def test_c3b_fails_definite_reading_value():
+    f = sl.check_c3b(dv("S2: still-open — the missing rows are unresolved incidents"), "S2")
+    assert any("S2" in m for m in f)
+
+
+def test_c3b_fails_no_completeness_bullet():
+    f = sl.check_c3b("## Data Validity\n\n- Coverage matrix: rows\n", "S2")
+    assert any("completeness" in m.lower() for m in f)
+
+
+def test_c3b_fails_source_not_declared():
+    f = sl.check_c3b(dv("S3: UNKNOWN — sampled by design"), "S2")
+    assert any("S2" in m for m in f)
+
+
+def test_c3b_fails_conflicting_declarations():
+    f = sl.check_c3b(dv("S2: UNKNOWN — no contract; S2: still-open — but really open"), "S2")
+    assert any("conflict" in m.lower() or "S2" in m for m in f)

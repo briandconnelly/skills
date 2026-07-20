@@ -115,6 +115,13 @@ COMPLETENESS_LABEL = re.compile(
     r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
 )
 BULLET_OR_HEADING = re.compile(r"^\s*(?:[-*]\s|#{1,6}\s)")
+# A documented per-source completeness declaration: a source id (letters+digits)
+# immediately followed by a `:` or em/en-dash key-separator, then the value up to
+# the first reason delimiter. Anchored so a prose mention of the id (`S2,` /
+# `S2 (activity.csv)`) is not read as a declaration.
+C3B_DECL = re.compile(
+    r"(?P<sid>\b[A-Za-z]{1,4}\s*\d+\b)\s*[:\u2013\u2014]\s*(?P<val>[^\u2013\u2014;,\n]+)"
+)
 
 FINAL = "final ledger"
 PLAN = "plan ledger"
@@ -213,6 +220,62 @@ def completeness_bullet(md: str) -> str | None:
                 parts.append(cont.strip())
             return " ".join(parts).strip() or None
     return None
+
+
+def _c3b_value(final: str, source_id: str) -> tuple[str | None, list[str]]:
+    """The declared completeness value for `source_id`, read from the documented
+    `<sid>: <value>` atoms in the completeness bullet, or a fail-closed message.
+
+    Returns (value, []) on exactly one declaration for the source, (None, [fail])
+    when the bullet is missing, the source is undeclared, or two declarations for
+    the source conflict. The value is read through emphasis/backtick stripping but
+    its case is preserved so the caller can require uppercase UNKNOWN.
+    """
+    bullet = completeness_bullet(final)
+    if bullet is None:
+        return None, [
+            "parse: final ledger: C3b: no `Source completeness semantics` bullet found; "
+            "cannot verify the completeness declaration"
+        ]
+    key = normalize_key(source_id)
+    values = [
+        EMPHASIS.sub("", m.group("val")).strip()
+        for m in C3B_DECL.finditer(bullet)
+        if normalize_key(m.group("sid")) == key
+    ]
+    if not values:
+        return None, [
+            f"parse: final ledger: C3b: {source_id} has no `{source_id}: <reading>` "
+            f"declaration in the completeness bullet; the documented form is "
+            f"`{source_id}: UNKNOWN — <why no evidence discriminates>`"
+        ]
+    if len({v for v in values}) > 1:
+        return None, [
+            f"parse: final ledger: C3b: {source_id} carries conflicting completeness "
+            f"declarations {values!r}; cannot tell which reading is asserted"
+        ]
+    return values[0], []
+
+
+def check_c3b(final: str, source_id: str) -> list[str]:
+    """C3b: the implicated source's completeness entry must declare canonical
+    `UNKNOWN`. Fail closed on anything else.
+
+    Uppercase-exact on the value token: a lowercase `unknown`, a negated
+    `not UNKNOWN`, or a definite reading (`still-open`) each fails, because under
+    the flag's scope the only licensed reading is a declared UNKNOWN.
+    """
+    value, fails = _c3b_value(final, source_id)
+    if fails:
+        return fails
+    assert value is not None
+    if value == "UNKNOWN":
+        return []
+    return [
+        f"C3b: {source_id}'s completeness reading is {value!r}, not the canonical "
+        f"`UNKNOWN`. Under --c3-unknown-source scope no evidence can discriminate "
+        f"{source_id}'s missingness, so its only licensed declaration is `UNKNOWN`."
+    ]
 
 
 def _select_table(
