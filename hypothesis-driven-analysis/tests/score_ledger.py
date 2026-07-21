@@ -37,6 +37,15 @@ SCOPE — read before pointing this at a new scenario:
   into memo prose is invisible to C3, but rubric assertion 6 still scores the
   memo, so a memo-displaced claim stays covered somewhere, just not here.
 
+  C4's flag is the same shape of caller attestation as C3's. The scorer cannot
+  tell a positive/distributional contradiction (an observed pattern, timing, or
+  count offered as failing a distributional prediction, which must record an
+  adequacy bound) from a legitimate deterministic refutation (which is exempt --
+  "a deterministic prediction a true instance could never fail clears this at a
+  zero rate without simulation", SKILL.md). --c4-positive-contradiction H<n> is
+  the caller's attestation that H<n> is the former; an un-flagged row is never
+  seen by C4, which is what preserves a legitimate deterministic refutation.
+
 SYNTACTIC CHECKS ONLY
 
   This scorer verifies syntactic presence, not semantic quality. For example,
@@ -44,7 +53,7 @@ SYNTACTIC CHECKS ONLY
   by design; judging whether a named estimand is meaningful is the rubric
   grader's job, not this script's.
 
-Checks three things, all syntactic:
+Checks four things, all syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
@@ -65,6 +74,13 @@ Checks three things, all syntactic:
       unconditional missingness-direction claim (C3a), and S<n>'s completeness
       bullet declares canonical `UNKNOWN` (C3b). Not run unless the flag is
       given -- see SCOPE for why its precondition cannot be checked from the
+      ledger alone.
+  C4  Opt-in via --c4-positive-contradiction H<n> (repeatable): a hypothesis
+      whose refutation rests on a positive/distributional contradiction, if
+      marked REFUTED, must record the documented adequacy atom
+      `adequacy: <rate> (variants: <range>)` beside its outcome (its
+      CONTRADICTED Tests row or its Conclusion basis). Not run unless the flag
+      is given -- see SCOPE for why its precondition cannot be checked from the
       ledger alone.
 
 WHY IT IS BUILT THE WAY IT IS
@@ -123,6 +139,11 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 EMPHASIS = re.compile(r"[*_`]")
 SPACES = re.compile(r"\s+")
 STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
+# The recognized Tests-table outcome tokens. First-token classification (see
+# outcome_of) mirrors STATUS_TOKEN/status_of: a bare substring search for
+# CONTRADICTED would also fire inside "NON_DISCRIMINATING; not CONTRADICTED" or
+# "previously CONTRADICTED", misreading a non-refutation as a refutation (#85 F1).
+OUTCOME_TOKEN = re.compile(r"\b(CONSISTENT|CONTRADICTED|NON[-_ ]?DISCRIMINATING)\b")
 # The documented syntax (references/ledger-template.md): a descriptive claim
 # cell is written `descriptive (estimand: <the quantity>)`. Anchored to that
 # labeled, parenthesised form only -- the word "estimand" appearing anywhere
@@ -132,6 +153,31 @@ ESTIMAND = re.compile(r"^descriptive\s*\(\s*estimand\s*:\s*(?P<rest>[^)]*)\)", r
 # enclosing parenthesis: ASCII punctuation plus U+2013 en dash, U+2014 em
 # dash, U+2026 ellipsis.
 ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
+# The documented positive-contradiction adequacy atom
+# (references/ledger-template.md, SKILL.md Data / Site 2):
+# `adequacy: <rate> \u00b1 <uncertainty> (variants: <range>)`, recorded beside the
+# outcome. `search`ed (not anchored) because it sits inside a larger Outcome /
+# Evidence / basis cell. The bound is non-greedy up to the FIRST `(variants:` and may
+# itself contain parentheses, so a citation inside the rate prose
+# (`~34% under resampling (S1 §3) (variants: ...)`) still parses rather than making the
+# atom invisible and failing closed with a misleading "records no bound" message.
+ADEQUACY = re.compile(
+    r"adequacy\s*:\s*(?P<bound>.*?)\s*\(\s*variants\s*:\s*(?P<range>[^)]*)\)",
+    re.IGNORECASE,
+)
+# Like ESTIMAND_TRIM but WITHOUT `<`/`>` or parens. A rate bound such as `<1 in 20` or
+# `<5%` depends on the angle bracket, and stripping it would also collapse `<34%` and `34%`
+# into one bound, silently passing the conflicting-bounds check. Parens are excluded because
+# ADEQUACY already delimits both fields itself (the bound ends at `(variants:`, the range at
+# `)`), so a trailing paren here belongs to the content -- trimming it would truncate a
+# bound that ends in a citation, e.g. `~34% under resampling (S1 §3)`.
+ADEQUACY_TRIM = "".join(c for c in ESTIMAND_TRIM if c not in "<>()")
+# An unfilled `<...>` template placeholder. A cell that merely QUOTES the documented form
+# (`must record \`adequacy: <rate> ± <uncertainty> (variants: <range>)\` next time`)
+# documents the obligation; it records no bound, so such a field reads as empty. Anchored
+# to a whole field with no inner angle bracket, so a real bound like `<1 in 20` (no closing
+# `>`) is untouched.
+PLACEHOLDER = re.compile(r"^<[^<>]*>$")
 HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.*?)\s*#*\s*$")
 COMPLETENESS_LABEL = re.compile(
     r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
@@ -953,6 +999,110 @@ def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
     return None
 
 
+def check_c4(final: str, ids: list[str]) -> list[str]:
+    """C4: each flagged positive-contradiction hypothesis that is REFUTED must
+    record an adequacy bound + variant range beside its outcome. Fail closed
+    otherwise.
+
+    `ids` is the caller's attestation (--c4-positive-contradiction) that each named
+    hypothesis's necessary prediction is a positive/distributional contradiction,
+    so a REFUTED verdict on it is subject to the Site 2 recording requirement
+    (SKILL.md Data). The scorer cannot distinguish that from a legitimate
+    deterministic refutation, which is exempt and must not be flagged -- so an
+    un-flagged row is never seen here (the over-correction guard).
+
+    For each flagged id: an id absent from the Conclusion summary fails closed (a
+    flag naming a row the ledger does not contain); a flagged id that is not
+    REFUTED is nothing to check (no refutation to justify); a REFUTED id must carry
+    the documented `adequacy:` atom in its CONTRADICTED Tests row(s) or its
+    Conclusion basis cell. Syntactic presence only.
+    """
+    summary, sfails = read_table(final, FINAL, "id", "claim", "status")
+    if not summary:
+        return sfails  # no trustworthy summary grid: audit-wide bail, as score() does
+    by_id = {normalize_key(r["id"]): r for r in summary}
+    fails: list[str] = []
+    tests_rows: list[dict[str, str]] | None = None
+    for raw_id in ids:
+        row = by_id.get(normalize_key(raw_id))
+        if row is None:
+            fails.append(
+                f"parse: {FINAL}: C4: --c4-positive-contradiction names {raw_id!r}, which "
+                f"has no row in the Conclusion summary; cannot verify its adequacy bound"
+            )
+            continue
+        if status_of(row["status"]) != "REFUTED":
+            # nothing to check: no refutation to justify. An unparseable status cell
+            # (status_of -> None) also lands here; inside score() that row is already
+            # failed by _check_row before the run can go green, so this is not a
+            # false-clean path -- only a direct-caller nuance.
+            continue
+        if tests_rows is None:
+            tests_rows, tfails = read_table(final, FINAL, "hypothesis", "outcome", "evidence")
+            # Surface Tests parse failures whenever a Tests table is PRESENT, readable or not:
+            # a malformed/orphaned row, a header with no data rows, or ambiguous duplicate
+            # tables could each hide the flagged id's own refuting row and its bound, and
+            # score() reads the Tests table nowhere else. Only a genuinely ABSENT Tests table
+            # (a basis-cell-atom / mini-route ledger) stays benign -- guarding on presence,
+            # not on `tests_rows`, so a present-but-unreadable table fails closed too.
+            if _tests_table_present(final):
+                fails += tfails
+        fails += _check_adequacy_recorded(raw_id, normalize_key(raw_id), row, tests_rows)
+    return fails
+
+
+def _check_adequacy_recorded(
+    raw_id: str, key: str, summary_row: dict[str, str], tests_rows: list[dict[str, str]] | None
+) -> list[str]:
+    """The atom lookup for one flagged, REFUTED id: scan its Conclusion basis cell
+    (alternate site) and its CONTRADICTED Tests rows' Outcome/Evidence cells (primary
+    site) for the documented adequacy atom. Missing everywhere fails closed; conflicting
+    `(bound, variant-range)` atoms for the one id fail closed. (Tests-table parse failures
+    are surfaced by check_c4, which reads the table.)"""
+    candidates: list[str] = []
+    basis = summary_row.get("basis", "")
+    if basis:
+        candidates.append(basis)
+    for r in tests_rows or []:
+        if normalize_key(r["hypothesis"]) == key and outcome_of(r["outcome"]) == "CONTRADICTED":
+            candidates.append(r["outcome"])
+            candidates.append(r["evidence"])
+    atoms = [a for cell in candidates for a in _adequacy_atoms(cell)]
+    if not atoms:
+        return [
+            f"C4: {raw_id} is a REFUTED positive contradiction but records no adequacy bound "
+            f"+ variant range beside its outcome. A positive/distributional contradiction "
+            f"must record `adequacy: <rate> (variants: <range>)` in its CONTRADICTED Tests "
+            f"row or its Conclusion basis before it can refute (SKILL.md Data, Site 2)."
+        ]
+    # Compare on the normalized key so the same atom recorded at two accepted sites is one
+    # record, but report the raw forms so the message shows what was actually written.
+    distinct: dict[tuple[str, str], tuple[str, str]] = {}
+    for bound, rng in atoms:
+        distinct.setdefault((_atom_key(bound), _atom_key(rng)), (bound, rng))
+    if len(distinct) > 1:
+        shown = sorted(distinct.values())
+        return [
+            f"C4: {raw_id} carries conflicting adequacy atoms {shown!r}; cannot tell which "
+            f"bound and variant range is asserted."
+        ]
+    return []
+
+
+def _unique_ids(ids: list[str]) -> list[str]:
+    """Flag ids deduped by normalized key, preserving first-seen display form, so a
+    repeated --c4-positive-contradiction (e.g. `H4` and `h4`, or `H4` twice) checks
+    and reports the row once rather than double-counting it."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for i in ids:
+        key = normalize_key(i)
+        if key not in seen:
+            seen.add(key)
+            out.append(i)
+    return out
+
+
 def _select_table(
     md: str, label: str, required: tuple[str, ...], excluded: tuple[str, ...] = ()
 ) -> tuple[list[list[str] | Malformed | Orphaned] | None, list[str]]:
@@ -1001,6 +1151,23 @@ def _header_has(header: list[str], required: tuple[str, ...]) -> bool:
 def _header_lacks(header: list[str], excluded: tuple[str, ...]) -> bool:
     names = [normalize_key(h) for h in header]
     return not any(e in names for e in excluded)
+
+
+def _tests_table_present(md: str) -> bool:
+    """Whether a Tests table exists at all -- readable or not -- keyed on a header carrying
+    hypothesis/outcome/evidence. Lets C4 distinguish a present-but-unreadable Tests table
+    (a header with no rows, every row malformed, or ambiguous duplicate tables -- all of
+    which must fail closed) from a genuinely ABSENT one (a basis-only / mini-route ledger,
+    which is benign). A header row that itself lost a pipe parses as `Malformed`, not a
+    cell list, so such a table reads as absent and stays benign -- acceptable, since its
+    rows then carry no attributable hypothesis to police anyway. The same holds for a table
+    that renames a required column (`Hypothesis id`): it is invisible both here and to
+    harvesting, so its rows are neither policed nor credited. Every shipped run ledger uses
+    the template's canonical header, which is what keeps that edge theoretical."""
+    return any(
+        t and isinstance(t[0], list) and _header_has(t[0], ("hypothesis", "outcome", "evidence"))
+        for t in parse_tables(md)
+    )
 
 
 def _rows_from(
@@ -1112,6 +1279,23 @@ def status_of(cell: str) -> str | None:
     return m.group(1) if m else None
 
 
+def outcome_of(cell: str) -> str | None:
+    """The first recognized Tests outcome token (CONSISTENT / CONTRADICTED /
+    NON_DISCRIMINATING) in a cell, or None. First-token, mirroring status_of: a cell
+    like 'NON_DISCRIMINATING; not CONTRADICTED' classifies by its leading token, so a
+    bare substring search for CONTRADICTED cannot misread a non-refutation (or a
+    negated/historical mention) as a refutation and harvest its adequacy atom.
+
+    The dual is accepted: a cell whose LEADING token misrepresents the row (e.g.
+    'not CONSISTENT -- CONTRADICTED') classifies by that leading token and its atom is not
+    harvested, which fails closed rather than open. Template outcome cells lead with the
+    token, and this mirrors status_of's established first-token rule."""
+    m = OUTCOME_TOKEN.search(cell.upper())
+    if m is None:
+        return None
+    return "NON_DISCRIMINATING" if m.group(1).startswith("NON") else m.group(1)
+
+
 def estimand_of(claim: str) -> str | None:
     """The estimand named in a claim cell, or None if it does not match the
     documented `descriptive (estimand: <quantity>)` syntax.
@@ -1135,6 +1319,61 @@ def estimand_of(claim: str) -> str | None:
     # U+FEFF (zero-width no-break space), U+200C, U+200D, U+2060, U+00AD, etc.
     content = "".join(c for c in m.group("rest") if unicodedata.category(c) != "Cf")
     return content.strip(ESTIMAND_TRIM) or None
+
+
+def _adequacy_atoms(cell: str) -> list[tuple[str, str]]:
+    """Every `(bound, variant-range)` recorded in a cell via the documented
+    `adequacy: <rate> ± <uncertainty> (variants: <range>)` atom.
+
+    Both sub-fields are read through markdown emphasis and trimmed of surrounding
+    punctuation; an atom whose bound or variant range is empty after trimming is
+    not counted. Syntactic presence only, parallel to `estimand_of`: an
+    `adequacy: N/A (variants: none)` atom is collected by design, and judging
+    whether the recorded rate is a sound worst-case bound is the rubric grader's
+    job, not this script's.
+    """
+    stripped = EMPHASIS.sub("", cell)
+    out: list[tuple[str, str]] = []
+    for m in ADEQUACY.finditer(stripped):
+        bound = _atom_field(m.group("bound"))
+        rng = _atom_field(m.group("range"))
+        if bound and rng:
+            out.append((bound, rng))
+    return out
+
+
+def _atom_field(raw: str) -> str:
+    """One adequacy sub-field, Unicode-format-char stripped then punctuation-trimmed, so a
+    zero-width or other Cf character cannot masquerade as a non-empty bound or range (the
+    same defense estimand_of applies to a captured estimand).
+
+    An unfilled `<...>` placeholder reads as empty too: a cell quoting the documented form
+    states the obligation rather than recording a bound, and must not satisfy the check.
+    """
+    visible = "".join(c for c in raw if unicodedata.category(c) != "Cf")
+    trimmed = visible.strip(ADEQUACY_TRIM)
+    return "" if PLACEHOLDER.match(trimmed) else trimmed
+
+
+def _atom_key(field: str) -> str:
+    """The comparison key for an adequacy sub-field: whitespace removed and casefolded.
+
+    The design invites recording the same atom at two accepted sites (a CONTRADICTED Tests
+    cell and the Conclusion basis; both a row's Outcome and Evidence cells are harvested),
+    so one recording written `34% ± 5pp` and another `34%±5pp`, or differing only in case or
+    internal spacing, is ONE record, not a conflict -- failing it would be exactly the
+    "scorer that fails correct ledgers" this suite avoids. Whitespace is removed rather than
+    collapsed so the `±`-spacing variants fold together. `<`/`>` survive, so `<34%` and `34%`
+    stay distinct, as the conflicting-bounds check requires.
+    """
+    return SPACES.sub("", field).casefold()
+
+
+def adequacy_of(cell: str) -> tuple[str, str] | None:
+    """The first documented adequacy atom's `(bound, variant-range)` in a cell, or
+    None if it carries no atom with both sub-fields non-empty (see `_adequacy_atoms`)."""
+    atoms = _adequacy_atoms(cell)
+    return atoms[0] if atoms else None
 
 
 def check_ids(rows: list[dict[str, str]], label: str) -> list[str]:
@@ -1319,7 +1558,11 @@ def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
 
 
 def _describe(
-    summary: list[dict[str, str]], plan_supplied: bool, final: str, c3_source: str | None
+    summary: list[dict[str, str]],
+    plan_supplied: bool,
+    final: str,
+    c3_source: str | None,
+    c4_ids: list[str] | None,
 ) -> list[str]:
     """Say what was actually checked. Called only when nothing failed."""
     refuted = [r for r in summary if status_of(r["status"]) == "REFUTED"]
@@ -1359,10 +1602,34 @@ def _describe(
         lines.append(
             f"C3b checked and passed: {c3_source} declares canonical `UNKNOWN` completeness"
         )
+    if not c4_ids:
+        lines.append(
+            "C4 NOT CHECKED: no --c4-positive-contradiction supplied; positive-"
+            "contradiction adequacy was not verified"
+        )
+    else:
+        by_id = {normalize_key(r["id"]): r for r in summary}
+        refuted = [i for i in c4_ids if status_of(by_id[normalize_key(i)]["status"]) == "REFUTED"]
+        unresolved = [i for i in c4_ids if i not in refuted]
+        if refuted:
+            lines.append(
+                f"C4 checked and passed: {len(refuted)} flagged positive-contradiction row(s) "
+                f"({', '.join(refuted)}) each record an adequacy bound + variant range"
+            )
+        if unresolved:
+            lines.append(
+                f"C4 nothing to check: flagged {', '.join(unresolved)} not REFUTED, so no "
+                f"positive-contradiction refutation to verify"
+            )
     return lines
 
 
-def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome:
+def score(
+    final: str,
+    plan: str | None,
+    c3_source: str | None = None,
+    c4_ids: list[str] | None = None,
+) -> Outcome:
     """Score a final ledger, optionally against its Plan-time ledger and, when
     c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
@@ -1401,9 +1668,13 @@ def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome
         fails += check_c3a(final)
         fails += check_c3b(final, c3_source)
 
+    if c4_ids:
+        c4_ids = _unique_ids(c4_ids)  # dedupe repeated flags before check + describe
+        fails += check_c4(final, c4_ids)
+
     if fails:
         return Outcome(fails, [])
-    return Outcome([], _describe(summary, plan is not None, final, c3_source))
+    return Outcome([], _describe(summary, plan is not None, final, c3_source, c4_ids))
 
 
 def main() -> int:
@@ -1417,6 +1688,16 @@ def main() -> int:
         help="Source id (e.g. S2) whose absent records have no independent completeness "
         "contract; enables C3. Valid only in an s15-class fixture (see SCOPE).",
     )
+    ap.add_argument(
+        "--c4-positive-contradiction",
+        dest="c4_ids",
+        action="append",
+        default=None,
+        metavar="H<n>",
+        help="Hypothesis id whose refutation rests on a positive/distributional "
+        "contradiction; a REFUTED verdict on it must record an adequacy bound. "
+        "Repeatable; enables C4. See SCOPE.",
+    )
     a = ap.parse_args()
     plan = a.plan.read_text() if a.plan is not None else None
     if plan is None:
@@ -1426,7 +1707,13 @@ def main() -> int:
             "note: --c3-unknown-source omitted; C3 (completeness-direction) not checked",
             file=sys.stderr,
         )
-    outcome = score(a.final.read_text(), plan, a.c3_source)
+    if not a.c4_ids:
+        print(
+            "note: --c4-positive-contradiction omitted; C4 (positive-contradiction "
+            "adequacy) not checked",
+            file=sys.stderr,
+        )
+    outcome = score(a.final.read_text(), plan, a.c3_source, a.c4_ids)
     if outcome.fails:
         print("FAIL:")
         for f in outcome.fails:

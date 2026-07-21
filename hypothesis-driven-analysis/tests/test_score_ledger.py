@@ -1499,6 +1499,28 @@ def test_template_documents_the_unknown_atom():
     assert sl.check_c3b(md, "S1") == []
 
 
+def test_template_documents_the_adequacy_atom():
+    # Guard BOTH halves of the doc edit, discriminatingly. Asserting on the
+    # whole TEMPLATE is too weak: the Tests-section prose's own `adequacy: <rate>
+    # ± ... (variants: <range>)` format string parses as an atom (EMPHASIS
+    # strips its backticks), so a whole-file assert would stay green even if
+    # the worked-example illustration were dropped. Anchor the illustration
+    # check to the T4 row, which is what a regression would silently remove.
+    t4 = next(line for line in TEMPLATE.splitlines() if line.lstrip().startswith("| T4 "))
+    assert sl._adequacy_atoms(t4), "worked-example T4 row must illustrate the adequacy atom"
+    # and the Tests-section prose must document the atom's machine-checkable form. Anchored
+    # to the prose LINE, not the whole file: a whole-TEMPLATE containment assert is vacuous
+    # because the T4 row above already satisfies it, so deleting the documentation sentence
+    # would leave it green -- the same trap this test's first half avoids.
+    prose = next(
+        (ln for ln in TEMPLATE.splitlines() if ln.lstrip().startswith("A `CONTRADICTED` outcome")),
+        None,
+    )
+    assert prose is not None, "Tests-section prose must document the adequacy atom"
+    assert "adequacy:" in prose
+    assert "(variants:" in prose
+
+
 def test_worked_example_conclusion_is_a_c3a_negative():
     # Extract the worked example's own Conclusion (the SECOND `## Conclusion` in the
     # file, inside the "## Worked Example" block), not the Full Route Template's
@@ -1625,3 +1647,375 @@ def test_c3b_reason_smuggling_without_a_sentence_boundary_fails_closed():
         "rows are still-open incidents so the closed-only median understates true time-to-close\n"
     )
     assert sl.check_c3b(md, "S2") != []
+
+
+# --------------------------------------------------------------------------- #
+# C4 — the positive-contradiction adequacy atom (Task 1)
+# --------------------------------------------------------------------------- #
+def test_adequacy_of_parses_documented_atom():
+    assert sl.adequacy_of("adequacy: 34% (variants: τ ≥ 2h)") == ("34%", "τ ≥ 2h")
+
+
+def test_adequacy_of_reads_atom_embedded_in_a_larger_cell():
+    # the earlier `(S4 §2)` paren must not confuse the match, and the leading `<`
+    # of the bound must survive the trim (ADEQUACY_TRIM, unlike ESTIMAND_TRIM, does
+    # not strip `<`/`>` — the `<` is load-bearing and distinguishes conflicting bounds)
+    cell = (
+        "CONTRADICTED; added latency spread across spans (S4 §2). "
+        "adequacy: <1 in 20 ± 1pp (variants: any split with payment > 50%)"
+    )
+    assert sl.adequacy_of(cell) == ("<1 in 20 ± 1pp", "any split with payment > 50%")
+
+
+def test_adequacy_of_keeps_angle_brackets_distinct_in_bound():
+    # `<34%` and `34%` are different bounds; the trim must not collapse them
+    assert sl.adequacy_of("adequacy: <34% (variants: x)") == ("<34%", "x")
+
+
+def test_adequacy_of_reads_through_emphasis():
+    assert sl.adequacy_of("**adequacy: 5% (variants: fast-and-slow leak)**") == (
+        "5%",
+        "fast-and-slow leak",
+    )
+
+
+def test_adequacy_of_na_passes_syntactically():
+    # syntactic presence only, like `estimand: N/A`; quality is the rubric's
+    assert sl.adequacy_of("adequacy: N/A (variants: none)") == ("N/A", "none")
+
+
+def test_adequacy_of_none_when_no_atom():
+    assert sl.adequacy_of("CONTRADICTED; step at 09:12, deploy at 14:30") is None
+
+
+def test_adequacy_of_none_when_variants_empty():
+    assert sl.adequacy_of("adequacy: 34% (variants: )") is None
+
+
+def test_adequacy_of_none_when_bound_empty():
+    assert sl.adequacy_of("adequacy: (variants: τ ≥ 2h)") is None
+
+
+def test_adequacy_atoms_collects_multiple():
+    cell = "adequacy: 34% (variants: a). adequacy: 40% (variants: b)"
+    assert sl._adequacy_atoms(cell) == [("34%", "a"), ("40%", "b")]
+
+
+# --- C4 check: fixtures built inline (a full final ledger with Conclusion + Tests) ---
+def _c4_ledger(status: str, tests_row: str, basis: str = "best supported") -> str:
+    """A minimal final ledger: one H4 Conclusion row + one Tests table."""
+    return (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        f"| H4 | causal | {status} | {basis} |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        f"{tests_row}\n"
+    )
+
+
+def test_c4_known_positive_refuted_without_atom_fails():
+    # the exact skipped-estimate route the two old-wording S6 arms took
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | "
+        "events 2/3/1, not first-third (S1) |",
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "H4" in m for m in f), f
+
+
+def test_c4_passes_atom_in_contradicted_tests_evidence():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_passes_atom_in_conclusion_basis_alternate_site():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+        basis="refuted; adequacy: 34% (variants: τ ≥ 2h)",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_unflagged_deterministic_refutation_is_untouched():
+    # a legitimate deterministic refutation, NOT flagged, is never seen by C4
+    led = _c4_ledger(
+        "REFUTED",
+        "| T1 | H4 | step must not precede deploy | align logs | CONTRADICTED | "
+        "step precedes deploy (S1) |",
+    )
+    assert sl.check_c4(led, []) == []
+
+
+def test_c4_flagged_unresolved_is_nothing_to_check():
+    led = _c4_ledger(
+        "UNRESOLVED",
+        "| T4 | H4 | early clustering | compare timing | NON_DISCRIMINATING | underpowered (S1) |",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_flagged_id_absent_fails_closed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    f = sl.check_c4(led, ["H9"])
+    assert any("C4" in m and "H9" in m for m in f)
+
+
+def test_c4_conflicting_bounds_fail_closed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+        basis="refuted; adequacy: 90% (variants: τ ≥ 2h)",
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "conflicting" in m.lower() for m in f)
+
+
+def test_c4_no_tests_table_and_no_basis_atom_fails_closed():
+    led = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | causal | REFUTED | best supported |\n"
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "H4" in m for m in f)
+
+
+def test_c4_not_checked_when_flag_omitted():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    # descriptive so a causal-REFUTED does not trip C1 (which would empty `checked`);
+    # no --plan -> C2 NOT CHECKED. The point: un-flagged, this REFUTED-with-no-atom
+    # row is still green, and C4 reports NOT CHECKED rather than silently passing.
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    out = sl.score(led, None)  # no c4_ids -> C4 not run
+    assert has("C4 NOT CHECKED", out.checked)
+    assert not any("C4:" in m for m in out.fails)
+
+
+def test_c4_end_to_end_positive_fails_the_run():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    # H4 is causal+REFUTED, so C1 also fires; assert C4 specifically is present
+    out = sl.score(led, None, c4_ids=["H4"])
+    assert has("C4:", out.fails)
+    assert out.checked == []
+
+
+def test_c4_end_to_end_describe_passed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    # keep the row descriptive so C1 (causal-REFUTED) does not also fire
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    plan = plan_table("| H4 | descriptive (estimand: split) | n |")
+    out = sl.score(led, plan, c4_ids=["H4"])
+    assert has("C4 checked and passed", out.checked), out
+    assert out.fails == []
+
+
+def test_c4_describe_nothing_to_check_when_flagged_unresolved():
+    led = _c4_ledger(
+        "UNRESOLVED",
+        "| T4 | H4 | early clustering | compare timing | NON_DISCRIMINATING | underpowered (S1) |",
+    )
+    out = sl.score(led, None, c4_ids=["H4"])
+    assert has("C4 nothing to check", out.checked)
+    assert out.fails == []
+
+
+def test_c4_duplicate_flags_report_the_row_once():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    plan = plan_table("| H4 | descriptive (estimand: split) | n |")
+    out = sl.score(led, plan, c4_ids=["H4", "h4"])  # same row, two casings
+    assert out.fails == []
+    line = next(m for m in out.checked if "C4 checked and passed" in m)
+    assert "1 flagged" in line  # deduped, not "2 flagged"
+
+
+def test_c4_fixture_known_positive_fails():
+    final = read_fixture("c4-adequacy", "positive-no-bound.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert has("C4:", out.fails)
+    assert out.checked == []
+
+
+def test_c4_fixture_bound_recorded_passes():
+    final = read_fixture("c4-adequacy", "negative-bound-recorded.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert out.fails == [], out.fails
+    assert has("C4 checked and passed", out.checked)
+
+
+def test_c4_fixture_deterministic_unflagged_is_clean():
+    final = read_fixture("c4-adequacy", "negative-deterministic.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan)  # NOT flagged
+    assert out.fails == [], out.fails
+    assert has("C4 NOT CHECKED", out.checked)
+
+
+def test_c4_fixture_na_passes_syntactically():
+    final = read_fixture("c4-adequacy", "negative-na.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert out.fails == [], out.fails
+    assert has("C4 checked and passed", out.checked)
+
+
+# --- C4 fail-open regressions (cross-model review, issue #85) ---
+def test_c4_ignores_atom_in_non_contradicted_sibling_row():
+    # F1: an adequacy atom in a NON_DISCRIMINATING row (whose text merely mentions
+    # "not CONTRADICTED") must NOT satisfy C4 for a flagged REFUTED id.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | best supported |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | NON_DISCRIMINATING; not CONTRADICTED | adequacy: 34% (variants: x) |\n"
+    )
+    assert sl.check_c4(led, ["H4"]) != []  # must fail closed, not harvest the sibling atom
+
+
+def test_c4_surfaces_malformed_tests_row():
+    # F2: a malformed Tests row (lost outer pipe) hiding a conflicting bound must be
+    # surfaced, not swallowed because a sibling row parsed and carried an atom.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | best supported |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: a) |\n"
+        "T5 | H4 | p | m | CONTRADICTED | adequacy: 90% (variants: b) |\n"  # lost leading pipe
+    )
+    fails = sl.check_c4(led, ["H4"])
+    assert any("malformed" in f for f in fails), fails  # the malformed row is surfaced
+
+
+def test_c4_zero_width_atom_fields_are_empty():
+    # F3b: Cf (format) chars like U+200B must be stripped before the emptiness check,
+    # exactly as estimand_of does, so a visibly-empty atom is not counted.
+    zw = "\u200b"
+    assert sl.adequacy_of(f"adequacy: {zw} (variants: {zw})") is None
+    led = _c4_ledger(
+        "REFUTED",
+        f"| T4 | H4 | p | m | CONTRADICTED | adequacy: {zw} (variants: {zw}) |",
+    )
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: s) |")
+    assert sl.check_c4(led, ["H4"]) != []  # empty atom → fail closed
+
+
+def test_c4_surfaces_present_but_unreadable_tests_table():
+    # Copilot #1: a Tests table PRESENT but unreadable (a header with no data rows, or every
+    # row malformed) must fail closed even when a basis atom exists -- the broken table could
+    # hide the flagged id's own refuting row, and score() reads the Tests table nowhere else.
+    header = (
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+    )
+    concl = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | refuted; adequacy: 34% (variants: x) |\n\n"
+    )
+    malformed_row = "T4 | H4 | p | m | CONTRADICTED | events fell 2/3/1 |\n"  # lost leading pipe
+    assert sl.check_c4(concl + header + malformed_row, ["H4"]) != []  # all-rows-malformed
+    assert sl.check_c4(concl + header, ["H4"]) != []  # header, no data rows
+
+
+def test_c4_absent_tests_table_with_basis_atom_still_passes():
+    # control for Copilot #1: a genuinely ABSENT Tests table (a basis-only / mini-route
+    # ledger) is benign -- the basis atom is a valid alternate recording site.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | refuted; adequacy: 34% (variants: x) |\n"
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_conflicting_variant_ranges_fail_closed():
+    # Copilot #2: same bound, DIFFERENT variant range is an ambiguous record. The requirement
+    # is to record a bound AND a variant range, so conflicting (bound, range) pairs fail
+    # closed, not only conflicting bounds.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | b |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: a) |\n"
+        "| T5 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: b) |\n"
+    )
+    assert any("conflicting" in m.lower() for m in sl.check_c4(led, ["H4"]))
+
+
+def _c4_two_site_ledger(basis: str, evidence: str) -> str:
+    """A flagged-REFUTED H4 recording an atom at BOTH accepted sites (Conclusion basis and
+    its CONTRADICTED Tests row), so double-recording behavior can be exercised."""
+    return (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        f"| H4 | descriptive (estimand: s) | REFUTED | {basis} |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        f"| T4 | H4 | p | m | CONTRADICTED | {evidence} |\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("basis", "evidence"),
+    [
+        # the design invites double recording (primary Tests site + accepted basis
+        # alternate), so the SAME atom differing only in spacing or case is not a conflict
+        ("adequacy: 34% (variants: any decay)", "adequacy: 34% (variants: any  decay)"),
+        ("adequacy: 34% (variants: any decay)", "adequacy: 34% (variants: Any decay)"),
+        ("adequacy: 34%±5pp (variants: x)", "adequacy: 34% ± 5pp (variants: x)"),
+    ],
+)
+def test_c4_same_atom_at_both_sites_with_formatting_variance_passes(basis, evidence):
+    # a scorer that fails correct ledgers gets ignored: trivial whitespace/case variance
+    # between two recordings of the same atom must not read as a conflicting record
+    assert sl.check_c4(_c4_two_site_ledger(basis, evidence), ["H4"]) == []
+
+
+def test_c4_quoted_format_string_is_not_a_record():
+    # a cell that merely QUOTES the documented form documents the obligation; it does not
+    # record a bound. `<rate>`/`<range>` placeholders must not count as recorded fields.
+    led = _c4_two_site_ledger(
+        "must record `adequacy: <rate> ± <uncertainty> (variants: <range>)` next time",
+        "events fell 2/3/1, no bound computed",
+    )
+    assert sl.check_c4(led, ["H4"]) != []
+
+
+def test_adequacy_of_allows_a_parenthetical_inside_the_bound():
+    # a citation inside the rate prose must not make the atom invisible (which would fail
+    # closed with a misleading "records no adequacy bound" message)
+    atom = sl.adequacy_of("adequacy: ~34% under resampling (S1 §3) (variants: any decay)")
+    assert atom == ("~34% under resampling (S1 §3)", "any decay")
