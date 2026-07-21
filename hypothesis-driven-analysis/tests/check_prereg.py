@@ -366,15 +366,16 @@ def report_ordering(rows: list[Row], ledger: Row, data: re.Pattern[str]) -> int:
         f"— a placeholder written early and filled after analysis is a "
         f"reconstruction, not a preregistration."
     )
+    ordered = sorted(rows, key=lambda x: x.ordinal)
     earlier: list[tuple[Row, str]] = []
-    for r in sorted(rows, key=lambda x: x.ordinal):
+    for r in ordered:
         if r.ordinal >= ledger.ordinal:
             continue
         note = classification_note(r, data)
         if note is not None:
             earlier.append((r, note))
     same_batch: list[tuple[Row, str]] = []
-    for r in sorted(rows, key=lambda x: x.ordinal):
+    for r in ordered:
         if r.ordinal <= ledger.ordinal or r.timestamp != ledger.timestamp:
             continue
         note = classification_note(r, data)
