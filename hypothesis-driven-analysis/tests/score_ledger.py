@@ -281,17 +281,22 @@ class Malformed(NamedTuple):
 
 
 class Orphaned(NamedTuple):
-    """A well-formed `| ... |` row cut off from its table by a blank line.
+    """A pipe-bearing line a blank line cut off from its table.
 
     A blank line ends a table, so a summary table split by a blank line -- header
-    + rows, blank line, then a bare data row with no header of its own -- used to
+    + rows, blank line, then a trailing row with no header of its own -- used to
     strand that trailing row in a headerless "table" that `_select_table` declined
     and silently dropped, a fail-OPEN false green (issue #97, the blank-line twin
-    of #91/#93). Carried through `parse_tables` so `_rows_from` surfaces it as a
-    row-local parse failure (fail closed) instead. Distinct from `Malformed`: the
-    row itself is bounded correctly; it is its *placement* after a blank that makes
-    it unreadable, so the diagnostic must say so honestly rather than claim a
-    missing outer pipe.
+    of #91/#93). Every blank-adjacent line bounded by a pipe on at least one side
+    (`_looks_like_table_row`) is now carried through `parse_tables` as an `Orphaned`
+    row so `_rows_from` surfaces it as a row-local parse failure (fail closed).
+
+    Distinct from `Malformed` by PLACEMENT, not by the row's own shape: a `Malformed`
+    row lost an outer pipe INSIDE an open table, whereas an `Orphaned` row is one a
+    blank stranded -- it may be perfectly well-formed, or may itself have lost a pipe
+    or a cell (the #91/#97 combined cases), but either way its placement after the
+    blank is what makes it unreadable. The diagnostic names the stranding rather than
+    guessing at a missing pipe.
     """
 
     raw: str
