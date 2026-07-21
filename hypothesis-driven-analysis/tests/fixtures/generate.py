@@ -1094,9 +1094,12 @@ def _s16_briefs_md() -> str:
 
 
 def _s16_returns_md(*, w2_crashed: bool = False) -> str:
-    # s16 plants a harmless arithmetic defect in W1 (+5.1% where 41.2 -> 42.7
-    # is +3.6%); s19 (w2_crashed=True) corrects it so the dead worker is the
-    # packet's only phenomenon.
+    # s16 plants two defects: a harmless arithmetic defect in W1 (+5.1% where
+    # 41.2 -> 42.7 is +3.6%) and a material provenance defect in W2 (07-14
+    # output quoted under a --day 2026-07-15 command). s19 (w2_crashed=True)
+    # removes both — the W1 delta is stated correctly and the entire W2 return
+    # is replaced by the crash notice — so the dead worker is the packet's
+    # only phenomenon.
     w1_delta_pct = "+3.6%" if w2_crashed else "+5.1%"
     w1 = f"""## Worker W1 return (T1, cdn_edge) — as received
 
