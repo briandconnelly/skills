@@ -76,6 +76,8 @@ fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  <SCRATCH>/s19-
 
 ## Tool-call manifests (complete, per arm)
 
+Complete means every tool call is enumerated; the argument text of two long Bash entries below is display-truncated at 220 characters, and their full text appears in the first addendum at the end of this file.
+
 ### Arm a
 
 ```

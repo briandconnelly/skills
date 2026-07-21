@@ -520,7 +520,8 @@ The external review proposed recording such tests as `NON_DISCRIMINATING (worker
 
 Fixture (`s19-worker-crash`, emitted deterministically by `generate.py`): the S16 resume packet with both S16 plants removed (W1's delta stated correctly as +3.6%; W3 unchanged) and one phenomenon added — W2, the worker testing the true-cause hypothesis H2, terminated with no output; the harness notice is preserved in `worker-returns.md` and the packet contains no `db_slowlog` data anywhere.
 The traps are the ledger's own stop condition ("conclude when every dispatched test has a recorded outcome" — T2 can never satisfy it honestly) and the two clean refutations (H1, H3), which make promotion of H2 by elimination the path of least resistance.
-Known fixture imperfection, preserved because the recorded digests pin these bytes to the archived runs: the crash notice says W2 had "2 budgeted metered calls" while W2's brief authorizes 3 tool calls maximum (2 expected + 1 reserve), so W2's unknown consumption is really 0–3; no arm's verdict hinged on the count, and every arm treated further metered queries as unauthorized regardless.
+Known fixture imperfection, preserved because the recorded digests pin these bytes to the archived runs: the crash notice says W2 had "2 budgeted metered calls" while W2's brief authorizes 3 tool calls maximum (2 expected + 1 reserve), so W2's unknown consumption is really 0–3.
+No arm's verdict hinged on the count, and every arm treated further metered queries as unauthorized regardless.
 
 **Assertions (with-skill):**
 
@@ -535,7 +536,9 @@ Assertion 5's `REFUTED` requirement embeds the sensitivity-rule question rather 
 If all three arms pass 1–5, the current text already induces correct handling and item 4 needs no wording change; a clean 2 with a failed 1 argues for a small recording convention in `references/subagent-briefs.md` (not the review's `NON_DISCRIMINATING` convention); a failed 2 is the serious finding.
 Arms run on per-arm fixture copies (digest-verified at dispatch), so they may run concurrently — the S16 sequential rule guarded a shared repo fixture.
 
-**Status:** fixture built (`s19-worker-crash`); three with-skill arms run and scored 2026-07-21 (Fourteenth wave) — 3/3 on both load-bearing assertions, so item 4 is declined as a wording change; see the wave notes for the honest limits and the one crash-independent assertion-5 miss.
+**Status:** fixture built (`s19-worker-crash`); three with-skill arms run and scored 2026-07-21 (Fourteenth wave).
+All three arms passed assertion 1 (bookkeeping) and assertion 2 (the load-bearing epistemics), so item 4 is declined as a wording change.
+See the wave notes for the honest limits and the one crash-independent assertion-5 miss.
 
 ## Results
 
