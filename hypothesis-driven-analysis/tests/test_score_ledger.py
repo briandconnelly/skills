@@ -603,6 +603,245 @@ def test_pipe_bearing_line_between_two_tables_still_fails_closed():
 
 
 # --------------------------------------------------------------------------- #
+# #97 — a summary row orphaned by a blank line must fail closed, not vanish
+#
+# A blank line used to hard-terminate a table, so a summary table split by a
+# blank line — header + rows, blank line, then a bare data row with no header of
+# its own — orphaned that trailing row: it began a headerless "new table" that
+# _select_table declined and silently dropped, with NO red anywhere (fail-OPEN,
+# the twin of #91/#93 one terminator over). The fix keys on the BOUNDARY PIPE: a
+# blank-adjacent line that starts or ends with `|` is a stranded row (a table row,
+# or one that lost an outer pipe) and fails closed (an Orphaned row surfaced by
+# _rows_from, or a C3a parse fail), regardless of cell-count faults, escaped pipes,
+# or stray delimiters around it; prose with only an internal pipe is left alone. NO
+# blank-adjacent pipe block is exempted as a "distinct table" — that is a laundering
+# channel. Three review rounds drove this: Codex broke a delimiter-presence rule
+# (delimiter-after laundering); Fable broke the width-equality rule that replaced it
+# (any cell-count fault re-opened the fail-OPEN); Fable again broke the
+# different-width exemption (a short row + matching delimiter, and orphan-behind-a-
+# shield-grid). The rule that survives is the strictest: fail closed on everything.
+# --------------------------------------------------------------------------- #
+def test_blank_split_orphan_row_reddens_score():
+    # The issue's exact reproduction through score(final, None): H1 clean, then a
+    # blank line, then an orphaned H3 row. It must NOT vanish into a green.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n",
+        None,
+    )
+    assert out.checked == []  # the fail-OPEN green is gone
+    assert not has("C1 checked and passed", out.checked)
+    assert has("median is understated", out.fails)  # the orphaned row is surfaced
+
+
+def test_blank_split_separator_first_orphan_reddens_score():
+    # A delimiter BEFORE the orphan must NOT re-open the hole: a separator is the
+    # same width as the table, so it too is a stranded row and fails closed.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| --- | --- | --- | --- |\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("median is understated", out.fails)
+
+
+def test_blank_split_delimiter_after_orphan_reddens_score():
+    # Codex HIGH: a delimiter AFTER the orphan row used to launder it as a new
+    # table (row + matching delimiter), which _select_table declined and dropped —
+    # the fail-OPEN reopened. Width keys off the row itself, so the same-width H3
+    # is stranded no matter what follows it.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+        "| --- | --- | --- | --- |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("median is understated", out.fails)
+
+
+def test_blank_split_then_missing_pipe_row_reddens_score():
+    # Codex HIGH: a blank followed by a row that ALSO lost an outer pipe was
+    # dropped (the orphan scan only saw bounded rows). A lost-pipe row of the
+    # table's width has a comparable pipe-segment count, so it is now stranded and
+    # fails closed — the #91 fault one terminator over.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "H3 | causal | REFUTED | missing leading pipe, a violation |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("missing leading pipe", out.fails)
+
+
+def test_two_same_width_tables_split_by_blank_fail_closed():
+    # Two same-width summary tables separated by ONLY a blank line are ambiguous:
+    # structurally, the second is indistinguishable from a chunk of the first
+    # stranded by the blank (a laundered orphan looks identical). Since real ledgers
+    # never separate tables by a bare blank (they use a heading or prose), the safe
+    # reading is to treat the second as stranded and fail closed, never silently
+    # drop it. Nothing is earned.
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | a |\n"
+        "\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H2 | causal | REFUTED | a violation that must not vanish |\n"
+    )
+    out = sl.score(md, None)
+    assert out.checked == []
+    assert has("a violation that must not vanish", out.fails)  # the row is surfaced
+
+
+def test_blank_split_wrong_width_orphan_reddens_score():
+    # Fable review, the blocker: keying the orphan test on EXACT width let a
+    # blank-split row with any cell-count fault slip the gate — the row became a
+    # headerless table, silently dropped, and a `causal | REFUTED` passed (exit 0).
+    # A bounded row that lost or gained a cell after a blank must still fail closed,
+    # exactly as it would inside the table (#81).
+    for tail in (
+        "| H3 | causal | REFUTED | a violation | extra cell |\n",  # too wide
+        "| H3 | causal | REFUTED |\n",  # too narrow
+        "| H3 | causal \\| REFUTED | a violation |\n",  # escaped pipe collapses width
+    ):
+        out = sl.score(
+            "## Conclusion\n\n"
+            "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+            "| H1 | causal | UNRESOLVED | best supported |\n"
+            "\n" + tail,
+            None,
+        )
+        assert out.checked == [], f"wrong-width orphan slipped the gate: {tail!r}"
+        assert has("REFUTED", out.fails)
+
+
+def test_blank_split_stray_narrow_line_does_not_shield_the_block():
+    # Fable review (EE): the gate tested only the FIRST post-blank line, so a stray
+    # 1-cell line laundered every well-formed same-width row behind it. All bounded
+    # rows in the block must fail closed, not just the first.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| note |\n"
+        "| H3 | causal | REFUTED | a violation that must not be shielded |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("must not be shielded", out.fails)
+
+
+def test_prose_with_internal_pipe_after_blank_stays_green():
+    # Fable review (W): the boundary-pipe tell must not redden genuine prose that
+    # merely contains an internal pipe. Such a line starts and ends with words, not
+    # `|`, so it is left as prose and the clean ledger passes.
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "Options were A | B | C | D at the time of writing.\n"
+    )
+    out = sl.score(md, None)
+    assert out.checked
+    assert not out.fails
+
+
+def test_blank_separated_pipe_block_of_any_width_fails_closed():
+    # Fable re-review, Finding 1: any exemption for a "distinct-looking" table is a
+    # laundering channel. A blank-adjacent pipe block of a DIFFERENT width — even a
+    # self-contained header + delimiter + row — is no longer trusted; it fails closed
+    # like every other blank-adjacent block. (No real ledger separates tables by a
+    # bare blank, so nothing legitimate trips this; a heading is the way to do it.)
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| source | note |\n| --- | --- |\n"
+        "| S1 | ok |\n"
+    )
+    out = sl.score(md, None)
+    assert out.checked == []
+    assert has("orphaned", out.fails)
+
+
+def test_blank_split_width_short_row_plus_delimiter_reddens_score():
+    # Fable re-review Finding 1, the exploit: a C1-violating row written one cell
+    # short (width 3) plus a matching 3-wide delimiter used to be exempted as a
+    # "distinct table" and dropped — laundering the fail-OPEN one width over. With no
+    # exemption, the short row is a stranded orphan and fails closed.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| H3 | causal | REFUTED |\n"
+        "| --- | --- | --- |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("REFUTED", out.fails)
+
+
+def test_blank_split_orphan_behind_a_shield_table_reddens_score():
+    # Fable re-review Finding 2: an Orphaned row only surfaces via the grid it lands
+    # in, so an intervening (unselected) table used to shield a stranded violating
+    # row from score()'s grid path. With no exemption the shield's rows and the
+    # violating row are all swept into the ledger's orphan block, so it fails closed.
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| note | ref |\n| --- | --- |\n| n1 | r1 |\n"
+        "\n"
+        "| H3 | causal | REFUTED | hidden behind the shield |\n",
+        None,
+    )
+    assert out.checked == []
+    assert has("hidden behind the shield", out.fails)
+
+
+def test_orphan_block_then_pipe_table_all_fail_closed():
+    # With no distinct-table exemption, an orphan block and any pipe block glued to
+    # it by only a blank (or nothing) are all swept into the split-from table as
+    # Orphaned rows — one grid, fully fail-closed. Merging is safe here: every row is
+    # reported, nothing is silently dropped.
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | a |\n"
+        "\n"
+        "| H3 | data-artifact | UNRESOLVED | stranded |\n"
+        "| a | b |\n| --- | --- |\n| x | y |\n"
+    )
+    out = sl.score(md, None)
+    assert out.checked == []
+    assert has("orphaned", out.fails)
+    assert any(isinstance(r, sl.Orphaned) for t in sl.parse_tables(md) for r in t)
+
+
+# --------------------------------------------------------------------------- #
 # Deliberate leniency boundary — pin startswith / first-token / estimand syntax
 # --------------------------------------------------------------------------- #
 def test_claim_of_startswith_leniency():
@@ -959,6 +1198,68 @@ def test_c3a_surfaces_malformed_conclusion_row():
     )
     f = sl.check_c3a(concl(body))
     assert any(m.startswith("parse:") and "malformed" in m for m in f)
+
+
+def test_c3a_blank_split_orphan_basis_fails_closed():
+    # #97, the C3a twin of #93: a summary table split by a blank line orphans the
+    # trailing row, whose basis cell asserts an unconditional missingness direction.
+    # The inline parser used to reset table/basis state across the blank and drop
+    # the basis cell silently (check_c3a -> []). It must now fail closed on the
+    # orphaned row as a row-local parse error. The control (no blank line) firing
+    # C3a on the same basis cell is test_c3a_scans_basis_cell_text above.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    assert f != []  # not the fail-OPEN silent []
+    assert any(m.startswith("parse:") and "orphan" in m for m in f)
+
+
+def test_c3a_separator_first_orphan_fails_closed():
+    # A delimiter BEFORE the orphan row must not re-open the hole -- a same-width
+    # separator is itself a stranded row.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| --- | --- | --- | --- |\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    assert any(m.startswith("parse:") and "orphan" in m for m in f)
+
+
+def test_c3a_delimiter_after_orphan_fails_closed():
+    # Codex HIGH at the C3a site: a delimiter AFTER the orphan row must not launder
+    # it. The violating basis cell must not vanish; the run fails closed.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+        "| --- | --- | --- | --- |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    assert any(m.startswith("parse:") and "orphan" in m for m in f)
+
+
+def test_c3a_blank_then_missing_pipe_orphan_fails_closed():
+    # Codex HIGH at the C3a site: a blank followed by a row that also lost an outer
+    # pipe used to be dropped; a same-width lost-pipe row now fails closed.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | best supported |\n"
+        "\n"
+        "H3 | data-artifact | UNRESOLVED | the still-open cases understate the median |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    assert any(m.startswith("parse:") for m in f)  # reddens, not a silent []
 
 
 def test_c3a_fails_closed_without_conclusion():
