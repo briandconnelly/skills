@@ -6,6 +6,7 @@ No baseline arm was run: the wave measures whether the *current skill text* hand
 Arm prompts were identical except for the arm directory path; the prompt did not mention the missing return, worker failures, or any handling rule — the packet itself carries the phenomenon.
 All machine-generated sections below (digests, tool-call manifests, transcript hashes) were appended directly from command output, never hand-transcribed.
 Scored run records: `tests/runs/2026-07-21-scenario19-with-skill-{a,b,c}.md`.
+Path normalization: `<REPO_ROOT>` stands for the repository root and `<SCRATCH>` for the dispatching session's scratchpad directory, substituted uniformly throughout this file (including inside verbatim-quoted manifests and archived reports); digest values are hashes of file contents and are unaffected.
 
 Model: claude-sonnet-5 via the dispatching session's Agent tool; token counts are harness-reported subagent totals.
 
@@ -32,37 +33,37 @@ Committed fixture at generation:
 Per-arm copies at dispatch (identical to committed):
 
 ```
-55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-returns.md
-55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-returns.md
-55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-returns.md
+55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  <SCRATCH>/s19-arm-a/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-a/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-a/worker-returns.md
+55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  <SCRATCH>/s19-arm-b/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-b/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-b/worker-returns.md
+55c32a50aeebc6aafc6e9ce212af67e34e98b89b7fecd153c922a99a57eea7fe  <SCRATCH>/s19-arm-c/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-c/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-c/worker-returns.md
 ```
 
 Post-run arm state (ledgers mutated by the arms, briefs/returns untouched):
 
 ```
-4a6a8b2893e6a5618d3a287869f50ec2fa984f424b4aa46cca2c973ed6c536a0  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-returns.md
-3e6ce8351e4cbec9694f8f8bd3555cd0006914ea1d70c58273e40dcc3298f4c7  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-returns.md
-935093ff2a3e9eca584a756a9662cf9ef563706176362483841bc817db00153f  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/ledger.md
-691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-briefs.md
-1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-returns.md
+4a6a8b2893e6a5618d3a287869f50ec2fa984f424b4aa46cca2c973ed6c536a0  <SCRATCH>/s19-arm-a/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-a/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-a/worker-returns.md
+3e6ce8351e4cbec9694f8f8bd3555cd0006914ea1d70c58273e40dcc3298f4c7  <SCRATCH>/s19-arm-b/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-b/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-b/worker-returns.md
+935093ff2a3e9eca584a756a9662cf9ef563706176362483841bc817db00153f  <SCRATCH>/s19-arm-c/ledger.md
+691790bc993787a367af2208f79f40416d0fb279df8286e4eab7e011812efef3  <SCRATCH>/s19-arm-c/worker-briefs.md
+1574ffc5b6102e2877ae66276b8c51992b79cae14609a3668b2ab442bac4e446  <SCRATCH>/s19-arm-c/worker-returns.md
 ```
 
 Transcript snapshots (scratchpad copies of the harness task output JSONL):
 
 ```
-59119d3fab323b5e699040b1da6b48ff3c7d9fbf45f02e2b1a89ae78b5893b7e  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-a-transcript.jsonl
-fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-b-transcript.jsonl
-938763631142443155a0a6a5f21e6cae1aa919c27a6bc725d1d92181c4ffac59  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-c-transcript.jsonl
+59119d3fab323b5e699040b1da6b48ff3c7d9fbf45f02e2b1a89ae78b5893b7e  <SCRATCH>/s19-evidence/arm-a-transcript.jsonl
+fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  <SCRATCH>/s19-evidence/arm-b-transcript.jsonl
+938763631142443155a0a6a5f21e6cae1aa919c27a6bc725d1d92181c4ffac59  <SCRATCH>/s19-evidence/arm-c-transcript.jsonl
 ```
 
 ## Timing
@@ -78,46 +79,46 @@ fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  /private/tmp/c
 ### Arm a
 
 ```
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/SKILL.md
-Bash	ls -la /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-briefs.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/worker-returns.md
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/references/ledger-template.md
-Edit	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md
-Edit	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md
-Write	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/report.md
-Bash	ls -la /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/
-Write	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/report.md
-Write	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/conclusion.md
+Read	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+Bash	ls -la <SCRATCH>/s19-arm-a/
+Read	<SCRATCH>/s19-arm-a/ledger.md
+Read	<SCRATCH>/s19-arm-a/worker-briefs.md
+Read	<SCRATCH>/s19-arm-a/worker-returns.md
+Read	<REPO_ROOT>/hypothesis-driven-analysis/references/ledger-template.md
+Edit	<SCRATCH>/s19-arm-a/ledger.md
+Edit	<SCRATCH>/s19-arm-a/ledger.md
+Write	<SCRATCH>/s19-arm-a/report.md
+Bash	ls -la <SCRATCH>/s19-arm-a/
+Write	<SCRATCH>/s19-arm-a/report.md
+Write	<SCRATCH>/s19-arm-a/conclusion.md
 ```
 
 ### Arm b
 
 ```
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/SKILL.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-briefs.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/worker-returns.md
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/references/ledger-template.md
+Read	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+Read	<SCRATCH>/s19-arm-b/ledger.md
+Read	<SCRATCH>/s19-arm-b/worker-briefs.md
+Read	<SCRATCH>/s19-arm-b/worker-returns.md
+Read	<REPO_ROOT>/hypothesis-driven-analysis/references/ledger-template.md
 Bash	python3 -c "\n# H1 / T1 verification\ne14=41.2; e15=42.7\nprint('edge_p95_ms rel change:', round((e15-e14)/e14*100,3),'%')\nh14=0.94; h15=0.94\nprint('hit_ratio pp change:', round((h15-h14)*100,3))\nn14=812004; n15=
-Edit	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md
-Edit	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md
-Write	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/report.md
+Edit	<SCRATCH>/s19-arm-b/ledger.md
+Edit	<SCRATCH>/s19-arm-b/ledger.md
+Write	<SCRATCH>/s19-arm-b/report.md
 ```
 
 ### Arm c
 
 ```
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/SKILL.md
-Bash	ls -la /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/ledger.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-briefs.md
-Read	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/worker-returns.md
-Read	/Users/bdc/projects/skills/hypothesis-driven-analysis/references/ledger-template.md
-Edit	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/ledger.md
-Write	/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/report.md
-Bash	cat > "/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-c/report.md" << 'REPORT_EOF'\n# Investigation report: page-load p95 regression, 2026-07-15 vs 2026-07
+Read	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+Bash	ls -la <SCRATCH>/s19-arm-c/
+Read	<SCRATCH>/s19-arm-c/ledger.md
+Read	<SCRATCH>/s19-arm-c/worker-briefs.md
+Read	<SCRATCH>/s19-arm-c/worker-returns.md
+Read	<REPO_ROOT>/hypothesis-driven-analysis/references/ledger-template.md
+Edit	<SCRATCH>/s19-arm-c/ledger.md
+Write	<SCRATCH>/s19-arm-c/report.md
+Bash	cat > "<SCRATCH>/s19-arm-c/report.md" << 'REPORT_EOF'\n# Investigation report: page-load p95 regression, 2026-07-15 vs 2026-07
 ```
 
 ## Final T2 rows (assertion 1 evidence, quoted from post-run ledgers)
@@ -401,7 +402,7 @@ would not).
 The full investigation ledger — problem statement, preregistered hypotheses
 and predictions, sources, data-validity notes, test outcomes, amendments,
 and this conclusion in ledger form — is preserved at
-`/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-a/ledger.md`.
+`<SCRATCH>/s19-arm-a/ledger.md`.
 Worker briefs and returns are preserved verbatim in `worker-briefs.md` and
 `worker-returns.md` in the same directory.
 ~~~~
@@ -818,7 +819,7 @@ Because H2 remains a live, unrefuted alternative that could fully explain the re
 - All conclusions are associative — no exposure was randomized or independently assigned.
 - At least 4 of 6 budgeted metered queries were spent; W2's consumption before crashing is unknown; further metered queries are not authorized regardless.
 
-Ledger: `/private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-arm-b/ledger.md`
+Ledger: `<SCRATCH>/s19-arm-b/ledger.md`
 ~~~~
 
 ## Addendum (2026-07-21, post-review): full text of the two truncated Bash manifest entries
@@ -827,9 +828,9 @@ A pre-push branch review observed that the two long Bash entries in the manifest
 The full argument text below was extracted programmatically from the archived transcript snapshots with `tests/extract_evidence.py events` (scratchpad paths normalized to `<SCRATCH>` by the extractor), after re-verifying each snapshot's sha256 against the digests recorded above:
 
 ```
-59119d3fab323b5e699040b1da6b48ff3c7d9fbf45f02e2b1a89ae78b5893b7e  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-a-transcript.jsonl
-fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-b-transcript.jsonl
-938763631142443155a0a6a5f21e6cae1aa919c27a6bc725d1d92181c4ffac59  /private/tmp/claude-501/-Users-bdc-projects-skills/557f082b-2485-4489-87fb-19c7cdf89cc4/scratchpad/s19-evidence/arm-c-transcript.jsonl
+59119d3fab323b5e699040b1da6b48ff3c7d9fbf45f02e2b1a89ae78b5893b7e  <SCRATCH>/s19-evidence/arm-a-transcript.jsonl
+fe40437dad5eb24816023bc7f6876b3803082688037a48aa42afdfa37854be0e  <SCRATCH>/s19-evidence/arm-b-transcript.jsonl
+938763631142443155a0a6a5f21e6cae1aa919c27a6bc725d1d92181c4ffac59  <SCRATCH>/s19-evidence/arm-c-transcript.jsonl
 ```
 
 The enumeration in the manifests above was already complete (every tool call listed); only these two entries' argument text was cut.
