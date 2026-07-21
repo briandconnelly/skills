@@ -139,9 +139,11 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 EMPHASIS = re.compile(r"[*_`]")
 SPACES = re.compile(r"\s+")
 STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
-# A Tests-table outcome cell refuting a hypothesis. Whole-word so it never fires
-# on CONSISTENT / NON_DISCRIMINATING, and matched on the upper-cased cell.
-OUTCOME_CONTRADICTED = re.compile(r"\bCONTRADICTED\b")
+# The recognized Tests-table outcome tokens. First-token classification (see
+# outcome_of) mirrors STATUS_TOKEN/status_of: a bare substring search for
+# CONTRADICTED would also fire inside "NON_DISCRIMINATING; not CONTRADICTED" or
+# "previously CONTRADICTED", misreading a non-refutation as a refutation (#85 F1).
+OUTCOME_TOKEN = re.compile(r"\b(CONSISTENT|CONTRADICTED|NON[-_ ]?DISCRIMINATING)\b")
 # The documented syntax (references/ledger-template.md): a descriptive claim
 # cell is written `descriptive (estimand: <the quantity>)`. Anchored to that
 # labeled, parenthesised form only -- the word "estimand" appearing anywhere
@@ -1008,6 +1010,7 @@ def check_c4(final: str, ids: list[str]) -> list[str]:
         return sfails  # no trustworthy summary grid: audit-wide bail, as score() does
     by_id = {normalize_key(r["id"]): r for r in summary}
     fails: list[str] = []
+    tests_rows: list[dict[str, str]] | None = None
     for raw_id in ids:
         row = by_id.get(normalize_key(raw_id))
         if row is None:
@@ -1022,40 +1025,38 @@ def check_c4(final: str, ids: list[str]) -> list[str]:
             # failed by _check_row before the run can go green, so this is not a
             # false-clean path -- only a direct-caller nuance.
             continue
-        fails += _check_adequacy_recorded(final, raw_id, normalize_key(raw_id), row)
+        if tests_rows is None:
+            tests_rows, tfails = read_table(final, FINAL, "hypothesis", "outcome", "evidence")
+            # Surface row-local Tests parse failures (a malformed/orphaned row) once: such
+            # a row could be the flagged id's own refuting row, hiding a missing or
+            # conflicting adequacy bound, and score() reads the Tests table nowhere else.
+            # read_table returns row-local faults only alongside NON-empty rows, so guarding
+            # on tests_rows never surfaces the benign "no Tests table" selection message a
+            # basis-cell-atom ledger legitimately hits.
+            if tests_rows:
+                fails += tfails
+        fails += _check_adequacy_recorded(raw_id, normalize_key(raw_id), row, tests_rows)
     return fails
 
 
 def _check_adequacy_recorded(
-    final: str, raw_id: str, key: str, summary_row: dict[str, str]
+    raw_id: str, key: str, summary_row: dict[str, str], tests_rows: list[dict[str, str]] | None
 ) -> list[str]:
     """The atom lookup for one flagged, REFUTED id: scan its Conclusion basis cell
-    (alternate site) and its CONTRADICTED Tests rows' Outcome/Evidence cells
-    (primary site) for the documented adequacy atom.
-
-    Missing everywhere fails closed; if the Tests table itself could not be read
-    and the basis cell carried no atom, that parse failure is the surfaced reason.
-    Conflicting bounds for the one id fail closed.
-    """
+    (alternate site) and its CONTRADICTED Tests rows' Outcome/Evidence cells (primary
+    site) for the documented adequacy atom. Missing everywhere fails closed; conflicting
+    bounds for the one id fail closed. (Tests-table row-local parse failures are surfaced
+    by check_c4, which reads the table.)"""
     candidates: list[str] = []
     basis = summary_row.get("basis", "")
     if basis:
         candidates.append(basis)
-    tests_rows, tfails = read_table(final, FINAL, "hypothesis", "outcome", "evidence")
-    for r in tests_rows:
-        if normalize_key(r["hypothesis"]) == key and OUTCOME_CONTRADICTED.search(
-            r["outcome"].upper()
-        ):
+    for r in tests_rows or []:
+        if normalize_key(r["hypothesis"]) == key and outcome_of(r["outcome"]) == "CONTRADICTED":
             candidates.append(r["outcome"])
             candidates.append(r["evidence"])
     atoms = [a for cell in candidates for a in _adequacy_atoms(cell)]
     if not atoms:
-        if tfails and not tests_rows:
-            return [
-                f"C4: {raw_id} is a REFUTED positive contradiction but records no adequacy "
-                f"bound in its Conclusion basis, and its Tests table could not be read to "
-                f"check for one: {tfails[0]}"
-            ]
         return [
             f"C4: {raw_id} is a REFUTED positive contradiction but records no adequacy bound "
             f"+ variant range beside its outcome. A positive/distributional contradiction "
@@ -1244,6 +1245,18 @@ def status_of(cell: str) -> str | None:
     return m.group(1) if m else None
 
 
+def outcome_of(cell: str) -> str | None:
+    """The first recognized Tests outcome token (CONSISTENT / CONTRADICTED /
+    NON_DISCRIMINATING) in a cell, or None. First-token, mirroring status_of: a cell
+    like 'NON_DISCRIMINATING; not CONTRADICTED' classifies by its leading token, so a
+    bare substring search for CONTRADICTED cannot misread a non-refutation (or a
+    negated/historical mention) as a refutation and harvest its adequacy atom."""
+    m = OUTCOME_TOKEN.search(cell.upper())
+    if m is None:
+        return None
+    return "NON_DISCRIMINATING" if m.group(1).startswith("NON") else m.group(1)
+
+
 def estimand_of(claim: str) -> str | None:
     """The estimand named in a claim cell, or None if it does not match the
     documented `descriptive (estimand: <quantity>)` syntax.
@@ -1283,11 +1296,19 @@ def _adequacy_atoms(cell: str) -> list[tuple[str, str]]:
     stripped = EMPHASIS.sub("", cell)
     out: list[tuple[str, str]] = []
     for m in ADEQUACY.finditer(stripped):
-        bound = m.group("bound").strip(ADEQUACY_TRIM)
-        rng = m.group("range").strip(ADEQUACY_TRIM)
+        bound = _atom_field(m.group("bound"))
+        rng = _atom_field(m.group("range"))
         if bound and rng:
             out.append((bound, rng))
     return out
+
+
+def _atom_field(raw: str) -> str:
+    """One adequacy sub-field, Unicode-format-char stripped then punctuation-trimmed, so a
+    zero-width or other Cf character cannot masquerade as a non-empty bound or range (the
+    same defense estimand_of applies to a captured estimand)."""
+    visible = "".join(c for c in raw if unicodedata.category(c) != "Cf")
+    return visible.strip(ADEQUACY_TRIM)
 
 
 def adequacy_of(cell: str) -> tuple[str, str] | None:

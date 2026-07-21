@@ -1878,3 +1878,47 @@ def test_c4_fixture_na_passes_syntactically():
     out = sl.score(final, plan, c4_ids=["H4"])
     assert out.fails == [], out.fails
     assert has("C4 checked and passed", out.checked)
+
+
+# --- C4 fail-open regressions (cross-model review, issue #85) ---
+def test_c4_ignores_atom_in_non_contradicted_sibling_row():
+    # F1: an adequacy atom in a NON_DISCRIMINATING row (whose text merely mentions
+    # "not CONTRADICTED") must NOT satisfy C4 for a flagged REFUTED id.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | best supported |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | NON_DISCRIMINATING; not CONTRADICTED | adequacy: 34% (variants: x) |\n"
+    )
+    assert sl.check_c4(led, ["H4"]) != []  # must fail closed, not harvest the sibling atom
+
+
+def test_c4_surfaces_malformed_tests_row():
+    # F2: a malformed Tests row (lost outer pipe) hiding a conflicting bound must be
+    # surfaced, not swallowed because a sibling row parsed and carried an atom.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | best supported |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: a) |\n"
+        "T5 | H4 | p | m | CONTRADICTED | adequacy: 90% (variants: b) |\n"  # lost leading pipe
+    )
+    fails = sl.check_c4(led, ["H4"])
+    assert any("malformed" in f for f in fails), fails  # the malformed row is surfaced
+
+
+def test_c4_zero_width_atom_fields_are_empty():
+    # F3b: Cf (format) chars like U+200B must be stripped before the emptiness check,
+    # exactly as estimand_of does, so a visibly-empty atom is not counted.
+    zw = "\u200b"
+    assert sl.adequacy_of(f"adequacy: {zw} (variants: {zw})") is None
+    led = _c4_ledger(
+        "REFUTED",
+        f"| T4 | H4 | p | m | CONTRADICTED | adequacy: {zw} (variants: {zw}) |",
+    )
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: s) |")
+    assert sl.check_c4(led, ["H4"]) != []  # empty atom → fail closed
