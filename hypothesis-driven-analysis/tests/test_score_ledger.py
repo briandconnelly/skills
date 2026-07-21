@@ -1846,3 +1846,35 @@ def test_c4_duplicate_flags_report_the_row_once():
     assert out.fails == []
     line = next(m for m in out.checked if "C4 checked and passed" in m)
     assert "1 flagged" in line  # deduped, not "2 flagged"
+
+
+def test_c4_fixture_known_positive_fails():
+    final = read_fixture("c4-adequacy", "positive-no-bound.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert has("C4:", out.fails)
+    assert out.checked == []
+
+
+def test_c4_fixture_bound_recorded_passes():
+    final = read_fixture("c4-adequacy", "negative-bound-recorded.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert out.fails == [], out.fails
+    assert has("C4 checked and passed", out.checked)
+
+
+def test_c4_fixture_deterministic_unflagged_is_clean():
+    final = read_fixture("c4-adequacy", "negative-deterministic.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan)  # NOT flagged
+    assert out.fails == [], out.fails
+    assert has("C4 NOT CHECKED", out.checked)
+
+
+def test_c4_fixture_na_passes_syntactically():
+    final = read_fixture("c4-adequacy", "negative-na.md")
+    plan = read_fixture("c4-adequacy", "plan.md")
+    out = sl.score(final, plan, c4_ids=["H4"])
+    assert out.fails == [], out.fails
+    assert has("C4 checked and passed", out.checked)
