@@ -392,12 +392,13 @@ def test_all_rows_malformed_bails_audit_wide():
     assert out.checked == []
 
 
-def test_read_table_invariant_nonempty_rows_only_carry_cell_count_fails():
-    # The structural invariant score()'s #81 recovery leans on, pinned directly at
-    # read_table so a future parser change cannot silently break it: whenever
-    # read_table returns any row, every accompanying fail is a row-local cell-count
-    # mismatch. Table-selection faults (no/ambiguous table, repeated header, no
-    # data rows, all-malformed body) must instead return NO rows.
+def test_read_table_invariant_nonempty_rows_only_carry_row_local_faults():
+    # The structural invariant score()'s #81/#91 recovery leans on, pinned directly
+    # at read_table so a future parser change cannot silently break it: whenever
+    # read_table returns any row, every accompanying fail is a row-local row-parse
+    # fault — a cell-count mismatch (#81) or a row that lost an outer pipe (#91) —
+    # never a table-wide one. Table-selection faults (no/ambiguous table, repeated
+    # header, no data rows, all-malformed body) must instead return NO rows.
     md = summary(
         "| H1 | causal | REFUTED | good |\n| H2 | descriptive | UNRESOLVED | a | b stray |"
     )
@@ -405,11 +406,21 @@ def test_read_table_invariant_nonempty_rows_only_carry_cell_count_fails():
     assert rows, "a well-formed sibling must be returned"
     assert f
     assert all("cell(s) but the header" in m for m in f)
+    # #91: a missing-outer-pipe row is the OTHER permitted row-local fault kind. A
+    # well-formed sibling is still returned beside it.
+    md_pipe = summary(
+        "| H1 | causal | REFUTED | good |\nH2 | descriptive | UNRESOLVED | lost pipe |"
+    )
+    rows, f = sl.read_table(md_pipe, "final ledger", "id", "claim", "status")
+    assert rows, "a well-formed sibling must be returned beside a missing-pipe row"
+    assert f
+    assert all(("cell(s) but the header" in m) or ("is malformed" in m) for m in f)
     # And the empty-rows branches carry only table-wide faults, never rows:
     for empty_md in (
         "# no table here\n",  # no matching table
         "## Conclusion\n\n| id | claim | status |\n| --- | --- | --- |\n",  # header, no rows
-        summary("| H1 | causal | REFUTED | a | b stray |"),  # every row malformed
+        summary("| H1 | causal | REFUTED | a | b stray |"),  # every row malformed (cell count)
+        summary("H1 | causal | REFUTED | lost pipe |"),  # every row malformed (missing pipe)
     ):
         rows, f = sl.read_table(empty_md, "final ledger", "id", "claim", "status")
         assert rows == []
@@ -433,6 +444,162 @@ def test_plan_side_cell_count_mismatch_stays_audit_wide():
     assert has("cell(s) but the header", out.fails)
     assert not has("C2", out.fails)  # C2 suppressed: no trustworthy Plan map
     assert out.checked == []
+
+
+# --------------------------------------------------------------------------- #
+# #91 — a row missing an outer pipe must fail closed, not vanish (false green)
+#
+# parse_tables used to treat a line failing the outer-pipe ROW regex as a table
+# TERMINATOR, so a data row missing its leading or trailing `|` disappeared from
+# the grid entirely and the run reported "C1 checked and passed" (exit 0) — a
+# fail-OPEN false green, the opposite of the suite's discipline. These pin that
+# such a row now surfaces as a row-local parse failure the way #81's cell-count
+# mismatch does: reported, exit 1, siblings still audited, nothing earned.
+# --------------------------------------------------------------------------- #
+def test_row_missing_leading_pipe_fails_closed_not_dropped():
+    # The issue's exact reproduction: a `causal | REFUTED` row missing its LEADING
+    # pipe beside a well-formed descriptive row. It must NOT vanish into a green.
+    out = sl.score(
+        summary("| H1 | descriptive | UNRESOLVED | fine |\nH2 | causal | REFUTED | violation |"),
+        None,
+    )
+    assert out.checked == []  # the false green is gone
+    assert not has("C1 checked and passed", out.checked)
+    assert has("H2 | causal | REFUTED | violation", out.fails)  # the row is surfaced
+
+
+def test_row_missing_trailing_pipe_fails_closed_not_dropped():
+    # The missing-TRAILING-pipe variant behaves identically.
+    out = sl.score(
+        summary("| H1 | descriptive | UNRESOLVED | fine |\n| H2 | causal | REFUTED | violation"),
+        None,
+    )
+    assert out.checked == []
+    assert has("REFUTED | violation", out.fails)
+
+
+def test_missing_outer_pipe_row_is_row_local_sibling_still_audited():
+    # Row-local like #81: a malformed (missing-pipe) row must not blind C1 on a
+    # well-formed causal-REFUTED sibling. Known positive: genuine C1 violation on
+    # H1 beside the malformed H2.
+    out = sl.score(
+        summary(
+            "| H1 | causal | REFUTED | violation |\n"
+            "H2 | descriptive | UNRESOLVED | missing leading pipe |"
+        ),
+        None,
+    )
+    assert has("C1: H1", out.fails)  # the sibling is still audited
+    assert has("missing leading pipe", out.fails)  # the malformed row reported
+    assert out.checked == []  # still fail-closed
+
+
+def test_only_malformed_data_row_bails_audit_wide():
+    # Floor case: header + separator + a single malformed data row (no well-formed
+    # sibling). There is no trustworthy grid, so the run fails closed rather than
+    # reporting an empty green.
+    out = sl.score(
+        summary("H1 | causal | REFUTED | missing leading pipe |"),
+        None,
+    )
+    assert out.fails
+    assert out.checked == []
+    assert not has("C1 checked and passed", out.checked)
+
+
+def test_plain_prose_line_still_terminates_a_table():
+    # Guard the boundary the fix must preserve: a line with NO unescaped pipe still
+    # ends a table (it is genuine prose, not a malformed row). Two id|claim|status
+    # tables separated only by a prose line stay TWO tables — surfacing as the
+    # ambiguous-selection bail, proving the prose line was treated as a terminator.
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | a |\n"
+        "some prose with no pipe characters at all\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H2 | causal | UNRESOLVED | b |\n"
+    )
+    assert has("cannot tell which one to score", sl.score(md, None).fails)
+
+
+def test_ragged_separator_fails_closed():
+    # #91 secondary: an all-dash/colon line whose cell count disagrees with the
+    # header is no longer silently discarded. Known positive: an otherwise-CLEAN
+    # ledger (a lone causal|UNRESOLVED row triggers no C1/C2), so the ONLY thing
+    # that can turn it red is catching the ragged separator itself — guarding
+    # against a test that passes for an unrelated reason. A ragged separator still
+    # matches ROW; only its width is wrong, so it is routed through the existing
+    # cell-count diagnostic (not the missing-outer-pipe one), which is asserted
+    # exactly rather than merely "some failure".
+    out = sl.score(
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n"
+        "| --- | --- |\n"  # ragged: 2 cells under a 4-col header
+        "| H1 | causal | UNRESOLVED | fine |\n",
+        None,
+    )
+    assert has("cell(s) but the header", out.fails)
+    assert out.checked == []
+
+
+def test_sibling_after_a_malformed_row_is_still_audited():
+    # Codex/#91: a row missing an outer pipe must not split the table and drop the
+    # rows that FOLLOW it (an earlier candidate design did). Here the malformed row
+    # sits BEFORE a genuine causal-REFUTED sibling; the violation after it must
+    # still be reported, and the malformed row still fails closed.
+    out = sl.score(
+        summary(
+            "| H1 | descriptive | UNRESOLVED | fine |\n"
+            "H2 | descriptive | UNRESOLVED | lost a leading pipe |\n"
+            "| H3 | causal | REFUTED | violation after the malformed row |"
+        ),
+        None,
+    )
+    assert has("C1: H3", out.fails)  # the row AFTER the malformed one is still audited
+    assert has("lost a leading pipe", out.fails)  # and the malformed row is reported
+    assert out.checked == []
+
+
+def test_stray_matching_width_separator_after_data_does_not_drop_the_violation():
+    # Codex review of the #91 branch (HIGH): a candidate design split a table at any
+    # matching-width separator by treating the row before it as a new header. A STRAY
+    # separator sitting after real data rows then popped a genuine data row into an
+    # unselectable table and dropped it — recreating the exact false green. The
+    # separator must instead be kept as an ordinary row (fails closed on its
+    # unrecognized claim/status), and the causal-REFUTED row before it must stay
+    # auditable. Known positive: the violation must still be reported.
+    out = sl.score(
+        summary(
+            "| H1 | causal | UNRESOLVED | clean |\n"
+            "| H2 | causal | REFUTED | violation |\n"
+            "| --- | --- | --- | --- |"  # stray matching-width separator AFTER data
+        ),
+        None,
+    )
+    assert has("C1: H2", out.fails)  # the violation is NOT dropped
+    assert out.checked == []  # fail closed, nothing earned
+
+
+def test_pipe_bearing_line_between_two_tables_still_fails_closed():
+    # Codex/#91: a pipe-bearing line no longer terminates a table, so two back-to-
+    # back id|claim|status tables separated ONLY by such a line merge into one. That
+    # is safe, NOT a false green: the second header becomes an unrecognized data row
+    # and the run fails closed, while the second table's causal-REFUTED row stays
+    # under the first (identical) header and is still audited. Splitting to preserve
+    # a prettier "ambiguous" diagnostic was rejected because it could orphan and drop
+    # rows (see the stray-separator regression above); never dropping a row wins.
+    md = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H1 | causal | UNRESOLVED | a |\n"
+        "stray | prose | with | pipes\n"  # pipe-bearing, no outer pipes
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H2 | causal | REFUTED | b |\n"
+    )
+    out = sl.score(md, None)
+    assert has("C1: H2", out.fails)  # the violation in the second table is still caught
+    assert out.checked == []  # fail closed, never a silent single-table pass
 
 
 # --------------------------------------------------------------------------- #

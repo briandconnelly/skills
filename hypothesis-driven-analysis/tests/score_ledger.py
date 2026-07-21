@@ -269,24 +269,70 @@ def normalize_key(cell: str) -> str:
     return SPACES.sub(" ", EMPHASIS.sub("", cell)).strip().casefold()
 
 
-def parse_tables(md: str) -> list[list[list[str]]]:
-    """Return every markdown table as a list of rows, each row a list of cells.
+class Malformed(NamedTuple):
+    """A line that sits inside a table but is not a bounded `| ... |` row.
 
-    Cells are split on unescaped pipes only, so a literal `|` written as `\\|`
-    inside a cell's text does not fragment the row.
+    Carried through `parse_tables` so a data row that lost an outer pipe surfaces
+    as a row-local parse failure in `_rows_from` (fail closed) instead of silently
+    ending the table and vanishing from the grid -- the false-green #91 fixes.
     """
-    tables: list[list[list[str]]] = []
-    current: list[list[str]] = []
+
+    raw: str
+
+
+def _is_separator(cells: list[str]) -> bool:
+    """A markdown delimiter row: every cell is non-empty and only `-`/`:`."""
+    return all(set(c) <= {"-", ":"} and c for c in cells)
+
+
+def parse_tables(md: str) -> list[list[list[str] | Malformed]]:
+    """Return every markdown table as a list of rows.
+
+    A well-formed row is a list of cells, split on unescaped pipes only, so a
+    literal `|` written as `\\|` inside a cell does not fragment the row. A line
+    that sits inside a table but fails the outer-pipe `ROW` match while still
+    carrying an unescaped `|` is kept as a `Malformed` row rather than silently
+    ending the table: a data row missing a leading or trailing pipe must fail
+    closed as a row-local parse error, never disappear from the grid (issue #91).
+
+    Table boundaries:
+
+    - A blank line, or a line with no unescaped pipe, is genuine prose and ends
+      the current table (unchanged).
+    - A delimiter row (all `-`/`:`) is dropped ONLY in delimiter position:
+      directly under a lone header whose width it matches. Anywhere else -- after
+      body rows, or with a mismatched width -- it is not a valid delimiter, so it
+      is kept as an ordinary row and fails closed via the cell-count / claim /
+      status checks. A delimiter is NEVER used to split a table: popping the row
+      before it to start a new table can orphan a genuine data row out of the one
+      selected grid and drop it -- the very false green this fixes. The cost is
+      that two back-to-back tables glued by a pipe-bearing line merge into one;
+      that still fails closed (the second header reads as an unrecognized row) and
+      keeps every row auditable, which is what matters.
+    - The unescaped-pipe test reuses `CELL_SPLIT` (a single `\\`-escape convention,
+      matching how cells are split); a pipe after an even run of backslashes is
+      treated as escaped, which is deliberate and adequate for these ledgers.
+    """
+    tables: list[list[list[str] | Malformed]] = []
+    current: list[list[str] | Malformed] = []
     for line in md.splitlines():
         m = ROW.match(line)
         if not m:
-            if current:
+            if current and line.strip() and CELL_SPLIT.search(line):
+                current.append(Malformed(line))  # a row that lost an outer pipe
+            elif current:
                 tables.append(current)
                 current = []
             continue
         cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
-        if all(set(c) <= {"-", ":"} and c for c in cells):
-            continue  # separator row
+        if _is_separator(cells):
+            if not current:
+                continue  # a stray leading delimiter with no header -- drop
+            header = current[0]
+            if len(current) == 1 and isinstance(header, list) and len(cells) == len(header):
+                continue  # a matching-width delimiter under its lone header is dropped
+            # a misplaced or ragged delimiter falls through and is kept as a row so
+            # its cell-count / claim / status disagreement is reported below
         current.append(cells)
     if current:
         tables.append(current)
@@ -718,7 +764,7 @@ def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
 
 def _select_table(
     md: str, label: str, required: tuple[str, ...], excluded: tuple[str, ...] = ()
-) -> tuple[list[list[str]] | None, list[str]]:
+) -> tuple[list[list[str] | Malformed] | None, list[str]]:
     """The one table whose header carries every required column and none of the
     excluded ones, or a parse failure.
 
@@ -728,13 +774,20 @@ def _select_table(
     Conclusion summary both carry `id` + `claim`, and only `status` tells them
     apart. Zero matches and more than one match are both failures: neither
     leaves the scorer able to say which rows it was supposed to check.
+
+    A table whose first row is `Malformed` (its header lost an outer pipe) cannot
+    be matched on its columns, so it is passed over here and, if nothing else
+    matches, fails closed as "no table found" -- never guessed at.
     """
     cols = ", ".join(required)
     desc = cols if not excluded else f"{cols}, excluding {', '.join(excluded)}"
     matches = [
         t
         for t in parse_tables(md)
-        if t and _header_has(t[0], required) and _header_lacks(t[0], excluded)
+        if t
+        and isinstance(t[0], list)
+        and _header_has(t[0], required)
+        and _header_lacks(t[0], excluded)
     ]
     if not matches:
         return None, [
@@ -759,8 +812,19 @@ def _header_lacks(header: list[str], excluded: tuple[str, ...]) -> bool:
     return not any(e in names for e in excluded)
 
 
-def _rows_from(table: list[list[str]], label: str) -> tuple[list[dict[str, str]], list[str]]:
-    """Data rows of a matched table, keyed by normalized header name."""
+def _rows_from(
+    table: list[list[str] | Malformed], label: str
+) -> tuple[list[dict[str, str]], list[str]]:
+    """Data rows of a matched table, keyed by normalized header name.
+
+    A `Malformed` body row (a line inside the table that lost an outer pipe) is
+    reported as a row-local parse failure and skipped, exactly parallel to a
+    cell-count mismatch: it cannot be read, but it never blinds the audit of its
+    well-formed siblings, and the run still fails closed on it (issue #91). The
+    header (`table[0]`) is always a well-formed row -- `_select_table` only
+    matches a table whose first row is a real cell list -- so it is indexed here
+    without a guard.
+    """
     header = [normalize_key(h) for h in table[0]]
     repeats = sorted({h for h in header if header.count(h) > 1})
     if repeats:
@@ -771,6 +835,12 @@ def _rows_from(table: list[list[str]], label: str) -> tuple[list[dict[str, str]]
     rows: list[dict[str, str]] = []
     fails: list[str] = []
     for n, row in enumerate(table[1:], start=2):
+        if isinstance(row, Malformed):
+            fails.append(
+                f"parse: {label}: table row {n} is malformed -- a table row must be "
+                f"bounded by outer pipes, but this line is not: {row.raw!r}"
+            )
+            continue
         if len(row) != len(header):
             fails.append(
                 f"parse: {label}: table row {n} has {len(row)} cell(s) but the header "
@@ -793,15 +863,17 @@ def read_table(
 
     - Returns ([], fails) whenever the table cannot be identified as a trustworthy
       grid: no table with the required columns, more than one, a repeated column
-      name, a header with no data rows, or a body in which *every* data row's cell
-      count disagrees with the header. There is nothing a caller may safely read.
+      name, a header with no data rows, or a body in which *every* data row is
+      malformed (cell count disagreeing with the header, or a line that lost an
+      outer pipe). There is nothing a caller may safely read.
     - Returns (rows, fails) with rows NON-EMPTY only when the table was identified
       unambiguously and at least one data row is well-formed. Any accompanying
-      `fails` are then EXCLUSIVELY row-local cell-count mismatches (one per stray
-      row): the returned rows are each verified, and a caller may police them as
-      long as it still surfaces `fails` and never reports the run as clean while
-      any remain. This is the invariant score() relies on to keep a single stray
-      `|` from blinding C1/C2 on sibling rows (issue #81).
+      `fails` are then EXCLUSIVELY row-local row-parse failures (one per stray
+      row): a cell-count mismatch (issue #81) or a row that lost an outer pipe
+      (issue #91). The returned rows are each verified, and a caller may police
+      them as long as it still surfaces `fails` and never reports the run as clean
+      while any remain. This is the invariant score() relies on to keep a single
+      stray `|` -- or a single dropped pipe -- from blinding C1/C2 on sibling rows.
 
     A caller that wants the stricter "any failure voids the whole reading" rule
     (compare_prereg.py, _read_plan) still gets it by bailing on non-empty `fails`.
@@ -1096,15 +1168,17 @@ def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome
     """Score a final ledger, optionally against its Plan-time ledger and, when
     c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
-    # read_table returns the well-formed rows beside any cell-count-mismatch fail,
-    # and a NON-EMPTY `summary` can only be accompanied by that one fault: every
+    # read_table returns the well-formed rows beside any row-local parse fail, and
+    # a NON-EMPTY `summary` can only be accompanied by those row-local faults -- a
+    # cell-count mismatch (#81) or a row that lost an outer pipe (#91): every
     # table-selection failure (no table with the required columns, more than one, a
     # repeated column name) and an all-malformed body return no rows at all (see
     # read_table's contract). So when `summary` is non-empty we report the stray
-    # row's parse fail yet still police its well-formed siblings: a single unescaped
-    # `|` no longer blinds C1/C2 across the table (issue #81), one indirection
-    # deeper than the #73 claim/status-*value* recovery. When `summary` is empty
-    # there is no trustworthy row grid to check, so bail audit-wide.
+    # row's parse fail yet still police its well-formed siblings: neither a single
+    # unescaped `|` (#81) nor a single dropped outer pipe (#91) blinds C1/C2 across
+    # the table, both one indirection deeper than the #73 claim/status-*value*
+    # recovery. When `summary` is empty there is no trustworthy row grid to check,
+    # so bail audit-wide.
     if not summary:
         return Outcome(fails, [])
     # check_ids stays audit-wide even on well-formed rows: a duplicate or missing id
