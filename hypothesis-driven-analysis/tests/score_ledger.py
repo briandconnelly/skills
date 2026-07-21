@@ -1027,13 +1027,13 @@ def check_c4(final: str, ids: list[str]) -> list[str]:
             continue
         if tests_rows is None:
             tests_rows, tfails = read_table(final, FINAL, "hypothesis", "outcome", "evidence")
-            # Surface row-local Tests parse failures (a malformed/orphaned row) once: such
-            # a row could be the flagged id's own refuting row, hiding a missing or
-            # conflicting adequacy bound, and score() reads the Tests table nowhere else.
-            # read_table returns row-local faults only alongside NON-empty rows, so guarding
-            # on tests_rows never surfaces the benign "no Tests table" selection message a
-            # basis-cell-atom ledger legitimately hits.
-            if tests_rows:
+            # Surface Tests parse failures whenever a Tests table is PRESENT, readable or not:
+            # a malformed/orphaned row, a header with no data rows, or ambiguous duplicate
+            # tables could each hide the flagged id's own refuting row and its bound, and
+            # score() reads the Tests table nowhere else. Only a genuinely ABSENT Tests table
+            # (a basis-cell-atom / mini-route ledger) stays benign -- guarding on presence,
+            # not on `tests_rows`, so a present-but-unreadable table fails closed too.
+            if _tests_table_present(final):
                 fails += tfails
         fails += _check_adequacy_recorded(raw_id, normalize_key(raw_id), row, tests_rows)
     return fails
@@ -1045,8 +1045,8 @@ def _check_adequacy_recorded(
     """The atom lookup for one flagged, REFUTED id: scan its Conclusion basis cell
     (alternate site) and its CONTRADICTED Tests rows' Outcome/Evidence cells (primary
     site) for the documented adequacy atom. Missing everywhere fails closed; conflicting
-    bounds for the one id fail closed. (Tests-table row-local parse failures are surfaced
-    by check_c4, which reads the table.)"""
+    `(bound, variant-range)` atoms for the one id fail closed. (Tests-table parse failures
+    are surfaced by check_c4, which reads the table.)"""
     candidates: list[str] = []
     basis = summary_row.get("basis", "")
     if basis:
@@ -1063,11 +1063,11 @@ def _check_adequacy_recorded(
             f"must record `adequacy: <rate> (variants: <range>)` in its CONTRADICTED Tests "
             f"row or its Conclusion basis before it can refute (SKILL.md Data, Site 2)."
         ]
-    bounds = sorted({b for b, _ in atoms})
-    if len(bounds) > 1:
+    pairs = sorted(set(atoms))
+    if len(pairs) > 1:
         return [
-            f"C4: {raw_id} carries conflicting adequacy bounds {bounds!r}; cannot tell which "
-            f"is asserted."
+            f"C4: {raw_id} carries conflicting adequacy atoms {pairs!r}; cannot tell which "
+            f"bound and variant range is asserted."
         ]
     return []
 
@@ -1134,6 +1134,20 @@ def _header_has(header: list[str], required: tuple[str, ...]) -> bool:
 def _header_lacks(header: list[str], excluded: tuple[str, ...]) -> bool:
     names = [normalize_key(h) for h in header]
     return not any(e in names for e in excluded)
+
+
+def _tests_table_present(md: str) -> bool:
+    """Whether a Tests table exists at all -- readable or not -- keyed on a header carrying
+    hypothesis/outcome/evidence. Lets C4 distinguish a present-but-unreadable Tests table
+    (a header with no rows, every row malformed, or ambiguous duplicate tables -- all of
+    which must fail closed) from a genuinely ABSENT one (a basis-only / mini-route ledger,
+    which is benign). A header row that itself lost a pipe parses as `Malformed`, not a
+    cell list, so such a table reads as absent and stays benign -- acceptable, since its
+    rows then carry no attributable hypothesis to police anyway."""
+    return any(
+        t and isinstance(t[0], list) and _header_has(t[0], ("hypothesis", "outcome", "evidence"))
+        for t in parse_tables(md)
+    )
 
 
 def _rows_from(

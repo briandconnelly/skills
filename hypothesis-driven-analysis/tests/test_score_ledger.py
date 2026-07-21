@@ -1922,3 +1922,47 @@ def test_c4_zero_width_atom_fields_are_empty():
     )
     led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: s) |")
     assert sl.check_c4(led, ["H4"]) != []  # empty atom → fail closed
+
+
+def test_c4_surfaces_present_but_unreadable_tests_table():
+    # Copilot #1: a Tests table PRESENT but unreadable (a header with no data rows, or every
+    # row malformed) must fail closed even when a basis atom exists -- the broken table could
+    # hide the flagged id's own refuting row, and score() reads the Tests table nowhere else.
+    header = (
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+    )
+    concl = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | refuted; adequacy: 34% (variants: x) |\n\n"
+    )
+    malformed_row = "T4 | H4 | p | m | CONTRADICTED | events fell 2/3/1 |\n"  # lost leading pipe
+    assert sl.check_c4(concl + header + malformed_row, ["H4"]) != []  # all-rows-malformed
+    assert sl.check_c4(concl + header, ["H4"]) != []  # header, no data rows
+
+
+def test_c4_absent_tests_table_with_basis_atom_still_passes():
+    # control for Copilot #1: a genuinely ABSENT Tests table (a basis-only / mini-route
+    # ledger) is benign -- the basis atom is a valid alternate recording site.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | refuted; adequacy: 34% (variants: x) |\n"
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_conflicting_variant_ranges_fail_closed():
+    # Copilot #2: same bound, DIFFERENT variant range is an ambiguous record. The requirement
+    # is to record a bound AND a variant range, so conflicting (bound, range) pairs fail
+    # closed, not only conflicting bounds.
+    led = (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | descriptive (estimand: s) | REFUTED | b |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| T4 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: a) |\n"
+        "| T5 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: b) |\n"
+    )
+    assert any("conflicting" in m.lower() for m in sl.check_c4(led, ["H4"]))
