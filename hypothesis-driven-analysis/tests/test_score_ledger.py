@@ -1768,3 +1768,66 @@ def test_c4_no_tests_table_and_no_basis_atom_fails_closed():
     )
     f = sl.check_c4(led, ["H4"])
     assert any("C4" in m and "H4" in m for m in f)
+
+
+def test_c4_not_checked_when_flag_omitted():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    # descriptive so a causal-REFUTED does not trip C1 (which would empty `checked`);
+    # no --plan -> C2 NOT CHECKED. The point: un-flagged, this REFUTED-with-no-atom
+    # row is still green, and C4 reports NOT CHECKED rather than silently passing.
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    out = sl.score(led, None)  # no c4_ids -> C4 not run
+    assert has("C4 NOT CHECKED", out.checked)
+    assert not any("C4:" in m for m in out.fails)
+
+
+def test_c4_end_to_end_positive_fails_the_run():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    # H4 is causal+REFUTED, so C1 also fires; assert C4 specifically is present
+    out = sl.score(led, None, c4_ids=["H4"])
+    assert has("C4:", out.fails)
+    assert out.checked == []
+
+
+def test_c4_end_to_end_describe_passed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    # keep the row descriptive so C1 (causal-REFUTED) does not also fire
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    plan = plan_table("| H4 | descriptive (estimand: split) | n |")
+    out = sl.score(led, plan, c4_ids=["H4"])
+    assert has("C4 checked and passed", out.checked), out
+    assert out.fails == []
+
+
+def test_c4_describe_nothing_to_check_when_flagged_unresolved():
+    led = _c4_ledger(
+        "UNRESOLVED",
+        "| T4 | H4 | early clustering | compare timing | NON_DISCRIMINATING | underpowered (S1) |",
+    )
+    out = sl.score(led, None, c4_ids=["H4"])
+    assert has("C4 nothing to check", out.checked)
+    assert out.fails == []
+
+
+def test_c4_duplicate_flags_report_the_row_once():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    led = led.replace("| H4 | causal |", "| H4 | descriptive (estimand: split) |")
+    plan = plan_table("| H4 | descriptive (estimand: split) | n |")
+    out = sl.score(led, plan, c4_ids=["H4", "h4"])  # same row, two casings
+    assert out.fails == []
+    line = next(m for m in out.checked if "C4 checked and passed" in m)
+    assert "1 flagged" in line  # deduped, not "2 flagged"

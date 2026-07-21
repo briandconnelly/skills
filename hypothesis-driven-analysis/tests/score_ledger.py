@@ -37,6 +37,15 @@ SCOPE — read before pointing this at a new scenario:
   into memo prose is invisible to C3, but rubric assertion 6 still scores the
   memo, so a memo-displaced claim stays covered somewhere, just not here.
 
+  C4's flag is the same shape of caller attestation as C3's. The scorer cannot
+  tell a positive/distributional contradiction (an observed pattern, timing, or
+  count offered as failing a distributional prediction, which must record an
+  adequacy bound) from a legitimate deterministic refutation (which is exempt --
+  "a deterministic prediction a true instance could never fail clears this at a
+  zero rate without simulation", SKILL.md). --c4-positive-contradiction H<n> is
+  the caller's attestation that H<n> is the former; an un-flagged row is never
+  seen by C4, which is what preserves a legitimate deterministic refutation.
+
 SYNTACTIC CHECKS ONLY
 
   This scorer verifies syntactic presence, not semantic quality. For example,
@@ -44,7 +53,7 @@ SYNTACTIC CHECKS ONLY
   by design; judging whether a named estimand is meaningful is the rubric
   grader's job, not this script's.
 
-Checks three things, all syntactic:
+Checks four things, all syntactic:
 
   C1  No row whose claim is `causal` carries status REFUTED.
       Valid only under the scope above. This is the regression the
@@ -65,6 +74,13 @@ Checks three things, all syntactic:
       unconditional missingness-direction claim (C3a), and S<n>'s completeness
       bullet declares canonical `UNKNOWN` (C3b). Not run unless the flag is
       given -- see SCOPE for why its precondition cannot be checked from the
+      ledger alone.
+  C4  Opt-in via --c4-positive-contradiction H<n> (repeatable): a hypothesis
+      whose refutation rests on a positive/distributional contradiction, if
+      marked REFUTED, must record the documented adequacy atom
+      `adequacy: <rate> (variants: <range>)` beside its outcome (its
+      CONTRADICTED Tests row or its Conclusion basis). Not run unless the flag
+      is given -- see SCOPE for why its precondition cannot be checked from the
       ledger alone.
 
 WHY IT IS BUILT THE WAY IT IS
@@ -1463,7 +1479,11 @@ def _read_plan(plan: str) -> tuple[dict[str, dict[str, str]] | None, list[str]]:
 
 
 def _describe(
-    summary: list[dict[str, str]], plan_supplied: bool, final: str, c3_source: str | None
+    summary: list[dict[str, str]],
+    plan_supplied: bool,
+    final: str,
+    c3_source: str | None,
+    c4_ids: list[str] | None,
 ) -> list[str]:
     """Say what was actually checked. Called only when nothing failed."""
     refuted = [r for r in summary if status_of(r["status"]) == "REFUTED"]
@@ -1503,10 +1523,34 @@ def _describe(
         lines.append(
             f"C3b checked and passed: {c3_source} declares canonical `UNKNOWN` completeness"
         )
+    if not c4_ids:
+        lines.append(
+            "C4 NOT CHECKED: no --c4-positive-contradiction supplied; positive-"
+            "contradiction adequacy was not verified"
+        )
+    else:
+        by_id = {normalize_key(r["id"]): r for r in summary}
+        refuted = [i for i in c4_ids if status_of(by_id[normalize_key(i)]["status"]) == "REFUTED"]
+        unresolved = [i for i in c4_ids if i not in refuted]
+        if refuted:
+            lines.append(
+                f"C4 checked and passed: {len(refuted)} flagged positive-contradiction row(s) "
+                f"({', '.join(refuted)}) each record an adequacy bound + variant range"
+            )
+        if unresolved:
+            lines.append(
+                f"C4 nothing to check: flagged {', '.join(unresolved)} not REFUTED, so no "
+                f"positive-contradiction refutation to verify"
+            )
     return lines
 
 
-def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome:
+def score(
+    final: str,
+    plan: str | None,
+    c3_source: str | None = None,
+    c4_ids: list[str] | None = None,
+) -> Outcome:
     """Score a final ledger, optionally against its Plan-time ledger and, when
     c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
@@ -1545,9 +1589,13 @@ def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome
         fails += check_c3a(final)
         fails += check_c3b(final, c3_source)
 
+    if c4_ids:
+        c4_ids = _unique_ids(c4_ids)  # dedupe repeated flags before check + describe
+        fails += check_c4(final, c4_ids)
+
     if fails:
         return Outcome(fails, [])
-    return Outcome([], _describe(summary, plan is not None, final, c3_source))
+    return Outcome([], _describe(summary, plan is not None, final, c3_source, c4_ids))
 
 
 def main() -> int:
@@ -1561,6 +1609,16 @@ def main() -> int:
         help="Source id (e.g. S2) whose absent records have no independent completeness "
         "contract; enables C3. Valid only in an s15-class fixture (see SCOPE).",
     )
+    ap.add_argument(
+        "--c4-positive-contradiction",
+        dest="c4_ids",
+        action="append",
+        default=None,
+        metavar="H<n>",
+        help="Hypothesis id whose refutation rests on a positive/distributional "
+        "contradiction; a REFUTED verdict on it must record an adequacy bound. "
+        "Repeatable; enables C4. See SCOPE.",
+    )
     a = ap.parse_args()
     plan = a.plan.read_text() if a.plan is not None else None
     if plan is None:
@@ -1570,7 +1628,13 @@ def main() -> int:
             "note: --c3-unknown-source omitted; C3 (completeness-direction) not checked",
             file=sys.stderr,
         )
-    outcome = score(a.final.read_text(), plan, a.c3_source)
+    if not a.c4_ids:
+        print(
+            "note: --c4-positive-contradiction omitted; C4 (positive-contradiction "
+            "adequacy) not checked",
+            file=sys.stderr,
+        )
+    outcome = score(a.final.read_text(), plan, a.c3_source, a.c4_ids)
     if outcome.fails:
         print("FAIL:")
         for f in outcome.fails:
