@@ -378,13 +378,17 @@ def test_cell_count_mismatch_beside_clean_sibling_still_fails_closed():
 
 
 def test_all_rows_malformed_bails_audit_wide():
-    # The floor of the #81 recovery: if NO data row is well-formed, there is no
-    # trustworthy grid to police, so score() bails audit-wide exactly as before.
+    # The floor of the #81 recovery: if NO data row is well-formed there is no
+    # trustworthy grid to police, so score() bails audit-wide. The Plan carries a
+    # genuine `causal`->`data-artifact` relabel of H1 that C2 would flag *if* score
+    # had wrongly continued past the empty summary — asserting no C2 verdict leaks
+    # pins that it returned early rather than policing a non-existent row grid.
     out = sl.score(
-        summary("| H1 | causal | REFUTED | a | b stray pipe |"),
-        None,
+        summary("| H1 | data-artifact | REFUTED | a | b stray pipe |"),
+        plan_table("| H1 | causal | ok |"),
     )
     assert has("cell(s) but the header", out.fails)
+    assert not has("C2", out.fails)  # bailed before any per-row/C2 check
     assert out.checked == []
 
 
@@ -413,12 +417,17 @@ def test_read_table_invariant_nonempty_rows_only_carry_cell_count_fails():
 
 
 def test_plan_side_cell_count_mismatch_stays_audit_wide():
-    # #81's row-local recovery is deliberately scoped to the final ledger. A
-    # malformed Plan row could carry a colliding id, so _read_plan still voids the
-    # whole Plan map: the run fails closed and C2 is not checked. Pinned so the
-    # scope boundary is a visible choice, not an oversight.
+    # #81's row-local recovery is deliberately scoped to the final ledger. This is
+    # the true analogue of the #81 case on the Plan side: a WELL-FORMED H1 Plan row
+    # sits beside a malformed H2 one, so _read_plan gets good rows alongside the bad
+    # one — yet still voids the ENTIRE Plan map (a malformed Plan row could carry a
+    # colliding id, making partial recovery unsafe). The final ledger relabels H1
+    # `causal`->`data-artifact`, a genuine C2 laundering that must go UNREPORTED
+    # because there is no trustworthy Plan map to compare against; the run fails
+    # closed on the Plan parse error instead. Pinned so the boundary is a visible
+    # choice, not an oversight.
     final = summary("| H1 | data-artifact | REFUTED | relabel |")
-    plan = plan_table("| H1 | causal | a | b stray pipe |")
+    plan = plan_table("| H1 | causal | ok |\n| H2 | descriptive | a | b stray pipe |")
     out = sl.score(final, plan)
     assert has("plan ledger", out.fails)
     assert has("cell(s) but the header", out.fails)
