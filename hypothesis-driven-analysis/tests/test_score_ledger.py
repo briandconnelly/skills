@@ -1499,6 +1499,15 @@ def test_template_documents_the_unknown_atom():
     assert sl.check_c3b(md, "S1") == []
 
 
+def test_template_documents_the_adequacy_atom():
+    # Guard the doc edit: the template must both DOCUMENT and ILLUSTRATE the
+    # `adequacy: <rate> (variants: <range>)` atom, so the with-skill treatment
+    # teaches what C4 reads (as it does for the estimand and UNKNOWN atoms). Red
+    # on the pre-edit template, which contains no adequacy atom at all.
+    atoms = sl._adequacy_atoms(TEMPLATE)
+    assert atoms, "template must illustrate the `adequacy: <rate> (variants: <range>)` atom"
+
+
 def test_worked_example_conclusion_is_a_c3a_negative():
     # Extract the worked example's own Conclusion (the SECOND `## Conclusion` in the
     # file, inside the "## Worked Example" block), not the Full Route Template's

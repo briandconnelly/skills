@@ -68,6 +68,8 @@ A source declared `UNKNOWN` is written in the machine-checkable per-source form 
 One row per test-hypothesis pair: a test that bears on several hypotheses gets one row each, because a discriminating observation can be `CONSISTENT` for one hypothesis and `CONTRADICTED` for another.
 Outcomes: `NOT_TESTED` → `CONSISTENT` / `CONTRADICTED` / `NON_DISCRIMINATING`.
 A `NON_DISCRIMINATING` outcome states why (underpowered, wrong grain, no known-positive check available) and any detection limit.
+A `CONTRADICTED` outcome that refutes on a positive or distributional contradiction — an observed pattern, timing, or count offered as failing a distributional prediction — records the adequacy bound the skill requires (SKILL.md, Data) beside the outcome, in the machine-checkable form `adequacy: <rate> ± <uncertainty> (variants: <range>)`.
+A deterministic prediction a true instance could never fail is exempt and records no bound.
 
 ## Amendments
 
@@ -180,7 +182,7 @@ S5: UNKNOWN — same.
 | T1 | H1 | p95 step within 10 min of deploy; hit rate drops ≥5pp | align deploy log with metrics | CONTRADICTED | step at 09:12, deploy at 14:30; hit rate flat (S1, S2 §3) |
 | T2 | H2 | cache-miss route share rises ≥10pp at the step | group logs by route across the step | CONSISTENT | miss-route share 22%→41% at 09:10 (S3 §4) |
 | T3 | H2 | new client version drives the miss-route traffic | group miss-route traffic by user agent | NON_DISCRIMINATING | user-agent populated for only ~30% of rows (Sources S3); cannot detect a shift smaller than ~25pp (S3 §5) |
-| T4 | H4 | payment span accounts for majority of added p95 | compare span breakdown across the step | CONTRADICTED | added latency distributed across spans (S4 §2) |
+| T4 | H4 | payment span accounts for majority of added p95 | compare span breakdown across the step | CONTRADICTED | added latency distributed across spans (S4 §2); adequacy: a true payment-dominated split fails this in fewer than 1 run in 20 at the observed span counts (variants: any split with payment > 50%) |
 | T5 | H2 | reweighting Monday's per-route latencies by Tuesday's route mix reproduces ≥80% of the observed p95 increase | counterfactual reweighting on request logs | CONSISTENT | reweighted p95 +96ms vs observed +110ms (S3 §6) |
 | T6 | H5 | LB counter flat while log volume dips 07-07 21:00–23:00 | compare log rows/hour against the LB's independent counter | CONSISTENT | LB counter steady at ~4.1k/hour through the window (S5 §1) while logs carry ~1.2k/hour (S3 §7) — the gap is in logging, so those hours are excluded from the rate denominators |
 
