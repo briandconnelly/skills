@@ -56,11 +56,11 @@ not a preregistration.
 Stated limitation: ordinals are JSONL serialization order, which is this
 instrument's ordering authority, but tool calls issued in parallel within one
 assistant turn have no true mutual order. Such rows are only heuristically
-flagged: post-write rows sharing the ledger write's exact timestamp and
-matching --data-pattern (or carrying target ``-``) are printed under a
-SAME-BATCH heading and force exit code >= 1, because serialization order
-cannot prove the ledger file existed before they ran. Classify them from the
-events stream.
+flagged: post-write rows sharing the ledger write's exact timestamp that are
+data-relevant — matching --data-pattern, carrying target ``-``, or (for Bash)
+running an interpreter/script — are printed under a SAME-BATCH heading and
+force exit code >= 1, because serialization order cannot prove the ledger file
+existed before they ran. Classify them from the events stream.
 
 Exit codes:
   0  ledger write found, nothing to classify
@@ -90,17 +90,44 @@ SCRIPT_EXEC_NOTE = (
 # ``command`` string. ``\\n`` matches the literal two-char sequence
 # extract_evidence.py's _flatten() leaves where a real newline was, so a
 # multi-statement command does not hide a later interpreter behind an earlier
-# innocuous head. Kept intentionally simple: this is a heuristic, not a shell
-# parser.
-_SEPARATORS = re.compile(r"\\n|\|\||&&|[;|&()\n{}]")
+# innocuous head. The backtick splits a legacy command substitution
+# (``echo `python x.py```). Kept intentionally simple: this is a heuristic, not
+# a shell parser.
+_SEPARATORS = re.compile(r"\\n|\|\||&&|[;|&()\n{}`]")
 # A leading ``NAME=value`` env assignment, stripped before reading the head.
 _ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
-# Wrapper commands that precede the real command whose data access we care
-# about; stripped so ``env python s.py`` / ``time python s.py`` are seen.
+# Prefix words that precede the real command whose data access we care about;
+# stripped so ``env python s.py`` / ``timeout 5 python s.py`` / ``if python …``
+# are seen. Covers exec wrappers, resource/timing prefixes, and the shell
+# control-flow words that can head a flattened compound command.
 _WRAPPERS = frozenset(
-    {"env", "time", "nice", "nohup", "sudo", "xargs", "command", "exec", "then", "do"}
+    {
+        "env",
+        "time",
+        "timeout",
+        "nice",
+        "nohup",
+        "setsid",
+        "stdbuf",
+        "watch",
+        "caffeinate",
+        "sudo",
+        "xargs",
+        "command",
+        "exec",
+        "if",
+        "elif",
+        "else",
+        "then",
+        "do",
+        "while",
+        "until",
+        "!",
+    }
 )
-# Interpreters that run a script or inline program given as an argument.
+# Interpreters/runners that run a script, notebook, or inline program given as
+# an argument. ``jupyter``/``nbconvert``/``papermill`` execute notebooks — a
+# canonical hidden-data path for a data-analysis skill.
 _INTERPRETERS = frozenset(
     {
         "python",
@@ -120,6 +147,9 @@ _INTERPRETERS = frozenset(
         "julia",
         "lua",
         "pypy",
+        "jupyter",
+        "nbconvert",
+        "papermill",
     }
 )
 # File extensions that mark a token as an executable script.
@@ -137,6 +167,7 @@ _SCRIPT_EXTS = (
     ".r",
     ".jl",
     ".lua",
+    ".ipynb",
 )
 # A version/point-release suffix on an interpreter name (python3, python3.12).
 _VERSION_SUFFIX = re.compile(r"\d+(?:\.\d+)*$")
@@ -161,7 +192,7 @@ def _token_runs_code(token: str, following: list[str]) -> bool:
         return True
     if base == "uvx":
         return True
-    if base == "uv" and following and following[0] == "run":
+    if base == "uv" and "run" in following:  # `uv [--global-flags] run script.py`
         return True
     if base in {"source", "."} and following:
         return True
@@ -182,36 +213,49 @@ def looks_like_script_execution(command: str) -> bool:
     leading ``NAME=value`` assignments and wrapper words (``env``, ``sudo``,
     ``time``, …), then inspect the segment's head token. A head that is an
     interpreter (``python``, ``python3.12``, ``/usr/bin/ruby``, ``Rscript``,
-    ``ipython``, ``julia``, ``R``, ``lua``), a ``uv run`` / ``uvx`` invocation, a
-    ``source``/``.`` of a file, or a script path (``./x.py``) counts. Because
+    ``ipython``, ``julia``, ``R``, ``lua``), a notebook runner
+    (``jupyter``/``nbconvert``/``papermill``), a ``uv run`` / ``uvx`` invocation,
+    a ``source``/``.`` of a file, or a script path (``./x.py``) counts. Because
     only the head is inspected, ``grep python README`` and ``cat > analysis.py``
-    do not match. When a wrapper was stripped, its own options and option
-    arguments can sit before the wrapped command (``env -i python x.py``,
-    ``nice -n 5 python x.py``), so the whole remaining segment is scanned — this
-    may over-list a wrapped non-executor (``sudo grep python f``), which is
-    acceptable under fail-toward-listing.
+    do not match. When a prefix was stripped (a wrapper or a ``NAME=value``
+    assignment), its own options, option-args, or quote-split fragments can sit
+    before the wrapped command (``env -i python x.py``, ``nice -n 5 python x.py``,
+    ``FOO="a b" python x.py``), so the whole remaining segment is scanned.
 
-    Documented heuristic gaps (classify from the events stream when a pre-write
-    Bash row is otherwise unexplained): task runners (``make``, ``just``,
-    ``npm``/``npx``/``yarn``/``pnpm run``) and bare extensionless PATH
+    Being fail-toward-listing, it over-lists in known-safe ways: a prefixed
+    non-executor (``sudo grep python f``), an absolute-path system utility
+    (``/bin/ls`` — the ``/``-prefix rule flags any absolute command), and a
+    command whose quotes hid a separator. All are harmless (the scorer clears
+    them); silent under-listing is the only real failure.
+
+    Documented heuristic gaps — the checker returns False, so classify these
+    from the events stream when a pre-write Bash row is otherwise unexplained:
+    task runners (``make``, ``just``, ``conda run``, ``npm``/``npx``/``yarn``/
+    ``pnpm run``); database CLIs that read data inline (``sqlite3 db 'SELECT …'``,
+    ``duckdb``); ``-f``-driven mini-language scripts (``awk -f p.awk``,
+    ``sed -f p.sed``); the Windows ``py`` launcher; and bare extensionless PATH
     executables.
     """
     for segment in _SEPARATORS.split(command):
         tokens = segment.split()
         i = 0
-        saw_wrapper = False
+        saw_prefix = False
         while i < len(tokens) and (_ASSIGNMENT.match(tokens[i]) or tokens[i] in _WRAPPERS):
-            saw_wrapper = saw_wrapper or tokens[i] in _WRAPPERS
+            saw_prefix = True
             i += 1
         rest = tokens[i:]
         if not rest:
             continue
         if _token_runs_code(rest[0], rest[1:]):
             return True
-        # A wrapper carries its own options/option-args before the wrapped
-        # command, so the head after stripping may be an option (``-i``, ``-n``).
-        # Scan the remainder only in that case, to keep ``grep python`` a miss.
-        if saw_wrapper and any(_token_runs_code(t, rest[j + 1 :]) for j, t in enumerate(rest)):
+        # A stripped prefix (wrapper or assignment) carries its own options,
+        # option-args, or quote-split fragments before the wrapped command, so
+        # the head after stripping may not be it (``env -i python x.py``,
+        # ``nice -n 5 python x.py``, ``FOO="a b" python x.py``). Scan the
+        # remainder only when a prefix was seen, to keep ``grep python`` a miss.
+        # This may over-list a prefixed non-executor (``sudo grep python f``),
+        # acceptable under fail-toward-listing.
+        if saw_prefix and any(_token_runs_code(t, rest[j + 1 :]) for j, t in enumerate(rest)):
             return True
     return False
 

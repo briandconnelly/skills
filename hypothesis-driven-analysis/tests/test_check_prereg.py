@@ -81,6 +81,23 @@ SCRIPT_POSITIVES = [
     "julia analysis.jl",
     "R -f analysis.R",
     "lua analysis.lua",
+    # resource/timing prefixes and control-flow heads (Fable review)
+    "timeout 60 python analysis.py",
+    "stdbuf -o0 python analysis.py",
+    "watch -n1 python a.py",
+    "if python analysis.py; then echo ok; fi",
+    "if python check.py\\nthen echo ok\\nfi",  # flattened compound command
+    "while python poll.py; do :; done",
+    # quoted env-assignment values (split() fragments the quote — Fable review)
+    'GREETING="hello world" python analysis.py',
+    "FOO='a b' python analysis.py",
+    # notebook runners — canonical hidden-data path (Fable review)
+    "papermill analysis.ipynb out.ipynb",
+    "jupyter nbconvert --execute analysis.ipynb",
+    # uv global flags before `run` (Fable review)
+    "uv --directory sub run analysis.py",
+    # legacy backtick command substitution (Fable review)
+    "echo `python get_stats.py`",
 ]
 
 SCRIPT_NEGATIVES = [
@@ -97,6 +114,11 @@ SCRIPT_NEGATIVES = [
     "mkdir scripts",
     "sudo -v",  # a wrapper with no wrapped command must not fire
     "env",
+    # documented heuristic gaps — pinned False so a future extension is a
+    # conscious change, not an accident (Fable review)
+    "make test",
+    "npm run build",
+    "if [ -f x ]; then echo hi; fi",  # control-flow head, but no interpreter
     "",
 ]
 
@@ -127,6 +149,23 @@ def test_prewrite_hidden_script_is_listed(capsys: pytest.CaptureFixture[str]) ->
     assert code == 1
     assert "ordinal 1" in out
     assert "CLEAN" not in out
+    assert cp.SCRIPT_EXEC_NOTE in out  # the row must carry the script-exec note, not just appear
+
+
+def test_prewrite_data_match_takes_precedence_over_script_note(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """classification_note precedence: a command that both names the fixture AND
+    runs a script is listed plainly (direct match), not with the script note."""
+    rows = [
+        row(1, "Bash", "python analysis.py data.csv"),  # names data.csv AND runs a script
+        row(2, "Write", "report/ledger.md"),
+    ]
+    code = cp.report_ordering(rows, rows[1], DATA)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "ordinal 1" in out
+    assert cp.SCRIPT_EXEC_NOTE not in out
 
 
 def test_prewrite_direct_data_match_still_listed(capsys: pytest.CaptureFixture[str]) -> None:
@@ -168,3 +207,4 @@ def test_same_batch_hidden_script_is_listed(capsys: pytest.CaptureFixture[str]) 
     assert code == 1
     assert "SAME-BATCH" in out
     assert "ordinal 2" in out
+    assert cp.SCRIPT_EXEC_NOTE in out  # SAME-BATCH lines carry the note too (parity with CLASSIFY)
