@@ -1,7 +1,7 @@
 # Scenario 18 — transcript evidence (both arms), 2026-07-20
 
 Archived at scoring time because the subagent transcripts are harness scratch under `/private/tmp/.../tasks/<agentId>.output` and expire.
-This file is the auditable record; the run narratives live in `tests/runs/2026-07-20-scenario18-trigger-sonnet-weak.md` (run A) and `tests/runs/2026-07-20-scenario18-trigger-opus-strong.md` (run B).
+This file is the surviving record (see Evidence limitations below); the run narratives live in `tests/runs/2026-07-20-scenario18-trigger-sonnet-weak.md` (run A) and `tests/runs/2026-07-20-scenario18-trigger-opus-strong.md` (run B).
 
 ## Method
 
@@ -47,3 +47,9 @@ The observed real-session failure (both skills loaded, model uses only the data 
 Six greens only loosely bound a stochastic deferral rate.
 Consequences and the "unvalidated, plausible-locus" status of the Routing note and the 2026-07-20 description edit are recorded in `tests/scenarios.md` (S18).
 S18 still scores a free read-choice, not the both-bodies-loaded condition of the corrected diagnosis; a redesign that injects both bodies upfront is owed.
+
+## Evidence limitations
+
+Per-rep grep outputs and normalized manifests were not archived before the subagent transcripts expired, so the per-rep read counts and contamination zeros above are scorer attestations recorded at scoring time, not independently re-derivable now.
+`check_prereg.py` is out of scope here: S18 is a trigger-discrimination run scored on activation and compose-not-defer, not a full-route ledger run with a preregistration-ordering assertion.
+The owed S18 redesign (both skill bodies injected upfront) must archive per-rep extraction output under `artifacts/` at scoring time, following the S4/S10 pattern, so its evidence is re-derivable.

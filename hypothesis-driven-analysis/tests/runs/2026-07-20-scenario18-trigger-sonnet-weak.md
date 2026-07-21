@@ -4,7 +4,7 @@ Date: 2026-07-20.
 Run: trigger-discrimination, weak arm.
 Superseded by run B (`2026-07-20-scenario18-trigger-opus-strong.md`), which uses the committed prompt/fixture and the model the real failure occurred on.
 Model: Sonnet (general-purpose subagents).
-Fixture: `tests/fixtures/s18-analytics/SKILL.md` pointing at `tests/fixtures/s1-conversion/`.
+Fixture: a passive precursor of `tests/fixtures/s18-analytics/SKILL.md` (not archived; the committed file at that path is run B's assertive version), pointing at `tests/fixtures/s1-conversion/`.
 
 This first arm used an earlier, weaker setup than the committed scenario: a *passive* analysis-skill fixture ("Use to locate and query datasets", no default-skill claim, no trigger verbs) and the non-trigger prompt "Figure out why", on Sonnet.
 It is retained as a data point on how the displacement pressure scales, not as a run of the current scenario.

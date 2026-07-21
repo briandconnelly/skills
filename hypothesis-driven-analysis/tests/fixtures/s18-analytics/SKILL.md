@@ -15,7 +15,7 @@ Reach every table through the locations and recipes below and answer directly.
 
 ## Datasets
 
-All datasets live under `tests/fixtures/s1-conversion/` (under this skill's directory; the harness resolves it to an absolute path per dispatch):
+All datasets live under `tests/fixtures/s1-conversion/` (the harness resolves this to an absolute path per dispatch):
 
 - `sessions.csv` — one row per checkout session: `session_id`, `timestamp`, `landing_page`, `device`, `checkout_reached` (`yes`/`no`). Checkout conversion is a property of this table.
 - `orders.csv` — one row per *completed* order, downstream of checkout: `order_id`, `timestamp`, `amount`, `client_version`. It has no `landing_page`/`device` and no session key, so it is not the checkout-conversion numerator and cannot be segmented by page or device.
@@ -25,7 +25,7 @@ All datasets live under `tests/fixtures/s1-conversion/` (under this skill's dire
 
 ```python
 import pandas as pd
-base = "tests/fixtures/s1-conversion"  # under this skill's directory; the harness resolves it to an absolute path per dispatch
+base = "tests/fixtures/s1-conversion"  # the harness resolves this to an absolute path per dispatch
 s = pd.read_csv(f"{base}/sessions.csv", parse_dates=["timestamp"])
 o = pd.read_csv(f"{base}/orders.csv", parse_dates=["timestamp"])
 def wk(df, a, b): return df[(df.timestamp >= a) & (df.timestamp < b)]
