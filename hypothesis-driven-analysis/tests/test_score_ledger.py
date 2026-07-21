@@ -392,7 +392,7 @@ def test_all_rows_malformed_bails_audit_wide():
     assert out.checked == []
 
 
-def test_read_table_invariant_nonempty_rows_only_carry_cell_count_fails():
+def test_read_table_invariant_nonempty_rows_only_carry_row_local_faults():
     # The structural invariant score()'s #81/#91 recovery leans on, pinned directly
     # at read_table so a future parser change cannot silently break it: whenever
     # read_table returns any row, every accompanying fail is a row-local row-parse
