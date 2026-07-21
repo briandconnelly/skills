@@ -898,12 +898,67 @@ def test_c3a_ignores_summary_status_cells():
 
 
 def test_c3a_scans_basis_cell_text():
+    # the well-formed control for the two #93 tests below: a violating basis cell
+    # fires C3a when no malformed row precedes it.
     body = (
         "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
         "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
         "is understated |\n"
     )
     assert any("C3a" in m for m in sl.check_c3a(concl(body)))
+
+
+def test_c3a_malformed_row_does_not_blind_following_basis_cell():
+    # #93: a neutral summary row that lost an outer pipe sits inside the summary
+    # table, followed by a well-formed basis cell asserting an unconditional
+    # missingness direction. The inline parser must NOT reset the table/basis
+    # state on the malformed row (as parse_tables no longer does for C1/C2, #91),
+    # or the following basis cell is orphaned into a basis-less "new table" and
+    # its violation is silently missed -- the fail-open twin of #91.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "H2 | data-artifact | UNRESOLVED | neutral summary, no direction claimed |\n"
+        "| H3 | data-artifact | UNRESOLVED | the still-open cases mean the median "
+        "is understated |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    # Require the H3 basis-cell violation as a DISTINCT C3a policy message: a bare
+    # `any("C3a" in m ...)` would also be satisfied by the malformed-row parse
+    # message (which contains "C3a:"), so it could not tell the fix from the very
+    # fail-open it guards -- a broken instrument.
+    assert any(m.startswith("C3a:") and "median is understated" in m for m in f)
+
+
+def test_c3a_malformed_row_breaks_anaphora_inheritance():
+    # #93 review: an unreadable malformed row must break the anchor-inheritance
+    # chain exactly as the well-formed neutral row it stands in for would. An
+    # anchor before it must NOT license a following anaphoric direction claim, or
+    # the malformed row manufactures a false C3a positive.
+    hdr = "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+    anchor = "| H1 | data-artifact | UNRESOLVED | no recorded closure |\n"
+    anaphor = "| H3 | data-artifact | UNRESOLVED | These understate the median |\n"
+    neutral_ok = "| H2 | data-artifact | UNRESOLVED | neutral summary, no direction |\n"
+    neutral_malformed = "H2 | data-artifact | UNRESOLVED | neutral summary, no direction |\n"
+    # positive control: with NO row between them the anaphor inherits H1's anchor
+    # and fires -- so the two negative assertions below cannot pass vacuously.
+    assert any(m.startswith("C3a:") for m in sl.check_c3a(concl(hdr + anchor + anaphor)))
+    # control: the well-formed neutral row breaks inheritance -> H3 does not fire
+    control = sl.check_c3a(concl(hdr + anchor + neutral_ok + anaphor))
+    assert not any(m.startswith("C3a:") for m in control)
+    # the malformed row must behave the same -- no manufactured C3a violation
+    malformed = sl.check_c3a(concl(hdr + anchor + neutral_malformed + anaphor))
+    assert not any(m.startswith("C3a:") for m in malformed)
+
+
+def test_c3a_surfaces_malformed_conclusion_row():
+    # #93: the malformed Conclusion row itself fails closed as a row-local parse
+    # error (reported, run reddens), never silently absorbed as prose.
+    body = (
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "H2 | data-artifact | UNRESOLVED | neutral summary, no direction claimed |\n"
+    )
+    f = sl.check_c3a(concl(body))
+    assert any(m.startswith("parse:") and "malformed" in m for m in f)
 
 
 def test_c3a_fails_closed_without_conclusion():
