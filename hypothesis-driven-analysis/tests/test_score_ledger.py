@@ -939,6 +939,9 @@ def test_c3a_malformed_row_breaks_anaphora_inheritance():
     anaphor = "| H3 | data-artifact | UNRESOLVED | These understate the median |\n"
     neutral_ok = "| H2 | data-artifact | UNRESOLVED | neutral summary, no direction |\n"
     neutral_malformed = "H2 | data-artifact | UNRESOLVED | neutral summary, no direction |\n"
+    # positive control: with NO row between them the anaphor inherits H1's anchor
+    # and fires -- so the two negative assertions below cannot pass vacuously.
+    assert any(m.startswith("C3a:") for m in sl.check_c3a(concl(hdr + anchor + anaphor)))
     # control: the well-formed neutral row breaks inheritance -> H3 does not fire
     control = sl.check_c3a(concl(hdr + anchor + neutral_ok + anaphor))
     assert not any(m.startswith("C3a:") for m in control)
