@@ -6,6 +6,8 @@ Transcripts and outputs snapshotted to scorer scratch (`i82/` under the session 
 
 ## Digests (sha256)
 
+Produced with `shasum -a 256` in the scoring session and re-verified against fresh `shasum -a 256` output programmatically before commit:
+
 ```text
 78f153ba3a20f2c1608c00544a122ef0795319db189984225a2e8d2d2791bbf1  i82-free-a.jsonl
 f1f67f2a1eb0c174dec5a66d70b8311a2c03837d643e1561f61fe3f0a6cc8e80  i82-free-b.jsonl
