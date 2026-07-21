@@ -471,7 +471,8 @@ The description was amended the same day; the pre-edit run below is the before-s
 > Weekly checkout conversion dropped from 3.1% to 2.5% (week of 2026-06-01 → week of 2026-06-08).
 > Break it down and tell me what's driving it.
 
-The co-loaded "analysis" skill (`tests/fixtures/s18-analytics/SKILL.md` — its frontmatter `name` is `s18-analytics` to satisfy the repo's name-equals-directory rule, but it presents as a default *analysis* data skill through its description, which is what a model reads) is a **generic stand-in** modeled on the shape of the real conflicting skill — it declares itself the *default* skill for analytical questions and triggers on "break it down", "how much", "pull the data", "analyze or summarize" — with none of that skill's identifying specifics (the real one is an internal, closed-source company skill and is deliberately kept out of this suite). The prompt's "break it down" deliberately trips those triggers while "what's driving it" is a genuine multi-explanation *why* that needs the discipline; that tension is the displacement pressure.
+The co-loaded "analysis" skill (`tests/fixtures/s18-analytics/SKILL.md` — its frontmatter `name` is `s18-analytics` to match its directory, per the usual skill-naming convention, but it presents as a default *analysis* data skill through its description, which is what a model reads) is a **generic stand-in** modeled on the shape of the real conflicting skill — it declares itself the *default* skill for analytical questions and triggers on "break it down", "how much", "pull the data", "analyze or summarize" — with none of that skill's identifying specifics (the real one is an internal, closed-source company skill and is deliberately kept out of this suite).
+The prompt's "break it down" deliberately trips those triggers while "what's driving it" is a genuine multi-explanation *why* that needs the discipline; that tension is the displacement pressure.
 Unlike S1, the prompt does **not** name the data files: reaching the orders/sessions/deploys data requires the analysis skill, so deferring to it wholesale is genuinely available — and S1's fully-specified prompt (three named local CSVs) would delete that pull, leaving nothing for a data skill to contribute and so no displacement to catch.
 The ground truth is S1's fixture (`s1-conversion`): the drop is pure composition from a low-intent campaign, with a deploy red herring and a mobile-undercount validity trap.
 For a faithful run the "analytics" skill must be real enough to actually return that data — a small skill fixture, or the data path supplied through it — not merely a catalog line: a stated-only entry can test selection (assertion 1) but cannot exercise the data-reaching in assertion 2.
@@ -479,13 +480,21 @@ For a faithful run the "analytics" skill must be real enough to actually return 
 S3 tests the case where a *different* skill should win and this one must stay silent; S18 tests the opposite failure — a co-loaded data-access skill displacing this one on a question that needs the inference discipline.
 Exists because an observed session (2026-07-20) loaded both this skill and an analytics skill that documented where data lived and how to query it, and the agent used only the analytics skill: it answered a multi-explanation diagnostic as a data lookup and left an unexamined residual ("the rest is demand"), never entering this skill's routing.
 
-**Treatment, and which assertion it can move.** The Routing subsection "A co-loaded data or analytics skill is a tool, not a route" is body text, read only *after* activation, so it can affect only assertion 2 (compose-vs-defer). Assertion 1 — whether the model engages this skill at all when a data skill competes — is a description-level concern the body note does not reach.
-**Maintainer clarification (2026-07-20):** in the observed session the harness reported **both** skills loaded and the model applied only the analysis skill — so the failure is composition (assertion 2), not selection (assertion 1). That makes assertion 2 load-bearing, and it exposes a locus problem: a compose instruction placed in *this* skill's body (the Routing note) cannot fire when the model never engages this skill's content. To reach the model on the path it actually takes, the compose instruction has to live either in the skill the model heeds (the co-loaded data skill: "for a diagnostic *why* question, structure the reasoning with hypothesis-driven-investigation; I only supply the data") or in this skill's frontmatter description, which the harness surfaces regardless of which body the model then follows.
-**Runs 2026-07-20 (run A: 3× Sonnet, weak arm; run B: 3× Opus 4.8, committed strong arm): 6/6 on both assertions, no RED across six reps** — the failure did not reproduce even against a self-declared default-skill competitor on Opus. Six greens only loosely bound a stochastic deferral rate, so read this as *hard to reproduce out-of-harness*, not *cannot happen*; effort is the one unreproduced variable, recorded as unreproduced with no directional claim attached. See the run records below.
+**Treatment, and which assertion it can move.** The Routing subsection "A co-loaded data or analytics skill is a tool, not a route" is body text, read only *after* activation, so it can affect only assertion 2 (compose-vs-defer).
+Assertion 1 — whether the model engages this skill at all when a data skill competes — is a description-level concern the body note does not reach.
+**Maintainer clarification (2026-07-20):** in the observed session the harness reported **both** skills loaded and the model applied only the analysis skill — so the failure is composition (assertion 2), not selection (assertion 1).
+That makes assertion 2 load-bearing, and it exposes a locus problem: a compose instruction placed in *this* skill's body (the Routing note) cannot fire when the model never engages this skill's content.
+To reach the model on the path it actually takes, the compose instruction has to live either in the skill the model heeds (the co-loaded data skill: "for a diagnostic *why* question, structure the reasoning with hypothesis-driven-investigation; I only supply the data") or in this skill's frontmatter description, which the harness surfaces regardless of which body the model then follows.
+**Runs 2026-07-20 (run A: 3× Sonnet, weak arm; run B: 3× Opus 4.8, committed strong arm): 6/6 on both assertions, no RED across six reps** — the failure did not reproduce even against a self-declared default-skill competitor on Opus.
+Six greens only loosely bound a stochastic deferral rate, so read this as *hard to reproduce out-of-harness*, not *cannot happen*; effort is the one unreproduced variable, recorded as unreproduced with no directional claim attached.
+See the run records `tests/runs/2026-07-20-scenario18-trigger-sonnet-weak.md` (weak arm) and `tests/runs/2026-07-20-scenario18-trigger-opus-strong.md` (strong arm), summarized in the Thirteenth wave of the Results table.
 
-**Description edited 2026-07-20 — ungated, against these run verdicts.** On the corrected composition diagnosis the frontmatter description was changed anyway: diagnostic triggers added ("why did this metric change / what's driving it / break it down"), a composition clause added ("get the data through that skill, do the reasoning here"), and the PPDAC workflow-summary sentence recast to keep the differentiating capability phrase ("competing hypotheses tested on preregistered discriminating predictions") while dropping the "observational dataset questions" domain example and the fan-out / cheapest-test detail (now 1020 chars, was ~1016). No red S18 gated this — both arms went green — so it is an **unvalidated, plausible-locus change, in the same "cheap defense-in-depth, not a validated fix" bucket as the Routing note**, justified only by the locus argument (the description is the one repo-side surface the harness keeps visible whichever body the model heeds). It **supersedes the recorded S2, S3, S17, and S18 runs, which all scored the old description and must be re-run** — S2 especially, because "break it down" is now a quoted trigger and a bounded "break X down by Y" with nothing to explain must still route direct.
+**Description edited 2026-07-20 — ungated, against these run verdicts.** On the corrected composition diagnosis the frontmatter description was changed anyway: diagnostic triggers added ("why did this metric change / what's driving it / break it down"), a composition clause added ("get the data through that skill, do the reasoning here"), and the PPDAC workflow-summary sentence recast to keep the differentiating capability phrase ("competing hypotheses tested on preregistered discriminating predictions") while dropping the "observational dataset questions" domain example and the fan-out / cheapest-test detail (now 1020 chars, was ~1016).
+No red S18 gated this — both arms went green — so it is an **unvalidated, plausible-locus change, in the same "cheap defense-in-depth, not a validated fix" bucket as the Routing note**, justified only by the locus argument (the description is the one repo-side surface the harness keeps visible whichever body the model heeds).
+It **supersedes the recorded S2, S3, S17, and S18 runs, which all scored the old description and must be re-run** — S2 especially, because "break it down" is now a quoted trigger and a bounded "break X down by Y" with nothing to explain must still route direct.
 
-**Redesign owed.** S18 as built scores a free *read-choice* (which SKILL.md the agent opens); the corrected diagnosis is both bodies *loaded* with the model still using only one. The next iteration should inject both skill bodies into the subagent context upfront and score composition alone.
+**Redesign owed.** S18 as built scores a free *read-choice* (which SKILL.md the agent opens); the corrected diagnosis is both bodies *loaded* with the model still using only one.
+The next iteration should inject both skill bodies into the subagent context upfront and score composition alone.
 
 **Assertions:**
 
@@ -1047,53 +1056,11 @@ S9's route surfaced a missing decision threshold the baseline defaulted past; S8
 **Overall shape.** On a capable model with small local fixtures, the skill rarely changes the *headline answer* — the baselines are strong and usually get there. It changes four things: whether a claimed mechanism was tested or narrated (S5), whether an unauthorized action happens (S4), whether a causal number gets manufactured (S12), and whether the reasoning is auditable afterwards. It costs more tokens on small data — 11–47% on this suite's lighter fixtures, up to +85–99% on the analysis-heavy S15 — and it does not save tokens anywhere yet measured.
 The value is real, and it is concentrated exactly where being wrong is expensive.
 
-## Scenario 18 run A — 2026-07-20 (trigger, 3 reps, Sonnet) — WEAK ARM, superseded
+### Thirteenth wave, 2026-07-20 — S18 composition/displacement, both arms (issue #90)
 
-This first arm used an earlier, weaker setup than the committed scenario above: a *passive* analysis-skill fixture ("Use to locate and query datasets", no default-skill claim, no trigger verbs) and the non-trigger prompt "Figure out why", on Sonnet.
-It is retained as a data point on how the displacement pressure scales, not as a run of the current scenario. The strong arm (run B below) uses the committed prompt/fixture and the model the real failure occurred on.
+Two arms scored the S18 trigger-discrimination scenario on 2026-07-20; full per-rep scoring lives in the run files below, evidence in `tests/runs/artifacts/2026-07-20-scenario18-evidence.md`.
 
-Three fresh Sonnet general-purpose subagents, each handed the weak-arm prompt and a neutral two-skill catalog (analysis listed first, hypothesis-driven-analysis second), each free to choose which skills to read.
-The analysis skill was made real — `tests/fixtures/s18-analytics/SKILL.md`, pointing at `s1-conversion` with query recipes — so deferring to a bare lookup was genuinely available.
-Activation was machine-checked by grepping each transcript for `Read` tool_use `file_path`s; the same grep finds each SKILL.md read, so a zero (as in the contamination check) is a real zero, not a broken instrument.
-
-| Rep | A1 activation | A2 compose-not-defer | Read HDA SKILL.md | Read analytics | Tools | Tokens |
+| Date | Scenario | Run | Assertions passed | Tool calls | Tokens | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| a | PASS | PASS | yes | yes | 13 | 73.7k |
-| b | PASS | PASS | yes | yes | 14 | 70.8k |
-| c | PASS | PASS | yes | yes | 13 | 66.1k |
-
-All three read the hypothesis skill, routed **full** PPDAC, used the analytics skill only as the data interface, and reached the correct compositional-shift conclusion: a new `/lp/summer-sale` page (~21% of week-2 sessions at ~0.6% conversion) diluted the blended rate while existing pages held flat; the 06-10 deploy refuted on timing (the drop precedes it); device-mix refuted.
-None left an unexamined residual — each ran the counterfactual reweighting (~3.04% ≈ week-1's 3.12%).
-Two of three additionally caught the `checkout_reached` weekend under-logging validity trap unprompted.
-No subagent read `tests/scenarios.md` or `tests/runs/` (0 `file_path` reads, checked).
-
-**What this run does and does not establish.**
-It is 3/3 GREEN, but GREEN on the first run with **no RED observed** — and by this file's own rule (a run that satisfies every assertion means the scenario is too easy) that makes it *non-discriminating*, not a validation.
-The real-session failure it memorializes — agent uses only the analytics skill, answers as a lookup, leaves "the rest is demand" — **did not reproduce** under a neutral Sonnet dispatch: every agent reached the hypothesis skill from its description and composed on its own.
-So this run shows the current description already routes capable agents into the discipline for this case; it does **not** show the new Routing note ("a tool, not a route") changes any behavior, because no run got far enough to need it.
-The note's value is unproven, not confirmed. Assertion 1 passed on the then-unchanged description; the description was nonetheless edited later the same day on the corrected composition diagnosis, ungated by any red — see the "Description edited 2026-07-20" note in the S18 scenario above.
-
-Run B below tightens all of that toward the real failure and still does not reproduce it.
-
-## Scenario 18 run B — 2026-07-20 (trigger, 3 reps, Opus 4.8) — strong arm, committed scenario
-
-The RED attempt, built from the real conflicting skill's *shape* (reported by the maintainer): an assertive "analysis" fixture that declares itself the **default** skill for analytical questions and triggers on "break it down" / "how much" / "analyze or summarize", listed first; the committed prompt "Break it down and tell me what's driving it" (the trigger verb over a genuine *why*); and Opus 4.8, the model the observed failure occurred on. The real skill's own text is deliberately absent — it is internal and closed-source; only the generic pattern is reproduced.
-One dimension of the observed session is **not** reproduced: reasoning effort. The dispatch harness sets the subagent model but not effort, so these ran at the subagent default, not the observed High.
-
-| Rep | A1 activation | A2 compose-not-defer | Read HDA SKILL.md | Read analysis | Tools | Tokens |
-| --- | --- | --- | --- | --- | --- | --- |
-| a | PASS | PASS | yes | yes | 10 | 71.9k |
-| b | PASS | PASS | yes | yes | 8 | 63.1k |
-| c | PASS | PASS | yes | yes | 7 | 59.6k |
-
-All three read the hypothesis skill despite the aggressive default-skill competitor listed first, routed **full** PPDAC, and used the analysis skill only as the data interface. Conclusions were strong: per-landing-page decomposition (one used a named Kitagawa decomposition), the counterfactual reweighting closing ~86–109% of the drop, the 06-10 deploy refuted on timing, the desktop "collapse" correctly identified as a Simpson's-paradox artifact of campaign mix, and the `checkout_reached` logging anomaly caught unprompted (one tied it to the 06-12 logging deploy). No unexamined residual; causal caveats stated. No subagent read `tests/scenarios.md` or `tests/runs/` (0 `file_path` reads, checked).
-
-**Verdict: 6/6 GREEN across both arms, and the failure still did not reproduce.** Strengthening the competitor to a self-declared default skill with matching trigger verbs, using the trigger-shaped prompt, and moving to Opus 4.8 did not make any agent defer — each reached the discipline from its description and composed. Consequences, unchanged from run A and now on stronger evidence:
-
-- The new Routing note ("a tool, not a route") remains **unexercised**: no run activated-then-deferred, so nothing tested the note. It is cheap defense-in-depth, not a validated fix.
-- Assertion 1 passed on the **then-unchanged description** even against the default-skill competitor — so selection was not the out-of-harness failure mode. (The description was still edited later that day on the corrected composition diagnosis, ungated by any red; see the "Description edited 2026-07-20" note in the S18 scenario. This bullet does not say the edit was unwarranted — the corrected diagnosis, not this run, motivates it.)
-- The scenario is still **non-discriminating** (too easy) by this file's own rule. The one variable left unreproduced is reasoning effort; a harness that can dispatch a subagent at a pinned effort, or the real skill auto-invoked by the harness before the agent chooses, are the remaining levers to try before concluding the failure is not description-addressable.
-
-Treat the composition fix as **untested**, not confirmed: 6/6 GREEN here measures that the failure is hard to reproduce out-of-harness, not that the note prevents it.
-
-Evidence (per-rep scores, manifest greps with known-positive validation, conclusion content, both arms): `tests/runs/artifacts/2026-07-20-scenario18-evidence.md`.
+| 2026-07-20 | 18 (composition / displacement) | trigger, weak arm (3× Sonnet) | 6/6 | 13–14 | 66–74k | Passive analysis fixture, "Figure out why" prompt. All reached the discipline and composed; failure did not reproduce. **Non-discriminating** (GREEN with no RED), superseded by the strong arm. `tests/runs/2026-07-20-scenario18-trigger-sonnet-weak.md`. |
+| 2026-07-20 | 18 (composition / displacement) | trigger, strong arm (3× Opus 4.8) | 6/6 | 7–10 | 60–72k | Assertive default-skill competitor listed first, committed "Break it down…" prompt, Opus 4.8 (the model the real failure occurred on). Still no deferral; Routing note unexercised. Composition fix remains **untested**, not confirmed. `tests/runs/2026-07-20-scenario18-trigger-opus-strong.md`. |
