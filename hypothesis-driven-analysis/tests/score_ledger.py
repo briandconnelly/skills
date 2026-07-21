@@ -617,7 +617,22 @@ def _conclusion_row_units(
     return basis_idx, []
 
 
-def conclusion_units(final: str) -> tuple[list[str], list[str]]:
+class _AnaphoraBreak:
+    """Marker placed in the Conclusion unit stream at an unreadable malformed row.
+
+    A following anaphoric claim (`These understate ...`) must not inherit a
+    missingness anchor across it: the malformed row's own anchor state cannot be
+    known, so it stands in for the well-formed neutral row it replaces and resets
+    `prev_had_anchor` in `c3a_report` exactly as that row would (#93 review). Without
+    it, deleting the malformed row from the stream lets an anchor before the gap
+    license a claim after it -- manufacturing a false C3a positive.
+    """
+
+
+_ANAPHORA_BREAK = _AnaphoraBreak()
+
+
+def conclusion_units(final: str) -> tuple[list[str | _AnaphoraBreak], list[str]]:
     """Ordered claim-unit texts of the `## Conclusion`, plus a fail-closed list.
 
     Prose lines are split into sentence/`;` units. Summary-table rows contribute
@@ -628,6 +643,15 @@ def conclusion_units(final: str) -> tuple[list[str], list[str]]:
     the scorer which one to score. A `## Conclusion` that yields zero scannable
     units -- no prose, no basis cells -- fails closed too, rather than a vacuous
     pass, mirroring the existing "header but no data rows" philosophy.
+
+    A line inside a summary table that lost an outer pipe is a row-local parse
+    failure (returned in the fail list), not a table terminator: the table/basis
+    state is preserved across it so a following well-formed basis cell is still
+    scanned, mirroring parse_tables' Malformed handling (#93, the inline twin of
+    #91). Such a fail accompanies the scan rather than replacing it (see
+    `c3a_report`); the two hard fails above still return with no units. The
+    malformed row also emits an `_AnaphoraBreak` into the unit stream so a
+    following anaphoric claim cannot inherit an anchor across the unreadable row.
     """
     bodies = section_bodies(final, "Conclusion")
     if not bodies:
@@ -641,7 +665,8 @@ def conclusion_units(final: str) -> tuple[list[str], list[str]]:
             f"cannot tell which to score"
         ]
     body = bodies[0]
-    units: list[str] = []
+    units: list[str | _AnaphoraBreak] = []
+    fails: list[str] = []
     basis_idx: int | None = None
     pending = ""
     in_table = False
@@ -662,6 +687,21 @@ def conclusion_units(final: str) -> tuple[list[str], list[str]]:
             basis_idx, row_units = _conclusion_row_units(cells, basis_idx, is_new_table)
             units.extend(row_units)
             continue
+        # A line that fails the outer-pipe ROW match but sits inside a table and
+        # still carries an unescaped pipe is a data row that lost an outer pipe,
+        # not prose: surface it as a row-local parse failure and keep in_table /
+        # basis_idx intact, so a following well-formed basis cell is still scanned
+        # rather than orphaned into a basis-less "new table" and dropped (#93).
+        # This mirrors parse_tables' Malformed handling, which #91 gave the C1/C2
+        # grid but this separate inline parser did not share.
+        if in_table and line.strip() and CELL_SPLIT.search(line):
+            fails.append(
+                "parse: final ledger: C3a: a Conclusion table row is malformed -- a "
+                "table row must be bounded by outer pipes, but this line is not: "
+                f"{line.strip()!r}"
+            )
+            units.append(_ANAPHORA_BREAK)  # unreadable row: break anchor inheritance
+            continue
         in_table = False
         if HEADING.match(line):
             flush()
@@ -676,11 +716,11 @@ def conclusion_units(final: str) -> tuple[list[str], list[str]]:
         else:
             pending = f"{pending} {stripped}".strip() if pending else stripped
     flush()
-    if not units:
+    if not units and not fails:
         return [], [
             "parse: final ledger: C3a: the Conclusion section has no scannable prose or basis cells"
         ]
-    return units, []
+    return units, fails
 
 
 def _c3a_unit_fires(unit: str, prev_had_anchor: bool) -> tuple[bool, bool]:
@@ -710,12 +750,15 @@ def c3a_report(final: str) -> tuple[list[str], int]:
     the same Conclusion), and is not suppressed.
     """
     units, fails = conclusion_units(final)
-    if fails:
-        return fails, 0
     violations: list[str] = []
     suppressed = 0
     prev_had_anchor = False
     for unit in units:
+        if isinstance(unit, _AnaphoraBreak):
+            # an unreadable malformed row: a following anaphoric claim must not
+            # inherit an anchor across it (#93 review), so reset the chain.
+            prev_had_anchor = False
+            continue
         fires, has_anchor = _c3a_unit_fires(unit, prev_had_anchor)
         if fires:
             violations.append(
@@ -727,7 +770,12 @@ def c3a_report(final: str) -> tuple[list[str], int]:
         elif _c3a_has_direction(unit) and _c3a_suppressed(unit):
             suppressed += 1
         prev_had_anchor = has_anchor
-    return violations, suppressed
+    # Row-local parse failures (a malformed Conclusion table row, #93) are reported
+    # alongside the scan rather than short-circuiting it: the run still reddens on
+    # the malformed row, but a violating basis cell after it is not left unscanned.
+    # A hard fail (no/duplicate Conclusion, nothing scannable) yields no units, so
+    # `violations` is empty and only the fail is returned -- the prior behavior.
+    return fails + violations, suppressed
 
 
 def check_c3a(final: str) -> list[str]:
