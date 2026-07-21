@@ -789,8 +789,22 @@ def read_table(
     """Rows of the file's one table carrying every required column (and none of
     the excluded ones), plus parse failures.
 
-    Returns ([], fails) whenever the table cannot be identified or trusted; a
-    caller that sees any failure must not treat the rows as a verified reading.
+    Contract on the two return values:
+
+    - Returns ([], fails) whenever the table cannot be identified as a trustworthy
+      grid: no table with the required columns, more than one, a repeated column
+      name, a header with no data rows, or a body in which *every* data row's cell
+      count disagrees with the header. There is nothing a caller may safely read.
+    - Returns (rows, fails) with rows NON-EMPTY only when the table was identified
+      unambiguously and at least one data row is well-formed. Any accompanying
+      `fails` are then EXCLUSIVELY row-local cell-count mismatches (one per stray
+      row): the returned rows are each verified, and a caller may police them as
+      long as it still surfaces `fails` and never reports the run as clean while
+      any remain. This is the invariant score() relies on to keep a single stray
+      `|` from blinding C1/C2 on sibling rows (issue #81).
+
+    A caller that wants the stricter "any failure voids the whole reading" rule
+    (compare_prereg.py, _read_plan) still gets it by bailing on non-empty `fails`.
     """
     table, fails = _select_table(md, label, required, excluded)
     if table is None:
@@ -1082,20 +1096,26 @@ def score(final: str, plan: str | None, c3_source: str | None = None) -> Outcome
     """Score a final ledger, optionally against its Plan-time ledger and, when
     c3_source is given, for completeness-direction consistency (C3)."""
     summary, fails = read_table(final, FINAL, "id", "claim", "status")
-    fails += check_ids(summary, FINAL)
-    # Everything read_table and check_ids catch is audit-wide: a malformed table
-    # grid (no table with the required columns, more than one, a repeated column
-    # name, a row whose cell count does not match the header) or a missing or
-    # ambiguous id leaves no trustworthy row grid to police, so bail before any
-    # per-row check. Only an unrecognized claim or status *value* in an
-    # otherwise well-formed row is row-local: _check_row reports it and still
-    # applies C1/C2 to the sibling rows that parse, so one drifted vocabulary
-    # token cannot blind the audit to a real causal-REFUTED violation (issue
-    # #73). Making a cell-count mismatch row-local too would need read_table to
-    # yield its good rows alongside the bad one; left audit-wide for now, since
-    # no measured run has drifted cell counts.
-    if fails:
+    # read_table returns the well-formed rows beside any cell-count-mismatch fail,
+    # and a NON-EMPTY `summary` can only be accompanied by that one fault: every
+    # table-selection failure (no table with the required columns, more than one, a
+    # repeated column name) and an all-malformed body return no rows at all (see
+    # read_table's contract). So when `summary` is non-empty we report the stray
+    # row's parse fail yet still police its well-formed siblings: a single unescaped
+    # `|` no longer blinds C1/C2 across the table (issue #81), one indirection
+    # deeper than the #73 claim/status-*value* recovery. When `summary` is empty
+    # there is no trustworthy row grid to check, so bail audit-wide.
+    if not summary:
         return Outcome(fails, [])
+    # check_ids stays audit-wide even on well-formed rows: a duplicate or missing id
+    # breaks the scorer's structural-id contract the id-keyed C2 lookup and the #73
+    # tests both rely on, so it bails before any per-row check.
+    id_fails = check_ids(summary, FINAL)
+    if id_fails:
+        return Outcome(fails + id_fails, [])
+    # `fails` now holds only row-local cell-count faults (if any). They carry
+    # through to the final Outcome so the run still fails closed and earns nothing,
+    # while the rows that parsed are audited below.
 
     planned: dict[str, dict[str, str]] | None = None
     if plan is not None:

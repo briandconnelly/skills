@@ -9,8 +9,9 @@ The defect these fixtures pin: a single drifted claim-column token used to suppr
 The scorer validated claim cells in a table-wide pre-pass (`check_claims`) whose failure short-circuited every per-row C1/C2 check.
 So an unrecognized **claim** cell (`associative`, `statistical` — the tokens measured across the Eighth–Tenth waves) blinded C1 on the rows beside it.
 Status cells were never in that pre-pass; they were already checked per row inside `_check_row`, so a drifted **status** cell (`Best supported`) never blinded C1.
-The fix moves both checks into `_check_row` and bails audit-wide only on structural faults — a malformed table grid (no table with the required columns, more than one, a repeated column name, or a row whose cell count does not match the header) or a missing/ambiguous id — where the row grid itself cannot be trusted.
-A cell-count mismatch therefore still suppresses the audit table-wide; only an unrecognized claim/status *value* in a well-formed row is row-local.
+The fix moves both checks into `_check_row` and bails audit-wide only on faults that leave no trustworthy row grid at all — no table with the required columns, more than one, a repeated column name, a header with no data rows, or a missing/ambiguous id.
+An unrecognized claim/status *value* in a well-formed row is row-local, and — since issue #81 — so is a single row whose cell count does not match the header: `read_table` returns the well-formed siblings beside the malformed row, so `score()` reports the stray row's parse error yet still audits C1/C2 on the rows that parse (the run still fails closed, earning nothing).
+Only when *every* data row is malformed, or the table itself cannot be identified, does the audit bail table-wide.
 
 ## Fixtures
 
