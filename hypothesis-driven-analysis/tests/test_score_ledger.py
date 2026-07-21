@@ -330,13 +330,12 @@ def test_repeated_header_bails_audit_wide():
     assert not has("C1: H1", f)
 
 
-def test_cell_count_mismatch_bails():
-    # An unescaped stray `|` gives the H2 row an extra cell. Today this bails
-    # audit-wide (score_ledger.py notes the cell-count case is left audit-wide
-    # "for now"; issue #81 tracks narrowing it to row-local). We pin only the
-    # stable contract — the parse failure is surfaced and nothing is earned —
-    # and deliberately leave C1 visibility on the sibling UNSPECIFIED so #81's
-    # improvement does not redden this characterization test.
+def test_cell_count_mismatch_is_row_local():
+    # #81: an unescaped stray `|` gives the H2 row an extra cell. The malformed row
+    # cannot be read, but it must no longer blind C1 on its well-formed sibling —
+    # the same row-local recovery #73 gave a drifted claim/status *value*, one
+    # indirection deeper. Known positive: a genuine causal|REFUTED H1 beside the
+    # cell-count-drifted H2.
     out = sl.score(
         summary(
             "| H1 | causal | REFUTED | violation |\n"
@@ -344,8 +343,96 @@ def test_cell_count_mismatch_bails():
         ),
         None,
     )
+    assert has("cell(s) but the header", out.fails)  # the malformed row is reported...
+    assert has("C1: H1", out.fails)  # ...and its sibling is still audited (#81)
+    assert out.checked == []  # still fail-closed: nothing earned behind the parse failure
+
+
+def test_cell_count_mismatch_does_not_blind_c2_on_sibling():
+    # #81 narrows the bail for C2 as well as C1: a malformed row must not hide a
+    # status-laundering sibling. H1 is a `data-artifact | REFUTED` relabel of a
+    # Plan-time causal H1, beside a cell-count-drifted H2.
+    final = summary(
+        "| H1 | data-artifact | REFUTED | relabel |\n"
+        "| H2 | descriptive | UNRESOLVED | a | b stray pipe |"
+    )
+    plan = plan_table("| H1 | causal | x |")
+    f = fails(final, plan)
+    assert has("cell(s) but the header", f)
+    assert in_one(["C2: H1", "data-artifact REFUTED", "was causal at Plan time"], f)
+
+
+def test_cell_count_mismatch_beside_clean_sibling_still_fails_closed():
+    # Known negative for the #81 recovery: when the only fault is the unreadable row
+    # and every sibling is clean, the run must STILL fail closed (exit 1, nothing
+    # earned). Row-local recovery must never turn an unreadable row into a pass.
+    out = sl.score(
+        summary(
+            "| H1 | causal | UNRESOLVED | fine |\n"
+            "| H2 | descriptive | UNRESOLVED | a | b stray pipe |"
+        ),
+        None,
+    )
     assert has("cell(s) but the header", out.fails)
-    assert out.checked == []  # nothing earned behind the parse failure
+    assert out.checked == []
+
+
+def test_all_rows_malformed_bails_audit_wide():
+    # The floor of the #81 recovery: if NO data row is well-formed there is no
+    # trustworthy grid to police, so score() bails audit-wide. The Plan carries a
+    # genuine `causal`->`data-artifact` relabel of H1 that C2 would flag *if* score
+    # had wrongly continued past the empty summary — asserting no C2 verdict leaks
+    # pins that it returned early rather than policing a non-existent row grid.
+    out = sl.score(
+        summary("| H1 | data-artifact | REFUTED | a | b stray pipe |"),
+        plan_table("| H1 | causal | ok |"),
+    )
+    assert has("cell(s) but the header", out.fails)
+    assert not has("C2", out.fails)  # bailed before any per-row/C2 check
+    assert out.checked == []
+
+
+def test_read_table_invariant_nonempty_rows_only_carry_cell_count_fails():
+    # The structural invariant score()'s #81 recovery leans on, pinned directly at
+    # read_table so a future parser change cannot silently break it: whenever
+    # read_table returns any row, every accompanying fail is a row-local cell-count
+    # mismatch. Table-selection faults (no/ambiguous table, repeated header, no
+    # data rows, all-malformed body) must instead return NO rows.
+    md = summary(
+        "| H1 | causal | REFUTED | good |\n| H2 | descriptive | UNRESOLVED | a | b stray |"
+    )
+    rows, f = sl.read_table(md, "final ledger", "id", "claim", "status")
+    assert rows, "a well-formed sibling must be returned"
+    assert f
+    assert all("cell(s) but the header" in m for m in f)
+    # And the empty-rows branches carry only table-wide faults, never rows:
+    for empty_md in (
+        "# no table here\n",  # no matching table
+        "## Conclusion\n\n| id | claim | status |\n| --- | --- | --- |\n",  # header, no rows
+        summary("| H1 | causal | REFUTED | a | b stray |"),  # every row malformed
+    ):
+        rows, f = sl.read_table(empty_md, "final ledger", "id", "claim", "status")
+        assert rows == []
+        assert f
+
+
+def test_plan_side_cell_count_mismatch_stays_audit_wide():
+    # #81's row-local recovery is deliberately scoped to the final ledger. This is
+    # the true analogue of the #81 case on the Plan side: a WELL-FORMED H1 Plan row
+    # sits beside a malformed H2 one, so _read_plan gets good rows alongside the bad
+    # one — yet still voids the ENTIRE Plan map (a malformed Plan row could carry a
+    # colliding id, making partial recovery unsafe). The final ledger relabels H1
+    # `causal`->`data-artifact`, a genuine C2 laundering that must go UNREPORTED
+    # because there is no trustworthy Plan map to compare against; the run fails
+    # closed on the Plan parse error instead. Pinned so the boundary is a visible
+    # choice, not an oversight.
+    final = summary("| H1 | data-artifact | REFUTED | relabel |")
+    plan = plan_table("| H1 | causal | ok |\n| H2 | descriptive | a | b stray pipe |")
+    out = sl.score(final, plan)
+    assert has("plan ledger", out.fails)
+    assert has("cell(s) but the header", out.fails)
+    assert not has("C2", out.fails)  # C2 suppressed: no trustworthy Plan map
+    assert out.checked == []
 
 
 # --------------------------------------------------------------------------- #
