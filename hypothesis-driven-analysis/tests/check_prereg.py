@@ -30,6 +30,16 @@ Fail-closed behaviors:
   extract one) is ALWAYS listed for classification, regardless of
   --data-pattern: an invisible target cannot be cleared by a pattern that
   never saw it. Read the row's real input from the events stream.
+- A pre-write Bash row that runs an interpreter or a script file
+  (``python analysis.py``, ``uv run x.py``, ``bash s.sh``, ``./x.py``) is
+  ALWAYS listed too, regardless of --data-pattern: the data it read may be
+  named only inside the script, not on its command line, so the pattern
+  cannot see it (the ``-`` case, one indirection deeper). Detection
+  (``looks_like_script_execution``) is a conservative fail-toward-listing
+  heuristic, not a shell parser; its documented gaps (task runners like
+  ``make``/``npm run``, bare extensionless PATH executables) still require
+  reading the events stream. This listing rule applies to the SAME-BATCH scan
+  as well, so a timestamp-tied script write cannot slip through as CLEAN.
 - If no executed Write/Edit matches --ledger-pattern, Bash rows (any status)
   whose command matches the pattern are surfaced as possible Bash-mediated
   ledger writes (``cat > ledger.md`` and the like); the run stays
@@ -71,6 +81,157 @@ WRITE_TOOLS = frozenset({"Write", "Edit", "NotebookEdit"})
 VALID_STATUSES = frozenset({"ok", "error", "no-result"})
 EXPECTED_COLUMNS = 5
 UNEXTRACTED_NOTE = " (target not extracted — read it from the events stream)"
+SCRIPT_EXEC_NOTE = (
+    " (runs an interpreter/script — the data it read may be named only inside "
+    "the script, not on this command line; read it from the events stream)"
+)
+
+# Statement separators that start a fresh command position within one Bash
+# ``command`` string. ``\\n`` matches the literal two-char sequence
+# extract_evidence.py's _flatten() leaves where a real newline was, so a
+# multi-statement command does not hide a later interpreter behind an earlier
+# innocuous head. Kept intentionally simple: this is a heuristic, not a shell
+# parser.
+_SEPARATORS = re.compile(r"\\n|\|\||&&|[;|&()\n{}]")
+# A leading ``NAME=value`` env assignment, stripped before reading the head.
+_ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+# Wrapper commands that precede the real command whose data access we care
+# about; stripped so ``env python s.py`` / ``time python s.py`` are seen.
+_WRAPPERS = frozenset(
+    {"env", "time", "nice", "nohup", "sudo", "xargs", "command", "exec", "then", "do"}
+)
+# Interpreters that run a script or inline program given as an argument.
+_INTERPRETERS = frozenset(
+    {
+        "python",
+        "ipython",
+        "bash",
+        "sh",
+        "zsh",
+        "dash",
+        "node",
+        "deno",
+        "ts-node",
+        "ruby",
+        "perl",
+        "php",
+        "rscript",
+        "r",
+        "julia",
+        "lua",
+        "pypy",
+    }
+)
+# File extensions that mark a token as an executable script.
+_SCRIPT_EXTS = (
+    ".py",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".rb",
+    ".pl",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".r",
+    ".jl",
+    ".lua",
+)
+# A version/point-release suffix on an interpreter name (python3, python3.12).
+_VERSION_SUFFIX = re.compile(r"\d+(?:\.\d+)*$")
+
+
+def _looks_like_script_path(token: str) -> bool:
+    """A token that names an executable script file (``./run.sh``, ``scripts/x.py``)."""
+    lowered = token.lower()
+    if lowered.endswith(_SCRIPT_EXTS):
+        return True
+    # An explicit path to a local executable (``./run``) — extensionless but run
+    # directly. Bare PATH executables (``run``) are indistinguishable from
+    # ordinary commands and are left as a documented heuristic gap.
+    return token.startswith(("./", "../", "/"))
+
+
+def _token_runs_code(token: str, following: list[str]) -> bool:
+    """A single command-position token that runs an interpreter or a script."""
+    base = token.rsplit("/", 1)[-1].lower()
+    stem = _VERSION_SUFFIX.sub("", base)  # python3.12 -> python
+    if base in _INTERPRETERS or stem in _INTERPRETERS:
+        return True
+    if base == "uvx":
+        return True
+    if base == "uv" and following and following[0] == "run":
+        return True
+    if base in {"source", "."} and following:
+        return True
+    return _looks_like_script_path(token)
+
+
+def looks_like_script_execution(command: str) -> bool:
+    """Heuristic: does this Bash command run an interpreter or a script file?
+
+    check_prereg lists such pre-write / same-batch rows for mandatory manual
+    classification even when the command line never names the fixture, because
+    the data access can be buried inside the executed script (#76). It is
+    deliberately conservative and fail-toward-listing: it errs toward listing a
+    row rather than silently clearing it, but it does not attempt to prove a
+    command cannot touch data.
+
+    Method: split the command into statement segments at shell separators, drop
+    leading ``NAME=value`` assignments and wrapper words (``env``, ``sudo``,
+    ``time``, …), then inspect the segment's head token. A head that is an
+    interpreter (``python``, ``python3.12``, ``/usr/bin/ruby``, ``Rscript``,
+    ``ipython``, ``julia``, ``R``, ``lua``), a ``uv run`` / ``uvx`` invocation, a
+    ``source``/``.`` of a file, or a script path (``./x.py``) counts. Because
+    only the head is inspected, ``grep python README`` and ``cat > analysis.py``
+    do not match. When a wrapper was stripped, its own options and option
+    arguments can sit before the wrapped command (``env -i python x.py``,
+    ``nice -n 5 python x.py``), so the whole remaining segment is scanned — this
+    may over-list a wrapped non-executor (``sudo grep python f``), which is
+    acceptable under fail-toward-listing.
+
+    Documented heuristic gaps (classify from the events stream when a pre-write
+    Bash row is otherwise unexplained): task runners (``make``, ``just``,
+    ``npm``/``npx``/``yarn``/``pnpm run``) and bare extensionless PATH
+    executables.
+    """
+    for segment in _SEPARATORS.split(command):
+        tokens = segment.split()
+        i = 0
+        saw_wrapper = False
+        while i < len(tokens) and (_ASSIGNMENT.match(tokens[i]) or tokens[i] in _WRAPPERS):
+            saw_wrapper = saw_wrapper or tokens[i] in _WRAPPERS
+            i += 1
+        rest = tokens[i:]
+        if not rest:
+            continue
+        if _token_runs_code(rest[0], rest[1:]):
+            return True
+        # A wrapper carries its own options/option-args before the wrapped
+        # command, so the head after stripping may be an option (``-i``, ``-n``).
+        # Scan the remainder only in that case, to keep ``grep python`` a miss.
+        if saw_wrapper and any(_token_runs_code(t, rest[j + 1 :]) for j, t in enumerate(rest)):
+            return True
+    return False
+
+
+def classification_note(row: Row, data: re.Pattern[str]) -> str | None:
+    """Why this row needs manual classification, or None if it does not.
+
+    Returns the printable note suffix so the two scans in ``report_ordering``
+    stay in lockstep: the unextracted-target note for an invisible target, ``""``
+    for a direct --data-pattern match (listed plainly), the script-exec note for
+    a Bash row that runs an interpreter/script (whose data access can hide inside
+    the script — #76), or None when the row is not data-relevant.
+    """
+    if row.target == "-":
+        return UNEXTRACTED_NOTE
+    if data.search(row.target):
+        return ""
+    if row.tool == "Bash" and looks_like_script_execution(row.target):
+        return SCRIPT_EXEC_NOTE
+    return None
 
 
 class Row(NamedTuple):
@@ -165,17 +326,16 @@ def report_ordering(rows: list[Row], ledger: Row, data: re.Pattern[str]) -> int:
     for r in sorted(rows, key=lambda x: x.ordinal):
         if r.ordinal >= ledger.ordinal:
             continue
-        if r.target == "-":
-            earlier.append((r, UNEXTRACTED_NOTE))
-        elif data.search(r.target):
-            earlier.append((r, ""))
-    same_batch = [
-        r
-        for r in sorted(rows, key=lambda x: x.ordinal)
-        if r.ordinal > ledger.ordinal
-        and r.timestamp == ledger.timestamp
-        and (r.target == "-" or data.search(r.target))
-    ]
+        note = classification_note(r, data)
+        if note is not None:
+            earlier.append((r, note))
+    same_batch: list[tuple[Row, str]] = []
+    for r in sorted(rows, key=lambda x: x.ordinal):
+        if r.ordinal <= ledger.ordinal or r.timestamp != ledger.timestamp:
+            continue
+        note = classification_note(r, data)
+        if note is not None:
+            same_batch.append((r, note))
     if not earlier and not same_batch:
         print("CLEAN: no data-matching tool_use precedes the ledger write")
         return 0
@@ -192,8 +352,8 @@ def report_ordering(rows: list[Row], ledger: Row, data: re.Pattern[str]) -> int:
             f"write's timestamp; serialization order cannot prove the ledger "
             f"file existed before they ran — classify from the events stream:"
         )
-        for r in same_batch:
-            print(f"  - ordinal {r.ordinal}: {r.tool} [{r.status}] {r.target}")
+        for r, note in same_batch:
+            print(f"  - ordinal {r.ordinal}: {r.tool} [{r.status}] {r.target}{note}")
     return 1
 
 
