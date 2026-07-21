@@ -1508,10 +1508,17 @@ def test_template_documents_the_adequacy_atom():
     # check to the T4 row, which is what a regression would silently remove.
     t4 = next(line for line in TEMPLATE.splitlines() if line.lstrip().startswith("| T4 "))
     assert sl._adequacy_atoms(t4), "worked-example T4 row must illustrate the adequacy atom"
-    # and the Tests-section prose must document the atom's machine-checkable
-    # form
-    assert "adequacy:" in TEMPLATE
-    assert "(variants:" in TEMPLATE
+    # and the Tests-section prose must document the atom's machine-checkable form. Anchored
+    # to the prose LINE, not the whole file: a whole-TEMPLATE containment assert is vacuous
+    # because the T4 row above already satisfies it, so deleting the documentation sentence
+    # would leave it green -- the same trap this test's first half avoids.
+    prose = next(
+        (ln for ln in TEMPLATE.splitlines() if ln.lstrip().startswith("A `CONTRADICTED` outcome")),
+        None,
+    )
+    assert prose is not None, "Tests-section prose must document the adequacy atom"
+    assert "adequacy:" in prose
+    assert "(variants:" in prose
 
 
 def test_worked_example_conclusion_is_a_c3a_negative():
@@ -1966,3 +1973,49 @@ def test_c4_conflicting_variant_ranges_fail_closed():
         "| T5 | H4 | p | m | CONTRADICTED | adequacy: 34% (variants: b) |\n"
     )
     assert any("conflicting" in m.lower() for m in sl.check_c4(led, ["H4"]))
+
+
+def _c4_two_site_ledger(basis: str, evidence: str) -> str:
+    """A flagged-REFUTED H4 recording an atom at BOTH accepted sites (Conclusion basis and
+    its CONTRADICTED Tests row), so double-recording behavior can be exercised."""
+    return (
+        "## Conclusion\n\n| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        f"| H4 | descriptive (estimand: s) | REFUTED | {basis} |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        f"| T4 | H4 | p | m | CONTRADICTED | {evidence} |\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("basis", "evidence"),
+    [
+        # the design invites double recording (primary Tests site + accepted basis
+        # alternate), so the SAME atom differing only in spacing or case is not a conflict
+        ("adequacy: 34% (variants: any decay)", "adequacy: 34% (variants: any  decay)"),
+        ("adequacy: 34% (variants: any decay)", "adequacy: 34% (variants: Any decay)"),
+        ("adequacy: 34%±5pp (variants: x)", "adequacy: 34% ± 5pp (variants: x)"),
+    ],
+)
+def test_c4_same_atom_at_both_sites_with_formatting_variance_passes(basis, evidence):
+    # a scorer that fails correct ledgers gets ignored: trivial whitespace/case variance
+    # between two recordings of the same atom must not read as a conflicting record
+    assert sl.check_c4(_c4_two_site_ledger(basis, evidence), ["H4"]) == []
+
+
+def test_c4_quoted_format_string_is_not_a_record():
+    # a cell that merely QUOTES the documented form documents the obligation; it does not
+    # record a bound. `<rate>`/`<range>` placeholders must not count as recorded fields.
+    led = _c4_two_site_ledger(
+        "must record `adequacy: <rate> ± <uncertainty> (variants: <range>)` next time",
+        "events fell 2/3/1, no bound computed",
+    )
+    assert sl.check_c4(led, ["H4"]) != []
+
+
+def test_adequacy_of_allows_a_parenthetical_inside_the_bound():
+    # a citation inside the rate prose must not make the atom invisible (which would fail
+    # closed with a misleading "records no adequacy bound" message)
+    atom = sl.adequacy_of("adequacy: ~34% under resampling (S1 §3) (variants: any decay)")
+    assert atom == ("~34% under resampling (S1 §3)", "any decay")

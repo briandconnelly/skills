@@ -157,15 +157,27 @@ ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
 # (references/ledger-template.md, SKILL.md Data / Site 2):
 # `adequacy: <rate> \u00b1 <uncertainty> (variants: <range>)`, recorded beside the
 # outcome. `search`ed (not anchored) because it sits inside a larger Outcome /
-# Evidence / basis cell. The bound excludes parens so it stops at `(variants:`.
+# Evidence / basis cell. The bound is non-greedy up to the FIRST `(variants:` and may
+# itself contain parentheses, so a citation inside the rate prose
+# (`~34% under resampling (S1 §3) (variants: ...)`) still parses rather than making the
+# atom invisible and failing closed with a misleading "records no bound" message.
 ADEQUACY = re.compile(
-    r"adequacy\s*:\s*(?P<bound>[^()]*?)\s*\(\s*variants\s*:\s*(?P<range>[^)]*)\)",
+    r"adequacy\s*:\s*(?P<bound>.*?)\s*\(\s*variants\s*:\s*(?P<range>[^)]*)\)",
     re.IGNORECASE,
 )
-# Like ESTIMAND_TRIM but WITHOUT `<`/`>`: a rate bound such as `<1 in 20` or `<5%`
-# depends on the angle bracket, and stripping it would also collapse `<34%` and
-# `34%` into one bound, silently passing the conflicting-bounds check.
-ADEQUACY_TRIM = ESTIMAND_TRIM.replace("<", "").replace(">", "")
+# Like ESTIMAND_TRIM but WITHOUT `<`/`>` or parens. A rate bound such as `<1 in 20` or
+# `<5%` depends on the angle bracket, and stripping it would also collapse `<34%` and `34%`
+# into one bound, silently passing the conflicting-bounds check. Parens are excluded because
+# ADEQUACY already delimits both fields itself (the bound ends at `(variants:`, the range at
+# `)`), so a trailing paren here belongs to the content -- trimming it would truncate a
+# bound that ends in a citation, e.g. `~34% under resampling (S1 §3)`.
+ADEQUACY_TRIM = "".join(c for c in ESTIMAND_TRIM if c not in "<>()")
+# An unfilled `<...>` template placeholder. A cell that merely QUOTES the documented form
+# (`must record \`adequacy: <rate> ± <uncertainty> (variants: <range>)\` next time`)
+# documents the obligation; it records no bound, so such a field reads as empty. Anchored
+# to a whole field with no inner angle bracket, so a real bound like `<1 in 20` (no closing
+# `>`) is untouched.
+PLACEHOLDER = re.compile(r"^<[^<>]*>$")
 HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.*?)\s*#*\s*$")
 COMPLETENESS_LABEL = re.compile(
     r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
@@ -1063,10 +1075,15 @@ def _check_adequacy_recorded(
             f"must record `adequacy: <rate> (variants: <range>)` in its CONTRADICTED Tests "
             f"row or its Conclusion basis before it can refute (SKILL.md Data, Site 2)."
         ]
-    pairs = sorted(set(atoms))
-    if len(pairs) > 1:
+    # Compare on the normalized key so the same atom recorded at two accepted sites is one
+    # record, but report the raw forms so the message shows what was actually written.
+    distinct: dict[tuple[str, str], tuple[str, str]] = {}
+    for bound, rng in atoms:
+        distinct.setdefault((_atom_key(bound), _atom_key(rng)), (bound, rng))
+    if len(distinct) > 1:
+        shown = sorted(distinct.values())
         return [
-            f"C4: {raw_id} carries conflicting adequacy atoms {pairs!r}; cannot tell which "
+            f"C4: {raw_id} carries conflicting adequacy atoms {shown!r}; cannot tell which "
             f"bound and variant range is asserted."
         ]
     return []
@@ -1143,7 +1160,10 @@ def _tests_table_present(md: str) -> bool:
     which must fail closed) from a genuinely ABSENT one (a basis-only / mini-route ledger,
     which is benign). A header row that itself lost a pipe parses as `Malformed`, not a
     cell list, so such a table reads as absent and stays benign -- acceptable, since its
-    rows then carry no attributable hypothesis to police anyway."""
+    rows then carry no attributable hypothesis to police anyway. The same holds for a table
+    that renames a required column (`Hypothesis id`): it is invisible both here and to
+    harvesting, so its rows are neither policed nor credited. Every shipped run ledger uses
+    the template's canonical header, which is what keeps that edge theoretical."""
     return any(
         t and isinstance(t[0], list) and _header_has(t[0], ("hypothesis", "outcome", "evidence"))
         for t in parse_tables(md)
@@ -1264,7 +1284,12 @@ def outcome_of(cell: str) -> str | None:
     NON_DISCRIMINATING) in a cell, or None. First-token, mirroring status_of: a cell
     like 'NON_DISCRIMINATING; not CONTRADICTED' classifies by its leading token, so a
     bare substring search for CONTRADICTED cannot misread a non-refutation (or a
-    negated/historical mention) as a refutation and harvest its adequacy atom."""
+    negated/historical mention) as a refutation and harvest its adequacy atom.
+
+    The dual is accepted: a cell whose LEADING token misrepresents the row (e.g.
+    'not CONSISTENT -- CONTRADICTED') classifies by that leading token and its atom is not
+    harvested, which fails closed rather than open. Template outcome cells lead with the
+    token, and this mirrors status_of's established first-token rule."""
     m = OUTCOME_TOKEN.search(cell.upper())
     if m is None:
         return None
@@ -1320,9 +1345,28 @@ def _adequacy_atoms(cell: str) -> list[tuple[str, str]]:
 def _atom_field(raw: str) -> str:
     """One adequacy sub-field, Unicode-format-char stripped then punctuation-trimmed, so a
     zero-width or other Cf character cannot masquerade as a non-empty bound or range (the
-    same defense estimand_of applies to a captured estimand)."""
+    same defense estimand_of applies to a captured estimand).
+
+    An unfilled `<...>` placeholder reads as empty too: a cell quoting the documented form
+    states the obligation rather than recording a bound, and must not satisfy the check.
+    """
     visible = "".join(c for c in raw if unicodedata.category(c) != "Cf")
-    return visible.strip(ADEQUACY_TRIM)
+    trimmed = visible.strip(ADEQUACY_TRIM)
+    return "" if PLACEHOLDER.match(trimmed) else trimmed
+
+
+def _atom_key(field: str) -> str:
+    """The comparison key for an adequacy sub-field: whitespace removed and casefolded.
+
+    The design invites recording the same atom at two accepted sites (a CONTRADICTED Tests
+    cell and the Conclusion basis; both a row's Outcome and Evidence cells are harvested),
+    so one recording written `34% ± 5pp` and another `34%±5pp`, or differing only in case or
+    internal spacing, is ONE record, not a conflict -- failing it would be exactly the
+    "scorer that fails correct ledgers" this suite avoids. Whitespace is removed rather than
+    collapsed so the `±`-spacing variants fold together. `<`/`>` survive, so `<34%` and `34%`
+    stay distinct, as the conflicting-bounds check requires.
+    """
+    return SPACES.sub("", field).casefold()
 
 
 def adequacy_of(cell: str) -> tuple[str, str] | None:

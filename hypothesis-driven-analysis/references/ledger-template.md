@@ -69,6 +69,7 @@ One row per test-hypothesis pair: a test that bears on several hypotheses gets o
 Outcomes: `NOT_TESTED` → `CONSISTENT` / `CONTRADICTED` / `NON_DISCRIMINATING`.
 A `NON_DISCRIMINATING` outcome states why (underpowered, wrong grain, no known-positive check available) and any detection limit.
 A `CONTRADICTED` outcome that refutes on a positive or distributional contradiction — an observed pattern, timing, or count offered as failing a distributional prediction — records the adequacy bound the skill requires (SKILL.md, Data) beside the outcome, in the machine-checkable form `adequacy: <rate> ± <uncertainty> (variants: <range>)`.
+Record it in that row's `Outcome` or `Evidence` cell, or in the hypothesis's Conclusion `basis` cell — both are accepted sites — and note that the machine check requires a rate and a variant range, treating the `± <uncertainty>` part as optional, so stating the uncertainty remains a matter of the skill's rule rather than the checker's.
 A deterministic prediction a true instance could never fail is exempt and records no bound.
 
 ## Amendments
