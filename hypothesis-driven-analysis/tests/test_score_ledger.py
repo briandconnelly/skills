@@ -1500,12 +1500,18 @@ def test_template_documents_the_unknown_atom():
 
 
 def test_template_documents_the_adequacy_atom():
-    # Guard the doc edit: the template must both DOCUMENT and ILLUSTRATE the
-    # `adequacy: <rate> (variants: <range>)` atom, so the with-skill treatment
-    # teaches what C4 reads (as it does for the estimand and UNKNOWN atoms). Red
-    # on the pre-edit template, which contains no adequacy atom at all.
-    atoms = sl._adequacy_atoms(TEMPLATE)
-    assert atoms, "template must illustrate the `adequacy: <rate> (variants: <range>)` atom"
+    # Guard BOTH halves of the doc edit, discriminatingly. Asserting on the
+    # whole TEMPLATE is too weak: the Tests-section prose's own `adequacy: <rate>
+    # ± ... (variants: <range>)` format string parses as an atom (EMPHASIS
+    # strips its backticks), so a whole-file assert would stay green even if
+    # the worked-example illustration were dropped. Anchor the illustration
+    # check to the T4 row, which is what a regression would silently remove.
+    t4 = next(line for line in TEMPLATE.splitlines() if line.lstrip().startswith("| T4 "))
+    assert sl._adequacy_atoms(t4), "worked-example T4 row must illustrate the adequacy atom"
+    # and the Tests-section prose must document the atom's machine-checkable
+    # form
+    assert "adequacy:" in TEMPLATE
+    assert "(variants:" in TEMPLATE
 
 
 def test_worked_example_conclusion_is_a_c3a_negative():
