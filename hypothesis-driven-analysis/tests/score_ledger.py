@@ -280,12 +280,92 @@ class Malformed(NamedTuple):
     raw: str
 
 
+class Orphaned(NamedTuple):
+    """A pipe-bearing line a blank line cut off from its table.
+
+    A blank line ends a table, so a summary table split by a blank line -- header
+    + rows, blank line, then a trailing row with no header of its own -- used to
+    strand that trailing row in a headerless "table" that `_select_table` declined
+    and silently dropped, a fail-OPEN false green (issue #97, the blank-line twin
+    of #91/#93). Every blank-adjacent line bounded by a pipe on at least one side
+    (`_looks_like_table_row`) is now carried through `parse_tables` as an `Orphaned`
+    row so `_rows_from` surfaces it as a row-local parse failure (fail closed).
+
+    Distinct from `Malformed` by PLACEMENT, not by the row's own shape: a `Malformed`
+    row lost an outer pipe INSIDE an open table, whereas an `Orphaned` row is one a
+    blank stranded -- it may be perfectly well-formed, or may itself have lost a pipe
+    or a cell (the #91/#97 combined cases), but either way its placement after the
+    blank is what makes it unreadable. The diagnostic names the stranding rather than
+    guessing at a missing pipe.
+    """
+
+    raw: str
+
+
 def _is_separator(cells: list[str]) -> bool:
     """A markdown delimiter row: every cell is non-empty and only `-`/`:`."""
     return all(set(c) <= {"-", ":"} and c for c in cells)
 
 
-def parse_tables(md: str) -> list[list[list[str] | Malformed]]:
+def _looks_like_table_row(line: str) -> bool:
+    """A stripped line bounded by a pipe on at least one side -- a table row, or a
+    row that lost exactly one outer pipe (#91).
+
+    This is the tell that separates stranded table content from ordinary prose: a
+    real row (or a lost-one-pipe row) starts or ends with `|`, whereas prose that
+    merely contains an internal pipe (`the A | B split`) is bounded by neither and
+    is left alone. Keying on the boundary pipe means a stranded row with a
+    cell-count fault (#81), an escaped pipe, or a matching delimiter after it still
+    fails closed instead of slipping through an exact-width or new-table gate -- the
+    two laundering channels earlier delimiter- and width-based rules left open.
+    """
+    s = line.strip()
+    return s.startswith("|") or s.endswith("|")
+
+
+def _orphan_block_after_blank(lines: list[str], i: int) -> tuple[list[str], int]:
+    """The raw lines a blank at `lines[i]` stranded out of an open table, plus the
+    index just past them.
+
+    Skips the run of blank lines; if the first line past them is table content
+    (`_looks_like_table_row`), collects it and every contiguous table-content line
+    that follows, stopping only at a prose line or a blank. Returns `([], j)` when
+    the blank is a real boundary -- the next content is prose or the document ends --
+    so the caller closes the table normally (and ignores the index).
+
+    Every blank-adjacent pipe block fails closed, with no exemption for a
+    "distinct-looking" table: a header+delimiter of ANY width is structurally
+    indistinguishable from a stranded data row plus a stray delimiter, so exempting
+    it reopens the fail-OPEN one width over (a violating row written a cell short,
+    then a matching delimiter, would vanish). Real ledgers never separate tables by a
+    bare blank -- they use a heading, a hard boundary -- so nothing legitimate is
+    swept in. Shared by `parse_tables` (grid) and `conclusion_units` (C3a) so both
+    fail closed on the same blank-split orphan shape (#97) rather than dropping rows.
+    """
+    n = len(lines)
+    j = i + 1
+    while j < n and not lines[j].strip():
+        j += 1
+    if j >= n or not _looks_like_table_row(lines[j]):
+        return [], j
+    orphans = [lines[j]]
+    k = j + 1
+    while k < n and _looks_like_table_row(lines[k]):
+        orphans.append(lines[k])
+        k += 1
+    return orphans, k
+
+
+def _c3a_orphan_fail(raw: str) -> str:
+    """The C3a row-local parse message for a row a blank line orphaned (#97)."""
+    return (
+        "parse: final ledger: C3a: a Conclusion table row is orphaned -- a blank line "
+        "split it from its summary table, leaving it with no header of its own: "
+        f"{raw.strip()!r}"
+    )
+
+
+def parse_tables(md: str) -> list[list[list[str] | Malformed | Orphaned]]:
     """Return every markdown table as a list of rows.
 
     A well-formed row is a list of cells, split on unescaped pipes only, so a
@@ -297,8 +377,22 @@ def parse_tables(md: str) -> list[list[list[str] | Malformed]]:
 
     Table boundaries:
 
-    - A blank line, or a line with no unescaped pipe, is genuine prose and ends
-      the current table (unchanged).
+    - A blank line ends the current table UNLESS a pipe block follows it. Such a
+      block is a continuation the blank stranded: its rows are kept as `Orphaned`
+      rows of the table the blank split them from, so they fail closed in
+      `_rows_from` instead of vanishing into a headerless "table" that
+      `_select_table` declines and drops -- the fail-OPEN false green issue #97 fixes
+      (the blank-line twin of #91). The tell for a stranded row is a boundary pipe
+      (`_looks_like_table_row`: it starts or ends with `|`), which fails closed on a
+      row with a cell-count fault, an escaped pipe, or a lost outer pipe alike, and
+      leaves prose that merely contains an internal pipe alone. No blank-adjacent
+      pipe block is exempted as a "distinct table": a header+delimiter of any width
+      is structurally indistinguishable from a stranded data row plus a stray
+      delimiter, so exempting one reopens the fail-OPEN one width over. Real ledgers
+      separate tables with a heading (a hard boundary), never a bare blank, so
+      nothing legitimate is swept in; the cost is that two tables glued by only a
+      blank fail closed, which is safe.
+    - A line with no unescaped pipe is genuine prose and ends the current table.
     - A delimiter row (all `-`/`:`) is dropped ONLY in delimiter position:
       directly under a lone header whose width it matches. Anywhere else -- after
       body rows, or with a mismatched width -- it is not a valid delimiter, so it
@@ -313,27 +407,50 @@ def parse_tables(md: str) -> list[list[list[str] | Malformed]]:
       matching how cells are split); a pipe after an even run of backslashes is
       treated as escaped, which is deliberate and adequate for these ledgers.
     """
-    tables: list[list[list[str] | Malformed]] = []
-    current: list[list[str] | Malformed] = []
-    for line in md.splitlines():
+    lines = md.splitlines()
+    n = len(lines)
+    tables: list[list[list[str] | Malformed | Orphaned]] = []
+    current: list[list[str] | Malformed | Orphaned] = []
+    i = 0
+    while i < n:
+        line = lines[i]
         m = ROW.match(line)
         if not m:
             if current and line.strip() and CELL_SPLIT.search(line):
                 current.append(Malformed(line))  # a row that lost an outer pipe
-            elif current:
+                i += 1
+                continue
+            if current and not line.strip():
+                # A blank line: a genuine boundary only if prose (or the document's
+                # end) follows. A pipe block after the blank was orphaned out of THIS
+                # table -- keep its rows attached as Orphaned so they fail closed (#97).
+                orphans, nxt = _orphan_block_after_blank(lines, i)
+                if orphans:
+                    current.extend(Orphaned(raw) for raw in orphans)
+                    i = nxt
+                    continue
                 tables.append(current)
                 current = []
+                i += 1
+                continue
+            if current:
+                tables.append(current)  # a prose / non-pipe line -- a hard boundary
+                current = []
+            i += 1
             continue
         cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
         if _is_separator(cells):
             if not current:
+                i += 1
                 continue  # a stray leading delimiter with no header -- drop
             header = current[0]
             if len(current) == 1 and isinstance(header, list) and len(cells) == len(header):
+                i += 1
                 continue  # a matching-width delimiter under its lone header is dropped
             # a misplaced or ragged delimiter falls through and is kept as a row so
             # its cell-count / claim / status disagreement is reported below
         current.append(cells)
+        i += 1
     if current:
         tables.append(current)
     return tables
@@ -652,6 +769,13 @@ def conclusion_units(final: str) -> tuple[list[str | _AnaphoraBreak], list[str]]
     `c3a_report`); the two hard fails above still return with no units. The
     malformed row also emits an `_AnaphoraBreak` into the unit stream so a
     following anaphoric claim cannot inherit an anchor across the unreadable row.
+
+    A blank line that splits the summary table from a stranded pipe block (a
+    boundary-pipe row, `_looks_like_table_row`) orphans that block: its basis cell
+    used to be dropped silently (the blank reset the table state, so the row began a
+    basis-less "new table" whose basis column was never found). Each stranded row now
+    fails closed as a row-local parse failure and emits an `_AnaphoraBreak`, the C3a
+    twin of the #97 grid fix in `parse_tables`.
     """
     bodies = section_bodies(final, "Conclusion")
     if not bodies:
@@ -664,7 +788,20 @@ def conclusion_units(final: str) -> tuple[list[str | _AnaphoraBreak], list[str]]
             f"parse: final ledger: C3a: {len(bodies)} `## Conclusion` sections; "
             f"cannot tell which to score"
         ]
-    body = bodies[0]
+    units, fails = _scan_conclusion_body(bodies[0])
+    if not units and not fails:
+        return [], [
+            "parse: final ledger: C3a: the Conclusion section has no scannable prose or basis cells"
+        ]
+    return units, fails
+
+
+def _scan_conclusion_body(body: str) -> tuple[list[str | _AnaphoraBreak], list[str]]:
+    """The line scan of `conclusion_units`: one Conclusion body -> ordered claim
+    units plus row-local parse fails. Extracted so both functions stay within the
+    statement budget; the table / orphan / anaphora semantics are documented on
+    `conclusion_units`.
+    """
     units: list[str | _AnaphoraBreak] = []
     fails: list[str] = []
     basis_idx: int | None = None
@@ -677,23 +814,24 @@ def conclusion_units(final: str) -> tuple[list[str | _AnaphoraBreak], list[str]]
             units.extend(u for u in _c3a_units_of(pending) if u.strip())
         pending = ""
 
-    for line in body.splitlines():
+    lines = body.splitlines()
+    skip_to = 0
+    for i, line in enumerate(lines):
+        if i < skip_to:
+            continue  # rows already consumed as a blank-split orphan block
         m = ROW.match(line)
         if m:
-            is_new_table = not in_table
-            in_table = True
             flush()
             cells = [unescape_cell(c) for c in CELL_SPLIT.split(m.group("cells"))]
-            basis_idx, row_units = _conclusion_row_units(cells, basis_idx, is_new_table)
+            basis_idx, row_units = _conclusion_row_units(cells, basis_idx, not in_table)
+            in_table = True
             units.extend(row_units)
             continue
-        # A line that fails the outer-pipe ROW match but sits inside a table and
-        # still carries an unescaped pipe is a data row that lost an outer pipe,
-        # not prose: surface it as a row-local parse failure and keep in_table /
-        # basis_idx intact, so a following well-formed basis cell is still scanned
-        # rather than orphaned into a basis-less "new table" and dropped (#93).
-        # This mirrors parse_tables' Malformed handling, which #91 gave the C1/C2
-        # grid but this separate inline parser did not share.
+        # A pipe-bearing line that fails the outer-pipe ROW match but sits inside a
+        # table is a data row that lost an outer pipe: surface it as a row-local
+        # parse failure and keep in_table / basis_idx intact so a following
+        # well-formed basis cell is still scanned rather than dropped (#93). This
+        # mirrors parse_tables' Malformed handling.
         if in_table and line.strip() and CELL_SPLIT.search(line):
             fails.append(
                 "parse: final ledger: C3a: a Conclusion table row is malformed -- a "
@@ -702,24 +840,29 @@ def conclusion_units(final: str) -> tuple[list[str | _AnaphoraBreak], list[str]]
             )
             units.append(_ANAPHORA_BREAK)  # unreadable row: break anchor inheritance
             continue
+        # A blank line that splits the table from a following pipe block orphans that
+        # block (#97): fail closed on each such row and break anaphora inheritance,
+        # exactly as a malformed row does.
+        orphans, nxt = (
+            _orphan_block_after_blank(lines, i) if in_table and not line.strip() else ([], 0)
+        )
         in_table = False
-        if HEADING.match(line):
+        if orphans:
+            flush()
+            fails.extend(_c3a_orphan_fail(raw) for raw in orphans)
+            units.extend(_ANAPHORA_BREAK for _ in orphans)
+            skip_to = nxt
+            continue
+        if HEADING.match(line) or not line.strip():
             flush()
             continue
         stripped = line.strip()
-        if not stripped:
-            flush()
-            continue
         if re.match(r"^\s*[-*+]\s", line):
             flush()
             pending = re.sub(r"^\s*[-*+]\s+", "", line).strip()
         else:
             pending = f"{pending} {stripped}".strip() if pending else stripped
     flush()
-    if not units and not fails:
-        return [], [
-            "parse: final ledger: C3a: the Conclusion section has no scannable prose or basis cells"
-        ]
     return units, fails
 
 
@@ -812,7 +955,7 @@ def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
 
 def _select_table(
     md: str, label: str, required: tuple[str, ...], excluded: tuple[str, ...] = ()
-) -> tuple[list[list[str] | Malformed] | None, list[str]]:
+) -> tuple[list[list[str] | Malformed | Orphaned] | None, list[str]]:
     """The one table whose header carries every required column and none of the
     excluded ones, or a parse failure.
 
@@ -861,15 +1004,16 @@ def _header_lacks(header: list[str], excluded: tuple[str, ...]) -> bool:
 
 
 def _rows_from(
-    table: list[list[str] | Malformed], label: str
+    table: list[list[str] | Malformed | Orphaned], label: str
 ) -> tuple[list[dict[str, str]], list[str]]:
     """Data rows of a matched table, keyed by normalized header name.
 
-    A `Malformed` body row (a line inside the table that lost an outer pipe) is
-    reported as a row-local parse failure and skipped, exactly parallel to a
-    cell-count mismatch: it cannot be read, but it never blinds the audit of its
-    well-formed siblings, and the run still fails closed on it (issue #91). The
-    header (`table[0]`) is always a well-formed row -- `_select_table` only
+    A `Malformed` body row (a line inside the table that lost an outer pipe) or an
+    `Orphaned` one (a row a blank line cut off from its table, #97) is reported as
+    a row-local parse failure and skipped, exactly parallel to a cell-count
+    mismatch: it cannot be trusted, but it never blinds the audit of its
+    well-formed siblings, and the run still fails closed on it (issues #91/#97).
+    The header (`table[0]`) is always a well-formed row -- `_select_table` only
     matches a table whose first row is a real cell list -- so it is indexed here
     without a guard.
     """
@@ -883,6 +1027,12 @@ def _rows_from(
     rows: list[dict[str, str]] = []
     fails: list[str] = []
     for n, row in enumerate(table[1:], start=2):
+        if isinstance(row, Orphaned):
+            fails.append(
+                f"parse: {label}: table row {n} is orphaned -- a blank line split it "
+                f"from its table, leaving it with no header of its own: {row.raw!r}"
+            )
+            continue
         if isinstance(row, Malformed):
             fails.append(
                 f"parse: {label}: table row {n} is malformed -- a table row must be "
