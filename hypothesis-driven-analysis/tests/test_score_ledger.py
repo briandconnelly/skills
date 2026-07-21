@@ -1677,3 +1677,94 @@ def test_adequacy_of_none_when_bound_empty():
 def test_adequacy_atoms_collects_multiple():
     cell = "adequacy: 34% (variants: a). adequacy: 40% (variants: b)"
     assert sl._adequacy_atoms(cell) == [("34%", "a"), ("40%", "b")]
+
+
+# --- C4 check: fixtures built inline (a full final ledger with Conclusion + Tests) ---
+def _c4_ledger(status: str, tests_row: str, basis: str = "best supported") -> str:
+    """A minimal final ledger: one H4 Conclusion row + one Tests table."""
+    return (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        f"| H4 | causal | {status} | {basis} |\n\n"
+        "## Tests\n\n"
+        "| id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        f"{tests_row}\n"
+    )
+
+
+def test_c4_known_positive_refuted_without_atom_fails():
+    # the exact skipped-estimate route the two old-wording S6 arms took
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | "
+        "events 2/3/1, not first-third (S1) |",
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "H4" in m for m in f), f
+
+
+def test_c4_passes_atom_in_contradicted_tests_evidence():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1); "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_passes_atom_in_conclusion_basis_alternate_site():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+        basis="refuted; adequacy: 34% (variants: τ ≥ 2h)",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_unflagged_deterministic_refutation_is_untouched():
+    # a legitimate deterministic refutation, NOT flagged, is never seen by C4
+    led = _c4_ledger(
+        "REFUTED",
+        "| T1 | H4 | step must not precede deploy | align logs | CONTRADICTED | "
+        "step precedes deploy (S1) |",
+    )
+    assert sl.check_c4(led, []) == []
+
+
+def test_c4_flagged_unresolved_is_nothing_to_check():
+    led = _c4_ledger(
+        "UNRESOLVED",
+        "| T4 | H4 | early clustering | compare timing | NON_DISCRIMINATING | underpowered (S1) |",
+    )
+    assert sl.check_c4(led, ["H4"]) == []
+
+
+def test_c4_flagged_id_absent_fails_closed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | events 2/3/1 (S1) |",
+    )
+    f = sl.check_c4(led, ["H9"])
+    assert any("C4" in m and "H9" in m for m in f)
+
+
+def test_c4_conflicting_bounds_fail_closed():
+    led = _c4_ledger(
+        "REFUTED",
+        "| T4 | H4 | early clustering | compare timing | CONTRADICTED | "
+        "adequacy: 34% (variants: τ ≥ 2h) |",
+        basis="refuted; adequacy: 90% (variants: τ ≥ 2h)",
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "conflicting" in m.lower() for m in f)
+
+
+def test_c4_no_tests_table_and_no_basis_atom_fails_closed():
+    led = (
+        "## Conclusion\n\n"
+        "| id | claim | status | basis |\n| --- | --- | --- | --- |\n"
+        "| H4 | causal | REFUTED | best supported |\n"
+    )
+    f = sl.check_c4(led, ["H4"])
+    assert any("C4" in m and "H4" in m for m in f)

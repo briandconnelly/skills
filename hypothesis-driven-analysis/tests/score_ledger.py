@@ -123,6 +123,9 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 EMPHASIS = re.compile(r"[*_`]")
 SPACES = re.compile(r"\s+")
 STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
+# A Tests-table outcome cell refuting a hypothesis. Whole-word so it never fires
+# on CONSISTENT / NON_DISCRIMINATING, and matched on the upper-cased cell.
+OUTCOME_CONTRADICTED = re.compile(r"\bCONTRADICTED\b")
 # The documented syntax (references/ledger-template.md): a descriptive claim
 # cell is written `descriptive (estimand: <the quantity>)`. Anchored to that
 # labeled, parenthesised form only -- the word "estimand" appearing anywhere
@@ -964,6 +967,106 @@ def _c3b_smuggled_direction(bullet: str, source_id: str) -> str | None:
             return unit
         prev_had_anchor = has_anchor
     return None
+
+
+def check_c4(final: str, ids: list[str]) -> list[str]:
+    """C4: each flagged positive-contradiction hypothesis that is REFUTED must
+    record an adequacy bound + variant range beside its outcome. Fail closed
+    otherwise.
+
+    `ids` is the caller's attestation (--c4-positive-contradiction) that each named
+    hypothesis's necessary prediction is a positive/distributional contradiction,
+    so a REFUTED verdict on it is subject to the Site 2 recording requirement
+    (SKILL.md Data). The scorer cannot distinguish that from a legitimate
+    deterministic refutation, which is exempt and must not be flagged -- so an
+    un-flagged row is never seen here (the over-correction guard).
+
+    For each flagged id: an id absent from the Conclusion summary fails closed (a
+    flag naming a row the ledger does not contain); a flagged id that is not
+    REFUTED is nothing to check (no refutation to justify); a REFUTED id must carry
+    the documented `adequacy:` atom in its CONTRADICTED Tests row(s) or its
+    Conclusion basis cell. Syntactic presence only.
+    """
+    summary, sfails = read_table(final, FINAL, "id", "claim", "status")
+    if not summary:
+        return sfails  # no trustworthy summary grid: audit-wide bail, as score() does
+    by_id = {normalize_key(r["id"]): r for r in summary}
+    fails: list[str] = []
+    for raw_id in ids:
+        row = by_id.get(normalize_key(raw_id))
+        if row is None:
+            fails.append(
+                f"parse: {FINAL}: C4: --c4-positive-contradiction names {raw_id!r}, which "
+                f"has no row in the Conclusion summary; cannot verify its adequacy bound"
+            )
+            continue
+        if status_of(row["status"]) != "REFUTED":
+            # nothing to check: no refutation to justify. An unparseable status cell
+            # (status_of -> None) also lands here; inside score() that row is already
+            # failed by _check_row before the run can go green, so this is not a
+            # false-clean path -- only a direct-caller nuance.
+            continue
+        fails += _check_adequacy_recorded(final, raw_id, normalize_key(raw_id), row)
+    return fails
+
+
+def _check_adequacy_recorded(
+    final: str, raw_id: str, key: str, summary_row: dict[str, str]
+) -> list[str]:
+    """The atom lookup for one flagged, REFUTED id: scan its Conclusion basis cell
+    (alternate site) and its CONTRADICTED Tests rows' Outcome/Evidence cells
+    (primary site) for the documented adequacy atom.
+
+    Missing everywhere fails closed; if the Tests table itself could not be read
+    and the basis cell carried no atom, that parse failure is the surfaced reason.
+    Conflicting bounds for the one id fail closed.
+    """
+    candidates: list[str] = []
+    basis = summary_row.get("basis", "")
+    if basis:
+        candidates.append(basis)
+    tests_rows, tfails = read_table(final, FINAL, "hypothesis", "outcome", "evidence")
+    for r in tests_rows:
+        if normalize_key(r["hypothesis"]) == key and OUTCOME_CONTRADICTED.search(
+            r["outcome"].upper()
+        ):
+            candidates.append(r["outcome"])
+            candidates.append(r["evidence"])
+    atoms = [a for cell in candidates for a in _adequacy_atoms(cell)]
+    if not atoms:
+        if tfails and not tests_rows:
+            return [
+                f"C4: {raw_id} is a REFUTED positive contradiction but records no adequacy "
+                f"bound in its Conclusion basis, and its Tests table could not be read to "
+                f"check for one: {tfails[0]}"
+            ]
+        return [
+            f"C4: {raw_id} is a REFUTED positive contradiction but records no adequacy bound "
+            f"+ variant range beside its outcome. A positive/distributional contradiction "
+            f"must record `adequacy: <rate> (variants: <range>)` in its CONTRADICTED Tests "
+            f"row or its Conclusion basis before it can refute (SKILL.md Data, Site 2)."
+        ]
+    bounds = sorted({b for b, _ in atoms})
+    if len(bounds) > 1:
+        return [
+            f"C4: {raw_id} carries conflicting adequacy bounds {bounds!r}; cannot tell which "
+            f"is asserted."
+        ]
+    return []
+
+
+def _unique_ids(ids: list[str]) -> list[str]:
+    """Flag ids deduped by normalized key, preserving first-seen display form, so a
+    repeated --c4-positive-contradiction (e.g. `H4` and `h4`, or `H4` twice) checks
+    and reports the row once rather than double-counting it."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for i in ids:
+        key = normalize_key(i)
+        if key not in seen:
+            seen.add(key)
+            out.append(i)
+    return out
 
 
 def _select_table(
