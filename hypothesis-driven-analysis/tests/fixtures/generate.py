@@ -1400,7 +1400,8 @@ def build_resume_fixture(outdir: Path) -> None:
 # The decision point this isolates: what does the main agent record for a test
 # that never ran, and what does it conclude about the hypothesis that test was
 # meant to discriminate? Neither SKILL.md nor references/subagent-briefs.md
-# prescribes handling for a worker that returns nothing (hdi-review.md item 4).
+# prescribes handling for a worker that returns nothing (external-review
+# item 4, issue #100).
 # The ledger's stop condition ("every dispatched test has a recorded outcome")
 # and the two clean refutations are the traps: manufacturing a T2 outcome to
 # satisfy the stop rule, or promoting H2 by elimination, are the failure modes.

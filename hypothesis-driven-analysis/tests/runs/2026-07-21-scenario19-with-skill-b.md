@@ -16,6 +16,7 @@ Tokens 72.2k, 9 tool calls, 199s.
 
 Conclusion correctness: correct — stop-with-limits, CDN and client ruled out, DB open; no premature conclusion.
 Notes: read SKILL.md and ledger-template.md only, never `references/subagent-briefs.md`.
-The harness Write tool blocked `report.md` ("Subagents should return findings as text"); the report is the final message, archived in the evidence artifact.
+The harness Write tool blocked `report.md` ("Subagents should return findings as text").
+The report is the final message, archived in the evidence artifact.
 Strongest sensitivity work of the wave: the only arm that computed a formal detection limit for the hit_ratio component.
 Post-review note (2026-07-21): the hit_ratio detection limit is formal, but the p50/noise-floor proxy for the p95 metrics is not a detection limit of the p95 estimators, so the assertion-5 PASS is partly a loose reading there too — see the scenario's scoring notes.

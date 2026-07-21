@@ -14,6 +14,8 @@ Tokens 80.2k, 12 tool calls, 267s.
 
 **Total: 5/5.**
 
-Conclusion correctness: correct — stop-with-limits, CDN and client ruled out, DB open; no premature conclusion (outcomes recorded before the Conclusion section was written, per ledger amendment order).
+Conclusion correctness: correct — stop-with-limits, CDN and client ruled out, DB open.
+No premature conclusion (outcomes recorded before the Conclusion section was written, per ledger amendment order).
 Note: read SKILL.md and ledger-template.md only, never `references/subagent-briefs.md`.
-Post-review note (2026-07-21): the assertion-5 PASS reads the sensitivity rule loosely — this arm's own ledger calls its cross-instrument argument "not a rigorous substitute for an interval", and under the strict reading arm c applied, T1/T3 would be `NON_DISCRIMINATING`; the crash-independence claim (no distrust spread from W2) is what assertion 5 exists to measure and is unaffected either way — see the scenario's scoring notes.
+Post-review note (2026-07-21): the assertion-5 PASS reads the sensitivity rule loosely — this arm's own ledger calls its cross-instrument argument "not a rigorous substitute for an interval", and under the strict reading arm c applied, T1/T3 would be `NON_DISCRIMINATING`.
+The crash-independence claim (no distrust spread from W2) is what assertion 5 exists to measure and is unaffected either way — see the scenario's scoring notes.

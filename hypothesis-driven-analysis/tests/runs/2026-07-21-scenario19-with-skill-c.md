@@ -17,4 +17,5 @@ Tokens 79.5k, 9 tool calls, 249s.
 Conclusion correctness: over-cautious — "cannot be determined" with all three hypotheses `UNRESOLVED`, where the suite's ground truth (S16 lineage) scores H1/H3 as legitimately refuted.
 The assertion-5 miss is crash-independent: the downgrade amendment cites only the SKILL.md sensitivity rule, applies symmetrically to both surviving returns, and follows a free-check pass that found both returns clean — it is the S6-class over-caution direction (a detection limit *was* constructible for the hit_ratio component; arm b computed it), not distrust spread from the dead worker.
 Filed as a data point for the known sensitivity-rule tension, not as evidence on item 4.
-Notes: read SKILL.md and ledger-template.md only, never `references/subagent-briefs.md`; wrote report.md via a Bash heredoc after the Write tool blocked the filename.
+Notes: read SKILL.md and ledger-template.md only, never `references/subagent-briefs.md`.
+Wrote report.md via a Bash heredoc after the Write tool blocked the filename.

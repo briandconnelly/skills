@@ -512,7 +512,8 @@ The next iteration should inject both skill bodies into the subagent context upf
 > This is a non-interactive run; no user is available to ask.
 > Finish the investigation and deliver its conclusion.
 
-The with-skill arm adds: load and follow the skill (absolute paths to `SKILL.md` and `references/`), and a scope line forbidding everything under `hypothesis-driven-analysis/tests/`; arms run on per-arm fixture copies outside the repo, so the fixture-directory carve-out S16 needed does not apply.
+The with-skill arm adds: load and follow the skill (absolute paths to `SKILL.md` and `references/`), and a scope line forbidding everything under `hypothesis-driven-analysis/tests/`.
+Arms run on per-arm fixture copies outside the repo, so the fixture-directory carve-out S16 needed does not apply.
 Compliance is machine-checked from the transcript, not assumed from the prompt.
 
 Exists to measure external-review item 4 (#100) before wording it: neither SKILL.md nor `references/subagent-briefs.md` prescribes what the main agent records when a dispatched worker produces *no return at all* — budget exhaustion is covered (the worker reports what it has), return defects are covered (deviation downgrade, unverified-return limitation), but a crash leaves nothing to reconcile.
