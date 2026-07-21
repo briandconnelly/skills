@@ -132,6 +132,19 @@ ESTIMAND = re.compile(r"^descriptive\s*\(\s*estimand\s*:\s*(?P<rest>[^)]*)\)", r
 # enclosing parenthesis: ASCII punctuation plus U+2013 en dash, U+2014 em
 # dash, U+2026 ellipsis.
 ESTIMAND_TRIM = " \t:=()[]{}<>*_.,;!?\"'-\u2013\u2014\u2026"
+# The documented positive-contradiction adequacy atom
+# (references/ledger-template.md, SKILL.md Data / Site 2):
+# `adequacy: <rate> \u00b1 <uncertainty> (variants: <range>)`, recorded beside the
+# outcome. `search`ed (not anchored) because it sits inside a larger Outcome /
+# Evidence / basis cell. The bound excludes parens so it stops at `(variants:`.
+ADEQUACY = re.compile(
+    r"adequacy\s*:\s*(?P<bound>[^()]*?)\s*\(\s*variants\s*:\s*(?P<range>[^)]*)\)",
+    re.IGNORECASE,
+)
+# Like ESTIMAND_TRIM but WITHOUT `<`/`>`: a rate bound such as `<1 in 20` or `<5%`
+# depends on the angle bracket, and stripping it would also collapse `<34%` and
+# `34%` into one bound, silently passing the conflicting-bounds check.
+ADEQUACY_TRIM = ESTIMAND_TRIM.replace("<", "").replace(">", "")
 HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.*?)\s*#*\s*$")
 COMPLETENESS_LABEL = re.compile(
     r"^\s*[-*]\s*source\s+completeness\s+semantics\s*:?\s*", re.IGNORECASE
@@ -1135,6 +1148,34 @@ def estimand_of(claim: str) -> str | None:
     # U+FEFF (zero-width no-break space), U+200C, U+200D, U+2060, U+00AD, etc.
     content = "".join(c for c in m.group("rest") if unicodedata.category(c) != "Cf")
     return content.strip(ESTIMAND_TRIM) or None
+
+
+def _adequacy_atoms(cell: str) -> list[tuple[str, str]]:
+    """Every `(bound, variant-range)` recorded in a cell via the documented
+    `adequacy: <rate> ± <uncertainty> (variants: <range>)` atom.
+
+    Both sub-fields are read through markdown emphasis and trimmed of surrounding
+    punctuation; an atom whose bound or variant range is empty after trimming is
+    not counted. Syntactic presence only, parallel to `estimand_of`: an
+    `adequacy: N/A (variants: none)` atom is collected by design, and judging
+    whether the recorded rate is a sound worst-case bound is the rubric grader's
+    job, not this script's.
+    """
+    stripped = EMPHASIS.sub("", cell)
+    out: list[tuple[str, str]] = []
+    for m in ADEQUACY.finditer(stripped):
+        bound = m.group("bound").strip(ADEQUACY_TRIM)
+        rng = m.group("range").strip(ADEQUACY_TRIM)
+        if bound and rng:
+            out.append((bound, rng))
+    return out
+
+
+def adequacy_of(cell: str) -> tuple[str, str] | None:
+    """The first documented adequacy atom's `(bound, variant-range)` in a cell, or
+    None if it carries no atom with both sub-fields non-empty (see `_adequacy_atoms`)."""
+    atoms = _adequacy_atoms(cell)
+    return atoms[0] if atoms else None
 
 
 def check_ids(rows: list[dict[str, str]], label: str) -> list[str]:

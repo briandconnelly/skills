@@ -1625,3 +1625,55 @@ def test_c3b_reason_smuggling_without_a_sentence_boundary_fails_closed():
         "rows are still-open incidents so the closed-only median understates true time-to-close\n"
     )
     assert sl.check_c3b(md, "S2") != []
+
+
+# --------------------------------------------------------------------------- #
+# C4 — the positive-contradiction adequacy atom (Task 1)
+# --------------------------------------------------------------------------- #
+def test_adequacy_of_parses_documented_atom():
+    assert sl.adequacy_of("adequacy: 34% (variants: τ ≥ 2h)") == ("34%", "τ ≥ 2h")
+
+
+def test_adequacy_of_reads_atom_embedded_in_a_larger_cell():
+    # the earlier `(S4 §2)` paren must not confuse the match, and the leading `<`
+    # of the bound must survive the trim (ADEQUACY_TRIM, unlike ESTIMAND_TRIM, does
+    # not strip `<`/`>` — the `<` is load-bearing and distinguishes conflicting bounds)
+    cell = (
+        "CONTRADICTED; added latency spread across spans (S4 §2). "
+        "adequacy: <1 in 20 ± 1pp (variants: any split with payment > 50%)"
+    )
+    assert sl.adequacy_of(cell) == ("<1 in 20 ± 1pp", "any split with payment > 50%")
+
+
+def test_adequacy_of_keeps_angle_brackets_distinct_in_bound():
+    # `<34%` and `34%` are different bounds; the trim must not collapse them
+    assert sl.adequacy_of("adequacy: <34% (variants: x)") == ("<34%", "x")
+
+
+def test_adequacy_of_reads_through_emphasis():
+    assert sl.adequacy_of("**adequacy: 5% (variants: fast-and-slow leak)**") == (
+        "5%",
+        "fast-and-slow leak",
+    )
+
+
+def test_adequacy_of_na_passes_syntactically():
+    # syntactic presence only, like `estimand: N/A`; quality is the rubric's
+    assert sl.adequacy_of("adequacy: N/A (variants: none)") == ("N/A", "none")
+
+
+def test_adequacy_of_none_when_no_atom():
+    assert sl.adequacy_of("CONTRADICTED; step at 09:12, deploy at 14:30") is None
+
+
+def test_adequacy_of_none_when_variants_empty():
+    assert sl.adequacy_of("adequacy: 34% (variants: )") is None
+
+
+def test_adequacy_of_none_when_bound_empty():
+    assert sl.adequacy_of("adequacy: (variants: τ ≥ 2h)") is None
+
+
+def test_adequacy_atoms_collects_multiple():
+    cell = "adequacy: 34% (variants: a). adequacy: 40% (variants: b)"
+    assert sl._adequacy_atoms(cell) == [("34%", "a"), ("40%", "b")]
