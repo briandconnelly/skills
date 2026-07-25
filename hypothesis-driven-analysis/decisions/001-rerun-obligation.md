@@ -17,18 +17,18 @@ Left undecided, this was re-argued every round of PR #112: rounds 3, 4, and 5 ea
 
 *Rerun what a reader's behavior could plausibly depend on.* Cheaper, but "plausibly" is exactly the judgement that got re-argued, so it decides nothing on its own.
 
-*Rerun the cells that reach the changed text.* The one adopted, because it is checkable rather than persuasive: whether a cell's decision point traverses an edited sentence is a question about the fixture and the prose, answerable before any arm runs.
+*Scope the obligation by reachability.* The one adopted, because it is checkable rather than persuasive: whether a cell's decision point traverses an edited sentence is a question about the fixture and the prose, answerable before any arm runs. `tests/PROTOCOL.md` carries the operative form.
 
 ## What settled it
 
 The disagreements were never about the principle; they were about who had to justify what.
 A rule that asks "which cells reach this text" puts the burden on a question with an answer, and makes the scoping judgement a thing recorded in the artifact rather than a thing argued in a review thread.
 
-The corollary matters as much as the rule: an edit that provably cannot reach any decision point — whitespace, a comment, a cross-reference, a heading — owes nothing, and saying so out loud is what stops the law from being quietly ignored in the cases where it does bite.
+The corollary matters as much as the rule: exempting edits that provably cannot reach a decision point is what stops the law from being quietly ignored in the cases where it does bite.
+An obligation nobody can afford gets waived silently; one with an honest floor gets kept.
 
-An edit that *removes* a paraphrase while leaving the authoritative statement untouched is the ambiguous case, and it is not settled here.
-PR #112 measured that transformation once for one rule (c1 came back 6/6 including arms that never opened the reference file), which is evidence about that rule, not a general licence.
-Until someone measures it properly, such an edit owes a confirmation cell — one, not a batch — and the reasoning gets written down.
+Paraphrase removal is the case that stayed unsettled.
+PR #112 measured that transformation once for one rule (c1 came back 6/6 including arms that never opened the reference file), which is evidence about that rule, not a general licence — hence a confirmation cell rather than either extreme, until someone measures it properly.
 
 ## Reopening condition
 

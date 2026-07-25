@@ -57,6 +57,16 @@ def test_line_citation_into_frozen_archive_is_allowed(repo):
     assert cc.check(write(repo, "Measured in archive.md:253 and :257.")) == []
 
 
+def test_frozen_match_is_segment_wise_not_substring(repo):
+    """`nottests/runs/` contains the string "tests/runs/" without being one."""
+    decoy = repo / "skill" / "nottests" / "runs"
+    decoy.mkdir(parents=True)
+    (decoy / "decoy.md").write_text("not an archive\n")
+    assert not cc.in_frozen(decoy / "decoy.md")
+    assert cc.in_frozen(repo / "skill" / "tests" / "runs" / "archive.md")
+    assert cc.check(write(repo, "See decoy.md:12 for the rule."))
+
+
 def test_attributed_quote_that_matches_passes(repo):
     assert cc.check(write(repo, f'SKILL.md\'s "{SENTENCE}" governs this.')) == []
 

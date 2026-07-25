@@ -16,8 +16,8 @@ It breaks the closed outcome set, which is the property the ledger's machine che
 That value says a test could not discriminate.
 A return that is unverifiable may have discriminated perfectly well — the doubt is about the report, not the test — and collapsing the two makes the ledger say something false about the evidence.
 
-*A limitation recorded beside the outcome.* Adopted.
-The Outcome cell keeps the worker's own value; the fault travels as a limitation, and reaches the conclusion where it bars treating the result as established or action-ready.
+*A limitation recorded beside the outcome.* Adopted; SKILL.md's Analysis section carries what that means in practice.
+The property it buys is the one the other two options destroy — what the test found and why the report of it cannot be relied on stay separable, all the way to the conclusion.
 
 ## What settled it
 

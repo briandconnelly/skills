@@ -116,8 +116,18 @@ def read_at(path: Path, sha: str | None) -> str:
 
 
 def in_frozen(path: Path) -> bool:
-    rel = path.relative_to(REPO_ROOT).as_posix()
-    return any(f"{d}/" in rel for d in FROZEN_DIRS)
+    """Whether a cited file lives in a frozen directory, matched on path segments.
+
+    Segment-wise rather than by substring: `docs/nottests/runs/x.md` contains
+    the string "tests/runs/" without being under one.
+    """
+    parts = path.relative_to(REPO_ROOT).parts
+    for frozen in FROZEN_DIRS:
+        segments = tuple(frozen.split("/"))
+        window = len(segments)
+        if any(parts[i : i + window] == segments for i in range(len(parts) - window + 1)):
+            return True
+    return False
 
 
 _RESOLVED: dict[tuple[str, Path], Path | None] = {}

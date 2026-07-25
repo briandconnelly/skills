@@ -14,9 +14,15 @@ One file per decision, `NNN-slug.md`, with five parts:
 
 ## The pointer rule
 
-**A decision file never states a normative rule.** It points at the file that owns it.
+**Name the decision; never state the rule in operable form.** Point at the file that owns it.
+
+A decision file has to say what was chosen, or it records nothing — "we adopted an evidentiary convention over a modal test" is the decision, and writing it down is the point.
+What it must not carry is the rule in a form someone could *act on*: the conditions, the thresholds, the vocabulary, the branches.
+The test is whether a reader could apply this file without opening the file that owns the rule.
+If they could, this file has become a second home, and the next edit to the real one leaves it silently wrong.
 
 This is not a style preference.
 Issue #103 was one rule living in two places until the two disagreed, and a decision log is the most natural third place for that to happen again — it is exactly where someone would write down "what we decided the rule is."
-The reasoning belongs here; the rule belongs in SKILL.md.
-If you find yourself writing a sentence an agent could follow, you are writing the rule, and it goes in the wrong file.
+The reasoning belongs here; the rule belongs where the pointer says.
+
+The line is genuinely fine, and this repo has already been on the wrong side of it: the first draft of these files stated their rules operationally, which an external review caught in the same pull request that introduced the pointer rule.

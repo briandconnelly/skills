@@ -13,7 +13,7 @@ Where does a normative rule live?
 *Restate for the reader.* The convenience is real: a worker reading a brief template should not have to open SKILL.md to know what it owes.
 The cost is that two statements of one rule diverge silently, and nothing fails when they do — the prose still reads correctly on both sides.
 
-*One home, pointers elsewhere.* Adopted, because divergence is not hypothetical here.
+*Single authority.* Adopted, and stated for the repo in `AGENTS.md`, because divergence is not hypothetical here.
 `subagent-briefs.md` had already drifted before anyone looked: its summary narrowed "did not adequately test" to "untested" and dropped the outside-evidence exception, which is the same drift #103 was filed about, reproduced in miniature by the file that was supposed to be summarizing the fix.
 
 ## What settled it
@@ -45,5 +45,4 @@ A duplication appears that the citation check cannot see and inspection did not 
 
 ## Where the rule lives
 
-SKILL.md owns the skill's normative rules.
-The pointer convention is stated in `references/subagent-briefs.md` and `references/ledger-template.md` at the sites where a summary used to be.
+`AGENTS.md`, repo-wide. SKILL.md owns this skill's normative rules; the reference files point at it from the sites where a summary used to be.

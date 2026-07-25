@@ -48,7 +48,16 @@ Both are ordering failures, not effort failures.
 
 ## What owes a rerun
 
-Decided once, in [decisions/001-rerun-obligation.md](../decisions/001-rerun-obligation.md), rather than re-argued each round.
+A change to agent-read prose owes arms for **the cells whose decision point traverses an edited sentence**, and for no others.
+Whether a cell reaches the changed text is settled before any arm runs, by reading the fixture and the prose together, and the scoping judgement is recorded in the evidence artifact rather than argued in a review thread.
+
+An edit that cannot reach any decision point owes nothing: whitespace, formatting, a comment, a cross-reference, a heading.
+Saying so explicitly is what keeps the obligation credible in the cases where it does bite.
+
+Removing a paraphrase while leaving the authoritative statement untouched is the unsettled case.
+It owes one confirmation cell per rule removed — not a batch — and the reasoning goes in the artifact.
+
+Why this rule and not a stricter or looser one: [decisions/001-rerun-obligation.md](../decisions/001-rerun-obligation.md).
 
 ## Scope caveat
 

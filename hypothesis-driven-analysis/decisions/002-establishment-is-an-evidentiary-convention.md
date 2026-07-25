@@ -14,9 +14,9 @@ It reads rigorous and it is worthless.
 A worker's report can always be wrong, so for any return there exists a consistent reading in which the reported deviation never happened, and nothing is ever established.
 The test does not discriminate hard cases from easy ones; it fails all of them.
 
-*Evidentiary convention.* The adopted form: rank the kinds of evidence a return carries, and say which outranks which.
-The execution record — the quoted commands and the output the tool itself emitted — outranks the worker's narrative fields, because the narrative is the worker's description of what ran while the record is the account of it.
-Agreement between command and output establishes; conflict between them establishes nothing.
+*Evidentiary convention.* Adopted: rank the kinds of evidence a return carries, and let the disposition follow the higher-ranked kind when they disagree.
+Which kind outranks which, and what follows from their agreement or conflict, is SKILL.md's Analysis section.
+The reason for the ranking is what belongs here: a worker's narrative fields are its *description* of what ran, while the quoted commands and tool-emitted output are the account of it, and a description is the thing that can be wrong without anything else changing.
 
 ## What settled it
 
