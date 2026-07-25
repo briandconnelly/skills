@@ -24,21 +24,22 @@ Always open the rendered image and check it against what the chart is supposed t
 ## Running it
 
 ```
-uv run vega-lite/scripts/render.py <spec.json> <out.png>
-uv run vega-lite/scripts/render.py <spec.json> <out.svg>
+uv run <skill-dir>/scripts/render.py <spec.json> <out.png>
+uv run <skill-dir>/scripts/render.py <spec.json> <out.svg>
 ```
 
+`<skill-dir>` is this skill's directory on disk — use an absolute path, since the script lives with the skill, not in your working directory, and a repo-root-relative `vega-lite/scripts/...` form resolves only when your cwd is this repo's root.
 The output format is inferred from the extension you give (`.png` or `.svg`); anything else is rejected up front — before any stage runs — with a one-line `error: unsupported output extension: ...` message on stderr and exit code `2`.
 Pipe a spec through stdin with `-` in place of a path:
 
 ```
-cat spec.json | uv run vega-lite/scripts/render.py - out.png
+cat spec.json | uv run <skill-dir>/scripts/render.py - out.png
 ```
 
 Omit the output path entirely to run all four stages — including a real render — without writing an image to disk; useful when you only want the pass/fail result:
 
 ```
-uv run vega-lite/scripts/render.py <spec.json>
+uv run <skill-dir>/scripts/render.py <spec.json>
 ```
 
 `--vl-version` picks which schema version the `schema` stage validates against (e.g. `--vl-version 6`); it does not change what `compile`/`render` target, since that's fixed by the bundled vl-convert version.

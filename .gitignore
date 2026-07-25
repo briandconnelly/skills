@@ -10,3 +10,7 @@
 
 # Local planning artifacts (specs, plans) — kept on disk, not tracked
 docs/superpowers/
+
+# Generated Python/test caches
+__pycache__/
+.pytest_cache/

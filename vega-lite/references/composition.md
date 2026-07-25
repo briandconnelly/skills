@@ -106,9 +106,24 @@ Rendered, this produces a 2x2 grid of panels — East, North, South, West — ea
 
 **The `facet` operator**, a spec shaped `{"facet": ..., "spec": {...}}` at the top level instead of an encoding channel:
 
-```jsonc
+```json
 {
-  "facet": {"field": "region", "type": "nominal", "columns": 2},
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Small multiples of quarterly sales by region via the facet operator, each panel a layered view of bars plus a fixed target rule.",
+  "data": {
+    "values": [
+      {"region": "North", "quarter": "Q1", "sales": 40},
+      {"region": "North", "quarter": "Q2", "sales": 55},
+      {"region": "South", "quarter": "Q1", "sales": 30},
+      {"region": "South", "quarter": "Q2", "sales": 65},
+      {"region": "East", "quarter": "Q1", "sales": 50},
+      {"region": "East", "quarter": "Q2", "sales": 45},
+      {"region": "West", "quarter": "Q1", "sales": 60},
+      {"region": "West", "quarter": "Q2", "sales": 35}
+    ]
+  },
+  "facet": {"field": "region", "type": "nominal"},
+  "columns": 2,
   "spec": {
     "layer": [
       {"mark": "bar", "encoding": {"x": {"field": "quarter", "type": "nominal"}, "y": {"field": "sales", "type": "quantitative"}}},
@@ -119,6 +134,7 @@ Rendered, this produces a 2x2 grid of panels — East, North, South, West — ea
 ```
 
 Reach for the operator form specifically when the thing being repeated per panel is itself a `layer` (as above) — the `facet`/`row`/`column` encoding channels only attach to a single mark's encoding, so a per-panel view that needs more than one layer needs the operator's separate `spec`.
+Note where `columns` sits in each form: inside the field definition for the `facet` *encoding channel* (as in the previous example), but as a top-level property beside `facet`/`spec` for the *operator* — putting `columns` inside the operator's facet field definition is a schema violation, and `render.py`'s `schema` stage fails it even though the compiler happens to tolerate it.
 
 ## `resolve`
 

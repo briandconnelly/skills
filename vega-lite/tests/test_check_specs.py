@@ -41,3 +41,27 @@ def test_jsonc_fence_is_ignored(tmp_path):
     md.write_text('```jsonc\n{"mark": "bar",}\n```\n')
     specs = cs.extract_specs(md)
     assert specs == []
+
+
+def test_composition_operator_specs_are_recognized(tmp_path):
+    # Schema-less specs using any top-level composition operator must still be
+    # extracted, so future repeat/concat examples can't silently escape validation.
+    cs = _load_check_specs()
+    for key in ("repeat", "concat", "hconcat", "vconcat", "facet", "layer", "mark"):
+        md = tmp_path / f"{key}.md"
+        md.write_text(f'```json\n{{"{key}": {{}}, "spec": {{}}}}\n```\n')
+        assert len(cs.extract_specs(md)) == 1, key
+
+
+def test_main_without_targets_is_usage_error():
+    cs = _load_check_specs()
+    usage_error = 2
+    assert cs.main([]) == usage_error
+
+
+def test_main_fails_closed_when_no_specs_extracted(tmp_path):
+    # A scan that finds nothing to validate must not exit green: an empty run and
+    # an all-pass run would otherwise be indistinguishable.
+    cs = _load_check_specs()
+    (tmp_path / "prose-only.md").write_text("no fences here\n")
+    assert cs.main([str(tmp_path)]) == 1

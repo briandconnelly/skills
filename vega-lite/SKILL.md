@@ -57,7 +57,7 @@ Each reference file also states rules local to its own area — log scales with 
 ### Validate
 
 Every spec must be validated by actually rendering it, not just checked for syntactic JSON validity.
-Invoke this skill's own `scripts/render.py` — it lives in the skill directory, not your working directory, so give an absolute path (or one relative to the skill root); the `vega-lite/scripts/...` form below assumes you are at this repo's root and will not resolve from an arbitrary cwd:
+Invoke this skill's own `scripts/render.py` — it lives in the skill directory, not your working directory, so substitute `<skill-dir>` below with the skill directory's absolute path; a repo-root-relative form like `vega-lite/scripts/render.py` resolves only when your cwd is this repo's root, not from an arbitrary cwd:
 
 ```
 uv run <skill-dir>/scripts/render.py <spec.json> <out.png>
