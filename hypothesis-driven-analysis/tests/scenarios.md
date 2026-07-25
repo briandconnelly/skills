@@ -1209,8 +1209,20 @@ The c4 over-correction goes 2/3 → 0/3, and c2 is unchanged at 3/3.
 
 Honest limits, and they matter here.
 
-- **c3 lost a cell to invented vocabulary.** `postC3-3` recorded the Outcome as `UNVERIFIED`, explicitly declining all three closed-set values. Its epistemics are right — outcome not downgraded, limitation carried, H2 `UNRESOLVED` — but `UNVERIFIED` is not a member of the closed outcome set, so it is scored a miss. Round 1's c3 was 3/3 with the old text, so this is a candidate side-effect of the new paragraph reading as if it names a label; n=3 cannot separate that from noise, and it is the first thing to re-measure.
+- **c3 lost a cell to invented vocabulary, and round 3 fixed it.** `postC3-3` recorded the Outcome as `UNVERIFIED`, explicitly declining all three closed-set values. Its epistemics were right — outcome not downgraded, limitation carried, H2 `UNRESOLVED` — but `UNVERIFIED` is not a member of the closed outcome set, so it was scored a miss, and the new paragraph reading as if it names a label was the suspect. A review of the PR proposed saying so outright; the sentence "'Unverified' is that limitation, not a fourth outcome: the Outcome cell still holds the worker's own `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with the limitation recorded beside it" was added, and because that changes the shipped wording after round 2 had run, validation arms were owed. See the round-3 table below: c3 goes to **3/3** with two arms quoting the new sentence, and the c1 control holds **3/3** `NON_DISCRIMINATING`, so insisting on closed-set labels did not discourage the downgrade where it is correct.
 - **H2's status never moved on c1.** Every pre-edit c1 arm ended `UNRESOLVED` regardless of the cell it recorded. The measured blast radius of the original contradiction is the ledger's Outcome cell and the audit trail, not the investigation's answer.
 - **Hypothesis status for an unverified return is still unsettled**, and this PR does not settle it: arms split `UNRESOLVED` vs `REFUTED` on c2/c3 for reasons belonging to the status-derivation rule. Filed separately rather than patched blind here.
 - **c1's establishment rests on a stated convention, not outside proof.** The convention ranks the execution record above the narrative; it does not prove what the worker really ran. The stronger fixture — an independent call audit — is deliberately unbuilt, because it establishes the deviation by outside evidence and so tests an easier case than the one #103 names. A packet carrying an established *and* an unresolvable fault together, which the "most consequential" clause governs, is also unmeasured.
 - n=3 per cell, one model (Sonnet), one fixture family; the probe instructs the spot-verification step, so it measures which rule is applied, never whether an agent looks.
+
+**Round 3, same day — validation arms for the review-driven wording change.**
+
+Adopting the reviewer's closed-set sentence changed the shipped wording after round 2's arms had run, so two cells were rerun against the amended text: c3, to see whether the sentence fixes the drift, and c1 with both files, as the over-correction control.
+
+| Cell | Arm 1 | Arm 2 | Arm 3 | Round 2 | Result |
+| --- | --- | --- | --- | --- | --- |
+| c3 unresolvable | `CONTRADICTED` + limitation | `CONTRADICTED` + limitation | `CONTRADICTED` + limitation | 2/3 | **3/3 — drift fixed** |
+| c1 established (+ briefs) | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | 3/3 | **3/3 — no over-correction** |
+
+All three c3 arms keep the worker's own value in the Outcome cell with the limitation beside it, and two quote the new sentence verbatim; none invented a label.
+c2 and c4 were not rerun — the added sentence sits inside the conflicting-execution-records paragraph, which neither packet reaches — and that is a scoping judgement, not a measurement.

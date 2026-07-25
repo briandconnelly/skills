@@ -209,7 +209,7 @@ That costs nothing and catches what actually goes wrong — a wrong join, a unit
 Re-run the collection when it is cheap, or when the free check surfaces a doubt the return cannot settle and the budget covers the second charge; a metered re-pull is a legitimate spend, not a rule violation, and it needs a ledger amendment like any other unplanned collection.
 When neither is available — metered source, budget spent, and a return you cannot fault on its face — record that the verdict rests on an unverified worker return.
 That is a limitation to state, not a verification to claim.
-When the free check *does* fault a return, classify each fault — a return can carry more than one — and disposition the outcome on the most consequential.
+When the free check *does* fault a return, classify each fault — a return can carry more than one — and base the disposition on the most consequential.
 Rank the return's execution record above its narrative: the quoted commands and the parameters the tool itself emitted are the account of what ran, while Method and Deviations are the worker's description of it.
 
 An error in a **derived value** — an arithmetic slip in a delta, a mislabeled percentage — is settled by recomputing it from raw figures whose own provenance is unfaulted, since the recomputation is evidence independent of the worker's claim.
@@ -223,7 +223,8 @@ An established deviation that leaves the prediction adequately tested is a devia
 When the execution records themselves conflict — a quoted output with no source among the commands shown, a command and the output beneath it naming different days — nothing is established, because one resolution has the briefed collection happening with the fault confined to the report of it.
 Nor is anything verified: the same worker whose quote broke also attested that its quotes were exact, so the return's remaining attestations cannot clear the fault they sit beside, and a benign explanation you can construct is a plausible story, not a verification.
 Record the fault as a limitation and treat the outcome as resting on an unverified return, however plausible the innocent reading; that limitation reaches the conclusion, where it bars treating the result as established or action-ready.
-Do not reach for `NON_DISCRIMINATING` here — it says a test could not discriminate, not that you doubt a return which, if honest, discriminated fine.
+"Unverified" is that limitation, not a fourth outcome: the Outcome cell still holds the worker's own `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with the limitation recorded beside it.
+Do not reach for `NON_DISCRIMINATING` here either — it says a test could not discriminate, not that you doubt a return which, if honest, discriminated fine.
 
 Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
 
