@@ -1425,6 +1425,268 @@ def build_worker_crash_fixture(outdir: Path) -> None:
     write_text(outdir / "worker-returns.md", _s16_returns_md(w2_crashed=True))
 
 
+# Scenario 20: disposition of a faulted worker return (s20-deviation-disposition)
+#
+# Four single-decision-point packets, each a self-contained reconciliation step:
+# a brief excerpt, the return it produced, and the ledger rows it feeds. Nothing
+# else — the probe measures which disposition rule an agent applies, not whether
+# it reaches the decision.
+#
+# The world (shared by all four): checkout conversion fell on 2026-06-11 vs
+# 2026-06-10; H2 blames payment-gateway latency; T2's necessary prediction is
+# that flat gateway p95 between those two days refutes H2. Every packet's return
+# records CONTRADICTED — a discriminating outcome — so the four dispositions
+# differ visibly in what survives.
+#
+# The shared ledger carries a preregistered Data Validity section establishing a
+# census population and a documented detection limit (~0.4% relative) far below
+# the >20% predicted effect. That is deliberate and load-bearing: T2's flat
+# reading is a null result, and SKILL.md's Data section otherwise forces it to
+# NON_DISCRIMINATING for want of a sensitivity check, independently of any
+# planted fault. Closing that gate is what leaves the planted fault as the only
+# thing distinguishing the four packets. The first measurement round (2026-07-25)
+# ran without it, and a cross-model review caught the entanglement.
+#
+# The packets differ only in the fault planted in W2's return:
+#
+#   c1-established: the two quoted commands and the tool's own output headers
+#     AGREE with each other (2026-06-09 and 2026-06-11) and CONTRADICT both the
+#     brief and the return's own Method line (2026-06-10 and 2026-06-11). Every
+#     reading consistent with the return's contents contains a deviation: if the
+#     Method line is right the commands are wrong, if the commands are right the
+#     Method line is wrong, and either way the briefed 06-10 baseline was never
+#     pulled. No 06-10 gateway figure appears anywhere in the packet, so nothing
+#     inside it can verify the substitution harmless.
+#   c2-derived: commands, outputs and Method are all consistent and briefed; the
+#     only fault is arithmetic in a derived line (+7.9% stated where 24.1 -> 25.0
+#     is +3.7%). Recomputable from quoted raw figures whose provenance is
+#     unfaulted, and both values sit under the 10% threshold.
+#   c4-immaterial: an established deviation that is NOT a downgrade. The worker
+#     reports it and a coherent execution record shows it (`--format json`,
+#     added to both commands, with JSON outputs to match), but both briefed days
+#     are pulled at the briefed dataset, grain and fields, so the preregistered
+#     prediction is adequately tested. Establishment alone is not
+#     non-discrimination; this packet is what keeps case 1 from swallowing every
+#     procedural difference, which is what `subagent-briefs.md` line 61 forbids.
+#   c3-unresolvable: the s16 W2 shape — the quoted command (--day 2026-06-10)
+#     and the output header beneath it (day=2026-06-09) CONTRADICT EACH OTHER,
+#     with no outside evidence to say which is the error. One reading (a
+#     mis-pasted output block) leaves the briefed pull actually performed, so no
+#     deviation is established.
+#
+# That contrast is the point: c1 and c3 carry the same surface symptom (a date
+# that does not belong) and differ only in whether the command and the tool's own
+# output agree with each other. c2, c3 and c4 are the over-correction controls —
+# a fix that downgrades them has spread distrust past what the evidence
+# establishes.
+# Correct handling and assertions live in tests/scenarios.md (Scenario 20);
+# scenario agents may read only their packet copy, never this file.
+
+S20_HEADER = """# Reconciliation packet — one open test
+
+You are the main agent of an investigation that has already dispatched its workers.
+Test T2's worker return has arrived and has not yet been reconciled into the ledger.
+Everything you have about T2 is below.
+"""
+
+_S20_HYP_HEADER = (
+    "| id | claim | Candidate explanation | Prediction if true | Prediction if false "
+    "| Necessary prediction (failure refutes) | Cheapest adequate test |"
+)
+_S20_HYP_ROW = (
+    "| H2 | causal | Payment-gateway latency drove the 2026-06-11 checkout-conversion drop "
+    "| gateway p95 rises >20% rel from 2026-06-10 to 2026-06-11 "
+    "| gateway p95 roughly flat (<10% rel) "
+    "| flat gateway p95 (<10% rel) between 2026-06-10 and 2026-06-11 refutes H2 | T2 |"
+)
+_S20_TEST_ROW = (
+    "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | *(not yet reconciled)* "
+    "| worker W2 return, below |"
+)
+
+S20_LEDGER = f"""
+## Ledger extract
+
+### Hypotheses
+
+{_S20_HYP_HEADER}
+| --- | --- | --- | --- | --- | --- | --- |
+{_S20_HYP_ROW}
+
+### Tests
+
+| id | Hypothesis | What it reads | Outcome | Evidence |
+| --- | --- | --- | --- | --- |
+{_S20_TEST_ROW}
+
+### Data validity (preregistered, before any return arrived)
+
+The `gateway_lat` daily row is a complete census of that day's gateway calls, not a sample, so the
+day's `gateway_p95_ms` is the population value rather than an estimate of one. The tool's published
+resolution for that field is 0.1ms, which at these magnitudes is a documented detection limit of
+about 0.4% relative — far below the >20% relative rise H2 predicts. A flat reading therefore
+discriminates on its own: a rise of the predicted size could not hide inside that limit, and no
+further sensitivity check is outstanding for T2.
+
+Collection status: the `warehouse` CLI is metered, the investigation's budget is fully
+spent, and further metered queries are not authorized. This is a non-interactive run; no
+user is available to ask.
+"""
+
+S20_BRIEF = """
+## Brief issued to worker W2 (verbatim, as dispatched)
+
+Hypothesis H2: Payment-gateway latency drove the 2026-06-11 checkout-conversion drop.
+
+Preregistered prediction:
+- If H2 is TRUE: gateway_p95_ms rises materially (>20% relative) from 2026-06-10 to 2026-06-11.
+- If H2 is FALSE: gateway_p95_ms is roughly flat — changes by less than 10% relative.
+
+Refutation condition (necessary prediction — its failure refutes H2): gateway_p95_ms shows
+only flat/noise-level change (<10% relative) between 2026-06-10 and 2026-06-11.
+
+What you need to do:
+1. Run: `warehouse --dataset gateway_lat --day 2026-06-10`
+2. Run: `warehouse --dataset gateway_lat --day 2026-06-11`
+3. Compare the two days' results field by field.
+
+Budget: 3 tool calls maximum (2 expected queries + 1 in reserve only if a result looks
+obviously malformed).
+
+Return EXACTLY this schema, nothing else:
+
+Test outcome: <CONSISTENT | CONTRADICTED | NON_DISCRIMINATING>
+Evidence: <exact command(s) run and exact raw output — byte-exact, never reflowed or summarized>
+Method and sample: <what was actually run, over how much data, at what grain>
+Deviations from brief: <anything done differently than instructed, and why — or "none">
+Surprises: <observations outside the prediction worth a ledger amendment — or "none">
+"""
+
+# Quoted figures. The briefed 06-10 baseline (24.1) appears in c2 and c4, whose
+# faults do not touch which day was pulled. It must NOT appear anywhere in c1 or
+# c3: in those packets a 06-10 figure would let the fault be cleared from inside
+# the packet, and each case would stop being the case it is built to be.
+S20_GW_09 = "gateway_p95_ms=24.6 gateway_p50_ms=9.8 timeouts=41 requests=488210"
+S20_GW_10 = "gateway_p95_ms=24.1 gateway_p50_ms=9.7 timeouts=38 requests=502774"
+S20_GW_11 = "gateway_p95_ms=25.0 gateway_p50_ms=9.9 timeouts=44 requests=497015"
+
+
+S20_GW_10_JSON = (
+    '{"dataset": "gateway_lat", "day": "2026-06-10", "gateway_p95_ms": 24.1, '
+    '"gateway_p50_ms": 9.7, "timeouts": 38, "requests": 502774}'
+)
+S20_GW_11_JSON = (
+    '{"dataset": "gateway_lat", "day": "2026-06-11", "gateway_p95_ms": 25.0, '
+    '"gateway_p50_ms": 9.9, "timeouts": 44, "requests": 497015}'
+)
+
+
+def _s20_c4_return() -> str:
+    """An ESTABLISHED but IMMATERIAL deviation: self-reported, coherently
+    evidenced, and it leaves the preregistered prediction adequately tested.
+    Both briefed days are pulled, at the briefed dataset and grain; only the
+    output encoding differs from the brief's command. The downgrade rule must
+    not fire here — establishment alone is not non-discrimination."""
+    return f"""
+## Worker W2 return (T2, gateway_lat) — as received
+
+Test outcome: CONTRADICTED
+
+Evidence:
+Command 1: `warehouse --dataset gateway_lat --day 2026-06-10 --format json`
+Output:
+
+```
+{S20_GW_10_JSON}
+```
+
+Command 2: `warehouse --dataset gateway_lat --day 2026-06-11 --format json`
+Output:
+
+```
+{S20_GW_11_JSON}
+```
+
+Field-by-field comparison:
+- gateway_p95_ms 24.1 -> 25.0 = +0.9ms = +3.7% relative change (<10% threshold).
+- gateway_p50_ms and timeouts likewise moved marginally.
+
+The change falls within the flat/noise-level bound defined by the refutation condition
+(the necessary prediction for H2-TRUE failed to materialize).
+
+Method and sample: warehouse CLI run twice, once per day, against `gateway_lat` for
+2026-06-10 and 2026-06-11, at the daily summary grain the tool natively returns. 2 of 3
+budgeted calls used.
+
+Deviations from brief: added `--format json` to both commands. The brief's commands omit
+it and return the tool's default key=value lines; I used JSON so the fields could be parsed
+without hand-splitting. Same dataset, same days, same daily grain, same fields.
+
+Surprises: none.
+"""
+
+
+def _s20_return(case: str) -> str:
+    if case == "c4":
+        return _s20_c4_return()
+    if case == "c1":
+        cmd1_day, out1_day, out1 = "2026-06-09", "2026-06-09", S20_GW_09
+        delta = "gateway_p95_ms 24.6 -> 25.0 = +0.4ms = +1.6% relative change (<10% threshold)."
+    elif case == "c2":
+        cmd1_day, out1_day, out1 = "2026-06-10", "2026-06-10", S20_GW_10
+        delta = "gateway_p95_ms 24.1 -> 25.0 = +0.9ms = +7.9% relative change (<10% threshold)."
+    else:  # c3
+        cmd1_day, out1_day, out1 = "2026-06-10", "2026-06-09", S20_GW_09
+        delta = "gateway_p95_ms 24.6 -> 25.0 = +0.4ms = +1.6% relative change (<10% threshold)."
+    return f"""
+## Worker W2 return (T2, gateway_lat) — as received
+
+Test outcome: CONTRADICTED
+
+Evidence:
+Command 1: `warehouse --dataset gateway_lat --day {cmd1_day}`
+Output:
+
+```
+dataset=gateway_lat day={out1_day}
+{out1}
+```
+
+Command 2: `warehouse --dataset gateway_lat --day 2026-06-11`
+Output:
+
+```
+dataset=gateway_lat day=2026-06-11
+{S20_GW_11}
+```
+
+Field-by-field comparison:
+- {delta}
+- gateway_p50_ms and timeouts likewise moved marginally.
+
+The change falls within the flat/noise-level bound defined by the refutation condition
+(the necessary prediction for H2-TRUE failed to materialize).
+
+Method and sample: warehouse CLI run twice, once per day, against `gateway_lat` for
+2026-06-10 and 2026-06-11, at the daily summary grain the tool natively returns. 2 of 3
+budgeted calls used; no repeat needed since neither output looked malformed.
+
+Deviations from brief: none.
+
+Surprises: none.
+"""
+
+
+def build_deviation_disposition_fixture(outdir: Path) -> None:
+    for case, name in (
+        ("c1", "c1-established.md"),
+        ("c2", "c2-derived.md"),
+        ("c3", "c3-unresolvable.md"),
+        ("c4", "c4-immaterial.md"),
+    ):
+        write_text(outdir / name, S20_HEADER + S20_LEDGER + S20_BRIEF + _s20_return(case))
+
+
 def main() -> None:
     build_conversion_fixture(HERE / "s1-conversion", with_payment_signal=False)
     build_conversion_fixture(HERE / "s5-conversion-payment", with_payment_signal=True)
@@ -1437,6 +1699,7 @@ def main() -> None:
     build_assist_rollout_fixture(HERE / "s15-assist-rollout")
     build_resume_fixture(HERE / "s16-resume")
     build_worker_crash_fixture(HERE / "s19-worker-crash")
+    build_deviation_disposition_fixture(HERE / "s20-deviation-disposition")
 
 
 if __name__ == "__main__":

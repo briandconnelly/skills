@@ -209,11 +209,22 @@ That costs nothing and catches what actually goes wrong — a wrong join, a unit
 Re-run the collection when it is cheap, or when the free check surfaces a doubt the return cannot settle and the budget covers the second charge; a metered re-pull is a legitimate spend, not a rule violation, and it needs a ledger amendment like any other unplanned collection.
 When neither is available — metered source, budget spent, and a return you cannot fault on its face — record that the verdict rests on an unverified worker return.
 That is a limitation to state, not a verification to claim.
-When the free check *does* fault a return, what can clear the fault depends on what it touches.
-An error in a derived value — an arithmetic slip in a delta, a mislabeled percentage — is verified harmless by recomputing it from raw figures whose own provenance is unfaulted: the recomputation is evidence independent of the worker's claim.
-A fault touching the raw evidence or its provenance — a command that does not implement its stated method, a quoted output with no source among the commands shown — cannot be cleared from inside the return: the same worker whose quote broke also attested that its quotes were exact, so the return's remaining attestations cannot clear the fault they sit beside, and a benign explanation you can construct is a plausible story, not a verification.
-For that class, harmlessness needs evidence from outside the return — a re-run, an independent source, a figure the brief itself supplied.
-Without it, record the fault as a limitation and treat the outcome as resting on an unverified return, however plausible the innocent reading.
+When the free check *does* fault a return, classify each fault — a return can carry more than one — and disposition the outcome on the most consequential.
+Rank the return's execution record above its narrative: the quoted commands and the parameters the tool itself emitted are the account of what ran, while Method and Deviations are the worker's description of it.
+
+An error in a **derived value** — an arithmetic slip in a delta, a mislabeled percentage — is settled by recomputing it from raw figures whose own provenance is unfaulted, since the recomputation is evidence independent of the worker's claim.
+Record the outcome the corrected figure implies: that is the worker's outcome only where the correction leaves it and the conclusion unchanged, and a slip that carries the figure across the threshold the prediction named changes the outcome rather than surviving as a footnote.
+
+An **established deviation** — one the worker reports and its execution record does not contradict, or one a coherent execution record shows, its command and the tool's own output agreeing on a procedure the brief did not authorize — makes the reconciled outcome `NON_DISCRIMINATING` when the procedure that record evidences did not adequately test the preregistered prediction, unless evidence from outside the return verifies the deviation harmless.
+A narrative field contradicting a coherent execution record does not unsettle it; it is one more thing the return got wrong, whether it confesses a deviation the record does not show or denies one the record does.
+That downgrade records the inadequacy of the test that ran, not distrust of the worker — an honest query against the wrong window still leaves the preregistered prediction untested, which is what `NON_DISCRIMINATING` says.
+An established deviation that leaves the prediction adequately tested is a deviation to record, not a downgrade to make.
+
+When the execution records themselves conflict — a quoted output with no source among the commands shown, a command and the output beneath it naming different days — nothing is established, because one resolution has the briefed collection happening with the fault confined to the report of it.
+Nor is anything verified: the same worker whose quote broke also attested that its quotes were exact, so the return's remaining attestations cannot clear the fault they sit beside, and a benign explanation you can construct is a plausible story, not a verification.
+Record the fault as a limitation and treat the outcome as resting on an unverified return, however plausible the innocent reading; that limitation reaches the conclusion, where it bars treating the result as established or action-ready.
+Do not reach for `NON_DISCRIMINATING` here — it says a test could not discriminate, not that you doubt a return which, if honest, discriminated fine.
+
 Validate assumptions shared across workers — a shared bad join or unit error invalidates every verdict at once.
 
 ### Conclusion
