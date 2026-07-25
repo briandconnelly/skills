@@ -68,6 +68,18 @@ def test_main_rejects_missing_target_cleanly(capsys):
     assert "no such file or directory" in capsys.readouterr().err
 
 
+def test_main_rejects_unsupported_file_type_cleanly(tmp_path, capsys):
+    # An explicit non-.md/.vl.json target must be rejected up front: extract_specs
+    # would read_text() it (an unhandled UnicodeDecodeError on binary content) and
+    # then extract nothing from it anyway.
+    cs = _load_check_specs()
+    binary = tmp_path / "chart.png"
+    binary.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x01\x02")
+    usage_error = 2
+    assert cs.main([str(binary)]) == usage_error
+    assert "unsupported target" in capsys.readouterr().err
+
+
 def test_main_fails_closed_when_no_specs_extracted(tmp_path):
     # A scan that finds nothing to validate must not exit green: an empty run and
     # an all-pass run would otherwise be indistinguishable.

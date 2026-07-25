@@ -89,7 +89,15 @@ def main(argv: list[str]) -> int:
         if not p.exists():
             print(f"error: no such file or directory: {arg}", file=sys.stderr)
             return 2
-        targets += sorted(p.rglob("*.vl.json")) + sorted(p.rglob("*.md")) if p.is_dir() else [p]
+        if p.is_dir():
+            targets += sorted(p.rglob("*.vl.json")) + sorted(p.rglob("*.md"))
+        elif p.name.endswith(".vl.json") or p.suffix == ".md":
+            targets.append(p)
+        else:
+            # Reject up front: extract_specs would read_text() the file (crashing on
+            # binary) and then extract nothing from it anyway.
+            print(f"error: unsupported target (expected .md or .vl.json): {arg}", file=sys.stderr)
+            return 2
     rc = 0
     checked = 0
     for t in targets:
