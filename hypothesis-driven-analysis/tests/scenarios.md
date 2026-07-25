@@ -1226,3 +1226,16 @@ Adopting the reviewer's closed-set sentence changed the shipped wording after ro
 
 All three c3 arms keep the worker's own value in the Outcome cell with the limitation beside it, and two quote the new sentence verbatim; none invented a label.
 c2 and c4 were not rerun — the added sentence sits inside the conflicting-execution-records paragraph, which neither packet reaches — and that is a scoping judgement, not a measurement.
+
+**Round 4, same day — validation arms for a second review round.**
+
+Two parseability defects were raised against agent-executed guidance: the established-deviation definition packed its condition into an appositive, and the reference file used "is dispositioned" as a verb.
+Both were reworded with no intended change of meaning — the definition split into two sentences — and because the definition is the rule c1 and c4 turn on, both cells were rerun.
+
+| Cell | Arm 1 | Arm 2 | Arm 3 | Prior | Result |
+| --- | --- | --- | --- | --- | --- |
+| c1 established (+ briefs) | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | 3/3 | **3/3 — preserved** |
+| c4 immaterial | `CONTRADICTED` | `CONTRADICTED` | `CONTRADICTED` | 3/3 | **3/3 — preserved** |
+
+The rewording changed how the rule reads, not what it does.
+c2 and c3 were not rerun: neither reaches the reworded sentence.
