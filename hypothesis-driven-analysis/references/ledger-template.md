@@ -101,6 +101,7 @@ One paragraph, inline in the conversation or scratch space:
 Claim: <the single stated claim>.
 Prediction: <what I expect to observe if it holds / if it fails>.
 Probe(s): <the bounded read-only probes that settle it — as many as it takes; a probe count is a budget, not a hypothesis>.
+Stop condition: <what makes the claim settled, or settles that this data cannot settle it>.
 Outcome: <CONSISTENT / CONTRADICTED / NON_DISCRIMINATING, with evidence pointer>.
 Answer: <conclusion, with any limitation>.
 ```
@@ -127,6 +128,7 @@ Estimand: <the quantity being estimated, precisely defined>.
 Population: <who or what the estimate describes, over what period>.
 Uncertainty method: <interval, resampling, or stated inability to quantify>.
 Practical threshold: <the value at which the decision changes>.
+Stop condition: <what makes the estimate good enough, or settles that this data cannot tighten it further>.
 Result: <estimate with uncertainty, compared against the threshold>.
 Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 ```
@@ -150,6 +152,7 @@ Limitations: <coverage gaps, selection concerns, associative-only caveats>.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | H1 | causal | Tuesday deploy regressed the cache layer, causing the observed p95 step | p95 step aligns with deploy timestamp; cache hit rate drops | p95 shift precedes deploy or hit rate flat | the p95 step must not precede the deploy — a deploy cannot cause a step that happened before it | T1 | deploy log, cache metrics |
 | H2 | causal | Traffic mix shifted toward uncached endpoints | share of cache-miss routes rises independently of deploy | route mix stable across the step | the cache-miss route share must rise at the step | T2 | request logs by route |
+| H3 | causal | A new client version drives the miss-route traffic | miss-route traffic concentrates in one client version | miss-route traffic is spread evenly across versions | the miss-route share must be higher on the new client version than on the old | T3 | request logs by user agent |
 | H4 (retrospective) | causal | Upstream payment API slowdown drives most of the added latency | /checkout spans show payment call dominating added latency | added latency spread across spans | the payment span must account for the majority of added p95 — "drives most of" is false otherwise | T4 | trace spans |
 | H5 | data-artifact | The 07-07 21:00–23:00 `/checkout` log shortfall is a logging-pipeline gap, not a traffic drop | an independent request counter shows normal traffic in that window | the independent counter also shows a dip | the load balancer's counter must not dip when the logs do | T6 | LB request counter |
 
@@ -180,9 +183,10 @@ S5: UNKNOWN — same.
 
 | id | Hypothesis | Preregistered prediction | Method | Outcome | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| T1 | H1 | p95 step within 10 min of deploy; hit rate drops ≥5pp | align deploy log with metrics | CONTRADICTED | step at 09:12, deploy at 14:30; hit rate flat (S1, S2 §3) |
+| T1 | H1 | the p95 step does not precede the deploy | align deploy log with metrics | CONTRADICTED | step at 09:12, deploy at 14:30 — the step precedes the deploy by over five hours (S1, S2 §3) |
+| T1b | H1 | cache hit rate drops ≥5pp at the step | compare hit rate across the step | CONTRADICTED | hit rate flat, 91.4% before and 91.2% after (S2 §3) |
 | T2 | H2 | cache-miss route share rises ≥10pp at the step | group logs by route across the step | CONSISTENT | miss-route share 22%→41% at 09:10 (S3 §4) |
-| T3 | H2 | new client version drives the miss-route traffic | group miss-route traffic by user agent | NON_DISCRIMINATING | user-agent populated for only ~30% of rows (Sources S3); cannot detect a shift smaller than ~25pp (S3 §5) |
+| T3 | H3 | miss-route share higher on the new client version than on the old | group miss-route traffic by user agent | NON_DISCRIMINATING | user-agent populated for only ~30% of rows (Sources S3); cannot detect a shift smaller than ~25pp (S3 §5) |
 | T4 | H4 | payment span accounts for majority of added p95 | compare span breakdown across the step | CONTRADICTED | added latency distributed across spans (S4 §2); adequacy: a true payment-dominated split fails this in fewer than 1 run in 20 at the observed span counts (variants: any split with payment > 50%) |
 | T5 | H2 | reweighting Monday's per-route latencies by Tuesday's route mix reproduces ≥80% of the observed p95 increase | counterfactual reweighting on request logs | CONSISTENT | reweighted p95 +96ms vs observed +110ms (S3 §6) |
 | T6 | H5 | LB counter flat while log volume dips 07-07 21:00–23:00 | compare log rows/hour against the LB's independent counter | CONSISTENT | LB counter steady at ~4.1k/hour through the window (S5 §1) while logs carry ~1.2k/hour (S3 §7) — the gap is in logging, so those hours are excluded from the rate denominators |
@@ -200,8 +204,9 @@ S5: UNKNOWN — same.
 
   | id | claim | status | basis |
   | --- | --- | --- | --- |
-  | H1 | causal | REFUTED | necessary timing prediction failed under an adequate test, T1 |
+  | H1 | causal | REFUTED | necessary timing prediction failed under an adequate test, T1. T1b also failed, but it tests a supporting prediction, not the necessary one, so it contributes nothing to the status either way |
   | H2 | causal | UNRESOLVED | best supported (T2, T5 CONSISTENT) |
+  | H3 | causal | UNRESOLVED | T3 NON_DISCRIMINATING — user-agent coverage too sparse to detect a shift smaller than ~25pp, so nothing settled it |
   | H4 (retrospective) | causal | REFUTED | its necessary majority-of-added-latency prediction failed under T4, on trace spans that had not informed it |
   | H5 | data-artifact | UNRESOLVED | best supported for the coverage gap (T6 CONSISTENT) |
 - Limitations: what drove the traffic shift is unresolved (T3 NON_DISCRIMINATING — user-agent coverage too sparse); the 07-07 21:00–23:00 hours are excluded from rate denominators per H5/T6, which does not change the conclusion but narrows the window the step is measured over; the claim is associative — the route mix was not assigned by anything independent of latency, and no intervention was run, so "the mix shift is associated with the increase" is as far as this data reaches.
