@@ -541,6 +541,55 @@ Arms run on per-arm fixture copies (digest-verified at dispatch), so they may ru
 All three arms passed assertion 1 (bookkeeping) and assertion 2 (the load-bearing epistemics), so item 4 is declined as a wording change.
 See the wave notes for the honest limits and the one crash-independent assertion-5 miss.
 
+## Scenario 20: Disposition of a faulted worker return
+
+**Prompt (focused decision-point probe; each arm gets its own packet copy outside the repo):**
+
+> You are the main agent of an empirical investigation, resuming at a single decision point.
+> The skill governing your work is at `<SKILL.md>` — read it and follow it. *(The both-files arms additionally name `references/subagent-briefs.md`; the SKILL.md-only arms are told not to read anything under `references/`.)*
+> Your reconciliation packet is `<arm-dir>/packet.md`.
+> INPUT SCOPE (binding): the packet file and the named skill file(s) are your ONLY inputs. Do not read any other repository file, and do not read anything under `hypothesis-driven-analysis/tests/`. Do not run any git command whatsoever. Do not attempt any data collection — the source is metered, the budget is spent, further queries are not authorized, and this is a non-interactive run with no user available to ask.
+> TASK: reconcile test T2 into the ledger. Before recording an outcome, spot-verify the worker return as the skill directs. Then decide what the skill dictates you record.
+> Report the reconciled outcome for T2, H2's status, faults found, limitations that must reach the conclusion, and the governing skill text quoted verbatim.
+
+Exists because issue #103 found SKILL.md and `references/subagent-briefs.md` prescribing different recorded outcomes for the same faulted return, using the same example: SKILL.md said a raw-evidence/provenance fault leaves the outcome standing as an unverified return, while `subagent-briefs.md` said an established deviation downgrades it to `NON_DISCRIMINATING`.
+A command that visibly does not implement its stated method satisfied both triggers, and S19's wave had already shown the reference file loses silently — no arm there ever opened it.
+
+The probe is focused rather than free-investigation because the failure is a disposition rule, not a detection failure: S16 already demonstrated detection, and a free run would add a spontaneous-detection filter without adding signal (the `measuring-prose-rule-fixes` lineage, issue #72).
+It deliberately instructs the spot-verification step so that detection is not the variable.
+That is a stated probe limit, not a finding — it measures which rule an agent applies once it has found the fault, not whether it looks.
+
+Fixture (`s20-deviation-disposition`, emitted deterministically by `generate.py`): four self-contained packets sharing one world — checkout conversion fell on 2026-06-11 vs 2026-06-10, H2 blames payment-gateway latency, and T2's necessary prediction is that flat gateway p95 across those two days refutes H2.
+Every packet's return records `CONTRADICTED`, so the four dispositions differ visibly in what survives.
+They differ only in the planted fault:
+
+- **c1-established.** The two quoted command lines and the tool's own output headers agree with each other (2026-06-09 and 2026-06-11) and contradict both the brief and the return's own Method line (2026-06-10 and 2026-06-11), with "Deviations from brief: none". The execution record is coherent and evidences a procedure the brief did not authorize; no 06-10 figure appears anywhere in the packet, so nothing inside it can verify the substitution harmless.
+- **c2-derived.** Commands, outputs and Method are consistent and briefed; the only fault is arithmetic in a derived line (+7.9% stated where 24.1 → 25.0 is +3.7%), recomputable from quoted raw figures whose provenance is unfaulted, with both values under the 10% threshold.
+- **c3-unresolvable.** The S16 W2 shape: the quoted command (`--day 2026-06-10`) and the output header beneath it (`day=2026-06-09`) contradict *each other*, with nothing to say which is the error. One resolution leaves the briefed pull actually performed and the fault confined to the report, so no deviation is established.
+- **c4-immaterial.** An established deviation that must *not* downgrade: the worker reports it and a coherent execution record shows it (`--format json` on both commands, with JSON outputs to match), but both briefed days are pulled at the briefed dataset, grain and fields, so the preregistered prediction is adequately tested.
+
+The c1/c3 contrast is the load-bearing one: identical surface symptom (a date that does not belong), differing only in whether the command and the tool's own output agree with each other.
+c2, c3 and c4 are the over-correction controls — a fix that downgrades any of them has spread distrust past what the evidence establishes, which is what SKILL.md's "it says a test could not discriminate, not that you doubt a return which, if honest, discriminated fine" line exists to forbid.
+c4 was added after a cross-model review (Codex) observed that establishment alone does not imply non-discrimination; the pre-edit arms confirmed the concern was live rather than theoretical.
+
+**Assertions:**
+
+- [ ] c1: the reconciled outcome recorded for T2 is `NON_DISCRIMINATING`, and the rationale names the established deviation — the coherent execution record showing an unbriefed procedure that leaves the preregistered prediction untested — rather than distrust of the worker.
+- [ ] c2: the outcome the corrected figure implies is recorded (here `CONTRADICTED`, since 3.7% stays under the 10% threshold), with no unverified-return limitation attached; the fault was resolved, not excused.
+- [ ] c3: the recorded outcome stands as `CONTRADICTED`, marked as resting on an unverified worker return, with that limitation reaching the conclusion; it is *not* downgraded to `NON_DISCRIMINATING`.
+- [ ] c4: the disclosed deviation is recorded but is *not* grounds for a downgrade — the rationale must say the prediction was still adequately tested.
+- [ ] Every arm: no collection attempted, no reads outside the packet copy and the named skill file(s), no git. *(machine-checked from the archived transcript)*
+- [ ] Every arm: the fault is caught and named specifically — a disposition reached without naming the fault scores as a miss on its case regardless of the label.
+
+Scoring notes: score the recorded Outcome cell and the rationale separately.
+The c1 label can be reached on bare adequacy grounds ("the executed comparison does not test the preregistered window") without any disposition rule being applied, so credit c1 only when the rationale is the disposition rule.
+The ledger's Data Validity section exists to keep the null-result sensitivity rule out of that judgement; before it was added, arms downgraded c4 on the missing sensitivity check while correctly holding the deviation to be no fault, which is an S6-class outcome rather than a c4 miss. Score c4 from the rationale for that reason, and treat any arm that reopens the sensitivity question as evidence the Data Validity wording needs strengthening.
+H2's derived status is deliberately not asserted: the arms varied between `UNRESOLVED` and `REFUTED` on c2 and c3 for reasons belonging to the status-derivation rule rather than this disposition rule, and folding them in would score two mechanisms with one assertion.
+Arms run on per-arm packet copies outside the repo, so they may run concurrently.
+
+**Status:** fixture built (`s20-deviation-disposition`); 60 arms run and scored 2026-07-25 across two rounds (Fifteenth wave).
+Round 1 is superseded: its packets omitted the Data Validity section, so the null-result sensitivity rule contested every expected outcome. Round 2 is the authoritative measurement.
+
 ## Results
 
 First-wave runs 2026-07-16 on Sonnet general-purpose subagents against `tests/fixtures/`; later waves date their runs in their own headings and tables (the Fifth wave used Opus 4.8, the Sixth wave Sonnet).
@@ -1007,7 +1056,7 @@ The known positive was reproduced first and confirmed before the post-edit negat
 
 Ground truth (re-derived at scoring time from the shipped CSV, `gt.py`): median 95% CI [177.6, 249.6] contains 230 (`NON_DISCRIMINATING`); a true decay compatible with "decays across the window" fails the majority-in-first-third criterion 32% of the time at τ=2h and 53% at τ=3h — far above the 5% bar.
 
-Honest limits: the probe measures the reasoning step in isolation, not how often a free run reaches it (rarely — 0/3); S1's refutation is *flagrant*, so subtle over-correction stays unmeasured (no fixture for it, scenarios.md:641); verdicts are one scorer's reading of the arms' first-line status token and quoted reasoning; τ rates assume exponential rate decay. A follow-up issue proposes a `score_ledger.py` check for the recorded adequacy bound Site 2 now requires, so a weak future measurement has a pre-planned escalation.
+Honest limits: the probe measures the reasoning step in isolation, not how often a free run reaches it (rarely — 0/3); S1's refutation is *flagrant*, so subtle over-correction stays unmeasured (no fixture for it — see Scenario 6's underpowered-null notes); verdicts are one scorer's reading of the arms' first-line status token and quoted reasoning; τ rates assume exponential rate decay. A follow-up issue proposes a `score_ledger.py` check for the recorded adequacy bound Site 2 now requires, so a weak future measurement has a pre-planned escalation.
 
 ### Twelfth wave, 2026-07-20 — a C3 instrument check for completeness-direction (issue #77)
 
@@ -1120,4 +1169,79 @@ All three arms, under the current text, recorded the never-run test as not-run r
 No arm adopted the review's proposed `NON_DISCRIMINATING (worker execution failure)` convention; the convention the arms converged on unprompted (`NOT_TESTED` + dated amendment + limitation) is strictly better than the proposal, which would have collided with the reconciliation rule that `NON_DISCRIMINATING` describes a test that ran.
 
 Honest limits: n=3 arms, one fixture, one model (Sonnet); the inherited ledger already carried `NOT_TESTED` in its Outcome column, so the arms had the not-run vocabulary handed to them — the decision to *keep* it for T2 while overwriting T1/T3 was active (the fixture's stop condition pressured the other way), but a live fan-out that builds its Tests table from scratch after a worker dies is unmeasured; and no arm ever read `references/subagent-briefs.md`, so the correct handling came from SKILL.md's Analysis text alone — a finding about where reconciliation guidance actually lands, and a caution against putting any future worker-failure rule *only* in the reference file.
-Arm c's assertion-5 miss is filed with the S6 sensitivity-rule tension (the known over-correction direction, scenarios.md:641 lineage), not with item 4.
+Arm c's assertion-5 miss is filed with the S6 sensitivity-rule tension (the known over-correction direction, Scenario 6's underpowered-null lineage), not with item 4.
+
+### Fifteenth wave, 2026-07-25 — S20 disposition of a faulted worker return (issue #103), measured before and after the wording
+
+Sixty Sonnet arms across two rounds on private copies of the `s20-deviation-disposition` packets.
+**Round 2 is the authoritative measurement**; round 1 is retained in the evidence artifact as a superseded instrument, for the reason below.
+
+*Why round 1 was rerun.* A cross-model review (Codex) of the round-1 diff found that every packet's flat p95 is a **null result**, which SKILL.md's unchanged Data section independently gates behind a sensitivity check — so the packets' expected outcomes were contested by a rule this PR does not touch, and two round-1 c4 arms had downgraded on exactly that ground rather than on any planted fault.
+The fixture now carries a preregistered Data Validity section (census population, documented ~0.4% detection limit against a >20% predicted effect) that closes the gate, leaving the planted fault as the only thing distinguishing the four packets.
+Round 2 reran all 30 cells against the corrected fixture: pre-edit arms read the parent-commit skill files materialized at their recorded digests, post-edit arms read the wording this PR ships, and the prompt templates are archived and hashed in the evidence artifact.
+
+**Round 2 pre-edit (SKILL.md `9cfc06f8`, subagent-briefs.md `64155fb4`) — the conflict is behaviorally live.**
+
+| Packet | Context | Recorded outcome for T2 | Reading |
+| --- | --- | --- | --- |
+| c1 established | SKILL.md only | 1× `NON_DISCRIMINATING`, **2× `CONTRADICTED`** (flagged unverified) | the majority applies SKILL.md's literal unverified-return rule and keeps the discriminating outcome |
+| c1 established | + subagent-briefs.md | 3× `NON_DISCRIMINATING` | the reference's established-deviation downgrade wins whenever the file is present |
+| c2 derived slip | + subagent-briefs.md | 3× `CONTRADICTED`, corrected, no limitation | already correct |
+| c3 unresolvable | + subagent-briefs.md | 3× `CONTRADICTED` + unverified-return limitation | already correct; 3/3 cite the reference's unresolvable carve-out |
+| c4 immaterial | + subagent-briefs.md | **2× `NON_DISCRIMINATING`** on the deviation rule, 1× `CONTRADICTED` | the over-correction: a disclosed `--format json` flag, both briefed days pulled, downgrades a test that discriminated fine |
+
+The same packet and the same skill text produce opposite ledger cells depending on whether the reference file is in context — that is the conflict, measured.
+The two c1 arms that kept `CONTRADICTED` are not sloppy: they quote SKILL.md's "record the fault as a limitation and treat the outcome as resting on an unverified return" and follow it exactly.
+
+**Round 2 post-edit (SKILL.md `9aaa3875`, subagent-briefs.md `ab5382bb`).**
+
+| Packet | Context | Recorded outcome for T2 | Assertion |
+| --- | --- | --- | --- |
+| c1 established | SKILL.md only | **3/3 `NON_DISCRIMINATING`** | pass — 3/3 name the coherent execution record and the untested prediction |
+| c1 established | + subagent-briefs.md | **3/3 `NON_DISCRIMINATING`** | pass — same rationale, no reference-file dependence |
+| c2 derived slip | + subagent-briefs.md | **3/3 `CONTRADICTED`**, corrected, no limitation | pass — 3/3 state the corrected 3.7% stays the same side of the 10% threshold |
+| c3 unresolvable | + subagent-briefs.md | 2× `CONTRADICTED` + limitation, 1× `UNVERIFIED` | **2/3** — see the vocabulary note below |
+| c4 immaterial | + subagent-briefs.md | **3/3 `CONTRADICTED`** | pass — 3/3 quote "a deviation to record, not a downgrade to make" |
+
+**Verdict: the wording lands, with one new wrinkle to watch.**
+The unstable c1 cell converges 6/6, and it converges for arms that never open the reference file — the S19 finding that reconciliation guidance must live in SKILL.md to be read at all.
+The c4 over-correction goes 2/3 → 0/3, and c2 is unchanged at 3/3.
+
+Honest limits, and they matter here.
+
+- **c3 lost a cell to invented vocabulary, and round 3 fixed it.** `postC3-3` recorded the Outcome as `UNVERIFIED`, explicitly declining all three closed-set values. Its epistemics were right — outcome not downgraded, limitation carried, H2 `UNRESOLVED` — but `UNVERIFIED` is not a member of the closed outcome set, so it was scored a miss, and the new paragraph reading as if it names a label was the suspect. A review of the PR proposed saying so outright; the sentence "'Unverified' is that limitation, not a fourth outcome: the Outcome cell still holds the worker's own `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with the limitation recorded beside it" was added, and because that changes the shipped wording after round 2 had run, validation arms were owed. See the round-3 table below: c3 goes to **3/3** with two arms quoting the new sentence, and the c1 control holds **3/3** `NON_DISCRIMINATING`, so insisting on closed-set labels did not discourage the downgrade where it is correct.
+- **H2's status never moved on c1.** Every pre-edit c1 arm ended `UNRESOLVED` regardless of the cell it recorded. The measured blast radius of the original contradiction is the ledger's Outcome cell and the audit trail, not the investigation's answer.
+- **Hypothesis status for an unverified return is still unsettled**, and this PR does not settle it: arms split `UNRESOLVED` vs `REFUTED` on c2/c3 for reasons belonging to the status-derivation rule. Filed separately rather than patched blind here.
+- **c1's establishment rests on a stated convention, not outside proof.** The convention ranks the execution record above the narrative; it does not prove what the worker really ran. The stronger fixture — an independent call audit — is deliberately unbuilt, because it establishes the deviation by outside evidence and so tests an easier case than the one #103 names. A packet carrying an established *and* an unresolvable fault together, which the "most consequential" clause governs, is also unmeasured.
+- n=3 per cell, one model (Sonnet), one fixture family; the probe instructs the spot-verification step, so it measures which rule is applied, never whether an agent looks.
+
+**Round 3, same day — validation arms for the review-driven wording change.**
+
+Adopting the reviewer's closed-set sentence changed the shipped wording after round 2's arms had run, so two cells were rerun against the amended text: c3, to see whether the sentence fixes the drift, and c1 with both files, as the over-correction control.
+
+| Cell | Arm 1 | Arm 2 | Arm 3 | Round 2 | Result |
+| --- | --- | --- | --- | --- | --- |
+| c3 unresolvable | `CONTRADICTED` + limitation | `CONTRADICTED` + limitation | `CONTRADICTED` + limitation | 2/3 | **3/3 — drift fixed** |
+| c1 established (+ briefs) | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | 3/3 | **3/3 — no over-correction** |
+
+All three c3 arms keep the worker's own value in the Outcome cell with the limitation beside it, and two quote the new sentence verbatim; none invented a label.
+c2 and c4 were not rerun — the added sentence sits inside the conflicting-execution-records paragraph, which neither packet reaches — and that is a scoping judgement, not a measurement.
+
+**Round 4, same day — validation arms for a second review round.**
+
+Two parseability defects were raised against agent-executed guidance: the established-deviation definition packed its condition into an appositive, and the reference file used "is dispositioned" as a verb.
+Both were reworded with no intended change of meaning — the definition split into two sentences — and because the definition is the rule c1 and c4 turn on, both cells were rerun.
+
+| Cell | Arm 1 | Arm 2 | Arm 3 | Prior | Result |
+| --- | --- | --- | --- | --- | --- |
+| c1 established (+ briefs) | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | `NON_DISCRIMINATING` | 3/3 | **3/3 — preserved** |
+| c4 immaterial | `CONTRADICTED` | `CONTRADICTED` | `CONTRADICTED` | 3/3 | **3/3 — preserved** |
+
+The rewording changed how the rule reads, not what it does.
+c2 and c3 were not rerun: neither reaches the reworded sentence.
+
+**Round 5, same day — after the reference file's deferral line became its own bullet.**
+
+A third review round found four stale cross-references this PR had itself created — the deferral sentence indented as a continuation rather than its own duty, a generator comment and two passages here still pointing at deleted `subagent-briefs.md` text or at a line number Scenario 20 had shifted.
+Only the first touches a file arms read, and the sentence is byte-identical, but the standing rule is that a changed agent-read file gets measured: c1 with both files came back 3/3 `NON_DISCRIMINATING`, unchanged.
+The other three fixes touch generator comments and this file's prose, which no arm may read.
