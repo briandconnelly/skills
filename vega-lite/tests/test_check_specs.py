@@ -59,6 +59,15 @@ def test_main_without_targets_is_usage_error():
     assert cs.main([]) == usage_error
 
 
+def test_main_rejects_missing_target_cleanly(capsys):
+    # A nonexistent target must produce a usage-style error, not an
+    # unhandled FileNotFoundError traceback.
+    cs = _load_check_specs()
+    usage_error = 2
+    assert cs.main(["/no/such/file.md"]) == usage_error
+    assert "no such file or directory" in capsys.readouterr().err
+
+
 def test_main_fails_closed_when_no_specs_extracted(tmp_path):
     # A scan that finds nothing to validate must not exit green: an empty run and
     # an all-pass run would otherwise be indistinguishable.

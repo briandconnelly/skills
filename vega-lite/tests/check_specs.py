@@ -86,6 +86,9 @@ def main(argv: list[str]) -> int:
     targets: list[Path] = []
     for arg in argv:
         p = Path(arg)
+        if not p.exists():
+            print(f"error: no such file or directory: {arg}", file=sys.stderr)
+            return 2
         targets += sorted(p.rglob("*.vl.json")) + sorted(p.rglob("*.md")) if p.is_dir() else [p]
     rc = 0
     checked = 0
