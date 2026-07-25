@@ -3,33 +3,30 @@
 **Date:** 2026-07-25.
 **Model:** Sonnet, three arms.
 **Fixture:** Scenario 1 (`s1-conversion`), live full-route investigation.
-**Verdict: the registered decision rule ties — 6/12 hypothesis rows `CONJOINED`, 6/12 `MATCH`. Neither branch fired. But all 4 refutations across all 3 arms landed on `MATCH` rows.**
+**Verdict: the registered decision rule ties — 6/12 hypothesis rows `CONJOINED`, 6/12 `MATCH`.
+Neither branch fired.
+But all 4 refutations across all 3 arms landed on `MATCH` rows.**
 
 ## Why this ran
 
-The companion probe (`2026-07-25-issue109-necessary-prediction-probe.md`) measured status *derivation*
-from a handed-over ledger containing the mismatched row: 9/9 arms correct, defect did not reproduce.
-That left the other half of the propagation claim untested — whether an agent *building* a ledger
-from the worked example writes a Tests row whose preregistered prediction is not the hypothesis's
-declared necessary prediction.
+The companion probe (`2026-07-25-issue109-necessary-prediction-probe.md`) measured status *derivation* from a handed-over ledger containing the mismatched row: 9/9 arms correct, defect did not reproduce.
+That left the other half of the propagation claim untested — whether an agent *building* a ledger from the worked example writes a Tests row whose preregistered prediction is not the hypothesis's declared necessary prediction.
 
-Arms ran a real investigation with `SKILL.md` and `references/` in scope (the worked example is the
-exposure under test) and all of `tests/` except the fixture directory out of scope.
+Arms ran a real investigation with `SKILL.md` and `references/` in scope (the worked example is the exposure under test) and all of `tests/` except the fixture directory out of scope.
 
 ## Scoring criterion
 
-Registered in `SCORING-PLAN.md` **before** the arms ran, digest below. Each hypothesis row is
-classified by comparing its `Necessary prediction (failure refutes)` cell against the
-`Preregistered prediction` cell of every bound Tests row:
+Registered in `SCORING-PLAN.md` **before** the arms ran, digest below.
+Each hypothesis row is classified by comparing its `Necessary prediction (failure refutes)` cell against the `Preregistered prediction` cell of every bound Tests row:
 
 - **MATCH** — a bound test states the necessary prediction alone: no additional conjuncts, not strictly stronger.
-- **CONJOINED** — the bound test also states additional conditions in the same cell, so a failure cannot be attributed to the necessary conjunct. This is the worked example's T1 pattern.
+- **CONJOINED** — the bound test also states additional conditions in the same cell, so a failure cannot be attributed to the necessary conjunct.
+  This is the worked example's T1 pattern.
 - **SUBSTITUTED** — no bound test states it; the nearest states something different or stronger.
 - **ABSENT** — no necessary prediction declared, or no test bound.
 
-Registered decision rule: majority `CONJOINED`/`SUBSTITUTED` → Defect 1 regains weight as structural
-hygiene and the fix lands with a row-granularity rule sentence. Majority `MATCH` → the example is
-inert, Defect 1 is cosmetic, drop to `priority: low` and add no rule sentence.
+Registered decision rule: majority `CONJOINED`/`SUBSTITUTED` → Defect 1 regains weight as structural hygiene and the fix lands with a row-granularity rule sentence.
+Majority `MATCH` → the example is inert, Defect 1 is cosmetic, drop to `priority: low` and add no rule sentence.
 
 ## Results
 
@@ -48,17 +45,17 @@ inert, Defect 1 is cosmetic, drop to `priority: low` and add no rule sentence.
 | L3 | H3 | MATCH | — |
 | L3 | H4 | MATCH | — |
 
-**Totals: 6 CONJOINED, 6 MATCH, 0 SUBSTITUTED, 0 ABSENT.** Per arm: L1 2/4, L2 3/4, L3 1/4 conjoined.
+**Totals: 6 CONJOINED, 6 MATCH, 0 SUBSTITUTED, 0 ABSENT.**
+Per arm: L1 2/4, L2 3/4, L3 1/4 conjoined.
 Every arm produced at least one conjoined row; no arm produced only conjoined rows.
 
-The registered rule required a *majority* for either branch. 6/12 is not a majority. **Neither branch
-fired, and this is recorded as an unresolved rule rather than resolved by reinterpreting the
-threshold after seeing the data.**
+The registered rule required a *majority* for either branch.
+6/12 is not a majority.
+**Neither branch fired, and this is recorded as an unresolved rule rather than resolved by reinterpreting the threshold after seeing the data.**
 
 ## The secondary observation carried the signal
 
-Registered in advance as: "whether any arm marks a hypothesis `REFUTED` on a test whose failure does
-not fail that hypothesis's necessary prediction."
+Registered in advance as: "whether any arm marks a hypothesis `REFUTED` on a test whose failure does not fail that hypothesis's necessary prediction."
 
 Four `REFUTED` rows were produced across the three arms:
 
@@ -69,45 +66,34 @@ Four `REFUTED` rows were produced across the three arms:
 | L3 | H3 — device mix | MATCH |
 | L3 | H4 — the deploy | MATCH |
 
-**4/4 refutations rest on cleanly-stated necessary predictions. 0/6 conjoined rows produced a
-refutation.** The conjoined rows all ended `CONSISTENT` or `NON_DISCRIMINATING`.
+**4/4 refutations rest on cleanly-stated necessary predictions.
+0/6 conjoined rows produced a refutation.**
+The conjoined rows all ended `CONSISTENT` or `NON_DISCRIMINATING`.
 
-The pattern across both probes is consistent: agents conjoin freely on rows doing confirmatory or
-exploratory work, and state the necessary prediction cleanly on rows doing refutation work. That is
-why probe 109a found no false `REFUTED` — the harm mechanism requires a refutation resting on a
-conjoined row, and in 12 rows across 3 live investigations that combination did not occur.
+The pattern across both probes is consistent: agents conjoin freely on rows doing confirmatory or exploratory work, and state the necessary prediction cleanly on rows doing refutation work.
+That is why probe 109a found no false `REFUTED` — the harm mechanism requires a refutation resting on a conjoined row, and in 12 rows across 3 live investigations that combination did not occur.
 
 ## Disposition proposed
 
-- The worked example's T1 row is still factually wrong and should be corrected: point T1 at H1's
-  necessary prediction, move the discarded conjuncts to a separate supporting row.
-- **Do not add the row-granularity rule sentence yet.** Its registered trigger was a `CONJOINED`
-  majority, which did not occur; conjunction at 50% with zero measured harm does not justify adding
-  a sentence to a document already flagged as over-long. If a future wave finds a refutation resting
-  on a conjoined row, that sentence is the ready fix and this artifact is its baseline.
-- `priority: medium` stands — not `low`, because conjunction is common enough that the calibration
-  artifact is modelling a sloppy shape; not `high`, because neither probe found the harm.
+- The worked example's T1 row is still factually wrong and should be corrected: point T1 at H1's necessary prediction, move the discarded conjuncts to a separate supporting row.
+- **Do not add the row-granularity rule sentence yet.** Its registered trigger was a `CONJOINED` majority, which did not occur; conjunction at 50% with zero measured harm does not justify adding a sentence to a document already flagged as over-long.
+  If a future wave finds a refutation resting on a conjoined row, that sentence is the ready fix and this artifact is its baseline.
+- `priority: medium` stands — not `low`, because conjunction is common enough that the calibration artifact is modelling a sloppy shape; not `high`, because neither probe found the harm.
 
 ## Unplanned observation, recorded for a separate issue
 
-L1 self-reported an orientation breach: it computed per-page and per-device conversion rates before
-writing the ledger, recognised that as crossing `SKILL.md:134`'s cause-outcome line, labelled H1/H2/H3
-`retrospective`, and declined to certify the landing-page explanation as best supported on the
-evidence that produced it. The rule is followable and was followed honestly under self-report — and a
-live investigation slid across the line anyway. Relevant to the orientation-boundary item in the
-2026-07-25 review (no worked contrasting example exists for that line).
+L1 self-reported an orientation breach: it computed per-page and per-device conversion rates before writing the ledger, recognised that as crossing `SKILL.md:134`'s cause-outcome line, labelled H1/H2/H3 `retrospective`, and declined to certify the landing-page explanation as best supported on the evidence that produced it.
+The rule is followable and was followed honestly under self-report — and a live investigation slid across the line anyway.
+Relevant to the orientation-boundary item in the 2026-07-25 review (no worked contrasting example exists for that line).
 
 ## Honest limits
 
 - n=3, one model (Sonnet), one fixture.
-- S1's deploy hypothesis is refuted on flagrant timing, so a clean necessary prediction is easy to
-  state there. A `MATCH` on that row is weaker evidence than a `CONJOINED` would have been, and the
-  refutation-alignment finding inherits that weakness: it may reflect that S1's refutable hypotheses
-  happen to have simple predictions, not that agents reserve clean statements for refutation work.
-- Classification is a scorer reading of the two cells, not a machine check. The extra-conjunct column
-  above quotes the deciding text so the reading can be re-checked.
-- The arms' correctness on the underlying question is not scored here; this probe measures row
-  structure only.
+- S1's deploy hypothesis is refuted on flagrant timing, so a clean necessary prediction is easy to state there.
+  A `MATCH` on that row is weaker evidence than a `CONJOINED` would have been, and the refutation-alignment finding inherits that weakness: it may reflect that S1's refutable hypotheses happen to have simple predictions, not that agents reserve clean statements for refutation work.
+- Classification is a scorer reading of the two cells, not a machine check.
+  The extra-conjunct column above quotes the deciding text so the reading can be re-checked.
+- The arms' correctness on the underlying question is not scored here; this probe measures row structure only.
 
 ## Digests
 

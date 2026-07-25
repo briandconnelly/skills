@@ -26,15 +26,22 @@ A leading probe would prompt the very step whose absence is the alleged bug; tha
 
 Two fixtures, identical except two timestamp lines (diff verified, digests below):
 
-- **Arm A (defect probe):** step at 15:10, deploy at 14:30 — the step follows by 40 minutes, so H1's necessary prediction **holds**. T1's stated prediction fails, so the row legitimately reads `CONTRADICTED`. Correct answer: `UNRESOLVED`.
-- **Arm B (over-correction control / known positive):** step at 09:12 — precedes the deploy, so the necessary prediction genuinely **fails**. Correct answer: `REFUTED`.
+- **Arm A (defect probe):** step at 15:10, deploy at 14:30 — the step follows by 40 minutes, so H1's necessary prediction **holds**.
+  T1's stated prediction fails, so the row legitimately reads `CONTRADICTED`.
+  Correct answer: `UNRESOLVED`.
+- **Arm B (over-correction control / known positive):** step at 09:12 — precedes the deploy, so the necessary prediction genuinely **fails**.
+  Correct answer: `REFUTED`.
 
-Arm B exists to establish the instrument can surface a positive. A probe that cannot distinguish the two answers is non-discriminating, and arm A's result would mean nothing.
+Arm B exists to establish the instrument can surface a positive.
+A probe that cannot distinguish the two answers is non-discriminating, and arm A's result would mean nothing.
 
 Two isolation conditions for arm A:
 
-- **A1–A3:** `SKILL.md` + the ledger only. `references/` excluded so the worked example's own published `H1 | causal | REFUTED` verdict could not act as an answer key. This measures the status-derivation rule operating on the trap row.
-- **A4–A6:** `SKILL.md` + `references/ledger-template.md` + the ledger. This adds the anchoring path — the example's published `REFUTED` conclusion in context — which is the propagation mechanism the issue actually claims.
+- **A1–A3:** `SKILL.md` + the ledger only.
+  `references/` excluded so the worked example's own published `H1 | causal | REFUTED` verdict could not act as an answer key.
+  This measures the status-derivation rule operating on the trap row.
+- **A4–A6:** `SKILL.md` + `references/ledger-template.md` + the ledger.
+  This adds the anchoring path — the example's published `REFUTED` conclusion in context — which is the propagation mechanism the issue actually claims.
 
 All arms read-only, forbidden from `tests/` and from git.
 
@@ -52,11 +59,14 @@ All arms read-only, forbidden from `tests/` and from git.
 | B2 | necessary prediction fails | SKILL.md only | `REFUTED` | yes |
 | B3 | necessary prediction fails | SKILL.md only | `REFUTED` | yes |
 
-**A: 6/6 correct. B: 3/3 correct. Instrument validated by B.**
+**A: 6/6 correct.
+B: 3/3 correct.
+Instrument validated by B.**
 
 ## The arms diagnosed the trap rather than avoiding it by luck
 
-This is the load-bearing part of the negative result. Verbatim from the arm outputs:
+This is the load-bearing part of the negative result.
+Verbatim from the arm outputs:
 
 - **A3:** "T1 (CONTRADICTED) tested T1's own stricter preregistered prediction (10-min alignment + ≥5pp hit-rate drop), not H1's declared necessary prediction ('step must not precede the deploy'). The step (15:10) followed the deploy (14:30), so the necessary prediction was not falsified; a CONTRADICTED outcome on a non-necessary prediction never refutes."
 - **A2:** "T1's `CONTRADICTED` outcome was scored against H1's *Prediction if true* (10-min alignment + ≥5pp hit-rate drop), not its declared necessary prediction."
@@ -68,16 +78,23 @@ The template-inclusive arms (A4–A6) were not anchored by the worked example's 
 
 ## What survives, and what is retracted
 
-**Retracted:** the claim that the example's row structure yields a false `REFUTED`. Not observed in 6/6 arms across both isolation conditions.
+**Retracted:** the claim that the example's row structure yields a false `REFUTED`.
+Not observed in 6/6 arms across both isolation conditions.
 
-**Survives:** the example is still factually wrong — T1 does not test the prediction the Hypotheses table designates as H1's refuting one. A calibration artifact that models a rule incorrectly should be corrected on its own terms, and the fix (split T1's conjuncts, point T1 at the necessary prediction) remains right. But it is a correctness-of-example fix, not a false-refutation defence.
+**Survives:** the example is still factually wrong — T1 does not test the prediction the Hypotheses table designates as H1's refuting one.
+A calibration artifact that models a rule incorrectly should be corrected on its own terms, and the fix (split T1's conjuncts, point T1 at the necessary prediction) remains right.
+But it is a correctness-of-example fix, not a false-refutation defence.
 
-**Consequence for #109:** Defect 1's severity paragraph must be rewritten to say measured-and-not-reproduced. `priority: high` is downgraded. Defects 2 (T3 filed under H2, H3 absent) and 3 (no stop rule on the cheap-route templates) are unaffected — neither was measured here.
+**Consequence for #109:** Defect 1's severity paragraph must be rewritten to say measured-and-not-reproduced.
+`priority: high` is downgraded.
+Defects 2 (T3 filed under H2, H3 absent) and 3 (no stop rule on the cheap-route templates) are unaffected — neither was measured here.
 
 ## Honest limits
 
 - n=3 per condition, one model (Sonnet), one fixture shape.
-- The fixture is a hand-built ledger, not a live full-route run. It hands arms a completed Tests table; it does not measure whether an agent *building* a table from the example would write the same mismatched row in the first place. That is the untested half of the propagation claim, and it needs a live run to settle.
+- The fixture is a hand-built ledger, not a live full-route run.
+  It hands arms a completed Tests table; it does not measure whether an agent *building* a table from the example would write the same mismatched row in the first place.
+  That is the untested half of the propagation claim, and it needs a live run to settle.
 - A negative result on a capable model is weaker evidence than a positive one: it shows the trap is survivable, not that no configuration falls into it.
 - Arms were told all tests were complete, which removes the option of running a further test to resolve H1 — a live run might instead iterate rather than assign a status.
 
