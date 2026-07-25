@@ -88,6 +88,17 @@ def normalize(text: str) -> str:
     return " ".join(text.split()).casefold()
 
 
+def shallow() -> bool:
+    """Whether this checkout lacks full history.
+
+    A pinned citation is verified with `git show`, so a shallow clone -- the
+    default for CI checkouts -- cannot check it. That must fail loudly rather
+    than pass quietly: a check that silently stops checking in the environment
+    where it matters most is worse than no check.
+    """
+    return (REPO_ROOT / ".git" / "shallow").exists()
+
+
 def read_at(path: Path, sha: str | None) -> str:
     """Read a file from the working tree, or from a pinned commit."""
     if sha is None:
@@ -164,7 +175,7 @@ def in_scope(path: Path) -> bool:
 
 def check(path: Path) -> list[str]:
     violations: list[str] = []
-    cache: dict[tuple[Path, str | None], str] = {}
+    cache: dict[tuple[Path, str | None], str | None] = {}
 
     for lineno, line in enumerate(path.read_text().splitlines(), start=1):
         for match in LINE_CITATION.finditer(line):
@@ -198,13 +209,23 @@ def check(path: Path) -> list[str]:
                     try:
                         cache[key] = normalize(read_at(target, sha))
                     except FileNotFoundError:
+                        detail = (
+                            " (a shallow clone cannot see it — fetch full history)"
+                            if shallow()
+                            else ""
+                        )
                         violations.append(
                             f"{path.relative_to(REPO_ROOT)}:{lineno}: citation pins "
-                            f"{name}@{sha}, which git cannot resolve."
+                            f"{name}@{sha}, which git cannot resolve{detail}."
                         )
-                        cache[key] = ""
+                        cache[key] = None
+                content = cache[key]
+                if content is None:
+                    # Unresolvable pin already reported; do not also report the
+                    # quote as missing from a file that was never read.
+                    continue
                 where = f"{name}@{sha}" if sha else name
-                if normalize(quote_match.group(1)) not in cache[key]:
+                if normalize(quote_match.group(1)) not in content:
                     violations.append(
                         f"{path.relative_to(REPO_ROOT)}:{lineno}: quoted text is "
                         f"attributed to {where} but does not appear there: "

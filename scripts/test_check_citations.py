@@ -117,7 +117,13 @@ class TestPinnedCitations:
         assert len(violations) == 1
         assert "does not appear there" in violations[0]
 
-    def test_unresolvable_pin_is_flagged(self, pinned):
+    def test_unresolvable_pin_is_flagged_once(self, pinned):
+        """One violation, not two.
+
+        A pin git cannot resolve means the quote was never checked; also
+        reporting it as absent would describe a comparison that never ran.
+        """
         repo, _ = pinned
         violations = cc.check(write(repo, f'SKILL.md@abc1234\'s "{SENTENCE}" was the wording.'))
-        assert any("git cannot resolve" in v for v in violations)
+        assert len(violations) == 1
+        assert "git cannot resolve" in violations[0]
