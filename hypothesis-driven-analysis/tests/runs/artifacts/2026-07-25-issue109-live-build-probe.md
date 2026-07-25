@@ -7,6 +7,9 @@
 Neither branch fired.
 But all 4 refutations across all 3 arms landed on `MATCH` rows.**
 
+**Scope:** the arms read `references/ledger-template.md` as it stood *before* the #109 fix (PR #111) — that pre-fix worked example is the exposure under test.
+References below to "the worked example's T1 pattern" mean that pre-fix row, which conjoined two conditions in one prediction cell; the current template no longer has it.
+
 ## Why this ran
 
 The companion probe (`2026-07-25-issue109-necessary-prediction-probe.md`) measured status *derivation* from a handed-over ledger containing the mismatched row: 9/9 arms correct, defect did not reproduce.

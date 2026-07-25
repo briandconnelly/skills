@@ -5,6 +5,10 @@
 **Verdict: the defect did not reproduce. 9/9 arms answered correctly.**
 The review's claimed consequence — a false `REFUTED` propagating from the worked example's row structure — is **not supported** at this measurement, and issue #109's `priority: high` was not earned.
 
+**Scope:** this probe ran against `references/ledger-template.md` as it stood *before* the #109 fix (PR #111), when T1 conjoined a stronger-than-necessary timing condition with a cache-hit-rate condition.
+Quotations of T1 below are of that pre-fix row and no longer match the current template, which now points T1 at H1's necessary prediction alone and carries the discarded conjunct as T1b.
+That is the change this measurement informed, so the pre-fix text is the object under test, not a stale copy.
+
 ## What was measured
 
 Issue #109 Defect 1 observes that in `references/ledger-template.md`, H1's declared necessary prediction is
