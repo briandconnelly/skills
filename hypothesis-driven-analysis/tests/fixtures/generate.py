@@ -1467,7 +1467,9 @@ def build_worker_crash_fixture(outdir: Path) -> None:
 #     are pulled at the briefed dataset, grain and fields, so the preregistered
 #     prediction is adequately tested. Establishment alone is not
 #     non-discrimination; this packet is what keeps case 1 from swallowing every
-#     procedural difference, which is what `subagent-briefs.md` line 61 forbids.
+#     procedural difference, which SKILL.md's Analysis section forbids: an
+#     established deviation leaving the prediction adequately tested is "a
+#     deviation to record, not a downgrade to make".
 #   c3-unresolvable: the s16 W2 shape — the quoted command (--day 2026-06-10)
 #     and the output header beneath it (day=2026-06-09) CONTRADICT EACH OTHER,
 #     with no outside evidence to say which is the error. One reading (a

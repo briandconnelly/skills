@@ -569,7 +569,7 @@ They differ only in the planted fault:
 - **c4-immaterial.** An established deviation that must *not* downgrade: the worker reports it and a coherent execution record shows it (`--format json` on both commands, with JSON outputs to match), but both briefed days are pulled at the briefed dataset, grain and fields, so the preregistered prediction is adequately tested.
 
 The c1/c3 contrast is the load-bearing one: identical surface symptom (a date that does not belong), differing only in whether the command and the tool's own output agree with each other.
-c2, c3 and c4 are the over-correction controls — a fix that downgrades any of them has spread distrust past what the evidence establishes, which is what `subagent-briefs.md`'s "do not use `NON_DISCRIMINATING` to encode distrust" line exists to forbid.
+c2, c3 and c4 are the over-correction controls — a fix that downgrades any of them has spread distrust past what the evidence establishes, which is what SKILL.md's "it says a test could not discriminate, not that you doubt a return which, if honest, discriminated fine" line exists to forbid.
 c4 was added after a cross-model review (Codex) observed that establishment alone does not imply non-discrimination; the pre-edit arms confirmed the concern was live rather than theoretical.
 
 **Assertions:**
@@ -1056,7 +1056,7 @@ The known positive was reproduced first and confirmed before the post-edit negat
 
 Ground truth (re-derived at scoring time from the shipped CSV, `gt.py`): median 95% CI [177.6, 249.6] contains 230 (`NON_DISCRIMINATING`); a true decay compatible with "decays across the window" fails the majority-in-first-third criterion 32% of the time at τ=2h and 53% at τ=3h — far above the 5% bar.
 
-Honest limits: the probe measures the reasoning step in isolation, not how often a free run reaches it (rarely — 0/3); S1's refutation is *flagrant*, so subtle over-correction stays unmeasured (no fixture for it, scenarios.md:641); verdicts are one scorer's reading of the arms' first-line status token and quoted reasoning; τ rates assume exponential rate decay. A follow-up issue proposes a `score_ledger.py` check for the recorded adequacy bound Site 2 now requires, so a weak future measurement has a pre-planned escalation.
+Honest limits: the probe measures the reasoning step in isolation, not how often a free run reaches it (rarely — 0/3); S1's refutation is *flagrant*, so subtle over-correction stays unmeasured (no fixture for it — see Scenario 6's underpowered-null notes); verdicts are one scorer's reading of the arms' first-line status token and quoted reasoning; τ rates assume exponential rate decay. A follow-up issue proposes a `score_ledger.py` check for the recorded adequacy bound Site 2 now requires, so a weak future measurement has a pre-planned escalation.
 
 ### Twelfth wave, 2026-07-20 — a C3 instrument check for completeness-direction (issue #77)
 
@@ -1169,7 +1169,7 @@ All three arms, under the current text, recorded the never-run test as not-run r
 No arm adopted the review's proposed `NON_DISCRIMINATING (worker execution failure)` convention; the convention the arms converged on unprompted (`NOT_TESTED` + dated amendment + limitation) is strictly better than the proposal, which would have collided with the reconciliation rule that `NON_DISCRIMINATING` describes a test that ran.
 
 Honest limits: n=3 arms, one fixture, one model (Sonnet); the inherited ledger already carried `NOT_TESTED` in its Outcome column, so the arms had the not-run vocabulary handed to them — the decision to *keep* it for T2 while overwriting T1/T3 was active (the fixture's stop condition pressured the other way), but a live fan-out that builds its Tests table from scratch after a worker dies is unmeasured; and no arm ever read `references/subagent-briefs.md`, so the correct handling came from SKILL.md's Analysis text alone — a finding about where reconciliation guidance actually lands, and a caution against putting any future worker-failure rule *only* in the reference file.
-Arm c's assertion-5 miss is filed with the S6 sensitivity-rule tension (the known over-correction direction, scenarios.md:641 lineage), not with item 4.
+Arm c's assertion-5 miss is filed with the S6 sensitivity-rule tension (the known over-correction direction, Scenario 6's underpowered-null lineage), not with item 4.
 
 ### Fifteenth wave, 2026-07-25 — S20 disposition of a faulted worker return (issue #103), measured before and after the wording
 
@@ -1239,3 +1239,9 @@ Both were reworded with no intended change of meaning — the definition split i
 
 The rewording changed how the rule reads, not what it does.
 c2 and c3 were not rerun: neither reaches the reworded sentence.
+
+**Round 5, same day — after the reference file's deferral line became its own bullet.**
+
+A third review round found four stale cross-references this PR had itself created — the deferral sentence indented as a continuation rather than its own duty, a generator comment and two passages here still pointing at deleted `subagent-briefs.md` text or at a line number Scenario 20 had shifted.
+Only the first touches a file arms read, and the sentence is byte-identical, but the standing rule is that a changed agent-read file gets measured: c1 with both files came back 3/3 `NON_DISCRIMINATING`, unchanged.
+The other three fixes touch generator comments and this file's prose, which no arm may read.

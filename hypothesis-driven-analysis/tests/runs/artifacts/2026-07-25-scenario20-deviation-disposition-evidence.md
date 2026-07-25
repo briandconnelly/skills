@@ -2116,3 +2116,143 @@ From SKILL.md: "REFUTED when the hypothesis's declared necessary prediction fail
 From references/subagent-briefs.md: "When the source is metered and the budget is spent, record that the verdict rests on an unverified return; that is a limitation, not a verification."
 REASONING: The free check — the only verification step available, since the warehouse CLI is metered and the budget is spent — turns up nothing wrong: the commands match the briefed method, the quoted p95 figures are present in the JSON they're cited from, the recomputed relative change agrees with the worker's own 3.7%, and grain and window match the brief. The only departure from the brief, the added `--format json` flag, is established by the worker's own commands and is harmless to the test's adequacy. Because the free check clears the return but no re-run or independent confirmation was possible, the skill requires recording the verdict as resting on an unverified return — a limitation, not a fourth outcome — while the Outcome cell keeps the worker's own call, CONTRADICTED. The preregistered data-validity note already established this test's discriminating power (a >20% predicted rise cannot hide inside a ~0.4% detection limit), so the observed 3.7% flat change is an adequate test of H2's necessary prediction (flat p95 refutes H2), and that necessary prediction failed. Per the Conclusion section's closed status set, an adequate test failing the necessary prediction makes the hypothesis REFUTED; the unverified-return limitation travels forward into the conclusion/limitations text but does not create a third status or block deriving REFUTED from the recorded CONTRADICTED outcome.
 ```
+
+## Round 5 — validation arms after the reference file's bullet promotion
+
+A third review round found four stale cross-references, all created by this PR's own edits: the
+deferral sentence was indented as a continuation of the preceding bullet rather than standing as
+its own duty; a generator comment and two `scenarios.md` passages still pointed at
+`subagent-briefs.md` text this PR deleted, or at a `scenarios.md:641` line number that adding
+Scenario 20 had shifted.
+
+Only the first touches a file agents read. The sentence is byte-identical — it was promoted from a
+continuation line to its own list item — so the behavioral risk is small but not zero, and the
+standing rule here is that a changed agent-read file gets measured rather than reasoned about.
+c1 with both files rerun:
+
+```
+da9cefbcff3d7783f86c8480e3ce476974d5a1649ebd5edf8b9039801550fdef  SKILL.md
+b1b6d497dfcb97b225eeb3ef502de07aee28e69c5d9725984226133ec1d1a1c2  references/subagent-briefs.md
+```
+
+| Cell | Arm 1 | Arm 2 | Arm 3 | Prior | Result |
+| --- | --- | --- | --- | --- | --- |
+| c1 established (+briefs) | NON_DISCRIMINATING | NON_DISCRIMINATING | NON_DISCRIMINATING | 3/3 | **3/3 — unchanged** |
+
+The other three fixes touch `generate.py` comments and `scenarios.md` prose, neither of which any
+arm may read, so no cell was rerun for them. The fixture bytes are unchanged — the generator edit
+was comment-only, and regenerating reproduces all four packet digests exactly.
+
+### Round 5 manifests
+
+#### xC1B-1
+
+```
+1	2026-07-25T21:06:26.872Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+2	2026-07-25T21:06:27.147Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/references/subagent-briefs.md
+3	2026-07-25T21:06:28.877Z	Read	ok	<SCRATCH>/r5/xC1B-1/packet.md
+4	2026-07-25T21:07:30.778Z	Write	ok	<SCRATCH>/r5/xC1B-1/answer.md
+```
+
+#### xC1B-2
+
+```
+1	2026-07-25T21:06:32.822Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+2	2026-07-25T21:06:33.184Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/references/subagent-briefs.md
+3	2026-07-25T21:06:34.913Z	Read	ok	<SCRATCH>/r5/xC1B-2/packet.md
+4	2026-07-25T21:07:37.738Z	Write	ok	<SCRATCH>/r5/xC1B-2/answer.md
+```
+
+#### xC1B-3
+
+```
+1	2026-07-25T21:06:39.269Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/SKILL.md
+2	2026-07-25T21:06:39.608Z	Read	ok	<REPO_ROOT>/hypothesis-driven-analysis/references/subagent-briefs.md
+3	2026-07-25T21:06:41.344Z	Read	ok	<SCRATCH>/r5/xC1B-3/packet.md
+4	2026-07-25T21:07:48.862Z	Write	ok	<SCRATCH>/r5/xC1B-3/answer.md
+```
+
+### Round 5 archived answers
+
+#### xC1B-1
+
+```markdown
+RECONCILED OUTCOME FOR T2: NON_DISCRIMINATING
+
+H2 STATUS: UNRESOLVED
+
+FAULTS FOUND IN THE RETURN:
+1. Window substitution: the brief instructed `warehouse --dataset gateway_lat --day 2026-06-10` as Command 1, but the execution record shows Command 1 was actually run as `warehouse --dataset gateway_lat --day 2026-06-09` (output confirms `day=2026-06-09`). The worker's comparison is therefore 2026-06-09 vs 2026-06-11, not the briefed 2026-06-10 vs 2026-06-11 — no data on 2026-06-10 itself was collected at all.
+2. The "Deviations from brief" field falsely states "none," contradicting the command/output pair shown immediately above it.
+3. The "Method and sample" field falsely narrates the run as covering "2026-06-10 and 2026-06-11," which also contradicts the execution record.
+The derived arithmetic itself is not faulted: +0.4ms / 24.6ms = +1.6% is correctly computed from the quoted output, and 2 of 3 budgeted calls is within budget — the fault is confined to which day was queried and how that was described.
+
+LIMITATIONS THAT MUST REACH THE CONCLUSION:
+- Gateway p95 for 2026-06-10 — the day the preregistered prediction is actually about — was never queried; the reconciled verdict on H2's necessary prediction (flat change between 2026-06-10 and 2026-06-11) rests on no direct evidence about 2026-06-10.
+- The deviation cannot be corrected or verified harmless within this run: the `warehouse` CLI is metered, the investigation's budget is fully spent, no further metered queries are authorized, and this is a non-interactive run with no user available to ask — so a re-pull to obtain the correct day is not possible here.
+- H2 stays UNRESOLVED, not REFUTED and not supported: the test that ran did not adequately test the necessary prediction as preregistered.
+
+GOVERNING SKILL TEXT:
+From SKILL.md: "Start with the free check: read the worker's stated method and command against the prediction it claims to test, and against its own return. Does the command implement the method it names? Does the quoted number appear in the output it came from? Is the grain the one the prediction specified, and the window the one the brief set?"
+From SKILL.md: "Rank the return's execution record above its narrative: the quoted commands and the parameters the tool itself emitted are the account of what ran, while Method and Deviations are the worker's description of it."
+From SKILL.md: "A deviation is established when the worker reports it and the execution record does not contradict the report, or when a coherent execution record shows it — that is, when the command and the tool's own output agree on a procedure the brief did not authorize."
+From SKILL.md: "An established deviation makes the reconciled outcome NON_DISCRIMINATING when the procedure that record evidences did not adequately test the preregistered prediction, unless evidence from outside the return verifies the deviation harmless."
+From SKILL.md: "A narrative field contradicting a coherent execution record does not unsettle it; it is one more thing the return got wrong, whether it confesses a deviation the record does not show or denies one the record does."
+From SKILL.md: "The status set is closed: REFUTED when the hypothesis's declared necessary prediction failed under an adequate test, UNRESOLVED otherwise."
+From references/subagent-briefs.md: "Spot-verify the evidence behind the leading explanation and the strongest rival before concluding. The free form comes first and is usually the one that catches something: check the worker's stated method and command against the prediction it was briefed on and against its own return: command matches method, quoted figures appear in the output they cite, grain and window match the brief."
+
+REASONING: The free check (comparing the brief's window against the worker's own quoted commands) surfaces a real fault: Command 1 was run against 2026-06-09, not the briefed 2026-06-10, so the worker actually tested a 06-09-vs-06-11 contrast while both its Deviations field ("none") and its Method narrative ("2026-06-10 and 2026-06-11") misdescribe this. The execution record — the command and its own output — outranks those narrative fields, so the deviation is established rather than dismissed. Because 2026-06-10, the day the necessary prediction names, was never queried, the procedure that ran did not adequately test the preregistered prediction, and no outside evidence is available to show the substitution is harmless (the source is metered, the budget is spent, and no re-query is authorized in this non-interactive run). That combination is exactly the case SKILL.md routes to NON_DISCRIMINATING rather than accepting the worker's self-reported CONTRADICTED. With T2 downgraded to NON_DISCRIMINATING, H2's necessary prediction has not failed under an adequate test, so per the closed status set H2 remains UNRESOLVED — and the window gap plus the inability to re-collect must both be carried into the conclusion as limitations, not silently absorbed into a verdict.
+```
+
+#### xC1B-2
+
+```markdown
+RECONCILED OUTCOME FOR T2: NON_DISCRIMINATING
+
+H2 STATUS: UNRESOLVED
+
+FAULTS FOUND IN THE RETURN:
+1. Command/window substitution: the brief required querying `gateway_lat` for 2026-06-10 and 2026-06-11 (the exact window H2's necessary prediction names). The worker's actual Command 1 ran `--day 2026-06-09`, not `--day 2026-06-10`, and its own quoted output confirms `day=2026-06-09`. 2026-06-10 — the drop day itself — was never queried at all.
+2. Narrative misrepresents the execution record in two fields: "Method and sample" states the tool was run "against `gateway_lat` for 2026-06-10 and 2026-06-11," which the commands contradict; and "Deviations from brief: none" denies any deviation despite the coherent command+output record showing one (querying 06-09 in place of the briefed 06-10).
+3. The derived arithmetic itself is not faulted: 24.6 -> 25.0 = +1.6% is correctly computed from the worker's own quoted output, so this is a window/deviation fault, not a derived-value error.
+
+LIMITATIONS THAT MUST REACH THE CONCLUSION:
+- T2 as actually executed measured the 2026-06-09 -> 2026-06-11 change, not the preregistered 2026-06-10 -> 2026-06-11 change; it does not adequately test H2's necessary prediction, so the necessary prediction was not tested.
+- Gateway p95 for 2026-06-10 itself is unknown from this return; a spike on 06-10 that partly reverted by 06-11 could be masked by the 06-09-anchored comparison, so the "flat" reading cannot be read as ruling out a 06-10 rise.
+- No re-verification is possible: the warehouse source is metered, the investigation's budget is fully spent, and this is a non-interactive run with no user to authorize a re-pull — so this limitation stands unresolved rather than closed by re-query.
+- The worker's narrative fields (Method and sample; Deviations from brief) are shown unreliable on this return and should not be trusted uncorroborated in future reconciliation.
+
+GOVERNING SKILL TEXT:
+From SKILL.md: "Rank the return's execution record above its narrative: the quoted commands and the parameters the tool itself emitted are the account of what ran, while Method and Deviations are the worker's description of it."
+From SKILL.md: "A deviation is established when the worker reports it and the execution record does not contradict the report, or when a coherent execution record shows it — that is, when the command and the tool's own output agree on a procedure the brief did not authorize."
+From SKILL.md: "A narrative field contradicting a coherent execution record does not unsettle it; it is one more thing the return got wrong, whether it confesses a deviation the record does not show or denies one the record does."
+From SKILL.md: "An established deviation makes the reconciled outcome `NON_DISCRIMINATING` when the procedure that record evidences did not adequately test the preregistered prediction, unless evidence from outside the return verifies the deviation harmless."
+From SKILL.md: "That downgrade records the inadequacy of the test that ran, not distrust of the worker — an honest query against the wrong window still leaves the preregistered prediction untested, which is what `NON_DISCRIMINATING` says."
+From SKILL.md (Conclusion): "The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
+
+REASONING: The free spot-check (read the worker's stated method and commands against the brief and against its own return) surfaces a mismatch the worker's narrative denies: Command 1 queried 2026-06-09, not the briefed 2026-06-10, yet "Method and sample" claims 06-10 was queried and "Deviations from brief" claims none occurred. Because the command and its own output agree with each other on the wrong day, this is a coherent execution record establishing a deviation, which outranks the contradicting narrative fields. That deviation left the actual preregistered window (06-10 vs 06-11) untested — 06-10 data never appears anywhere in the return — so the procedure did not adequately test H2's necessary prediction, and no outside evidence is available to show the deviation harmless (source metered, budget spent, no user to ask). The skill's rule for exactly this situation assigns `NON_DISCRIMINATING` as the reconciled outcome, overriding the worker's self-reported `CONTRADICTED`. With T2 downgraded to `NON_DISCRIMINATING`, H2 has no adequate test failing its necessary prediction, so per the closed status set it stays `UNRESOLVED` rather than `REFUTED`.
+```
+
+#### xC1B-3
+
+```markdown
+RECONCILED OUTCOME FOR T2: NON_DISCRIMINATING
+H2 STATUS: UNRESOLVED
+FAULTS FOUND IN THE RETURN:
+1. Wrong window queried: the brief specified "Run: `warehouse --dataset gateway_lat --day 2026-06-10`" as Command 1, but the return's actual Command 1 is `warehouse --dataset gateway_lat --day 2026-06-09`, and its output header reads `day=2026-06-09` — command and output agree with each other, so this is a coherent execution record showing an unbriefed substitution (2026-06-09 baseline instead of 2026-06-10).
+2. The narrative "Method and sample" field asserts the CLI was run "against `gateway_lat` for 2026-06-10 and 2026-06-11," which the execution record contradicts (Command 1 is for 06-09, not 06-10).
+3. "Deviations from brief: none" denies the deviation the execution record establishes.
+
+LIMITATIONS THAT MUST REACH THE CONCLUSION:
+T2's comparison actually ran 2026-06-09 vs 2026-06-11 (a two-day gap), not the preregistered 2026-06-10 vs 2026-06-11 (one-day) comparison the necessary prediction names; whether 2026-06-09 gateway latency stood in adequately for 2026-06-10 is unverified, no outside evidence confirms the substitution was harmless, and the warehouse CLI is metered with the investigation budget fully spent and no further queries authorized, so this cannot be checked. H2 therefore stays UNRESOLVED on this test rather than REFUTED, pending an adequate test of the actual 2026-06-10-to-2026-06-11 window.
+
+GOVERNING SKILL TEXT:
+From SKILL.md: "A deviation is established when the worker reports it and the execution record does not contradict the report, or when a coherent execution record shows it — that is, when the command and the tool's own output agree on a procedure the brief did not authorize."
+From SKILL.md: "An established deviation makes the reconciled outcome NON_DISCRIMINATING when the procedure that record evidences did not adequately test the preregistered prediction, unless evidence from outside the return verifies the deviation harmless."
+From SKILL.md: "A narrative field contradicting a coherent execution record does not unsettle it; it is one more thing the return got wrong, whether it confesses a deviation the record does not show or denies one the record does."
+From SKILL.md: "That downgrade records the inadequacy of the test that ran, not distrust of the worker — an honest query against the wrong window still leaves the preregistered prediction untested, which is what `NON_DISCRIMINATING` says."
+From SKILL.md: "Rank the return's execution record above its narrative: the quoted commands and the parameters the tool itself emitted are the account of what ran, while Method and Deviations are the worker's description of it."
+From SKILL.md (Conclusion): "The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
+
+REASONING: The free spot-check (comparing the worker's stated method and its own quoted commands/output against the brief) surfaces a real fault, not a clean return: Command 1 in the evidence names and returns 2026-06-09, while the brief called for 2026-06-10, and both the command flag and the output header agree with each other on 06-09 — a coherent execution record of an unbriefed substitution, which the SKILL.md text ranks above the worker's narrative claims ("Method and sample" saying 06-10, "Deviations: none") that deny or misstate it. Because the necessary prediction is specifically about the 2026-06-10-to-2026-06-11 change, and the test actually run used 2026-06-09 as the baseline with no outside evidence that 06-09 stood in for 06-10, the procedure the record evidences did not adequately test the preregistered prediction. Per SKILL.md, that established, unverified-harmless deviation forces the reconciled outcome to NON_DISCRIMINATING rather than the worker's claimed CONTRADICTED (which was H2-FALSE-consistent, i.e., would have refuted H2). Re-running is not an option: the warehouse CLI is metered, the budget is spent, and this is a non-interactive run with no user to authorize a re-pull, so per SKILL.md the shortfall is recorded as a limitation rather than resolved. With T2 downgraded to NON_DISCRIMINATING, H2 has no adequate test of its necessary prediction, so under the closed status set it remains UNRESOLVED — it cannot be REFUTED on an inadequate test, and NON_DISCRIMINATING is an outcome value for the test entry, not grounds for any status other than UNRESOLVED.
+```
