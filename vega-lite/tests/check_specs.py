@@ -8,7 +8,9 @@
 # ///
 """Extract Vega-Lite specs from .vl.json files and fenced ```json blocks in
 markdown, then run each through render.py's staged validator. Fails if any
-spec does not pass parse/compile/render (schema SKIP is allowed offline)."""
+spec does not pass parse/compile/render (schema SKIP is allowed offline),
+and fails closed when a scan extracts zero specs — an empty run is a broken
+instrument, not a pass."""
 
 from __future__ import annotations
 
@@ -29,11 +31,14 @@ _spec.loader.exec_module(render)
 _FENCE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
 
 
+_SPEC_KEYS = ("mark", "layer", "facet", "repeat", "concat", "hconcat", "vconcat")
+
+
 def _looks_like_spec(obj: object) -> bool:
     if not isinstance(obj, dict):
         return False
     schema = str(obj.get("$schema", ""))
-    return "vega-lite" in schema or any(k in obj for k in ("mark", "layer", "facet"))
+    return "vega-lite" in schema or any(k in obj for k in _SPEC_KEYS)
 
 
 def extract_specs(path: Path) -> list[tuple[str, str]]:
@@ -58,26 +63,55 @@ def extract_specs(path: Path) -> list[tuple[str, str]]:
     return []
 
 
-def check_path(path: Path) -> int:
+def check_path(path: Path) -> tuple[int, int]:
+    """Validate every spec in one file; return (specs_checked, exit_code)."""
+    specs = extract_specs(path)
+    if not specs:
+        return 0, 0
     deps = render.default_deps()
     failures = 0
-    for label, spec_text in extract_specs(path):
+    for label, spec_text in specs:
         results = render.run_all(spec_text, out_path=None, deps=deps)
         code = render.exit_code(results)
         summary = " ".join(f"{r.name}:{r.status.value}" for r in results)
         print(f"[{'OK ' if code == 0 else 'FAIL'}] {label}  {summary}")
         failures += code
-    return 1 if failures else 0
+    return len(specs), 1 if failures else 0
 
 
 def main(argv: list[str]) -> int:
+    if not argv:
+        print("usage: check_specs.py <file-or-dir> [...]", file=sys.stderr)
+        return 2
     targets: list[Path] = []
     for arg in argv:
         p = Path(arg)
-        targets += sorted(p.rglob("*.vl.json")) + sorted(p.rglob("*.md")) if p.is_dir() else [p]
+        if not p.exists():
+            print(f"error: no such file or directory: {arg}", file=sys.stderr)
+            return 2
+        if p.is_dir():
+            targets += sorted(p.rglob("*.vl.json")) + sorted(p.rglob("*.md"))
+        elif p.name.endswith(".vl.json") or p.suffix == ".md":
+            targets.append(p)
+        else:
+            # Reject up front: extract_specs would read_text() the file (crashing on
+            # binary) and then extract nothing from it anyway.
+            print(f"error: unsupported target (expected .md or .vl.json): {arg}", file=sys.stderr)
+            return 2
     rc = 0
+    checked = 0
     for t in targets:
-        rc |= check_path(t)
+        n, file_rc = check_path(t)
+        checked += n
+        rc |= file_rc
+    if checked == 0:
+        # Fail closed: a scan that extracted nothing validated nothing, and a
+        # green exit here would be indistinguishable from a real all-pass run.
+        print(
+            "error: no specs extracted from the given targets; nothing was validated",
+            file=sys.stderr,
+        )
+        return 1
     return rc
 
 
