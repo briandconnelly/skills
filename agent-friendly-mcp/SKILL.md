@@ -18,18 +18,24 @@ This section is the single home for RC expectations; forward-compat notes elsewh
 Treat init-time capability negotiation, native tasks, and roots as **likely migration points** — design against them today, and hedge concretely: branch on stable symbolic codes rather than numeric or transport-level details where you have the choice, keep workspace scope expressible as ordinary tool arguments (contract-checklist §1 forward-compat), and keep task status/result/cancel expressible as ordinary tools (§7 forward-compat).
 Revisit this skill when 2026-07-28 finalizes.
 
-## What This Skill Optimizes For
+## Where The Recurring Concerns Live
 
-Orientation only — every rule below lives in [contract-checklist.md](references/contract-checklist.md) and is cited here by id.
-Nothing in this section is normative; when it and the checklist appear to disagree, the checklist is right.
+A routing table, not a summary.
+Each row names a concern this skill keeps returning to and the rules that govern it; the rules themselves are stated only in [contract-checklist.md](references/contract-checklist.md).
+Read the cited ids — nothing here restates them, so a row is never a substitute for the rule.
 
-- **The schema is the contract.** Tool and resource schemas carry the operational contract; prompts and server `instructions` are advisory and may not reach the model at all — `[5.scaffolding-only]`, `[5.ap-contract-container]`.
-- **Capabilities are negotiated, not assumed.** Optional features exist for an agent only after negotiation — `[1.negotiated-caps]`.
-- **Cold-start first-call and first-repair success are the metrics.** Measure both; treat a change that regresses either as wrong — design-workflow Step 8 builds the measurement, Step 9 owns the regression gate.
-- **Tasks, not endpoints.** Granularity follows what a user is trying to do — `[3.task-completing]`, `[3.ap-endpoint-wrapping]`.
-- **Safety signals belong in structured fields.** Side effects, idempotency, rate limits, and prerequisites are contract, not prose — `[3.declare-effects]`, `[1.implicit-state]`.
-- **Structured output is authoritative.** Text and markdown are supplemental rendering — `[3.structured-default]`.
-- **Design for the least-capable realistic client.** It preloads the whole catalog, may ignore annotations, and may expose resources poorly, so compact definitions are the universal baseline and progressive disclosure is a client-dependent optimization on top — `[2.compact-baseline]`, `[2.progressive-disclosure]`, `[2.client-variance]`.
+| Concern | Governing rules |
+| --- | --- |
+| What carries the contract, and what is only advisory | `[5.scaffolding-only]`, `[5.ap-contract-container]`, `[2.instructions-advisory]` |
+| Capability negotiation before optional features | `[1.negotiated-caps]` |
+| Tool granularity: tasks vs endpoints | `[3.task-completing]`, `[3.hide-steps]`, `[3.ap-endpoint-wrapping]` |
+| Side effects, idempotency, and rate limits | `[3.declare-effects]`, `[3.honest-annotations]`, `[3.annotation-defaults]` |
+| Prerequisites and implicit state an agent can act on | `[1.implicit-state]`, `[2.summary]` |
+| Structured vs rendered output | `[3.structured-default]`, `[3.output-schema]` |
+| Designing for the least-capable realistic client | `[2.compact-baseline]`, `[2.progressive-disclosure]`, `[2.client-variance]` |
+| Failure paths as contract | `[3.failure-contract]`, `[6.symbolic-codes]`, `[6.repair-object]` |
+
+Cold-start first-call and first-repair success are the outcome measures this skill is tuned against: [design-workflow.md](references/design-workflow.md) Step 8 builds the measurement and Step 9 owns the regression gate.
 
 ## Native Fields vs Convention Extensions
 

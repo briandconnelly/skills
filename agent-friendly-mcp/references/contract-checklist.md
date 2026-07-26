@@ -7,7 +7,8 @@ Walk it top to bottom when designing or reviewing a server.
 **Rule IDs.** Every rule carries a stable id in the form `` `[section.slug]` `` — `[3.naming]`, `[6.repair-object]`.
 The slug names what the rule is *about*, not how it is currently worded, so rewording a rule keeps its id and every citation of it stays valid.
 Cite rules by id from anywhere in this skill; a citation that no longer resolves means the rule was removed or renamed, which is a change you want to see rather than a paraphrase that silently drifts.
-`tests/check_rule_ids.py` enforces uniqueness and citation resolution.
+Citation resolution only protects rules something else references, so `tests/rule-ids.txt` holds the committed id set and a deletion must drop its id there in the same commit — otherwise removing an uncited rule would pass unnoticed.
+`tests/check_rule_ids.py` enforces the canonical rule form, id grammar, uniqueness, section agreement, citation resolution, and manifest agreement.
 This file is the single home for these rules — other files point at ids and do not restate the rule text.
 
 **On this page:**
@@ -85,6 +86,10 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 
 - `[2.summary]` **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it.
   Expose it via a resource, discovery tool, or instructions field, whichever the client honors.
+
+- `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, so behavior that exists only there is invisible to those agents.
+  Essential selection, prerequisite, safety, and repair behavior must also reach the agent through a surface it is guaranteed to see — the tool and resource schemas, or a discovery tool or resource the client does honor.
+  Using `instructions` is fine; relying on it alone is not.
 
 - `[2.negative-scope]` **State negative scope explicitly.** What the server does NOT do is as important as what it does.
   Negative scope prevents wasted exploration and wrong-tool selection.
