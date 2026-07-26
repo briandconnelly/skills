@@ -1,6 +1,7 @@
 # Test Scenarios for hypothesis-driven-analysis
 
 Behavioral test scenarios for this skill, following the baseline/with-skill methodology: run each scenario with a fresh subagent that does NOT have the skill loaded (baseline), then with the skill loaded (treatment), and compare against the assertions.
+`PROTOCOL.md` covers the order a wording change runs through these scenarios — fixture preregistration, entanglement check, design review, canary arms — and `../decisions/` records the calls settled by argument rather than by a run.
 A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
 That rule does not reach three kinds of scenario.
 Guardrail and trigger-discrimination runs (S2, S3) exist to show the skill must *not* add ceremony or must lose to a better-suited skill, so a passing baseline is the expected result.
@@ -664,7 +665,7 @@ The suite is one scenario deep on a should-not-refute case, and the brief's own 
    The numbers in this item are unchanged as measured; they are the record of a real defect, not superseded.
 2. **Assertion 6 failed 3/3.**
    Every run wrote "still open" rather than "no recorded closure," and every run asserted a direction for the censoring bias (`biases the assist median low`, `understated`, a stated lower bound) without first establishing the export's completeness semantics.
-   SKILL.md line 164 — "An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias" — is present in the skill and did not prevent this in any run.
+   SKILL.md's Analysis section — "An absent record does not by itself establish the absence of the event: establish the source's completeness semantics before inferring either event status or the direction of a bias" — is present in the skill and did not prevent this in any run.
    This is a measured 0/3 for that line, not a partial win.
    It needs either sharper wording or a worked example showing the "establish completeness before asserting direction" move, because runs currently jump straight to a direction claim backed only by the prompt's "seven full days to mature" note, which addresses recency, not export completeness.
 3. **The skill's stated cost range contradicts the measurements from this scenario.**
@@ -716,7 +717,7 @@ That is the documented, expected out-of-scope case — `score_ledger.py`'s own S
 Scenario 1 must never be machine-scored with C1.
 
 **What this does not establish.**
-SKILL.md line 164 (establish completeness semantics before asserting a direction) remains measured 0/3 from the Third wave; nothing in this wave re-tested it, and it is not fixed by this work.
+SKILL.md's Analysis rule on absent records (establish completeness semantics before asserting a direction) remains measured 0/3 from the Third wave; nothing in this wave re-tested it, and it is not fixed by this work.
 The token-cost finding also stands: none of these five runs came in under the skill's stated 11–47% range, and the three scenario-15 postfix runs (93.0k–95.6k against a 50.9k scenario-15 baseline, +83% to +88%) confirm the Third-wave +85–99% finding rather than revise it.
 This wave is two scenarios deep, both already in the suite; it is not a new fixture, and it does not touch the open item calling for a genuinely novel should-refute case beyond scenario 1.
 
@@ -848,9 +849,11 @@ S6's tightening is solid — the mixture punishes the exact power-check move the
 S8's margin is thin: the baseline fully satisfied the load-bearing adjudication assertion and failed only on causal-status discipline, so the S8 run file names the concrete tighten-next candidates if a future baseline passes cleanly.
 
 **The wave's real finding is a skill defect: the sensitivity rule accepts an invalid known-positive.**
-SKILL.md's "the same method surfaces a known positive comparable in size and grain" does not say the known positive must model between-sample variability, so the with-skill S6 run built one by shifting the observed sample and resampling it — a control that reports ~100% power where the true figure is ≈77% — and rode it to a `REFUTED` that should have been `NON_DISCRIMINATING`.
+The rule as worded during this wave — SKILL.md@1cc7bd9's "the same method surfaces a known positive comparable in size and grain" — does not say the known positive must model between-sample variability, so the with-skill S6 run built one by shifting the observed sample and resampling it — a control that reports ~100% power where the true figure is ≈77% — and rode it to a `REFUTED` that should have been `NON_DISCRIMINATING`.
 The baseline failed the same assertions by a cruder route, so the skill still discriminates in the right direction here, but its margin on null-result discipline is one assertion (A3), and the rule's wording is the fix site.
 Tracked as a follow-up issue rather than patched on this branch, so the wording change gets its own before/after measurement.
+**Resolved by #74 (9dd4f30):** the Data section now requires that every simulated trial draw a fresh sample, and names recomputing from one fixed shifted copy as not a known positive.
+The numbers in this item are unchanged as measured; they are the record of a real defect, not superseded.
 
 **Cost.** S6 +72%, S8 +57% — both above the first wave's 11–47% band on the same scenarios (S6 was +26%, S8 +24% against the easier fixtures), consistent with the pattern that richer fixtures widen the premium.
 
@@ -1078,7 +1081,10 @@ The SCOPE docstring states this explicitly, stronger than C1's scope note, becau
 
 **The token-economy claim is refuted at this scale.** Every paired scenario cost *more* with the skill, never less: S9 +11%, S8 +24%, S6 +26%, S1 +44%, S4 +47%.
 Read that 11–47% span as this wave's five fixtures, not a bound on the skill: the Third wave's S15 measured +85% to +99%, and the Fourth wave's S15 postfix runs confirm that scale rather than revise it.
-The claim in SKILL.md's purpose ("a solid plan before execution prevents fishing expeditions, repeated re-pulls, and 'one more query' churn") is not supported by any run here, and these fixtures cannot support it: they are small, local, and free to re-read, so there is no churn for a plan to prevent and the ledger is pure overhead.
+The cost claim in SKILL.md's purpose — that the framework may pay for itself where fishing expeditions and re-pulls dominate the bill — is not supported by any run here, and these fixtures cannot support it: they are small, local, and free to re-read, so there is no churn for a plan to prevent and the ledger is pure overhead.
+**Quotation corrected 2026-07-25:** this item originally rendered that claim as a direct quote, "a solid plan before execution prevents fishing expeditions, repeated re-pulls, and 'one more query' churn".
+No commit of the skill has ever contained that sentence — the only occurrence anywhere in this repo's history is this finding line itself — so the fabricated quotation has been replaced by the paraphrase above.
+The measured finding is unchanged.
 The claim may hold where re-pulls are genuinely expensive (paid APIs, slow warehouse queries, large remote logs), but that is now an untested hypothesis, not a demonstrated property. Either scope the claim to expensive-collection investigations and test it there, or drop it.
 
 **The authorization gate was broken, and the contaminated prompt hid it.** This is the most serious thing the suite found.

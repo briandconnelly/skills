@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check-citations verifies commit-pinned quotes with `git show`, so it
+          # needs history rather than the default shallow checkout.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - name: Install prek
         run: uv tool install prek==0.3.11

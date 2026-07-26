@@ -26,13 +26,14 @@ A test entry's outcome and evidence fields are the only sanctioned in-place upda
 | H1 | causal | ... | ... | ... | ... | T1 | ... |
 | H2 | descriptive (estimand: ...) | ... | ... | ... | ... | T2 | ... |
 
-The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, and only its failure under an adequate test can mark the hypothesis `REFUTED`.
+The necessary-prediction column is what makes status mechanically derivable: declare it at Plan time, before any outcome is read.
 Every row must carry one, and it must be able to fail — it follows from the hypothesis's own mechanism, and you could observe it failing while the rest of the data stays as it is.
 The explanation also names the exact effect it explains: a necessary prediction refutes only at the scope the claim states, so "the deploy caused the observed step" is refutable by timing, while a system-wide "the deploy regressed the cache layer" is broader than any single prediction can refute.
 A row whose necessary prediction cannot fail is not a testable hypothesis: move it to Limitations as an open possibility rather than leaving it in the table to sit `UNRESOLVED` forever while competing for "best supported".
 Each row declares its claim as `causal`, `descriptive`, or `data-artifact`, and a descriptive row names the estimand its prediction is about.
-A `data-artifact` row claims the records themselves are wrong — missing, miscounted, mis-instrumented — and per the skill it can only be `REFUTED` by a check that actually probed coverage and missingness.
-The claim column is what the status rules read: a `causal` row cannot be `REFUTED` by a contrast whose design does not identify it, and a `descriptive` row cannot be added after Plan time.
+A `data-artifact` row claims the records themselves are wrong — missing, miscounted, mis-instrumented.
+The claim column is what the status rules read, and those rules — including what each class can and cannot be `REFUTED` by — live in SKILL.md's Conclusion section, which is the single authority.
+Read them there; this template deliberately does not summarize them, because a rule kept in two places is how the disposition of a faulted worker return drifted into a contradiction (issue #103).
 
 Hypotheses added after seeing data get the label `retrospective` in the id column (e.g. `H4 (retrospective)`).
 A retrospective hypothesis can only be best supported on evidence that did not inform it — a held-out slice, a later window, a source you had not looked at, or a new measurement.
