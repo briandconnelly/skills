@@ -12,7 +12,8 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 This skill is written against the stable **MCP 2025-11-25** specification; the field names, capability paths, and task lifecycle it uses follow that revision.
 
 A **2026-07-28 release candidate** is in flight — not yet ratified, and still subject to change before it finalizes.
-It is expected to make the protocol stateless (removing the `initialize`/`initialized` handshake and per-session ids, with client info and capabilities traveling per request), move **tasks** from experimental core to a negotiated **extension** (server-directed task creation, `tasks/update` added, `tasks/list` removed), deprecate **roots**, **sampling**, and **logging** on long retention windows, formalize a reverse-DNS **extensions framework** that gives the convention metadata below an official home, and fold the resource-not-found JSON-RPC code `-32002` into the standard `-32602`.
+It is expected to make the protocol stateless (removing the `initialize`/`initialized` handshake and per-session ids, with client info and capabilities traveling per request), move **tasks** from experimental core to a negotiated **extension** (server-directed task creation, `tasks/update` added, `tasks/list` removed), deprecate **roots**, **sampling**, and **logging** on long retention windows, formalize a reverse-DNS **extensions framework**, and fold the resource-not-found JSON-RPC code `-32002` into the standard `-32602`.
+The extensions framework is a possible migration path for the convention metadata below, not a ratification of it: an extension needs a reverse-DNS identifier, its own maintained specification, and negotiation by both peers, so a namespaced `_meta` key remains a private convention until someone does that work.
 This section is the single home for RC expectations; forward-compat notes elsewhere in this skill point here rather than restating them.
 Treat init-time capability negotiation, native tasks, and roots as **likely migration points** — design against them today, and hedge concretely: branch on stable symbolic codes rather than numeric or transport-level details where you have the choice, keep workspace scope expressible as ordinary tool arguments (contract-checklist §1 forward-compat), and keep task status/result/cancel expressible as ordinary tools (§7 forward-compat).
 Revisit this skill when 2026-07-28 finalizes.
@@ -48,7 +49,7 @@ Keep them — but never let them masquerade as protocol.
 - Put convention metadata under a namespaced `_meta` key (e.g., `com.example/chunks`) — the spec-sanctioned extension point — so it cannot collide with future MCP fields.
 - Label every convention extension as such where it appears, so a reader can tell protocol from house style.
 - The primary example blocks in this skill are wire-valid: convention metadata rides under a namespaced `_meta` key, never as a top-level field on a native record.
-  See `examples.md` §1/§3/§4/§5 for the worked `_meta` pattern; the few deliberately abbreviated blocks (e.g. §10) carry an explicit non-wire label.
+  See `examples.md` ex§1/ex§4/ex§5 for the worked `_meta` pattern; the few deliberately abbreviated blocks (e.g. ex§10) carry an explicit non-wire label.
 - For the exact native request/response envelopes, field names, and casing of the methods most often confused with house conventions — list pagination, completion, the `tools/call` result, and the task lifecycle — see [native-wire-shapes.md](references/native-wire-shapes.md).
 
 ## When To Use
