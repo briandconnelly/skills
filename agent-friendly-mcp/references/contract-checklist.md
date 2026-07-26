@@ -506,7 +506,8 @@ And does the same failure carry the identical envelope whether it surfaces as a 
   `forbidden` is the default: an omitted `execution.taskSupport` is not "unspecified," it declares the tool non-task-capable, and clients MUST NOT task-augment it.
   Declare it explicitly on every task-capable tool, exactly as §3 requires for annotation defaults — silence here silently disables the design.
   Both tool-level mismatches answer `-32601` (Method not found): SHOULD when a client task-augments a `forbidden` tool, MUST when it fails to augment a `required` one.
-  The distinct capability-level case — a receiver that requires task augmentation for a whole request type and receives an unaugmented request — MAY answer `-32600` (§6).
+  The distinct capability-level case — a receiver that requires task augmentation for a whole request type and receives an unaugmented request — MAY answer `-32600`.
+  Both stay JSON-RPC errors even when the affected method is `tools/call`, because they concern the call's admissibility rather than the tool's semantics; §6 owns that carrier rule, this section owns the codes.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
   `tasks/result` blocks until the task reaches a terminal status and its response is always the underlying result, never an intermediate payload; an agent may keep polling `tasks/get` in parallel while it waits.

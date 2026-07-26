@@ -309,9 +309,9 @@ A prompt that orchestrates posting a release announcement across multiple channe
       }
     },
     "com.slack-mcp/expected-followups": [
-      "Call `slack_lookup_channel` for each name in `channels` to resolve to channel ids.",
+      "Split `channels` on commas, then call `slack_lookup_channel` for each resulting name to resolve it to a channel id.",
       "Call `slack_send_message` per resolved channel id with the composed text.",
-      "If `pin` is true, call `slack_pin_message` with each returned message ts. (Default is false — skip pinning unless explicitly requested.)",
+      "If `pin` is the string \"true\", call `slack_pin_message` with each returned message ts. (Omitted or \"false\" means skip pinning.)",
       "Surface the resulting permalinks back to the user."
     ]
   }
