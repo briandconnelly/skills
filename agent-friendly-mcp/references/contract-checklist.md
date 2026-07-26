@@ -66,6 +66,8 @@ Walk it top to bottom when designing or reviewing a server.
 
 - **Expose auth mechanics that affect repair.** For HTTP authorization, document the canonical server URI and resource indicator used for token audience binding, never pass through tokens issued for a different resource, and surface incremental or step-up scope challenges as structured repair (`required_scopes`, `resource`, `authorization_url` or elicitation URL where appropriate).
   For stdio, document where credentials come from only when the agent can act on it.
+  For client registration, the baseline makes Client ID Metadata Documents the SHOULD and Dynamic Client Registration a MAY "included for backwards compatibility"; the client priority order is pre-registered credentials, then CIMD, then DCR, then prompting the user.
+  Target CIMD and keep DCR only as the fallback for authorization servers that do not advertise `client_id_metadata_document_supported`.
 
 Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
@@ -219,6 +221,8 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - **Define mutation by observable scope, not by I/O — a deliberate reading of an ambiguous hint.** The MCP spec glosses `readOnlyHint` only as "the tool does not modify its environment," which is broad enough to read either way for a local write.
   This skill takes the position that `readOnlyHint` should track whether the call changes state that outlives the response contract: shared systems, persistent records, other users' data, or persistent state in the caller's environment that other calls or tools can observe.
   Under that reading it is not about whether the tool performs any I/O at all, and a write to the caller's filesystem does not by itself count as mutation.
+  Take the reading deliberately, because it has a safety consequence: clients use `readOnlyHint: true` to gate auto-approval, so a tool annotated this way may execute without confirmation on a trusted server.
+  That is the point — a semantically read-only call should not pay mutation-grade friction — but it means the artifact must genuinely be scoped to the response (declared TTL, no shared visibility), and the §3 rule below still prefers a resource or resource link over a local file wherever one fits.
   A transient artifact written purely as response delivery — for example, a CSV or Parquet result file with a declared TTL, scoped to this call, and no shared visibility — is treated as part of the response, not a side effect, so the tool stays `readOnlyHint: true`.
 
 - **Document which `readOnlyHint` reading the server uses.** The observable-scope reading is a judgment call, not settled spec: a reviewer who reads "environment" literally may disagree, so document the choice rather than asserting it, and apply one reading consistently across tools.
@@ -426,9 +430,13 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 - **Use elicitation only behind negotiated support and clear fallback.** When a server needs missing user input, user confirmation, or sensitive external interaction during a call, prefer MCP elicitation for clients that advertise it.
   URL-mode elicitation is the safe path for passwords, API keys, payment credentials, OAuth, or other sensitive exchanges.
   For clients without elicitation, return an actionable error or task `input_required` status that names the next callable surface or external action.
+  When a call cannot proceed until a URL-mode elicitation completes, the spec assigns a native code — `-32042` (`URLElicitationRequiredError`), carrying the required elicitations in `error.data` — and it is the correct answer even from `tools/call`.
+  Use it rather than an `isError: true` house envelope for that one case, so clients that already implement the native consent path recognize it.
 
 - **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result.
   JSON-RPC errors are reserved for transport, protocol, and non-tool RPC methods (such as `resources/read` and `resources/list`); raising a JSON-RPC error from `tools/call` strips the structured-response contract from the failure path.
+  The exceptions are protocol-level conditions the spec assigns a code to, which stay JSON-RPC even on `tools/call`: `-32042` when a URL-mode elicitation must complete first (above), and the task-augmentation mismatch codes in §7.
+  These are conditions about the call's admissibility, not about the tool's semantics — the rule is that *semantic* failures never leave the tool-result carrier.
   See `examples.md` §6 for an actionable tool-result error payload.
 
 - **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message`.
@@ -495,12 +503,21 @@ And does the same failure carry the identical envelope whether it surfaces as a 
 
 - **Declare task support at both levels.** Native task augmentation requires the server to advertise the `tasks` capability (`server.capabilities.tasks.requests.tools.call`) AND the tool to declare `execution.taskSupport` as `optional`, `required`, or `forbidden`.
   The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
+  `forbidden` is the default: an omitted `execution.taskSupport` is not "unspecified," it declares the tool non-task-capable, and clients MUST NOT task-augment it.
+  Declare it explicitly on every task-capable tool, exactly as §3 requires for annotation defaults — silence here silently disables the design.
+  Both tool-level mismatches answer `-32601` (Method not found): SHOULD when a client task-augments a `forbidden` tool, MUST when it fails to augment a `required` one.
+  The distinct capability-level case — a receiver that requires task augmentation for a whole request type and receives an unaugmented request — MAY answer `-32600`.
+  Both stay JSON-RPC errors even when the affected method is `tools/call`, because they concern the call's admissibility rather than the tool's semantics; §6 owns that carrier rule, this section owns the codes.
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
   `tasks/result` blocks until the task reaches a terminal status and its response is always the underlying result, never an intermediate payload; an agent may keep polling `tasks/get` in parallel while it waits.
   Task objects use the spec's fields and casing — `taskId`, `status`, optional `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — and `status` is one of `working`, `input_required`, `completed`, `failed`, `cancelled`.
   A `CreateTaskResult` may carry `io.modelcontextprotocol/model-immediate-response` in `_meta` — a string the host can hand the model immediately while the task runs; provide it so task-accepting calls do not go silent.
   Carry `io.modelcontextprotocol/related-task` in `_meta` on task-associated messages whose payload does not already name the task: `tasks/result` responses MUST include it, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT, because the `taskId` already travels in the message itself.
+
+- **A failed tool call fails its task.** When a task wraps a `tools/call` and the tool returns `isError: true`, the task reaches the terminal `failed` status — not `completed` — and `tasks/get` SHOULD carry diagnostic text in `statusMessage`.
+  `tasks/result` then returns exactly what the unwrapped call would have: the same `isError: true` result with the same §6 envelope, so the failure is readable from either surface.
+  Without this coupling an agent polling task status sees `completed` and never inspects the payload that says otherwise.
 
 - **Treat `notifications/tasks/status` as optional push, not contract.** Receivers MAY emit it on status changes with the full task state; requestors MUST NOT rely on receiving it.
   Keep polling `tasks/get` as the authoritative status path, and use the notification only to poll sooner.
@@ -607,8 +624,11 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
 - **Deprecated capabilities remain discoverable.** They continue to appear in discovery (see §2) until removal, with a deprecation marker and a pointer to the replacement.
   Silently dropping them breaks cached clients.
 
-- **Adding optional fields is safe.** Removing or renaming fields, codes, or tools is a breaking change — bump the fingerprint where you publish one.
+- **Adding optional fields is additive by direction, not universally safe.** Removing or renaming fields, codes, or tools is a breaking change — bump the fingerprint where you publish one.
   Document the migration in the deprecation marker.
+  Additions are not symmetric: a new optional *input* property is additive, because existing calls that omit it stay valid.
+  A new *output* property is additive only for tolerant consumers — this skill closes object schemas with `additionalProperties: false` (§3), and clients SHOULD validate `structuredContent` against the published `outputSchema` (§3), so a client still holding a cached closed schema rejects the very field you added.
+  Ship output additions behind a rediscovery signal: bump the fingerprint where you publish one and emit the relevant `list_changed` notification, so caching and pinning clients — the ones this section exists to protect — refetch before they see the new field.
 
 - **Treat tool rename as remove-plus-add.** Renaming a tool is a discovery-surface change (see §2) — clients that cached the old surface will break silently otherwise.
   Keep the old name with a deprecation pointer for the documented window.
