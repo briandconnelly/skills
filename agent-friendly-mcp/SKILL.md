@@ -18,20 +18,18 @@ This section is the single home for RC expectations; forward-compat notes elsewh
 Treat init-time capability negotiation, native tasks, and roots as **likely migration points** — design against them today, and hedge concretely: branch on stable symbolic codes rather than numeric or transport-level details where you have the choice, keep workspace scope expressible as ordinary tool arguments (contract-checklist §1 forward-compat), and keep task status/result/cancel expressible as ordinary tools (§7 forward-compat).
 Revisit this skill when 2026-07-28 finalizes.
 
-## Core Standard
+## What This Skill Optimizes For
 
-- Tool and resource schemas are the operational contract; prompts are advisory scaffolding for orchestration.
-  Do not hide essential behavior in prompts.
-- Server-level `instructions` are advisory and may not be surfaced by every client.
-  Do not put essential selection, prerequisite, safety, or repair behavior only in `instructions`.
-- Optional MCP features only exist for an agent after protocol version and capability negotiation.
-  Gate roots, completions, resource subscriptions, elicitation, list-change notifications, and tasks on the initialized capabilities.
-- First-call and first-repair success from a cold start are first-class quality metrics: measure both per design-workflow Step 8, and treat a design change that regresses either as wrong.
-- Design around user/agent tasks, not the underlying API's endpoint surface.
-- Declare side effects and idempotency via tool annotations where MCP assigns them meaning (contract-checklist §3), surface rate limits in structured response fields (§3/§6), and declare agent-actionable prerequisites in the capability summary (§1).
-- Default to compact, deterministic, structured output; structured data is authoritative and text or markdown is supplemental rendering for human-facing clients.
-- Provide explicit discovery primitives, but keep every definition compact: the least-capable realistic client preloads the whole catalog from `tools/list`, so compact schemas and concise descriptions are the universal baseline, and selective on-demand loading is a client-dependent optimization layered on top.
-- Design for the least-capable realistic client: some preload tools, paginate discovery, ignore annotations, or expose resources poorly.
+Orientation only — every rule below lives in [contract-checklist.md](references/contract-checklist.md) and is cited here by id.
+Nothing in this section is normative; when it and the checklist appear to disagree, the checklist is right.
+
+- **The schema is the contract.** Tool and resource schemas carry the operational contract; prompts and server `instructions` are advisory and may not reach the model at all — `[5.scaffolding-only]`, `[5.ap-contract-container]`.
+- **Capabilities are negotiated, not assumed.** Optional features exist for an agent only after negotiation — `[1.negotiated-caps]`.
+- **Cold-start first-call and first-repair success are the metrics.** Measure both; treat a change that regresses either as wrong — design-workflow Step 8 builds the measurement, Step 9 owns the regression gate.
+- **Tasks, not endpoints.** Granularity follows what a user is trying to do — `[3.task-completing]`, `[3.ap-endpoint-wrapping]`.
+- **Safety signals belong in structured fields.** Side effects, idempotency, rate limits, and prerequisites are contract, not prose — `[3.declare-effects]`, `[1.implicit-state]`.
+- **Structured output is authoritative.** Text and markdown are supplemental rendering — `[3.structured-default]`.
+- **Design for the least-capable realistic client.** It preloads the whole catalog, may ignore annotations, and may expose resources poorly, so compact definitions are the universal baseline and progressive disclosure is a client-dependent optimization on top — `[2.compact-baseline]`, `[2.progressive-disclosure]`, `[2.client-variance]`.
 
 ## Native Fields vs Convention Extensions
 
@@ -79,6 +77,8 @@ The normative standard lives in [contract-checklist.md](references/contract-chec
 This index orients and routes — it does not restate the rules.
 State-handle discipline and long-running-operation contracts are normative in §1/§8 and §7 respectively; consult them there rather than a second copy here.
 Notation: bare `§N` always means a contract-checklist section; `ex§N` means section N of [examples.md](references/examples.md).
+A single rule is cited by its stable id, `` `[section.slug]` `` — `[3.naming]`, `[6.repair-object]` — which resolves to exactly one bullet in contract-checklist.md and survives rewording of that bullet.
+Prefer a rule id over a section reference when you mean one specific rule; `tests/check_rule_ids.py` fails the build if a cited id does not resolve.
 
 | § | Section | One-line rule | Worked examples |
 | --- | --- | --- | --- |
