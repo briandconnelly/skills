@@ -5,33 +5,43 @@ Every digest, count and manifest in the output is produced here at write time,
 per the repo rule against hand-transcribed hashes. Nothing in the artifact is
 typed by hand except its prose.
 
-Run from the repository root:
+Run it against the run directory the arms wrote to:
 
-    python3 hypothesis-driven-analysis/tests/runs/artifacts/build-scenario21-evidence.py
+    python3 hypothesis-driven-analysis/tests/runs/artifacts/build-scenario21-evidence.py \\
+        --run-dir /path/to/s21run
 
-It is archived beside its output so the artifact can be regenerated and checked
-rather than trusted. It reads the run's scratch directory, which is not part of
-the repository; once that is gone this script documents how the artifact was
-made but can no longer reproduce it.
+The run directory holds `preedit-skill/SKILL.md`, one `transcripts/*.jsonl` per
+arm, and `<batch>/<arm>/answer.md`. It is deliberately outside the repository —
+arms run on private copies — so this script reproduces the artifact only while
+that directory survives. Once it is gone the script still documents exactly how
+the artifact was built, and the digests it emitted remain checkable against the
+fixtures and `git show HEAD:...SKILL.md`.
+
+The repository root is derived from this file's own location, so the script runs
+wherever the repo is checked out.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
-S = Path(
-    "/private/tmp/claude-501/-Users-bdc-projects-skills/"
-    "3a9b890a-f35f-4482-8fe2-82812ec32d8f/scratchpad/s21run"
-)
-REPO = Path("/Users/bdc/projects/skills")
+# .../hypothesis-driven-analysis/tests/runs/artifacts/<this file>
+REPO = Path(__file__).resolve().parents[4]
 HDA = REPO / "hypothesis-driven-analysis"
 FIXTURES = HDA / "tests/fixtures/s21-status-disposition"
 OUT = HDA / "tests/runs/artifacts/2026-07-25-scenario21-status-disposition-evidence.md"
 EXTRACT = HDA / "tests/extract_evidence.py"
+
+# Set by main() from --run-dir or $S21_RUN_DIR; module-level so the section
+# helpers can normalize scratch paths out of the emitted text.
+S = Path()
 
 # ordinal, timestamp, tool, result status, target
 MANIFEST_FIELDS = 5
@@ -259,8 +269,32 @@ def section_answers(arms: dict) -> list[str]:
     return out
 
 
+def resolve_run_dir() -> Path:
+    """The run directory, from --run-dir or $S21_RUN_DIR. Fails fast and says
+    what it expected, rather than emitting a half-built artifact."""
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--run-dir",
+        type=Path,
+        default=os.environ.get("S21_RUN_DIR"),
+        help="directory holding preedit-skill/, transcripts/ and <batch>/<arm>/answer.md",
+    )
+    args = ap.parse_args()
+    if args.run_dir is None:
+        ap.error("pass --run-dir or set S21_RUN_DIR (the arms' run directory)")
+    run_dir = Path(args.run_dir).expanduser().resolve()
+    for required in ("preedit-skill/SKILL.md", "transcripts"):
+        if not (run_dir / required).exists():
+            sys.exit(f"run directory {run_dir} has no {required}; is this the right --run-dir?")
+    return run_dir
+
+
 def main() -> None:
+    global S  # noqa: PLW0603 — set once from the CLI before anything reads it
+    S = resolve_run_dir()
     arms = collect()
+    if not arms:
+        sys.exit(f"no arm transcripts found under {S / 'transcripts'}")
     skill_bytes = (S / "preedit-skill/SKILL.md").read_bytes()
     head_skill = subprocess.run(
         ["git", "-C", str(REPO), "show", "HEAD:hypothesis-driven-analysis/SKILL.md"],
@@ -279,6 +313,12 @@ def main() -> None:
         + section_manifests(arms)
         + section_answers(arms)
     )
+    # Sections end with a blank separator line; drop the trailing ones so a
+    # regeneration matches the committed file byte for byte. Without this the
+    # end-of-file-fixer hook strips them at commit time and every later run
+    # shows a one-line diff that means nothing.
+    while lines and not lines[-1].strip():
+        lines.pop()
     OUT.write_text("\n".join(lines) + "\n")
     print(f"wrote {OUT.relative_to(REPO)}  ({len(lines)} lines, {len(arms)} arms)")
     print(f"input-scope violations: {violations}")
