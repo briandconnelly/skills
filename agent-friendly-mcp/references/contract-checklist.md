@@ -66,7 +66,8 @@ Walk it top to bottom when designing or reviewing a server.
 
 - **Expose auth mechanics that affect repair.** For HTTP authorization, document the canonical server URI and resource indicator used for token audience binding, never pass through tokens issued for a different resource, and surface incremental or step-up scope challenges as structured repair (`required_scopes`, `resource`, `authorization_url` or elicitation URL where appropriate).
   For stdio, document where credentials come from only when the agent can act on it.
-  Dynamic Client Registration (RFC 7591) is deprecated in favour of Client ID Metadata Documents; new servers should target the latter and keep DCR only as backwards compatibility for authorization servers that lack CIMD support.
+  For client registration, the baseline makes Client ID Metadata Documents the SHOULD and Dynamic Client Registration a MAY "included for backwards compatibility"; the client priority order is pre-registered credentials, then CIMD, then DCR, then prompting the user.
+  Target CIMD and keep DCR only as the fallback for authorization servers that do not advertise `client_id_metadata_document_supported`.
 
 Audit prompt: Can an agent learn what this server does, what it doesn't, and which prerequisites affect use, in a single read?
 
@@ -434,7 +435,7 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - **Tool semantic errors return as tool result errors.** Set `isError: true` on the tool result.
   JSON-RPC errors are reserved for transport, protocol, and non-tool RPC methods (such as `resources/read` and `resources/list`); raising a JSON-RPC error from `tools/call` strips the structured-response contract from the failure path.
-  The exceptions are protocol-level conditions the spec assigns a code to, which stay JSON-RPC even on `tools/call`: `-32042` when a URL-mode elicitation must complete first (above), and `-32601` / `-32600` for task-augmentation mismatches (§7).
+  The exceptions are protocol-level conditions the spec assigns a code to, which stay JSON-RPC even on `tools/call`: `-32042` when a URL-mode elicitation must complete first (above), and the task-augmentation mismatch codes in §7.
   These are conditions about the call's admissibility, not about the tool's semantics — the rule is that *semantic* failures never leave the tool-result carrier.
   See `examples.md` §6 for an actionable tool-result error payload.
 
@@ -504,7 +505,8 @@ And does the same failure carry the identical envelope whether it surfaces as a 
   The per-tool flag alone is insufficient — without the server capability, clients must not attempt task augmentation.
   `forbidden` is the default: an omitted `execution.taskSupport` is not "unspecified," it declares the tool non-task-capable, and clients MUST NOT task-augment it.
   Declare it explicitly on every task-capable tool, exactly as §3 requires for annotation defaults — silence here silently disables the design.
-  A client that task-augments a `forbidden` tool gets `-32601`; a receiver that requires augmentation and does not get it answers `-32600` (§6).
+  Both tool-level mismatches answer `-32601` (Method not found): SHOULD when a client task-augments a `forbidden` tool, MUST when it fails to augment a `required` one.
+  The distinct capability-level case — a receiver that requires task augmentation for a whole request type and receives an unaugmented request — MAY answer `-32600` (§6).
 
 - **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting the returned `pollInterval`), retrieve the result with `tasks/result`, and cancel with `tasks/cancel`.
   `tasks/result` blocks until the task reaches a terminal status and its response is always the underlying result, never an intermediate payload; an agent may keep polling `tasks/get` in parallel while it waits.
@@ -512,7 +514,7 @@ And does the same failure carry the identical envelope whether it surfaces as a 
   A `CreateTaskResult` may carry `io.modelcontextprotocol/model-immediate-response` in `_meta` — a string the host can hand the model immediately while the task runs; provide it so task-accepting calls do not go silent.
   Carry `io.modelcontextprotocol/related-task` in `_meta` on task-associated messages whose payload does not already name the task: `tasks/result` responses MUST include it, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT, because the `taskId` already travels in the message itself.
 
-- **A failed tool call fails its task.** When a task wraps a `tools/call` and the tool returns `isError: true`, the task reaches the terminal `failed` status — not `completed` — and `tasks/get` carries diagnostic text in `statusMessage`.
+- **A failed tool call fails its task.** When a task wraps a `tools/call` and the tool returns `isError: true`, the task reaches the terminal `failed` status — not `completed` — and `tasks/get` SHOULD carry diagnostic text in `statusMessage`.
   `tasks/result` then returns exactly what the unwrapped call would have: the same `isError: true` result with the same §6 envelope, so the failure is readable from either surface.
   Without this coupling an agent polling task status sees `completed` and never inspects the payload that says otherwise.
 
