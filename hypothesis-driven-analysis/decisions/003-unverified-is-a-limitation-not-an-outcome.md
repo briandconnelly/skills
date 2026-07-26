@@ -29,13 +29,14 @@ The pull toward a fourth value is real, so the rule has to say explicitly that t
 
 ## Known gap
 
-This settles the *test outcome*. It does not settle what the affected hypothesis's status should be, and arms split on that question against identical packets.
-Tracked as issue #113, deliberately unfixed: the c3 packet in `tests/fixtures/s20-deviation-disposition/` is already the right fixture, and it needs the question asked of it before any wording lands.
-Adding an unmeasured rule to SKILL.md is the failure mode #103 exists to punish.
+This settles the *test outcome*. It did not settle what the affected hypothesis's status should be.
+
+Closed by [005](005-status-under-an-unverified-return.md): Scenario 21 asked that question of a purpose-built decision-point fixture, and the existing text turned out to produce the intended status without a new rule.
+The claim recorded here in the first draft — that arms split on the question against identical packets — overstated the archive, and issue #113 inherited the error. One arm of twelve derived the other status, in the Fifteenth wave's superseded round.
 
 ## Reopening condition
 
-Issue #113 measures the hypothesis-status decision point, or a scorer needs the unverified state machine-detectable — which the current arrangement does not provide, since the limitation is prose.
+A scorer needs the unverified state machine-detectable, which the current arrangement does not provide, since the limitation is prose.
 
 ## Where the rule lives
 

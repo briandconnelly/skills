@@ -1689,6 +1689,290 @@ def build_deviation_disposition_fixture(outdir: Path) -> None:
         write_text(outdir / name, S20_HEADER + S20_LEDGER + S20_BRIEF + _s20_return(case))
 
 
+# Scenario 21: hypothesis status when the supporting return is unverified
+# (s21-status-disposition)
+#
+# Issue #113. S20 measured which value goes in the ledger's Outcome cell when a
+# worker return is faulted. This measures the NEXT step: given a correctly
+# reconciled ledger, what status does the Conclusion section derive?
+#
+# Every packet hands the arm a Tests row that is ALREADY reconciled exactly as
+# SKILL.md's Analysis section directs, and asks only for the derived status. That
+# is deliberate. S20's prompt made the status question downstream of the arm's own
+# fault-finding, so an arm that had just spent a paragraph on why a return cannot
+# be trusted was primed to carry that into the status; its c3 cell came back 0/6
+# on the failure mode, which makes it useless as an instrument here. Handing over
+# the reconciled state puts both readings of the Conclusion text equally in view,
+# which is the decision point #113 names.
+#
+# The world is S20's, so the two fixtures stay comparable: checkout conversion
+# fell on 2026-06-11 vs 2026-06-10, and H2 blames payment-gateway latency. The
+# refute-side packets keep S20's necessary prediction (flat p95 refutes H2); the
+# support-side packets show the predicted rise instead, so T2 lands CONSISTENT and
+# the question becomes whether H2 clears the best-supported bar.
+#
+# Every packet carries the preregistered Data Validity section for the same reason
+# S20 does: a flat p95 is a null result that SKILL.md's Data section otherwise
+# forces to NON_DISCRIMINATING for want of a sensitivity check, independently of
+# anything under test. Omitting it cost S20 thirty arms.
+#
+#   d1-nondiscriminating: Outcome NON_DISCRIMINATING (S20's c1 world — an
+#     established deviation left the prediction untested). The floor control: the
+#     existing rule already settles it at UNRESOLVED, and no new rule is needed.
+#   d3-conflict: Outcome CONTRADICTED with the unverified-return limitation
+#     recorded beside it, the execution-record conflict named. THE TEST CELL for
+#     the refute side. Both readings follow from the current text.
+#   d4-deviation: Outcome CONTRADICTED, a disclosed immaterial deviation recorded,
+#     prediction adequately tested, no limitation. Over-correction control.
+#   d5-unrepeatable: Outcome CONTRADICTED on a return the free check CLEARED,
+#     carrying SKILL.md's other unverified-return limitation — the metered source
+#     whose budget is spent. THE REGRESSION CONTROL THAT MATTERS MOST: SKILL.md
+#     attaches the phrase "resting on an unverified worker return" both here and
+#     to the execution-record conflict, so a rule keyed on that phrase rather than
+#     on the conflict would stop every metered investigation from ever refuting
+#     anything. Nothing in the existing corpus covers this case.
+#   d6-support-conflict: Outcome CONSISTENT with the same execution-record
+#     conflict; rivals H1 and H3 already REFUTED so the best-supported bar is live.
+#     THE TEST CELL for the support side.
+#   d7-support-clean: Outcome CONSISTENT on a cleared-but-unrepeatable return.
+#     The support-side regression control — best supported must still stand.
+#
+# Correct handling and assertions live in tests/scenarios.md (Scenario 21);
+# scenario agents may read only their packet copy, never this file.
+
+S21_HEADER = """# Status packet — one reconciled test
+
+You are the main agent of an investigation that has already dispatched its workers.
+Test T2's worker return has arrived AND HAS ALREADY BEEN RECONCILED into the ledger below,
+by the reconciliation step the skill prescribes. That reconciliation is settled and is not
+yours to revisit: the Outcome cell and the limitation recorded beside it are given.
+Everything you have about T2 is below.
+"""
+
+# The support-side rise: 24.1 -> 31.2 is +29.5% relative, clear of the >20% the
+# necessary prediction names, so T2 lands CONSISTENT rather than CONTRADICTED.
+S21_GW_11_HIGH = "gateway_p95_ms=31.2 gateway_p50_ms=12.4 timeouts=97 requests=496880"
+
+_S21_HYP_HEADER = (
+    "| id | claim | Candidate explanation | Prediction if true | Prediction if false "
+    "| Necessary prediction (failure refutes) | Cheapest adequate test |"
+)
+_S21_H2_ROW = _S20_HYP_ROW
+_S21_H1_ROW = (
+    "| H1 | causal | A CDN edge regression drove the 2026-06-11 checkout-conversion drop "
+    "| edge error rate rises materially on 2026-06-11 | edge error rate flat "
+    "| flat edge error rate between 2026-06-10 and 2026-06-11 refutes H1 | T1 |"
+)
+_S21_H3_ROW = (
+    "| H3 | data-artifact | The drop is an artifact of missing checkout events on 2026-06-11 "
+    "| 2026-06-11 event coverage falls below the expected schedule | coverage matches schedule "
+    "| coverage at or above the expected schedule on 2026-06-11 refutes H3 | T3 |"
+)
+
+# The rival rows exist only in the support-side packets. On the refute side the
+# best-supported bar is not in play, and carrying unrefuted rivals there would let
+# an arm reach UNRESOLVED on limb 3 of that bar rather than on the rule under test.
+_S21_RIVAL_TESTS = """| T1 | H1 | warehouse `cdn_edge`, 2026-06-10 vs 2026-06-11 | CONTRADICTED | \
+edge error rate 0.31% -> 0.29%, flat; clean return, free check passed |
+| T3 | H3 | checkout event coverage vs expected schedule, 2026-06-11 | CONTRADICTED | \
+coverage 99.97% of schedule at the crossed grain; clean return, free check passed |"""
+
+
+def _s21_reconciled_row(case: str) -> str:
+    """The Tests row as the Analysis section leaves it. The Outcome cell always
+    holds a member of the closed set; where a limitation applies it is recorded
+    beside the outcome, never inside it (decisions/003)."""
+    if case == "d1":
+        return (
+            "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | NON_DISCRIMINATING "
+            "| established deviation: the quoted commands and the tool's own output headers agree "
+            "on 2026-06-09 and 2026-06-11, a procedure the brief did not authorize, so the "
+            "preregistered 06-10-vs-06-11 prediction was not tested |"
+        )
+    if case == "d3":
+        return (
+            "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | CONTRADICTED "
+            "| rests on an unverified worker return: Command 1 reads `--day 2026-06-10` while the "
+            "output quoted beneath it reads `day=2026-06-09`, and the two execution records "
+            "conflict with nothing to say which is the error; no outside evidence resolves it |"
+        )
+    if case == "d4":
+        return (
+            "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | CONTRADICTED "
+            "| deviation recorded: the worker added `--format json` to both commands, disclosed "
+            "it, and the execution record shows it; both briefed days were pulled at the briefed "
+            "dataset, grain and fields, so the preregistered prediction was adequately tested |"
+        )
+    if case == "d5":
+        return (
+            "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | CONTRADICTED "
+            "| rests on an unverified worker return: the free check found no fault — commands, "
+            "outputs, method, grain and window all agree with the brief — but the source is "
+            "metered, the budget is spent, and the collection could not be re-run to confirm it |"
+        )
+    if case == "d6":
+        return (
+            "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | CONSISTENT "
+            "| rests on an unverified worker return: Command 1 reads `--day 2026-06-10` while the "
+            "output quoted beneath it reads `day=2026-06-09`, and the two execution records "
+            "conflict with nothing to say which is the error; no outside evidence resolves it |"
+        )
+    # d7
+    return (
+        "| T2 | H2 | warehouse `gateway_lat`, 2026-06-10 vs 2026-06-11 | CONSISTENT "
+        "| rests on an unverified worker return: the free check found no fault — commands, "
+        "outputs, method, grain and window all agree with the brief — but the source is "
+        "metered, the budget is spent, and the collection could not be re-run to confirm it |"
+    )
+
+
+def _s21_ledger(case: str) -> str:
+    support = case in ("d6", "d7")
+    hyp_rows = f"{_S21_H1_ROW}\n{_S21_H2_ROW}\n{_S21_H3_ROW}" if support else _S21_H2_ROW
+    test_rows = (
+        f"{_S21_RIVAL_TESTS}\n{_s21_reconciled_row(case)}" if support else _s21_reconciled_row(case)
+    )
+    # The detection-limit paragraph is what keeps the null-result sensitivity rule
+    # out of the refute-side packets. On the support side T2 is a positive result,
+    # so that rule never engages; the census statement is kept anyway so the two
+    # sides differ only in what is under test.
+    validity = """### Data validity (preregistered, before any return arrived)
+
+The `gateway_lat` daily row is a complete census of that day's gateway calls, not a sample, so the
+day's `gateway_p95_ms` is the population value rather than an estimate of one. The tool's published
+resolution for that field is 0.1ms, which at these magnitudes is a documented detection limit of
+about 0.4% relative — far below the >20% relative rise H2 predicts. A reading either way therefore
+discriminates on its own: a change of the predicted size could not hide inside that limit, and no
+further sensitivity check is outstanding for T2.
+
+Collection status: the `warehouse` CLI is metered, the investigation's budget is fully
+spent, and further metered queries are not authorized. This is a non-interactive run; no
+user is available to ask."""
+    rivals_note = (
+        """
+
+### Rivals (reconciled)
+
+All rival explanations on the table have been tested and reconciled: T1 and T3 both came back
+`CONTRADICTED` on clean returns whose free checks passed, so H1 and H3 are `REFUTED` on their
+necessary predictions. No other explanation remains on the table."""
+        if support
+        else ""
+    )
+    return f"""
+## Ledger extract
+
+### Hypotheses
+
+{_S21_HYP_HEADER}
+| --- | --- | --- | --- | --- | --- | --- |
+{hyp_rows}
+
+### Tests (T2 as reconciled — settled, not yours to revisit)
+
+| id | Hypothesis | What it reads | Outcome | Evidence and limitations |
+| --- | --- | --- | --- | --- |
+{test_rows}
+
+{validity}{rivals_note}
+"""
+
+
+def _s21_return(case: str) -> str:
+    """The return is shown so the recorded limitation is legible, not so the arm
+    can re-litigate the reconciliation."""
+    if case == "d1":
+        cmd1_day, out1_day, out1 = "2026-06-09", "2026-06-09", S20_GW_09
+    elif case in ("d3", "d6"):
+        cmd1_day, out1_day, out1 = "2026-06-10", "2026-06-09", S20_GW_09
+    else:  # d4, d5, d7 — the briefed day, pulled and quoted consistently
+        cmd1_day, out1_day, out1 = "2026-06-10", "2026-06-10", S20_GW_10
+    support = case in ("d6", "d7")
+    day11 = S21_GW_11_HIGH if support else S20_GW_11
+    outcome = "CONSISTENT" if support else "CONTRADICTED"
+    if support:
+        base = 24.6 if case == "d6" else 24.1
+        rel = (31.2 - base) / base * 100
+        delta = (
+            f"gateway_p95_ms {base} -> 31.2 = +{31.2 - base:.1f}ms = +{rel:.1f}% relative change "
+            "(>20% threshold)."
+        )
+        reading = """The change exceeds the material-rise bound the prediction names
+(the necessary prediction for H2-TRUE held)."""
+    else:
+        base = 24.6 if case in ("d1", "d3") else 24.1
+        rel = (25.0 - base) / base * 100
+        delta = (
+            f"gateway_p95_ms {base} -> 25.0 = +{25.0 - base:.1f}ms = +{rel:.1f}% relative change "
+            "(<10% threshold)."
+        )
+        reading = """The change falls within the flat/noise-level bound defined by the refutation
+condition (the necessary prediction for H2-TRUE failed to materialize)."""
+    # d4's deviation is the output ENCODING, so its outputs must be JSON. A
+    # `--format json` command over a plain-text output would make the two
+    # execution records disagree — the d3 conflict shape — and would silently
+    # turn this over-correction control into a second test cell.
+    if case == "d4":
+        flag = " --format json"
+        block1 = S20_GW_10_JSON
+        block2 = S20_GW_11_JSON
+        deviations = (
+            "added `--format json` to both commands so the output would parse cleanly; "
+            "same dataset, days, grain and fields as briefed."
+        )
+    else:
+        flag = ""
+        block1 = f"dataset=gateway_lat day={out1_day}\n{out1}"
+        block2 = f"dataset=gateway_lat day=2026-06-11\n{day11}"
+        deviations = "none."
+    return f"""
+## Worker W2 return (T2, gateway_lat) — as received
+
+Test outcome: {outcome}
+
+Evidence:
+Command 1: `warehouse --dataset gateway_lat --day {cmd1_day}{flag}`
+Output:
+
+```
+{block1}
+```
+
+Command 2: `warehouse --dataset gateway_lat --day 2026-06-11{flag}`
+Output:
+
+```
+{block2}
+```
+
+Field-by-field comparison:
+- {delta}
+- gateway_p50_ms and timeouts moved in step.
+
+{reading}
+
+Method and sample: warehouse CLI run twice, once per day, against `gateway_lat` for
+2026-06-10 and 2026-06-11, at the daily summary grain the tool natively returns. 2 of 3
+budgeted calls used; no repeat needed since neither output looked malformed.
+
+Deviations from brief: {deviations}
+
+Surprises: none.
+"""
+
+
+def build_status_disposition_fixture(outdir: Path) -> None:
+    for case, name in (
+        ("d1", "d1-nondiscriminating.md"),
+        ("d3", "d3-conflict.md"),
+        ("d4", "d4-deviation.md"),
+        ("d5", "d5-unrepeatable.md"),
+        ("d6", "d6-support-conflict.md"),
+        ("d7", "d7-support-clean.md"),
+    ):
+        write_text(outdir / name, S21_HEADER + _s21_ledger(case) + S20_BRIEF + _s21_return(case))
+
+
 def main() -> None:
     build_conversion_fixture(HERE / "s1-conversion", with_payment_signal=False)
     build_conversion_fixture(HERE / "s5-conversion-payment", with_payment_signal=True)
@@ -1702,6 +1986,7 @@ def main() -> None:
     build_resume_fixture(HERE / "s16-resume")
     build_worker_crash_fixture(HERE / "s19-worker-crash")
     build_deviation_disposition_fixture(HERE / "s20-deviation-disposition")
+    build_status_disposition_fixture(HERE / "s21-status-disposition")
 
 
 if __name__ == "__main__":
