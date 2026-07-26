@@ -111,6 +111,14 @@ def test_manifest_match_is_silent(tmp_path, monkeypatch):
     assert c.manifest_drift({"1.name": 1}) == []
 
 
+def test_indented_manifest_comment_is_not_a_rule_id(tmp_path, monkeypatch):
+    """An indented comment must not survive stripping and read as an id."""
+    manifest = tmp_path / "rule-ids.txt"
+    manifest.write_text("  # indented note\n\t# tabbed note\n1.name\n")
+    monkeypatch.setattr(c, "MANIFEST", manifest)
+    assert c.manifest_drift({"1.name": 1}) == []
+
+
 def test_citation_regex_ignores_malformed_ids():
     # `[1.Bad_Slug]` is not a citation shape, so it cannot resolve by accident.
     assert c.CITE_RE.findall("see `[1.Bad_Slug]` and `[1.good-slug]`") == ["1.good-slug"]

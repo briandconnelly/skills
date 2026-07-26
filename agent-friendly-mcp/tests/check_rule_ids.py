@@ -134,11 +134,13 @@ def unresolved_citations(ids: dict[str, int]) -> list[str]:
 def manifest_drift(ids: dict[str, int]) -> list[str]:
     if not MANIFEST.is_file():
         return [f"{MANIFEST.name}: missing rule-id manifest"]
-    committed = {
-        line.strip()
-        for line in MANIFEST.read_text(encoding="utf-8").split("\n")
-        if line.strip() and not line.startswith("#")
-    }
+    committed = set()
+    for raw in MANIFEST.read_text(encoding="utf-8").split("\n"):
+        line = raw.strip()
+        # Test the stripped value: an indented comment would otherwise survive
+        # the filter and be compared as if it were a rule id.
+        if line and not line.startswith("#"):
+            committed.add(line)
     problems = []
     for gone in sorted(committed - ids.keys()):
         problems.append(
