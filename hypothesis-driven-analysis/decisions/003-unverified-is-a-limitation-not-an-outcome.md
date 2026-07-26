@@ -32,7 +32,7 @@ The pull toward a fourth value is real, so the rule has to say explicitly that t
 This settles the *test outcome*. It did not settle what the affected hypothesis's status should be.
 
 Closed by [005](005-status-under-an-unverified-return.md): Scenario 21 asked that question of a purpose-built decision-point fixture, and the existing text turned out to produce the intended status without a new rule.
-The claim recorded here in the first draft — that arms split on the question against identical packets — overstated the archive, and issue #113 inherited the error. One arm of twelve derived the other status, in the Fifteenth wave's superseded round.
+The claim recorded here in the first draft — that arms split on the question against identical packets — overstated the archive, and issue #113 inherited the error. One arm of fifteen derived the other status, in the Fifteenth wave's superseded round.
 
 ## Reopening condition
 

@@ -18,7 +18,18 @@ being the case it was built to be, and the ways it stops being one are quiet:
   - a Tests-row Outcome that drifts from the return's own outcome makes the
     packet incoherent rather than hard;
   - a support packet that loses its refuted rivals lets an arm decline "best
-    supported" on limb 3 of that bar instead of on the rule under test.
+    supported" on limb 3 of that bar instead of on the rule under test;
+  - figures that stay internally consistent while no longer clearing the
+    threshold the recorded outcome needs;
+  - a conflict planted in the SECOND command/output pair, when only the first
+    is inspected;
+  - a lost Data Validity section, which re-opens the null-result sensitivity
+    gate that cost the S20 wave thirty arms.
+
+The last three were found by an external review after the first version of this
+file shipped green, which is why `test_validate_s21.py` now pins every one of
+them as a known positive: a validator that cannot fail is indistinguishable from
+a fixture that is fine.
 
 Run against the fixture directory:
 
@@ -52,11 +63,24 @@ CASES = {
 }
 SUPPORT = {"d6-support-conflict", "d7-support-clean"}
 # The two packets whose limitation is the metered-and-unrepeatable one rather
-# than the execution-record conflict. Keeping both phrasings in the corpus is
-# the whole point of d5/d7: SKILL.md attaches the same words to both states.
+# than the execution-record conflict. Keeping both in the corpus is the whole
+# point of d5/d7: SKILL.md describes the two states in near-identical words, so
+# a rule keyed on the wording rather than on the conflict would catch both.
 CLEARED_BY_FREE_CHECK = {"d5-unrepeatable", "d7-support-clean"}
 
-CMD_RE = re.compile(r"Command 1: `warehouse --dataset gateway_lat --day (\d{4}-\d\d-\d\d)([^`]*)`")
+CMD_RE = re.compile(
+    r"Command (\d): `warehouse --dataset gateway_lat --day (\d{4}-\d\d-\d\d)([^`]*)`"
+)
+# Which side of its threshold the quoted delta must land on for the recorded
+# outcome to follow. A packet whose figures stop supporting its own outcome is
+# the quietest way a control cell inverts.
+OUTCOME_THRESHOLDS = {
+    # outcome: (comparison, percent) — CONSISTENT needs the >20% rise the
+    # necessary prediction names; the others need the <10% flat reading.
+    "CONSISTENT": ("above", 20.0),
+    "CONTRADICTED": ("below", 10.0),
+    "NON_DISCRIMINATING": ("below", 10.0),
+}
 DELTA_RE = re.compile(
     r"gateway_p95_ms ([\d.]+) -> ([\d.]+) = \+([\d.]+)ms = \+([\d.]+)% relative change"
 )
@@ -98,38 +122,68 @@ def check_outcomes(case: str, text: str, row: str, returned: str, outcome: str) 
 
 def check_execution_records(case: str, text: str, records_agree: bool) -> None:
     """The planted fault, or its deliberate absence — including the encoding
-    check that would have caught the d4 json-over-plaintext defect."""
-    cmd = CMD_RE.search(text)
-    if not cmd:
-        fail(f"{case}: could not parse Command 1")
+    check that would have caught the d4 json-over-plaintext defect.
+
+    BOTH command/output pairs are checked. Checking only the first would let a
+    conflict planted in command 2 turn a control cell into a test cell silently,
+    which is the same inversion the d4 defect would have caused.
+    """
+    cmds = CMD_RE.findall(text)
+    if len(cmds) != EXPECTED_BLOCKS:
+        fail(f"{case}: expected two commands, parsed {len(cmds)}")
     blocks = re.findall(r"```\n(.*?)```", text, re.S)
     if len(blocks) < EXPECTED_BLOCKS:
         fail(f"{case}: expected two quoted output blocks, found {len(blocks)}")
-    agree = cmd.group(1) == output_day(blocks[0])
-    if agree != records_agree:
-        state = "agree" if agree else "conflict"
-        want = "agree" if records_agree else "conflict"
-        fail(f"{case}: execution records {state}, expected {want}")
 
-    wants_json = "--format json" in cmd.group(2)
-    for i, block in enumerate(blocks[:EXPECTED_BLOCKS], 1):
+    conflicts = [
+        n for (n, day, _flags), block in zip(cmds, blocks, strict=False) if day != output_day(block)
+    ]
+    if records_agree and conflicts:
+        fail(f"{case}: execution records conflict at command {conflicts[0]}, expected agreement")
+    if not records_agree and conflicts != ["1"]:
+        fail(
+            f"{case}: expected exactly one planted conflict, at command 1; "
+            f"conflicting commands: {conflicts or 'none'}"
+        )
+
+    for (n, _day, flags), block in zip(cmds, blocks, strict=False):
+        wants_json = "--format json" in flags
         is_json = block.strip().startswith("{")
         if wants_json and not is_json:
-            fail(f"{case}: command 1 asks for json but output block {i} is not json")
+            fail(f"{case}: command {n} asks for json but its output is not json")
         if is_json and not wants_json:
-            fail(f"{case}: output block {i} is json but no --format json was issued")
+            fail(f"{case}: command {n} output is json but no --format json was issued")
 
 
-def check_arithmetic(case: str, text: str) -> None:
-    """No arm may reconcile on a slip this fixture never meant to plant."""
+def check_arithmetic(case: str, text: str, outcome: str) -> None:
+    """No arm may reconcile on a slip this fixture never meant to plant.
+
+    Arithmetic being self-consistent is not enough: the figures must also land on
+    the side of the threshold that the recorded outcome requires. A packet whose
+    numbers stop supporting its own outcome still passes every internal check
+    while its expected answer has quietly inverted.
+    """
     d = DELTA_RE.search(text)
     if not d:
         fail(f"{case}: could not parse the field-by-field delta line")
     lo, hi, diff, rel = (float(g) for g in d.groups())
     if abs((hi - lo) - diff) > ARITHMETIC_TOLERANCE:
         fail(f"{case}: delta {diff} != {hi} - {lo}")
-    if abs((hi - lo) / lo * 100 - rel) > ARITHMETIC_TOLERANCE:
-        fail(f"{case}: relative change {rel}% != {(hi - lo) / lo * 100:.1f}%")
+    computed = (hi - lo) / lo * 100
+    if abs(computed - rel) > ARITHMETIC_TOLERANCE:
+        fail(f"{case}: relative change {rel}% != {computed:.1f}%")
+
+    side, threshold = OUTCOME_THRESHOLDS[outcome]
+    if side == "above" and computed <= threshold:
+        fail(
+            f"{case}: outcome {outcome} needs a rise above {threshold}%, "
+            f"figures give {computed:.1f}%"
+        )
+    if side == "below" and computed >= threshold:
+        fail(
+            f"{case}: outcome {outcome} needs a change below {threshold}%, "
+            f"figures give {computed:.1f}%"
+        )
 
 
 def check_limitation(case: str, row: str, has_limitation: bool) -> None:
@@ -141,6 +195,25 @@ def check_limitation(case: str, row: str, has_limitation: bool) -> None:
         cleared = "the free check found no fault" in row
         if cleared != (case in CLEARED_BY_FREE_CHECK):
             fail(f"{case}: wrong kind of unverified-return limitation")
+
+
+def check_sections(case: str, text: str) -> None:
+    """The preregistered sections whose absence would re-open a gate this probe
+    is not testing. Omitting the Data Validity section is what cost the S20 wave
+    thirty arms: a flat p95 is a null result, and without the census population
+    and documented detection limit the sensitivity rule contests every packet
+    independently of anything under test."""
+    required = [
+        "### Data validity (preregistered, before any return arrived)",
+        "The `gateway_lat` daily row is a complete census",
+        "documented detection limit",
+        "## Brief issued to worker W2 (verbatim, as dispatched)",
+        "Refutation condition (necessary prediction",
+        "## Worker W2 return (T2, gateway_lat) — as received",
+    ]
+    for needle in required:
+        if needle not in text:
+            fail(f"{case}: missing required section or clause: {needle!r}")
 
 
 def check_rivals(case: str, text: str, records_agree: bool) -> None:
@@ -164,8 +237,9 @@ def check(path: Path, case: str) -> None:
         fail(f"{case}: no reconciled T2 row")
     check_outcomes(case, text, row, returned, outcome)
     check_execution_records(case, text, records_agree)
-    check_arithmetic(case, text)
+    check_arithmetic(case, text, returned)
     check_limitation(case, row, has_limitation)
+    check_sections(case, text)
     check_rivals(case, text, records_agree)
 
 

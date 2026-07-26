@@ -29,17 +29,17 @@ So for one faulted return two literal readings both follow: the recorded `CONTRA
 ## What settled it
 
 Scenario 21 — a decision-point probe that hands an arm the reconciled ledger the skill itself prescribes and asks only what status follows.
-Eighteen Sonnet arms against the **unedited** skill: six canary and twelve scored, n=3 on the four decisive cells.
+Twelve scored Sonnet arms against the **unedited** skill, n=3 on four cells, plus six canary arms that are fixture validation rather than evidence (`tests/PROTOCOL.md` step 4).
 
-All eighteen answered correctly.
+All twelve scored arms answered correctly, and so did all six canaries.
 
 - The two test cells — an execution-record conflict under `CONTRADICTED` (d3) and under `CONSISTENT` (d6) — came back `UNRESOLVED`, and d6 additionally declined "best supported", 3/3 each.
 - The two regression controls — a cleared-but-unrepeatable return under each outcome (d5, d7) — held `REFUTED` and held "best supported", 3/3 each.
 
 The rationales are what settled it rather than the labels.
 Arms did not stumble onto the right answers; they reconstructed the rule that was about to be written, from the text as it stands, and drew the two-limitation distinction unprompted.
-One put it plainly: the skill "distinguishes a clean-but-unconfirmable return (a limitation to disclose) from a faulted return (which would bar treating the result as established) — T2 is the former."
-Another reasoned that a test "barred from being treated as established cannot serve as that adequate test", which is the disputed inference, drawn correctly.
+Quoting the archived answers: scored `d3-conflict-1` held that a test whose record cannot be trusted "cannot be the adequate test that clears that bar, so the CONTRADICTED outcome cannot carry H2 to REFUTED" — the disputed inference, drawn correctly.
+Scored `d7-support-clean-3` supplied the scope guard the draft rule needed, calling the unrepeatable return the "milder case the skill names" rather than "the harsher conflicting-execution-records case".
 
 `tests/PROTOCOL.md`'s ordering, and the S19 precedent — "If all three arms pass 1–5, the current text already induces correct handling and item 4 needs no wording change" — both point the same way.
 S19's item 4 was declined on weaker evidence than this.
@@ -47,19 +47,24 @@ S19's item 4 was declined on weaker evidence than this.
 ## Why the ambiguity is nonetheless real
 
 The two readings are both available to a careful reader, and one archived arm took the wrong one: `round1-preC3-2` in the Fifteenth wave derived `REFUTED` and wrote the unverified-return limitation beside it — the unrepresentable state itself, reached by "mechanically deriving H2's status from that CONTRADICTED outcome".
-That is one occurrence in twelve archived c3 arms and zero of six in that wave's authoritative round.
+That is one occurrence in fifteen archived c3 arms and zero of six in that wave's authoritative round.
 
-So the honest description is: a textual ambiguity that is real on the page and not live in behaviour, at n=18 on one model against one fixture family.
-Adding prose that measurably changes nothing has a cost — it is one more sentence to keep consistent, and `decisions/004` exists because duplicated normative statements diverge silently.
+So the honest description is: a textual ambiguity that is real on the page and was not observed in behaviour at this n, on one model against one fixture family.
+Not the same as absent — at a one-in-fifteen rate, twelve arms miss the mode entirely about 44% of the time, and the preregistration renounced the absence claim in advance.
+What the result does establish is that the inference is not fragile enough to show up readily, and adding prose that changes no measured behaviour has a cost — one more sentence to keep consistent, and `decisions/004` exists because duplicated normative statements diverge silently.
+
+## What this decision is not
+
+It is not a preregistered outcome. Scenario 21's table expected to ship the wording on exactly this result, and the decline was decided after the arms returned, on the S19 analogy and the cost argument above.
+The abort gate the table carried was keyed on post-edit controls, so with no edit it never ran.
+Recording that plainly is the point: this record would be worth little if it presented a judgement call as a rule firing.
 
 ## Where the rule lives
 
-Nowhere new. SKILL.md's Analysis section carries the limitation and its consequence; the Conclusion section carries the closed status set.
-The inference between them is one agents reliably make, which is why nothing was added.
+SKILL.md, in the sentences the arms themselves quoted: the Analysis section's disposition of a return whose execution records conflict, and the Conclusion section's closed status set.
+Nothing was added, because the reading follows from those two and agents draw it.
 
-This file is therefore the only place the chosen reading is named, which the pointer rule in [README.md](README.md) would normally forbid.
-That is the shape of a decision *not* to write a rule: there is no owning file to point at, because the whole finding is that one is not needed.
-It is safe only while the reopening condition below holds, and unsafe the moment it does not — at which point the rule gets a home in SKILL.md and this file goes back to pointing.
+An earlier draft of this record claimed there was "no owning file to point at". That was wrong, and it inverted the finding: the whole result is that the existing text *does* produce the reading, so the existing text owns it and this file points at it like any other.
 
 ## Known gaps
 
@@ -69,5 +74,5 @@ It is safe only while the reopening condition below holds, and unsafe the moment
 
 ## Reopening condition
 
-An arm derives `REFUTED`, or clears the best-supported bar, on a return whose execution records conflict — under any wording of the Analysis or Conclusion sections.
-Scenario 21's twelve scored cells are the standing check; a future edit to either section that moves them is the signal that the inference stopped being reliable and has to be written down after all.
+An arm reaches the disposition Scenario 21's d3 or d6 cell scores as a miss, under any wording of the Analysis or Conclusion sections — which is the signal that the inference stopped being reliable and has to be written down after all.
+Scenario 21's twelve scored cells are the intended standing check, but nothing currently reruns them: the prek hook validates only the fixture text, so an edit to either section will not trigger them by itself. Treat it as a check someone has to remember, not one the repo enforces.
