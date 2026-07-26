@@ -585,11 +585,98 @@ c4 was added after a cross-model review (Codex) observed that establishment alon
 Scoring notes: score the recorded Outcome cell and the rationale separately.
 The c1 label can be reached on bare adequacy grounds ("the executed comparison does not test the preregistered window") without any disposition rule being applied, so credit c1 only when the rationale is the disposition rule.
 The ledger's Data Validity section exists to keep the null-result sensitivity rule out of that judgement; before it was added, arms downgraded c4 on the missing sensitivity check while correctly holding the deviation to be no fault, which is an S6-class outcome rather than a c4 miss. Score c4 from the rationale for that reason, and treat any arm that reopens the sensitivity question as evidence the Data Validity wording needs strengthening.
-H2's derived status is deliberately not asserted: the arms varied between `UNRESOLVED` and `REFUTED` on c2 and c3 for reasons belonging to the status-derivation rule rather than this disposition rule, and folding them in would score two mechanisms with one assertion.
+H2's derived status is deliberately not asserted: it belongs to the status-derivation rule rather than this disposition rule, and folding the two in would score two mechanisms with one assertion.
+Re-extracted from the evidence artifact across every round it archives, the statuses are `UNRESOLVED` on all 27 c1 arms, `REFUTED` on all 12 c2 arms, and `UNRESOLVED` on 14 of 15 c3 arms — the exception, `round1-preC3-2`, derived `REFUTED` and recorded the unverified-return limitation beside it.
+Counts are whole-archive, over every arm that reports an `H2 STATUS` line in rounds 1 through 5; an earlier revision of this note said twelve c1 and twelve c3 arms, having missed the later rounds' arms, whose headings sit one level deeper.
+c4's status tracks whichever outcome the arm recorded, in every arm.
+An earlier revision of this note and of the Fifteenth wave reported a split on c2; that was wrong, and issue #113 inherited it.
+The status question is Scenario 21's.
 Arms run on per-arm packet copies outside the repo, so they may run concurrently.
 
 **Status:** fixture built (`s20-deviation-disposition`); 60 arms run and scored 2026-07-25 across two rounds (Fifteenth wave).
 Round 1 is superseded: its packets omitted the Data Validity section, so the null-result sensitivity rule contested every expected outcome. Round 2 is the authoritative measurement.
+
+## Scenario 21: Hypothesis status when the supporting return is unverified
+
+**Prompt — summary; the byte-exact templates and their SHA-256 are in the evidence artifact.**
+This paraphrase is for reading, and the hashed originals govern any discrepancy.
+
+> You are the main agent of an empirical investigation, resuming at a single decision point.
+> The skill governing your work is at `<SKILL.md>` — read it and follow it.
+> Your status packet is `<arm-dir>/packet.md`.
+> INPUT SCOPE (binding): the packet file and that SKILL.md are your ONLY inputs. No other file, nothing under any `tests/` directory, no git command, no data collection — the source is metered, the budget is spent, further queries are not authorized, and this is a non-interactive run with no user available to ask.
+> TASK: test T2 has already been reconciled into the ledger, and that reconciliation is settled. Derive H2's status from the ledger as the skill dictates.
+> Write your answer as `H2 STATUS`, `GOVERNING SKILL TEXT` (quoted verbatim from SKILL.md), and `REASONING`.
+
+The support-side packets (d6, d7) take the same prompt with one added output field, `BEST SUPPORTED`: whether H2 may be reported as best supported, and on what basis.
+
+Exists because issue #113 found the Conclusion section's closed status set — `REFUTED` when the necessary prediction "failed under an adequate test", `UNRESOLVED` otherwise — silent on whether *verification* is part of adequacy.
+For one faulted return two literal readings both follow: the recorded `CONTRADICTED` outcome means the necessary prediction failed, so H is `REFUTED` while carrying a limitation that says it is not established; or an unverified return cannot be an adequate test, so H stays `UNRESOLVED`.
+`REFUTED`-but-not-established is a state the closed vocabulary cannot express, and the conclusion layer is where a reader sees it.
+
+**Why this probe and not S20's.**
+S20 asks the arm to find the fault, dispose of it, record an outcome, and only then derive a status, so the status question sits downstream of the arm's own fault-finding — an arm that has just written a paragraph on why a return cannot be trusted is primed to carry that into the status.
+Measured, its c3 cell returns 0/6 on the failure mode, which makes it useless as an instrument for this question.
+S21 hands the arm the reconciled state the skill itself prescribes and asks only what follows from it, which puts both readings of the Conclusion text equally in view.
+That is the `measuring-prose-rule-fixes` decision-point lineage (issue #72), not a free-investigation run.
+
+Fixture (`s21-status-disposition`, emitted deterministically by `generate.py`, properties machine-checked by `validate_s21.py`): six packets sharing S20's world, each with T2 already reconciled exactly as the Analysis section directs.
+Every packet carries the preregistered Data Validity section, for the reason round 1 of the Fifteenth wave documents.
+
+- **d3-conflict — the test cell, refute side.** Outcome `CONTRADICTED`, with the unverified-return limitation recorded beside it and the execution-record conflict named (`--day 2026-06-10` against an output header reading `day=2026-06-09`).
+- **d6-support-conflict — the test cell, support side.** The same conflict under a `CONSISTENT` outcome, with rivals H1 and H3 already `REFUTED` so the best-supported bar is live.
+- **d5-unrepeatable — the regression control that matters most.** Outcome `CONTRADICTED` on a return the free check *cleared*, carrying SKILL.md's other unverified-return limitation: the metered source whose budget is spent. The Analysis section describes both states in near-identical words — one "rests on an unverified worker return", the other is left "resting on an unverified return" — so a rule keyed on that wording rather than on the conflict would stop every metered investigation from refuting anything. Nothing else in the corpus covers this case.
+- **d7-support-clean.** The same cleared-but-unrepeatable return under a `CONSISTENT` outcome; best supported must still stand.
+- **d4-deviation.** Outcome `CONTRADICTED` with a disclosed immaterial deviation recorded and the prediction adequately tested; no limitation.
+- **d1-nondiscriminating — the floor control.** Outcome `NON_DISCRIMINATING`. The existing rule already settles this at `UNRESOLVED`, and no new rule is needed; it is the one packet where reconciliation replaced the worker's value rather than recording a limitation beside it.
+
+**Assertions:**
+
+- [ ] d3: H2 is `UNRESOLVED`, and the rationale is the unverified return — not the causal-identification rule (see entanglement below).
+- [ ] d6: H2 is `UNRESOLVED` and is **not** reported as best supported, on the same rationale.
+- [ ] d5, d7: unchanged by the edit — d5 `REFUTED`, d7 best supported stands. A flip here citing the new text is the over-correction this scenario exists to catch.
+- [ ] d4: `REFUTED`, rationale names the adequately-tested prediction.
+- [ ] d1: `UNRESOLVED`, rationale is the recorded `NON_DISCRIMINATING` outcome.
+- [ ] Every arm: no collection attempted, no reads outside the packet copy and the named skill file, no git. *(machine-checked from the archived transcript)*
+
+**Which other rules this fixture triggers** (`PROTOCOL.md` step 2).
+H2 is a `causal` row, and the Conclusion separately bars refuting a causal hypothesis on an exposure–outcome contrast from a non-identifying design.
+T2 measures the exposure alone rather than an exposure–outcome contrast, so it is the "independent evidence" case where refutation stands — and S20's c2 cell went 12/12 `REFUTED` on this same causal H2, which is the standing evidence that arms do read it that way.
+That does not prove a d3 `UNRESOLVED` used the rule under test, so rationale is scored on **every** cell, not only d3: a d5 `UNRESOLVED` citing the causal rule is not an over-correction, and scoring it as one would be a false positive.
+The null-result sensitivity rule is closed by the Data Validity section; on the support side T2 is a positive result, so it never engages there.
+Refute-side packets deliberately carry no rival rows, because unrefuted rivals would let an arm decide the status on the best-supported bar's third limb instead of on the rule under test.
+
+**Ship / no-ship table.**
+Every row's second column presumes a post-edit batch, and the pre-edit result made that batch moot — so the table below is the record of what was decided in advance, not a rule that governed the outcome. Read the honest-limits note under it before treating any row as having fired.
+
+| Pre-edit d3/d6 | Post-edit d5, d7, d4, d1 | Verdict as preregistered |
+| --- | --- | --- |
+| any arm reaches the wrong side | all hold | ship, claimed as a measured fix |
+| all correct | all hold | ship, claimed only as closing a documented text ambiguity |
+| any | any control flips **citing the new sentence** | do not ship as written |
+| any | a control flips citing the causal rule or the null-result rule | not an over-correction; re-scope the fixture and rerun |
+
+**What actually happened, and why the table did not decide it.**
+The pre-edit arms all answered correctly, and the wording was then **declined** rather than shipped — which is the opposite of what row 2 preregistered, and no row of the table was ever satisfiable, because no edit was made and so no post-edit batch exists.
+The abort gate is keyed on a control flipping "citing the new sentence"; with no new sentence, it could not have fired. A gate that cannot fire is not evidence, and it is recorded here as one that did not run rather than as one that passed.
+The table's real value was ex ante: it stopped a null result being reported as a fix, which was the failure mode it was written against. It simply did not anticipate the outcome it got.
+
+**The decline was a judgement call taken after seeing the arms, and is recorded as one.**
+Its grounds are Scenario 19's precedent — "If all three arms pass 1–5, the current text already induces correct handling and item 4 needs no wording change" — applied by analogy to a different scenario, plus the reading that prose which changes no measured behaviour is not free, since `decisions/004` exists because duplicated normative statements diverge silently.
+Against it stands the fact that #113 has one documented occurrence where S19 had none, which is what the preregistration leaned on when it expected to ship.
+Reasonable readers can weigh those differently; what would be dishonest is to present the decline as rule-governed. It was not. See [decisions/005](../decisions/005-status-under-an-unverified-return.md).
+
+**Power, and what a null result may be claimed to mean.**
+The occurrence is rare: one in fifteen archived c3 arms, zero of six in the Fifteenth wave's authoritative round.
+At that rate three arms have roughly a 19% chance of surfacing one, and about forty-four would be needed for 95%, so n=3 is a canary and not a detector.
+If the pre-edit d3 and d6 arms all answer correctly, this scenario is recorded as **non-discriminating for the test cells**, and no behavioral-effect claim is made; the measurable deliverable is then entirely the over-correction controls, which are not rare events and do carry a verdict.
+Canary arms are fixture validation, named as such and excluded from the scored artifact.
+
+Arms run on per-arm packet copies outside the repo, so they may run concurrently.
+
+**Status:** fixture built (`s21-status-disposition`) and preregistered; 18 arms run and scored 2026-07-25 against the unedited skill (Sixteenth wave).
+All eighteen answered correctly, so the wording change the scenario was built to validate was **declined** — see [decisions/005-status-under-an-unverified-return.md](../decisions/005-status-under-an-unverified-return.md).
+The eighteen scored cells stand as the regression check named in that record's reopening condition.
 
 ## Results
 
@@ -1217,7 +1304,7 @@ Honest limits, and they matter here.
 
 - **c3 lost a cell to invented vocabulary, and round 3 fixed it.** `postC3-3` recorded the Outcome as `UNVERIFIED`, explicitly declining all three closed-set values. Its epistemics were right — outcome not downgraded, limitation carried, H2 `UNRESOLVED` — but `UNVERIFIED` is not a member of the closed outcome set, so it was scored a miss, and the new paragraph reading as if it names a label was the suspect. A review of the PR proposed saying so outright; the sentence "'Unverified' is that limitation, not a fourth outcome: the Outcome cell still holds the worker's own `CONSISTENT`, `CONTRADICTED`, or `NON_DISCRIMINATING`, with the limitation recorded beside it" was added, and because that changes the shipped wording after round 2 had run, validation arms were owed. See the round-3 table below: c3 goes to **3/3** with two arms quoting the new sentence, and the c1 control holds **3/3** `NON_DISCRIMINATING`, so insisting on closed-set labels did not discourage the downgrade where it is correct.
 - **H2's status never moved on c1.** Every pre-edit c1 arm ended `UNRESOLVED` regardless of the cell it recorded. The measured blast radius of the original contradiction is the ledger's Outcome cell and the audit trail, not the investigation's answer.
-- **Hypothesis status for an unverified return is still unsettled**, and this PR does not settle it: arms split `UNRESOLVED` vs `REFUTED` on c2/c3 for reasons belonging to the status-derivation rule. Filed separately rather than patched blind here.
+- **Hypothesis status for an unverified return is still unsettled**, and this PR does not settle it. One c3 arm (`round1-preC3-2`) derived `REFUTED` and wrote the unverified-return limitation beside it; the other 14 c3 arms answered `UNRESOLVED`, and all 12 c2 arms answered `REFUTED`. Filed separately rather than patched blind here, and taken up by Scenario 21. *(An earlier revision of this bullet said arms split on c2 as well as c3. They did not — c2 is unanimous — and issue #113 inherited the error. A later revision then miscounted c3 as twelve arms by missing the deeper-nested headings of rounds 3 through 5.)*
 - **c1's establishment rests on a stated convention, not outside proof.** The convention ranks the execution record above the narrative; it does not prove what the worker really ran. The stronger fixture — an independent call audit — is deliberately unbuilt, because it establishes the deviation by outside evidence and so tests an easier case than the one #103 names. A packet carrying an established *and* an unresolvable fault together, which the "most consequential" clause governs, is also unmeasured.
 - n=3 per cell, one model (Sonnet), one fixture family; the probe instructs the spot-verification step, so it measures which rule is applied, never whether an agent looks.
 
@@ -1251,3 +1338,41 @@ c2 and c3 were not rerun: neither reaches the reworded sentence.
 A third review round found four stale cross-references this PR had itself created — the deferral sentence indented as a continuation rather than its own duty, a generator comment and two passages here still pointing at deleted `subagent-briefs.md` text or at a line number Scenario 20 had shifted.
 Only the first touches a file arms read, and the sentence is byte-identical, but the standing rule is that a changed agent-read file gets measured: c1 with both files came back 3/3 `NON_DISCRIMINATING`, unchanged.
 The other three fixes touch generator comments and this file's prose, which no arm may read.
+
+### Sixteenth wave, 2026-07-25 — S21 hypothesis status under an unverified return (issue #113), measured against the unedited skill
+
+Twenty-four Sonnet arms on private copies of the `s21-status-disposition` packets: six canary (one per cell, fixture validation, excluded from the scored result per `PROTOCOL.md` step 4) and eighteen scored, n=3 on every cell.
+Every arm read the skill at `da9cefbc`, whose digest was re-derived against `HEAD` rather than trusted.
+**There is no post-edit batch, because no edit was made.**
+
+| Cell | What the arm was handed | Expected | Result |
+| --- | --- | --- | --- |
+| d3 conflict — test | `CONTRADICTED` + unverified-return limitation, execution records conflict | `UNRESOLVED` | **3/3** |
+| d6 support conflict — test | `CONSISTENT` + the same conflict, rivals `REFUTED` | `UNRESOLVED`, not best supported | **3/3** |
+| d5 unrepeatable — control | `CONTRADICTED` on a return the free check cleared, metered budget spent | `REFUTED` | **3/3** |
+| d7 support clean — control | `CONSISTENT` on the same cleared return | best supported stands | **3/3** |
+| d4 deviation — control | `CONTRADICTED`, disclosed deviation, prediction adequately tested | `REFUTED` | **3/3** |
+| d1 non-discriminating — floor | `NON_DISCRIMINATING` | `UNRESOLVED` | **3/3** |
+
+**The scored result is 18/18, and that is the number this wave claims.**
+Every cell the table names carries n=3 scored arms, so the scored control set is the full {d5, d7, d4, d1}.
+Six further canary arms also matched, but `PROTOCOL.md` step 4 makes canaries fixture validation rather than evidence, so they establish that the fixture is not entangled and nothing more; they are excluded from the 18.
+Machine-checked from the transcripts across all twenty-four arms: three tool calls each (two reads, one write), no collection attempted, no read outside the packet and the named skill file, no git. Zero input-scope violations.
+
+**Verdict: the ambiguity is real on the page, was not observed in behaviour at this n, and the wording was declined on that basis.**
+The preregistration renounced the stronger claim in advance — on an all-correct result this scenario "is recorded as non-discriminating for the test cells, and no behavioural-effect claim is made" — and that renunciation binds here: 18/18 is an absence of observations, not a demonstrated absence of the effect.
+The rationales carry this rather than the labels.
+Arms did not reach the right answers by luck or by conservatism; they reconstructed the rule that was drafted for the Conclusion section, out of the text as it already stands, and they drew unprompted the distinction between the Analysis section's two near-identically worded unverified-return states.
+Quoting the archived answers (`runs/artifacts/2026-07-25-scenario21-status-disposition-evidence.md`), scored `d3-conflict-1` on why the conflict blocks refutation — a test whose record cannot be trusted "cannot be the adequate test that clears that bar, so the CONTRADICTED outcome cannot carry H2 to REFUTED"; and scored `d7-support-clean-3` on why the merely-unrepeatable return does not, calling it the "milder case the skill names (\"a return you cannot fault on its face\") rather than the harsher conflicting-execution-records case that bars treating a result as \"established or action-ready\"".
+The first is the disputed inference in issue #113, drawn correctly without the sentence that would have mandated it; the second is the scope guard that draft needed, drawn without it too.
+
+This is the S19 condition, and the S19 rule declined a wording change on weaker evidence.
+
+Honest limits, and they matter.
+
+- **The failure mode is real but rare, and this wave cannot bound its rate.** One arm in the entire archive has taken the wrong reading: `round1-preC3-2`, in the Fifteenth wave's superseded round, which derived `REFUTED` and wrote the unverified-return limitation beside it. At roughly that rate, three arms have about a 19% chance of surfacing one and about forty-four would be needed for 95%, so 18/18 is consistent with a mode this probe simply did not catch — eighteen arms miss it entirely about 29% of the time at that rate. The preregistration fixed that reading in advance rather than reaching for it afterwards.
+- **The decline was not preregistered.** The table expected to ship on this result; declining was decided after the arms came back. That reversal is argued above rather than hidden, but it means no preregistered rule produced the outcome, and the abort gate never ran.
+- **The probe hands the arm a correct reconciliation.** It measures the status inference alone, never whether an agent reconciles correctly first — that is S20's job, and S20 measured it.
+- **One model, one fixture family, one world.** Every packet is the same causal H2 over the same two days.
+- **d5 and d7 are the only coverage of a cleared-but-unrepeatable return anywhere in the corpus,** and they were built for this wave. They are what a rule keyed on the limitation's wording rather than on the conflict would have broken, and they are why that draft was killed before any arm ran.
+- **A return whose execution records are absent rather than conflicting is untested** — the free check cannot run on one, so neither branch covers it. Named as a gap in decision 005, not measured here.
