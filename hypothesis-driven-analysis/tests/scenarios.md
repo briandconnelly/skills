@@ -676,7 +676,7 @@ Arms run on per-arm packet copies outside the repo, so they may run concurrently
 
 **Status:** fixture built (`s21-status-disposition`) and preregistered; 18 arms run and scored 2026-07-25 against the unedited skill (Sixteenth wave).
 All eighteen answered correctly, so the wording change the scenario was built to validate was **declined** — see [decisions/005-status-under-an-unverified-return.md](../decisions/005-status-under-an-unverified-return.md).
-The twelve scored cells stand as the regression check named in that record's reopening condition.
+The eighteen scored cells stand as the regression check named in that record's reopening condition.
 
 ## Results
 
@@ -1341,7 +1341,7 @@ The other three fixes touch generator comments and this file's prose, which no a
 
 ### Sixteenth wave, 2026-07-25 — S21 hypothesis status under an unverified return (issue #113), measured against the unedited skill
 
-Eighteen Sonnet arms on private copies of the `s21-status-disposition` packets: six canary (one per cell, fixture validation, excluded from the scored result per `PROTOCOL.md` step 4) and twelve scored, n=3 on the four decisive cells.
+Twenty-four Sonnet arms on private copies of the `s21-status-disposition` packets: six canary (one per cell, fixture validation, excluded from the scored result per `PROTOCOL.md` step 4) and eighteen scored, n=3 on every cell.
 Every arm read the skill at `da9cefbc`, whose digest was re-derived against `HEAD` rather than trusted.
 **There is no post-edit batch, because no edit was made.**
 
@@ -1351,13 +1351,16 @@ Every arm read the skill at `da9cefbc`, whose digest was re-derived against `HEA
 | d6 support conflict — test | `CONSISTENT` + the same conflict, rivals `REFUTED` | `UNRESOLVED`, not best supported | **3/3** |
 | d5 unrepeatable — control | `CONTRADICTED` on a return the free check cleared, metered budget spent | `REFUTED` | **3/3** |
 | d7 support clean — control | `CONSISTENT` on the same cleared return | best supported stands | **3/3** |
+| d4 deviation — control | `CONTRADICTED`, disclosed deviation, prediction adequately tested | `REFUTED` | **3/3** |
+| d1 non-discriminating — floor | `NON_DISCRIMINATING` | `UNRESOLVED` | **3/3** |
 
-**The scored result is 12/12, and that is the number this wave claims.**
-Six further canary arms — the four cells above plus d1 `NON_DISCRIMINATING` and d4 disclosed-deviation — also matched, but `PROTOCOL.md` step 4 makes canaries fixture validation rather than evidence, so they establish that the fixture is not entangled and nothing more. Two preregistered control cells, **d1 and d4, therefore have no scored arm at all**: the scored control set is {d5, d7}, narrower than the {d5, d7, d4, d1} the table names, and d1/d4 stand unmeasured.
-Machine-checked from the transcripts across all eighteen arms: three tool calls each (two reads, one write), no collection attempted, no read outside the packet and the named skill file, no git. Zero input-scope violations.
+**The scored result is 18/18, and that is the number this wave claims.**
+Every cell the table names carries n=3 scored arms, so the scored control set is the full {d5, d7, d4, d1}.
+Six further canary arms also matched, but `PROTOCOL.md` step 4 makes canaries fixture validation rather than evidence, so they establish that the fixture is not entangled and nothing more; they are excluded from the 18.
+Machine-checked from the transcripts across all twenty-four arms: three tool calls each (two reads, one write), no collection attempted, no read outside the packet and the named skill file, no git. Zero input-scope violations.
 
 **Verdict: the ambiguity is real on the page, was not observed in behaviour at this n, and the wording was declined on that basis.**
-The preregistration renounced the stronger claim in advance — on an all-correct result this scenario "is recorded as non-discriminating for the test cells, and no behavioural-effect claim is made" — and that renunciation binds here: 12/12 is an absence of observations, not a demonstrated absence of the effect.
+The preregistration renounced the stronger claim in advance — on an all-correct result this scenario "is recorded as non-discriminating for the test cells, and no behavioural-effect claim is made" — and that renunciation binds here: 18/18 is an absence of observations, not a demonstrated absence of the effect.
 The rationales carry this rather than the labels.
 Arms did not reach the right answers by luck or by conservatism; they reconstructed the rule that was drafted for the Conclusion section, out of the text as it already stands, and they drew unprompted the distinction between the Analysis section's two near-identically worded unverified-return states.
 Quoting the archived answers (`runs/artifacts/2026-07-25-scenario21-status-disposition-evidence.md`), scored `d3-conflict-1` on why the conflict blocks refutation — a test whose record cannot be trusted "cannot be the adequate test that clears that bar, so the CONTRADICTED outcome cannot carry H2 to REFUTED"; and scored `d7-support-clean-3` on why the merely-unrepeatable return does not, calling it the "milder case the skill names (\"a return you cannot fault on its face\") rather than the harsher conflicting-execution-records case that bars treating a result as \"established or action-ready\"".
@@ -1367,9 +1370,8 @@ This is the S19 condition, and the S19 rule declined a wording change on weaker 
 
 Honest limits, and they matter.
 
-- **The failure mode is real but rare, and this wave cannot bound its rate.** One arm in the entire archive has taken the wrong reading: `round1-preC3-2`, in the Fifteenth wave's superseded round, which derived `REFUTED` and wrote the unverified-return limitation beside it. At roughly that rate, three arms have about a 19% chance of surfacing one and about forty-four would be needed for 95%, so 12/12 is consistent with a mode this probe simply did not catch. The preregistration fixed that reading in advance rather than reaching for it afterwards.
+- **The failure mode is real but rare, and this wave cannot bound its rate.** One arm in the entire archive has taken the wrong reading: `round1-preC3-2`, in the Fifteenth wave's superseded round, which derived `REFUTED` and wrote the unverified-return limitation beside it. At roughly that rate, three arms have about a 19% chance of surfacing one and about forty-four would be needed for 95%, so 18/18 is consistent with a mode this probe simply did not catch — eighteen arms miss it entirely about 29% of the time at that rate. The preregistration fixed that reading in advance rather than reaching for it afterwards.
 - **The decline was not preregistered.** The table expected to ship on this result; declining was decided after the arms came back. That reversal is argued above rather than hidden, but it means no preregistered rule produced the outcome, and the abort gate never ran.
-- **d1 and d4 have canary arms only**, so half the preregistered control column is unmeasured.
 - **The probe hands the arm a correct reconciliation.** It measures the status inference alone, never whether an agent reconciles correctly first — that is S20's job, and S20 measured it.
 - **One model, one fixture family, one world.** Every packet is the same causal H2 over the same two days.
 - **d5 and d7 are the only coverage of a cleared-but-unrepeatable return anywhere in the corpus,** and they were built for this wave. They are what a rule keyed on the limitation's wording rather than on the conflict would have broken, and they are why that draft was killed before any arm ran.

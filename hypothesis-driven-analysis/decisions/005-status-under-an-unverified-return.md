@@ -29,12 +29,13 @@ So for one faulted return two literal readings both follow: the recorded `CONTRA
 ## What settled it
 
 Scenario 21 — a decision-point probe that hands an arm the reconciled ledger the skill itself prescribes and asks only what status follows.
-Twelve scored Sonnet arms against the **unedited** skill, n=3 on four cells, plus six canary arms that are fixture validation rather than evidence (`tests/PROTOCOL.md` step 4).
+Eighteen scored Sonnet arms against the **unedited** skill, n=3 on every cell, plus six canary arms that are fixture validation rather than evidence (`tests/PROTOCOL.md` step 4).
 
-All twelve scored arms answered correctly, and so did all six canaries.
+All eighteen scored arms answered correctly, and so did all six canaries.
 
 - The two test cells — an execution-record conflict under `CONTRADICTED` (d3) and under `CONSISTENT` (d6) — came back `UNRESOLVED`, and d6 additionally declined "best supported", 3/3 each.
 - The two regression controls — a cleared-but-unrepeatable return under each outcome (d5, d7) — held `REFUTED` and held "best supported", 3/3 each.
+- The remaining controls held too: a disclosed immaterial deviation (d4) stayed `REFUTED` and a `NON_DISCRIMINATING` outcome (d1) stayed `UNRESOLVED`, 3/3 each.
 
 The rationales are what settled it rather than the labels.
 Arms did not stumble onto the right answers; they reconstructed the rule that was about to be written, from the text as it stands, and drew the two-limitation distinction unprompted.
@@ -50,7 +51,7 @@ The two readings are both available to a careful reader, and one archived arm to
 That is one occurrence in fifteen archived c3 arms and zero of six in that wave's authoritative round.
 
 So the honest description is: a textual ambiguity that is real on the page and was not observed in behaviour at this n, on one model against one fixture family.
-Not the same as absent — at a one-in-fifteen rate, twelve arms miss the mode entirely about 44% of the time, and the preregistration renounced the absence claim in advance.
+Not the same as absent — at a one-in-fifteen rate, eighteen arms miss the mode entirely about 29% of the time, and the preregistration renounced the absence claim in advance.
 What the result does establish is that the inference is not fragile enough to show up readily, and adding prose that changes no measured behaviour has a cost — one more sentence to keep consistent, and `decisions/004` exists because duplicated normative statements diverge silently.
 
 ## What this decision is not
@@ -75,4 +76,4 @@ An earlier draft of this record claimed there was "no owning file to point at". 
 ## Reopening condition
 
 An arm reaches the disposition Scenario 21's d3 or d6 cell scores as a miss, under any wording of the Analysis or Conclusion sections — which is the signal that the inference stopped being reliable and has to be written down after all.
-Scenario 21's twelve scored cells are the intended standing check, but nothing currently reruns them: the prek hook validates only the fixture text, so an edit to either section will not trigger them by itself. Treat it as a check someone has to remember, not one the repo enforces.
+Scenario 21's eighteen scored cells are the intended standing check, but nothing currently reruns them: the prek hook validates only the fixture text, so an edit to either section will not trigger them by itself. Treat it as a check someone has to remember, not one the repo enforces.

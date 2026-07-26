@@ -4,7 +4,7 @@ Generated programmatically by `build-scenario21-evidence.py`, archived beside th
 every digest is emitted by `hashlib` at write time and every manifest by
 `tests/extract_evidence.py`, per the repo rule against hand-transcribed hashes.
 
-18 Sonnet arms, **all against the pre-edit wording** — six canary (one per
+24 Sonnet arms, **all against the pre-edit wording** — six canary (one per
 cell, fixture validation, excluded from the scored result per `PROTOCOL.md` step 4) and
 twelve scored (n=3 on the four decisive cells). No post-edit batch exists because no edit
 was made: the pre-edit arms answered correctly on every cell, so the wording change was
@@ -83,9 +83,15 @@ Match: yes
 | canary | d5-unrepeatable | d5-unrepeatable-1 | `REFUTED` | — |
 | canary | d6-support-conflict | d6-support-conflict-1 | `UNRESOLVED` | No |
 | canary | d7-support-clean | d7-support-clean-1 | `UNRESOLVED` | Yes |
+| scored | d1-nondiscriminating | d1-nondiscriminating-1 | `UNRESOLVED` | — |
+| scored | d1-nondiscriminating | d1-nondiscriminating-2 | `UNRESOLVED` | — |
+| scored | d1-nondiscriminating | d1-nondiscriminating-3 | `UNRESOLVED` | — |
 | scored | d3-conflict | d3-conflict-1 | `UNRESOLVED` | — |
 | scored | d3-conflict | d3-conflict-2 | `UNRESOLVED` | — |
 | scored | d3-conflict | d3-conflict-3 | `UNRESOLVED` | — |
+| scored | d4-deviation | d4-deviation-1 | `REFUTED` | — |
+| scored | d4-deviation | d4-deviation-2 | `REFUTED` | — |
+| scored | d4-deviation | d4-deviation-3 | `REFUTED` | — |
 | scored | d5-unrepeatable | d5-unrepeatable-1 | `REFUTED` | — |
 | scored | d5-unrepeatable | d5-unrepeatable-2 | `REFUTED` | — |
 | scored | d5-unrepeatable | d5-unrepeatable-3 | `REFUTED` | — |
@@ -96,7 +102,7 @@ Match: yes
 | scored | d7-support-clean | d7-support-clean-2 | `UNRESOLVED` | Yes |
 | scored | d7-support-clean | d7-support-clean-3 | `UNRESOLVED` | Yes |
 
-## Machine-checked absence claims (all 18 arms)
+## Machine-checked absence claims (all 24 arms)
 
 Each arm's binding input scope forbade any collection, any git command, and any read
 outside its packet and the named skill file. Verified from the transcripts, not from the
@@ -110,9 +116,15 @@ arms' own reports.
 | d5-unrepeatable-1 (pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d6-support-conflict-1 (pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d7-support-clean-1 (pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d1-nondiscriminating-1 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d1-nondiscriminating-2 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d1-nondiscriminating-3 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d3-conflict-1 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d3-conflict-2 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d3-conflict-3 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d4-deviation-1 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d4-deviation-2 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
+| d4-deviation-3 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d5-unrepeatable-1 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d5-unrepeatable-2 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
 | d5-unrepeatable-3 (scored-pre) | 3 | Read x2, Write x1 | 0 | 0 |
@@ -178,6 +190,30 @@ status, target. Paths normalized to `<REPO_ROOT>` and `<SCRATCH>`.
 3	2026-07-26T01:43:29.845Z	Write	ok	<SCRATCH>/s21run/pre/d7-support-clean-1/answer.md
 ```
 
+### d1-nondiscriminating-1 (scored-pre)
+
+```
+1	2026-07-26T03:27:13.845Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:14.648Z	Read	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-1/packet.md
+3	2026-07-26T03:27:26.233Z	Write	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-1/answer.md
+```
+
+### d1-nondiscriminating-2 (scored-pre)
+
+```
+1	2026-07-26T03:27:22.759Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:23.251Z	Read	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-2/packet.md
+3	2026-07-26T03:27:33.699Z	Write	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-2/answer.md
+```
+
+### d1-nondiscriminating-3 (scored-pre)
+
+```
+1	2026-07-26T03:27:23.822Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:25.051Z	Read	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-3/packet.md
+3	2026-07-26T03:27:37.311Z	Write	ok	<SCRATCH>/s21run/scored-pre/d1-nondiscriminating-3/answer.md
+```
+
 ### d3-conflict-1 (scored-pre)
 
 ```
@@ -200,6 +236,30 @@ status, target. Paths normalized to `<REPO_ROOT>` and `<SCRATCH>`.
 1	2026-07-26T01:50:28.687Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
 2	2026-07-26T01:50:29.261Z	Read	ok	<SCRATCH>/s21run/scored-pre/d3-conflict-3/packet.md
 3	2026-07-26T01:50:54.465Z	Write	ok	<SCRATCH>/s21run/scored-pre/d3-conflict-3/answer.md
+```
+
+### d4-deviation-1 (scored-pre)
+
+```
+1	2026-07-26T03:27:30.154Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:30.741Z	Read	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-1/packet.md
+3	2026-07-26T03:27:50.716Z	Write	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-1/answer.md
+```
+
+### d4-deviation-2 (scored-pre)
+
+```
+1	2026-07-26T03:27:35.709Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:36.542Z	Read	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-2/packet.md
+3	2026-07-26T03:27:57.691Z	Write	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-2/answer.md
+```
+
+### d4-deviation-3 (scored-pre)
+
+```
+1	2026-07-26T03:27:41.665Z	Read	ok	<SCRATCH>/s21run/preedit-skill/SKILL.md
+2	2026-07-26T03:27:42.234Z	Read	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-3/packet.md
+3	2026-07-26T03:28:04.442Z	Write	ok	<SCRATCH>/s21run/scored-pre/d4-deviation-3/answer.md
 ```
 
 ### d5-unrepeatable-1 (scored-pre)
@@ -341,6 +401,32 @@ REASONING: The ledger's Conclusion procedure derives status from the test's own 
 The metered/budget-exhausted unverified-return limitation on T2 is real and must be disclosed in the report's limitations, but the skill reserves the stronger "bars treating the result as established or action-ready" language for the conflicting-execution-record case, not this one — here it is explicitly "a limitation to state, not a verification to claim," so it rides alongside the best-supported conclusion rather than blocking it.
 ```
 
+### d1-nondiscriminating-1 (scored-pre)
+
+```markdown
+H2 STATUS: UNRESOLVED
+
+GOVERNING SKILL TEXT: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly. The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
+
+REASONING: T2 is H2's only test, and its reconciled, settled outcome is `NON_DISCRIMINATING` — not a failure of the necessary prediction under an adequate test. The reconciliation record explains why: an established deviation (the worker actually queried 2026-06-09 vs 2026-06-11, not the preregistered 2026-06-10 vs 2026-06-11) meant "the preregistered 06-10-vs-06-11 prediction was not tested." Since the status set is closed to exactly `REFUTED` (necessary prediction failed under an adequate test) or `UNRESOLVED` (otherwise), and no adequate test of H2's necessary prediction exists in the ledger, H2 falls into the "otherwise" branch: `UNRESOLVED`. This is a direct, mechanical read of the existing ledger — no new data collection, sensitivity check, or reconciliation work is being performed or revisited here.
+```
+
+### d1-nondiscriminating-2 (scored-pre)
+
+```markdown
+H2 STATUS: UNRESOLVED
+GOVERNING SKILL TEXT: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly. The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
+REASONING: T2's reconciled outcome is NON_DISCRIMINATING — the established deviation (the worker actually queried 2026-06-09 vs 2026-06-11, not the preregistered 2026-06-10 vs 2026-06-11) means the procedure that ran did not adequately test H2's necessary prediction. The status set for hypotheses is closed to only REFUTED or UNRESOLVED, and REFUTED requires the necessary prediction to have failed under an adequate test. Since T2 is NON_DISCRIMINATING (not an adequate test of the preregistered prediction), the necessary prediction cannot be said to have failed under an adequate test, so H2 does not qualify for REFUTED and instead falls to UNRESOLVED, the closed status set's only other option.
+```
+
+### d1-nondiscriminating-3 (scored-pre)
+
+```markdown
+H2 STATUS: UNRESOLVED
+GOVERNING SKILL TEXT: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly. The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
+REASONING: T2 is the only test for H2, and its reconciled (settled) outcome is `NON_DISCRIMINATING` — the established deviation means the worker actually compared 2026-06-09 vs 2026-06-11, not the preregistered 2026-06-10 vs 2026-06-11 window, so the necessary prediction (flat gateway p95 between 06-10 and 06-11) was never adequately tested. Since the status set is closed to exactly `REFUTED` (necessary prediction failed under an adequate test) or `UNRESOLVED` (otherwise), and no adequate test failed H2's necessary prediction, H2's latest effective outcome derives to `UNRESOLVED`. No re-collection or further probing is available or authorized (budget spent, non-interactive, no user to ask), so this derivation is final given the packet as given.
+```
+
 ### d3-conflict-1 (scored-pre)
 
 ```markdown
@@ -369,6 +455,36 @@ H2 STATUS: UNRESOLVED
 GOVERNING SKILL TEXT: "Record the fault as a limitation and treat the outcome as resting on an unverified return, however plausible the innocent reading; that limitation reaches the conclusion, where it bars treating the result as established or action-ready." Combined with: "The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise."
 
 REASONING: T2's Outcome cell is CONTRADICTED — the necessary prediction for H2 (flat gateway p95, <10% relative change) held, which is the condition that refutes H2 — but that outcome carries a settled limitation: the execution records conflict (Command 1 requests `--day 2026-06-10` while its own quoted output reads `day=2026-06-09`), and nothing resolves which is the error. The skill treats this exact pattern — conflicting execution records with no outside resolution — as a case where nothing is established and nothing is verified, and it is explicit that this limitation "reaches the conclusion, where it bars treating the result as established or action-ready." REFUTED requires the necessary prediction to have failed "under an adequate test." A test whose own record is internally contradictory and whose limitation is stated to bar treating it as established cannot supply that adequate test, regardless of how plausible the innocent reading (a typo in the command) looks. The Outcome cell itself is not overridden — it stays CONTRADICTED, and "unverified" is a limitation beside it, not a fourth outcome — but the status derivation at Conclusion falls to the "otherwise" branch of the closed status set. Hence H2 is UNRESOLVED, not REFUTED, with the unverified-return limitation carried forward as the reason.
+```
+
+### d4-deviation-1 (scored-pre)
+
+```markdown
+H2 STATUS: REFUTED
+
+GOVERNING SKILL TEXT: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly. The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise." Also: "An established deviation that leaves the prediction adequately tested is a deviation to record, not a downgrade to make."
+
+REASONING: T2's reconciliation is settled and given: Outcome = CONTRADICTED, with an established deviation (`--format json`, disclosed and confirmed by the execution record) that did not compromise the test — both days were pulled at the briefed dataset, grain, and fields, so the preregistered prediction was adequately tested. H2's necessary prediction (the only one whose failure can refute it) is "flat gateway p95 (<10% rel) between 2026-06-10 and 2026-06-11 refutes H2." T2 found +3.7% relative change — flat, under the 10% bound — so that necessary prediction failed, and it failed under a test the ledger itself records as adequate despite the deviation. Per the Conclusion section, an adequate test's failure of the declared necessary prediction makes the hypothesis REFUTED, full stop — "no number of `CONSISTENT` outcomes on other predictions changes that," and there are none here to weigh anyway. The data-validity entry preregistered before any return arrived also establishes the test discriminates on its own (detection limit ~0.4%, far below the predicted >20% rise), so no sensitivity check is outstanding and nothing downgrades this to NON_DISCRIMINATING. Since the established deviation left the test adequate, the skill's rule is explicit that this is "a deviation to record, not a downgrade to make" — the CONTRADICTED outcome stands as reconciled, and H2 is REFUTED.
+```
+
+### d4-deviation-2 (scored-pre)
+
+```markdown
+H2 STATUS: REFUTED
+
+GOVERNING SKILL TEXT: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly. The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise." Also: "an adequate test failing the necessary prediction makes the hypothesis `REFUTED`, and no number of `CONSISTENT` outcomes on other predictions changes that."
+
+REASONING: H2's declared necessary prediction (failure refutes) is "flat gateway p95 (<10% rel) between 2026-06-10 and 2026-06-11 refutes H2." T2 is H2's cheapest adequate test and the only test entry for H2. Its reconciliation is already settled per the packet: Outcome = CONTRADICTED, with an established deviation (`--format json` added, disclosed and confirmed by the execution record) that did not downgrade the outcome because "both briefed days were pulled at the briefed dataset, grain and fields, so the preregistered prediction was adequately tested." The observed change (+3.7% relative) falls within the flat/noise bound the necessary prediction names, so that necessary prediction failed under a test the ledger records as adequate. Per the Conclusion section, that is exactly the condition for `REFUTED`, and it is not overridable by any other consideration since T2 is the only test entry and it directly tests the necessary prediction (not a non-necessary one, and there is no disagreeing second test of the same necessary prediction to force `UNRESOLVED`).
+```
+
+### d4-deviation-3 (scored-pre)
+
+```markdown
+H2 STATUS: REFUTED
+
+GOVERNING SKILL TEXT: "The status set is closed: `REFUTED` when the hypothesis's declared necessary prediction failed under an adequate test, `UNRESOLVED` otherwise." Also: "An established deviation that leaves the prediction adequately tested is a deviation to record, not a downgrade to make." Also: "Derive hypothesis status from the latest effective outcome of each test entry (the original outcome unless a dated amendment supersedes it); never edit status directly." Also: "Independent evidence can still refute it when that evidence falsifies a preregistered necessary prediction without relying on the unidentified contrast — an artifact that inflates the wrong week cannot explain a drop, and that refutation stands."
+
+REASONING: H2's necessary prediction is that flat gateway p95 (<10% relative) between 2026-06-10 and 2026-06-11 refutes H2. T2's reconciled outcome is CONTRADICTED: the observed change was +3.7% relative, which is flat/noise-level, so the necessary prediction failed to materialize. The reconciliation already established that the worker's disclosed deviation (`--format json`) did not compromise adequacy — same dataset, days, grain, and fields as briefed — so per "an established deviation that leaves the prediction adequately tested is a deviation to record, not a downgrade to make," the outcome is not downgraded to NON_DISCRIMINATING. The preregistered data-validity check also confirms the test discriminates on its own (detection limit ~0.4% relative, far below the 10%/20% thresholds), so no sensitivity check is outstanding and the test counts as adequate. T2 tests a mechanistic precondition of H2 (did gateway latency actually spike) rather than an unidentified exposure-outcome causal contrast, so it falls under the "independent evidence... falsifies a preregistered necessary prediction without relying on the unidentified contrast" carve-out and the refutation stands even though H2 is a causal claim. Therefore, per the closed status set, H2 is REFUTED.
 ```
 
 ### d5-unrepeatable-1 (scored-pre)
