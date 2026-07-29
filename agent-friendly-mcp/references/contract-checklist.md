@@ -37,7 +37,7 @@ This file is the single home for these rules — other files point at ids and do
 
 - `[1.transport]` **Choose transport explicitly.** Use `stdio` for local single-client; use streamable HTTP for shared or remote.
   Document the choice in the capability summary.
-  Streamable HTTP has three required headers with distinct applicability: `MCP-Protocol-Version` on every POST (and it MUST match the `_meta` `protocolVersion` in the body), `Mcp-Method` on every request, and `Mcp-Name` only on `tools/call`, `resources/read`, and `prompts/get` (the tasks extension adds task methods, where it carries the `taskId`); a header/body mismatch is `HeaderMismatch` (`-32020`).
+  Streamable HTTP has three required headers with distinct applicability: `MCP-Protocol-Version` on every POST (and it MUST match the body's `_meta` `io.modelcontextprotocol/protocolVersion`), `Mcp-Method` on every request, and `Mcp-Name` only on `tools/call`, `resources/read`, and `prompts/get` (the tasks extension adds task methods, where it carries the `taskId`); a header/body mismatch is `HeaderMismatch` (`-32020`).
   A tool may pass custom headers via the `x-mcp-header` parameter convention — design for gateways that route, authorize, and meter on these headers without parsing bodies.
   See `native-wire-shapes.md` for the header shapes.
 
