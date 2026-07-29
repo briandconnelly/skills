@@ -9,6 +9,7 @@ The checkpoint links at each step point at the relevant `contract-checklist.md` 
 
 **On this page:**
 
+- [Step 0: Fix the protocol revision target](#step-0-fix-the-protocol-revision-target)
 - [Step 1: Enumerate user/agent tasks](#step-1-enumerate-useragent-tasks)
 - [Step 2: Choose the right primitive per task](#step-2-choose-the-right-primitive-per-task)
 - [Step 3: Decide tool granularity](#step-3-decide-tool-granularity)
@@ -18,6 +19,13 @@ The checkpoint links at each step point at the relevant `contract-checklist.md` 
 - [Step 7: Design long-running behavior](#step-7-design-long-running-behavior)
 - [Step 8: Build evaluations grounded in real tasks](#step-8-build-evaluations-grounded-in-real-tasks)
 - [Step 9: Iterate against the eval, including transcript review](#step-9-iterate-against-the-eval-including-transcript-review)
+
+## Step 0: Fix the protocol revision target
+
+Decide which protocol revision(s) and which extensions the target clients speak — modern 2026-07-28, legacy 2025-11-25, or dual-era — and record the decision per `[1.spec-revision]`.
+Every later step designs against that target, and extensions are named individually because they version independently of the core revision.
+
+Output: a one-line revision-and-extensions target that the capability summary (Step 5) will carry.
 
 ## Step 1: Enumerate user/agent tasks
 

@@ -13,6 +13,7 @@
 1.metadata-contract
 1.display-metadata
 1.negotiated-caps
+1.spec-revision
 1.roots
 1.auth-repair
 2.summary
