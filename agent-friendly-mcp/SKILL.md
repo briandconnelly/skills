@@ -9,7 +9,8 @@ Use this skill to make MCP servers easy for agents to discover, invoke correctly
 
 ## Spec Baseline
 
-This skill is written against the **MCP 2026-07-28** specification (final, released 2026-07-28); the field names, capability paths, method set, and task lifecycle it uses follow that revision, including the official `io.modelcontextprotocol/tasks` extension.
+This skill is written against the **MCP 2026-07-28** specification (final, released 2026-07-28); the field names, capability paths, method set, and task lifecycle it uses follow that revision, including the `io.modelcontextprotocol/tasks` extension (SEP-2663).
+Status caveat: the 2026-07-28 changelog calls tasks an official extension while the ext-tasks specification repository still labels itself experimental — treat the task contract as extension-versioned and re-verify it against the extension spec when it cuts a release.
 The protocol core is stateless: there is no `initialize` handshake or session id — every request carries `io.modelcontextprotocol/protocolVersion` and `io.modelcontextprotocol/clientCapabilities` in `_meta` (both required), and servers advertise their own capabilities via the mandatory `server/discover` method.
 Server-initiated requests are gone: elicitation, sampling, and roots requests ride Multi Round-Trip Requests (`resultType: "input_required"` with `inputRequests`, answered by retrying with `inputResponses`), and push notifications ride an opt-in `subscriptions/listen` stream.
 Every result carries a required `resultType`, and list/read results carry the native cache hints `ttlMs` and `cacheScope`.

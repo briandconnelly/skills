@@ -37,8 +37,9 @@ This file is the single home for these rules — other files point at ids and do
 
 - `[1.transport]` **Choose transport explicitly.** Use `stdio` for local single-client; use streamable HTTP for shared or remote.
   Document the choice in the capability summary.
-  Streamable HTTP POSTs MUST carry the `Mcp-Method` and `Mcp-Name` headers (mismatch is `HeaderMismatch`, `-32020`), and a tool may pass custom headers via the `x-mcp-header` parameter convention — design for gateways that route, authorize, and meter on those headers without parsing bodies.
-  See `native-wire-shapes.md` for the header shapes, including the task-method rule that `Mcp-Name` carries the `taskId`.
+  Streamable HTTP has three required headers with distinct applicability: `MCP-Protocol-Version` on every POST (and it MUST match the `_meta` `protocolVersion` in the body), `Mcp-Method` on every request, and `Mcp-Name` only on `tools/call`, `resources/read`, and `prompts/get` (the tasks extension adds task methods, where it carries the `taskId`); a header/body mismatch is `HeaderMismatch` (`-32020`).
+  A tool may pass custom headers via the `x-mcp-header` parameter convention — design for gateways that route, authorize, and meter on these headers without parsing bodies.
+  See `native-wire-shapes.md` for the header shapes.
 
 - `[1.stdout]` **`stdio` servers MUST NOT log to stdout.** Stdout is the JSON-RPC channel; mixing log output corrupts the protocol stream.
   Send logs to stderr or a file.
@@ -519,9 +520,10 @@ And does the same failure carry the identical envelope whether it surfaces as a 
 - `[7.progress-token]` **Support `progressToken` where progress exists.** Send rate-limited `notifications/progress` updates that identify current phase, completed work, and remaining work when knowable.
   Progress is request-scoped: it flows on the originating request's response stream, never on a `subscriptions/listen` stream — once the call has returned (including with a task), progress for the continuing work is carried by task status (`statusMessage`) instead.
 
-- `[7.cancellation]` **Support cancellation where work can continue after the call starts.** Honor `notifications/cancelled` for request-bound work and `tasks/cancel` for tasks; `notifications/cancelled` MUST NOT be used to cancel a task.
+- `[7.cancellation]` **Support cancellation where work can continue after the call starts.** Request-bound cancellation is transport-specific: on Streamable HTTP the client closes the request's response stream (a disconnect MUST be treated as cancellation; no notification is sent), while on stdio the client sends `notifications/cancelled`.
+  Tasks cancel only via `tasks/cancel` — `notifications/cancelled` MUST NOT be used for a task — and the ack is an empty result signalling received intent, not stopped work: cancellation is cooperative and eventually consistent, so the task MAY still finish in another terminal status, observed via `tasks/get`.
 
-- `[7.task-support]` **Gate tasks on the negotiated extension, at both ends of the exchange.** Tasks are the official `io.modelcontextprotocol/tasks` extension: the client declares it in each request's `clientCapabilities.extensions`, and the server advertises it in its `server/discover` capabilities.
+- `[7.task-support]` **Gate tasks on the negotiated extension, at both ends of the exchange.** Tasks are the `io.modelcontextprotocol/tasks` extension (SEP-2663; see `SKILL.md` Spec Baseline for its status caveat): the client declares it in each request's `clientCapabilities.extensions`, and the server advertises it in its `server/discover` capabilities.
   Task creation is server-directed and per-request — there is no per-tool task flag and the client never signals task preference; a negotiated client MUST be prepared for either the standard result or a `CreateTaskResult` on any supported request.
   A server MUST NOT return a task to a client whose request did not declare the extension, regardless of earlier requests; if it cannot serve such a request without tasking, it returns the missing-capability error (`MissingRequiredClientCapability`, `-32021` — the ext-tasks draft still prints the pre-renumbering `-32003`) naming the extension in `data.requiredCapabilities`.
   That error stays JSON-RPC even on `tools/call` because it concerns the call's admissibility, not the tool's semantics (§6 owns the carrier rule).
@@ -536,7 +538,7 @@ And does the same failure carry the identical envelope whether it surfaces as a 
   `failed` MUST NOT be used for a tool-result error, so an agent MUST inspect the `result` payload of a `completed` task before declaring success — `completed` is a delivery statement, not a success statement.
   State this loudly in the server's capability summary; agents trained on the 2025-11-25 coupling (tool error ⇒ `failed`) will otherwise misread `completed`.
 
-- `[7.status-notification]` **Treat `notifications/tasks` as optional push, not contract.** Servers MAY emit it with the full task state to clients that opted in via `subscriptions/listen`; requestors MUST NOT rely on receiving it.
+- `[7.status-notification]` **Treat `notifications/tasks` as optional push, not contract.** Servers MAY emit it with the full task state to clients that opted in by naming the task in the `taskIds` filter of `subscriptions/listen` — the server's acknowledgement reports which `taskIds` it accepted; requestors MUST NOT rely on receiving it.
   Keep polling `tasks/get` as the authoritative status path, and use the notification only to poll sooner.
 
 - `[7.input-required]` **Define `input_required` recovery.** The native path is fixed: when polling (or a `notifications/tasks` push) shows `input_required`, the `tasks/get` response carries the outstanding `inputRequests`; the client fulfills them with one or more `tasks/update` calls carrying `inputResponses`, then keeps observing until a terminal status.
@@ -546,7 +548,7 @@ And does the same failure carry the identical envelope whether it surfaces as a 
 
 - `[7.task-handles]` **Task handles are state handles.** Apply the §1 state-handle discipline to `taskId`s: high-entropy opaque ids, authorization checked on every `tasks/get`, `tasks/update`, and `tasks/cancel`, bounded retention via `ttlMs` (a server MAY fail and then delete a task once its TTL elapses, so document the window).
 
-- `[7.task-fallback]` **Degrade deliberately for clients without the extension.** Tasks are an official extension, not core: a client that never declares `io.modelcontextprotocol/tasks` can neither receive nor operate on tasks, so a server whose work is genuinely long-running MAY expose a domain-specific status/cancel tool as a labeled fallback — mirroring the native signals (current status, when to poll again, result location, expiry), not replacing `tasks/*`.
+- `[7.task-fallback]` **Degrade deliberately for clients without the extension.** Tasks are an extension, not core: a client that never declares `io.modelcontextprotocol/tasks` can neither receive nor operate on tasks, so a server whose work is genuinely long-running MAY expose a domain-specific status/cancel tool as a labeled fallback — mirroring the native signals (current status, when to poll again, result location, expiry), not replacing `tasks/*`.
   Keep status/result/cancel expressible as ordinary tools; that is also what code-execution clients compose best (§3).
 
 Audit prompt: Can an agent monitor, cancel, and recover a long-running operation without guessing at server state?
@@ -575,9 +577,10 @@ Audit prompt: Can an agent monitor, cancel, and recover a long-running operation
   There is no native `has_more`, `next_cursor`, `estimated_total`, or `limit` on these methods, and page size is server-selected — do not rename `nextCursor` to snake_case or bolt a house convention onto a native list.
   See [native-wire-shapes.md](native-wire-shapes.md).
 
-- `[8.cacheable-results]` **Populate the native cache hints honestly.** The four list methods plus `resources/read` MUST carry `ttlMs` (integer ≥ 0 milliseconds of freshness) and `cacheScope` (`"public"` or `"private"`) on every `resultType: "complete"` result.
+- `[8.cacheable-results]` **Populate the native cache hints honestly.** `server/discover`, the four list methods, and `resources/read` MUST carry `ttlMs` (integer ≥ 0 milliseconds of freshness) and `cacheScope` (`"public"` or `"private"`) on every `resultType: "complete"` result.
   Choose the values from the data's actual volatility: `0` for surfaces that change per call, a real window for stable catalogs, and `"private"` whenever the response varies by authorization context (§2) — a `"public"` scope on an auth-scoped catalog leaks one principal's surface into another's shared cache.
-  `ttlMs` is a freshness hint, not a polling schedule; the paging `cursor` is part of the cache key, and MRTR interim results are never cacheable.
+  `ttlMs` is a freshness hint, not a polling schedule; the paging `cursor` is part of the cache key.
+  Never cache the MRTR path: interim `input_required` results carry no hints, and a completed result produced by a retry carrying `inputResponses` or `requestState` MUST NOT be cached either — its content depends on inputs outside the cache key.
 
 - `[8.house-pagination]` **A tool's own result payload MAY carry a documented house pagination convention.** When a `tools/call` result paginates domain data (not a native list method), `has_more` is acceptable: if `has_more` is true, include a navigation token (`next_cursor`) and, where available, `estimated_total`.
   These are declared domain output and belong in `structuredContent` under the tool's `outputSchema` so the agent can observe them — not under `_meta`, which clients may not surface to the model.

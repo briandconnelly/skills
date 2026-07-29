@@ -46,7 +46,9 @@ STALE_PATTERNS: dict[str, re.Pattern[str]] = {
     ),
 }
 
-# A line carrying one of these is talking *about* the old revision, not teaching it.
+# Historical framing near a match means the text is talking *about* the old
+# revision, not teaching it.  Proximity-scoped (not whole-line) so a mixed line
+# — historical clause plus an unrelated stale term taught as current — still fails.
 HISTORICAL_MARKERS = (
     "no longer",
     "removed",
@@ -61,6 +63,13 @@ HISTORICAL_MARKERS = (
     "deprecated",
 )
 
+# How close (in characters) a historical marker must be to a matched term to excuse it.
+MARKER_WINDOW = 90
+
+# A dated results-table row explicitly labeled with the old contract is a
+# historical record in its entirety (tests/scenarios.md Results section).
+HISTORICAL_ROW = re.compile(r"^\|\s*\d{4}-\d{2}-\d{2}\s*\|.*2025-11-25 contract")
+
 EXCLUDED = {"mcp-2025-11-25-compat.md"}
 
 
@@ -70,26 +79,55 @@ def scan_files() -> list[Path]:
     return [f for f in files if f.name not in EXCLUDED and f.exists()]
 
 
+def _marker_spans(line_lower: str) -> list[tuple[int, int]]:
+    spans = []
+    for marker in HISTORICAL_MARKERS:
+        start = 0
+        while (idx := line_lower.find(marker, start)) != -1:
+            spans.append((idx, idx + len(marker)))
+            start = idx + 1
+    return spans
+
+
 def scan_line(line: str) -> list[str]:
-    if any(marker in line.lower() for marker in HISTORICAL_MARKERS):
+    if HISTORICAL_ROW.match(line):
         return []
-    return [name for name, pattern in STALE_PATTERNS.items() if pattern.search(line)]
+    spans = _marker_spans(line.lower())
+    hits = []
+    for name, pattern in STALE_PATTERNS.items():
+        for match in pattern.finditer(line):
+            excused = any(
+                m_start - MARKER_WINDOW <= match.start() <= m_end + MARKER_WINDOW
+                for m_start, m_end in spans
+            )
+            if not excused:
+                hits.append(name)
+                break
+    return hits
 
 
 def self_test() -> None:
     """A scanner that cannot flag a known-stale line is a broken instrument."""
-    known_bad = "Poll `tasks/get` and fetch the result with `tasks/result` before `ttl` expires."
-    if not scan_line(known_bad):
-        print(
-            "check_stale_terms: SELF-TEST FAILED — known-stale sample not flagged", file=sys.stderr
-        )
-        raise SystemExit(2)
-    known_good = "`tasks/result` and `tasks/list` no longer exist — poll `tasks/get`."
-    if scan_line(known_good):
-        print(
-            "check_stale_terms: SELF-TEST FAILED — historical marker not honored", file=sys.stderr
-        )
-        raise SystemExit(2)
+    cases = [
+        # (line, should_flag)
+        ("Poll `tasks/get` and fetch the result with `tasks/result` before `ttl` expires.", True),
+        ("`tasks/result` and `tasks/list` no longer exist — poll `tasks/get`.", False),
+        # Mixed line: historical clause about roots must not excuse the distant
+        # stale term taught as current at the end of the line.
+        (
+            "Roots is deprecated and its notification was removed from the revised protocol"
+            " surface entirely; meanwhile, to recover long-running output you should fetch it"
+            " with `tasks/result`.",
+            True,
+        ),
+    ]
+    for line, should_flag in cases:
+        if bool(scan_line(line)) is not should_flag:
+            print(
+                f"check_stale_terms: SELF-TEST FAILED on: {line[:80]!r}",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
 
 
 def main() -> int:

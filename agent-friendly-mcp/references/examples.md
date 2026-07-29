@@ -899,7 +899,7 @@ The same Slack server with 60 endpoint-mirror tools typically expresses 6–10 a
 
 Exporting a wide date range can take minutes, so `slack_export_history` answers with a task and recovers through the `io.modelcontextprotocol/tasks` extension rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
 
-Tasks are an official **extension**, negotiated per request, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for clients that never declare the extension.
+Tasks are an **extension**, negotiated per request, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for clients that never declare the extension.
 
 **Capability negotiation.** The client declares the extension in each request's `clientCapabilities.extensions` (shown in the create request below), and the server advertises it in its `server/discover` capabilities:
 
@@ -1041,7 +1041,7 @@ Response:
 ```
 
 **Cancel** with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT", "_meta": {…}}`) — `notifications/cancelled` MUST NOT cancel a task.
-The receiver transitions the task to the terminal `cancelled` status before responding.
+The response is an empty acknowledgement, because cancellation is cooperative and eventually consistent: the ack means the intent was received, not that work stopped, and the task MAY still finish in a different terminal status.
 
 Response:
 
@@ -1050,16 +1050,12 @@ Response:
   "jsonrpc": "2.0",
   "id": 14,
   "result": {
-    "resultType": "complete",
-    "taskId": "task_01J9EXPORT",
-    "status": "cancelled",
-    "statusMessage": "Export cancelled by request.",
-    "createdAt": "2026-05-01T18:14:32Z",
-    "lastUpdatedAt": "2026-05-01T18:19:02Z",
-    "ttlMs": 86400000
+    "resultType": "complete"
   }
 }
 ```
+
+A client that still cares about the final state observes it via `tasks/get` or `notifications/tasks`; a client that doesn't may drop its task state as soon as the cancel is sent.
 
 **Fallback for clients without the extension** (convention, not native).
 A client that never declares `io.modelcontextprotocol/tasks` can neither receive nor operate on tasks, so the server exposes a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
@@ -1083,7 +1079,7 @@ What to notice: task creation is server-directed — there is no per-tool task f
 Native task fields use the extension's casing exactly: `taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttlMs`, `pollIntervalMs` — do not rename them to the snake_case used by domain fields; both durations are integer milliseconds (`86400000` is a 24-hour TTL), and `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
 Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttlMs` elapsing, after which the receiver may fail and delete the task.
 `completed` is a delivery statement, not a success statement: a tool result with `isError: true` still arrives as `completed` (inspect `result.isError`), while `failed` is reserved for JSON-RPC errors and carries `error` instead of `result` (`[7.failed-task]`).
-`CreateTaskResult` is discriminated by `resultType: "task"`; `tasks/get`, `tasks/update`, and `tasks/cancel` results are ordinary `resultType: "complete"` results; `tasks/result` and `tasks/list` no longer exist.
+`CreateTaskResult` is discriminated by `resultType: "task"`; `tasks/get` and `tasks/update` results are ordinary `resultType: "complete"` results, and `tasks/cancel` returns an empty acknowledgement; `tasks/result` and `tasks/list` no longer exist.
 The domain-specific status/cancel tools are a labeled fallback for clients without the extension, not a replacement for `tasks/*`.
 
 ## 12. Response-delivery artifact

@@ -2,6 +2,7 @@
 
 Exact native MCP request/response envelopes, field names, and casing for the methods most often confused with house conventions.
 Use it to keep native examples spec-faithful and to tell at a glance whether a field is protocol or convention.
+The MUST/MUST NOT language here restates the *protocol's* obligations for reference; the skill's own binding rules live only in `contract-checklist.md`, and rows that touch one cite its rule id.
 
 **Baseline:** **MCP 2026-07-28** (see `SKILL.md` → Spec Baseline; 2025-11-25 differences are cataloged in [mcp-2025-11-25-compat.md](mcp-2025-11-25-compat.md)).
 Authoritative schema and pagination rules: <https://modelcontextprotocol.io/specification/2026-07-28>.
@@ -62,8 +63,8 @@ Rules that examples must not contradict:
 - Casing is `nextCursor` (camelCase).
   The cursor is **opaque** — do not decode or construct it — and it is part of the cache key.
 - **Absence of `nextCursor` means the list is complete.** There is no native `has_more`, `next_cursor`, `estimated_total`, `total`, or `limit` on these methods, and page size is server-selected.
-- `ttlMs` (integer ≥ 0 milliseconds) and `cacheScope` (`"public" | "private"`) are **required** on `resultType: "complete"` results of these four methods **and `resources/read`** (the `CacheableResult` fields, SEP-2549).
-  `0` means immediately stale; the hint is not a polling schedule.
+- `ttlMs` (integer ≥ 0 milliseconds) and `cacheScope` (`"public" | "private"`) are **required** on `resultType: "complete"` results of these four methods, **`resources/read`, and `server/discover`** (the `CacheableResult` fields, SEP-2549).
+  `0` means immediately stale; the hint is not a polling schedule; a completed result produced by an MRTR retry (`inputResponses`/`requestState`) is never cacheable (`[8.cacheable-results]`).
 - Servers SHOULD return `tools/list` in a deterministic order.
 - A tool's *own* result payload (the body of a `tools/call` result, not a list method) MAY use a documented house pagination convention such as `has_more` / `next_cursor` / `estimated_total`.
   That is convention, lives in the tool's `structuredContent` under its `outputSchema`, and must be labeled as such — see §8 of `contract-checklist.md`.
@@ -119,24 +120,25 @@ One long-lived request opens a notification stream; the client opts into types v
     "resourceSubscriptions": ["file:///project/config.json"] }, "_meta": { "...": "..." } } }
 ```
 
-- Filter types: `toolsListChanged`, `promptsListChanged`, `resourcesListChanged` (booleans) and `resourceSubscriptions` (array of resource URIs — this replaces `resources/subscribe`).
+- Filter types: `toolsListChanged`, `promptsListChanged`, `resourcesListChanged` (booleans), `resourceSubscriptions` (array of resource URIs — this replaces `resources/subscribe`), and — via the tasks extension — `taskIds` (array of task ids for `notifications/tasks`; the server's acknowledgement reports the accepted subset).
 - Every notification on the stream carries `_meta.io.modelcontextprotocol/subscriptionId` equal to the listen request's JSON-RPC id, for demultiplexing.
 - Request-scoped notifications (`notifications/progress`, `notifications/message`) do **not** ride this stream; they stay on the originating request's response stream.
 - Cancel the stream with `notifications/cancelled` referencing the listen request id.
 
 ## Streamable HTTP headers
 
-POST requests MUST carry `MCP-Protocol-Version`, `Mcp-Method` (the JSON-RPC method), and `Mcp-Name`:
+Three required headers, each with its own applicability (`[1.transport]` owns the obligation):
 
-| Request | `Mcp-Name` value |
-| --- | --- |
-| `tools/call` | the tool name |
-| `tasks/get` / `tasks/update` / `tasks/cancel` | the `taskId` (routes to the instance holding task state) |
+| Header | Required on | Value |
+| --- | --- | --- |
+| `MCP-Protocol-Version` | every POST | the protocol version; MUST match the body's `_meta` `protocolVersion` |
+| `Mcp-Method` | every request | the JSON-RPC `method` |
+| `Mcp-Name` | `tools/call`, `resources/read`, `prompts/get` — and, via the tasks extension, `tasks/get`/`tasks/update`/`tasks/cancel` | `params.name` or `params.uri`; for task methods the `taskId` (routes to the instance holding task state) |
 
-A header/body mismatch is `HeaderMismatch` (`-32020`).
+A header/body mismatch is `HeaderMismatch` (`-32020`); non-ASCII `Mcp-Name` values use the spec's Base64 sentinel encoding.
 Tools may pass custom headers via the `x-mcp-header` parameter convention (SEP-2243).
 
-## Tasks (official extension — `io.modelcontextprotocol/tasks`)
+## Tasks (extension — `io.modelcontextprotocol/tasks`)
 
 Negotiated per request: the client declares the extension in `clientCapabilities.extensions`, the server advertises it via `server/discover`.
 Task creation is **server-directed**: any supported request may answer with a `CreateTaskResult` instead of its standard result; the client never asks for one, and a server MUST NOT send one to a client that did not declare the extension.
@@ -155,8 +157,8 @@ Native casing throughout: `taskId`, `status`, `statusMessage` (optional), `creat
 | --- | --- |
 | `tasks/get` | the `Task`, with status-specific payload inline: `completed` adds `result` (the underlying result structure, **including a tool result with `isError: true`**), `failed` adds `error` (the JSON-RPC error), `input_required` adds `inputRequests` |
 | `tasks/update` | `UpdateTaskResult` (`resultType: "complete"`) — carries client `inputResponses` to the task |
-| `tasks/cancel` | the `Task` (`resultType: "complete"`); `notifications/cancelled` MUST NOT cancel a task |
-| `notifications/tasks` | optional push of full task state via `subscriptions/listen`; requestors MUST NOT rely on it |
+| `tasks/cancel` | empty acknowledgement (`resultType: "complete"` only) — cooperative intent, eventually consistent; `notifications/cancelled` MUST NOT cancel a task (`[7.cancellation]`) |
+| `notifications/tasks` | optional push of full task state via the `subscriptions/listen` `taskIds` filter; requestors MUST NOT rely on it (`[7.status-notification]`) |
 
 - `tasks/result` and `tasks/list` do not exist in this revision; terminal payloads arrive inline on `tasks/get`.
 - A task MUST be durably created before `CreateTaskResult` is sent (`tasks/get` for the id already resolves); MRTR exchanges resolve synchronously before task creation.
