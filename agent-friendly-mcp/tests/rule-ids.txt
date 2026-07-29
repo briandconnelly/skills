@@ -124,6 +124,7 @@
 6.resource-errors
 6.name-carrier
 6.correlation
+6.rename
 6.details-field
 6.presence
 6.repair-object

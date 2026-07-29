@@ -116,7 +116,7 @@ Checkpoint: §1, §2, §4. See `examples.md` §7 for a server capability summary
 Design the error surface as deliberately as the success surface.
 
 - Define stable, symbolic error codes (`not_found`, `rate_limited`, `invalid_field`) and document per-tool which codes can occur.
-- Field-level validation feedback: which field, why invalid, allowed values; include the offending value when safe.
+- Field-level validation feedback: which field, why invalid, allowed values; include the offending value per `[6.offending-value]`.
 - Retryability and rate-limit signals: `retry_after_ms`, `temporary`, `rate_limit_remaining` where applicable.
 - Tool semantic errors return as tool result errors with `isError: true`.
 - Resource failures return JSON-RPC errors with structured `error.data` repair fields.

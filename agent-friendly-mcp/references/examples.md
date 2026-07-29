@@ -500,7 +500,7 @@ A more common first-call failure — an unknown channel name passed where an id 
 
 What to notice: the channel-name-vs-id mistake is the predictable first-call failure for a tool whose `channel_id` is a hard-to-guess `C…` id (see ex§1), and MCP completion does not cover tool arguments — so the repair carries the agent across the gap by naming `slack_lookup_channel` and the exact argument to pass, with the resource index as a fallback.
 
-A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, but carries the **same error/repair envelope** in `error.data`, with one deliberate exception: `code`/`message` are renamed to `machine_code`/`human_message` so they do not shadow the native JSON-RPC `code`/`message` that wrap them.
+A resource read failure (e.g., `resources/read` against a deleted thread) uses a JSON-RPC error instead of a tool-result error, but carries the **same error/repair envelope** in `error.data`, with one deliberate exception: `code`/`message` are renamed to `machine_code`/`human_message` — a mandatory rename that no disclosure waives; `[6.rename]` in `contract-checklist.md` states what it buys.
 Every other field — `temporary`, `retry_after_ms`, and (where applicable) `details`, the single `repair` object, and the correlation fields — uses the same name, shape, and cardinality on both surfaces. `resource_uri` is one of those optional correlation fields, shared by both surfaces; it is populated here because this failure is tied to a specific resource (see the unified envelope table in `contract-checklist.md` §6).
 
 ```json
