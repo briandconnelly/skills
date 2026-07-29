@@ -145,6 +145,7 @@
 8.cursor-pagination
 8.cursor-lifetime
 8.native-pagination
+8.cacheable-results
 8.house-pagination
 8.filters
 8.truncation

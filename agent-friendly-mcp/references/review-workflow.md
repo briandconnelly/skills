@@ -60,11 +60,11 @@ Each should be answerable from concrete evidence — schema text, response paylo
   Credit `search_tools` / `describe_tool` only against clients that actually withhold native definitions; on a preloading client they add cost (§2).
   A bloated definition or an inflated catalog with no client-independent reduction is the finding.
   Common bloat mechanisms to check: generated output schemas dominating bytes, framework `$defs` inlining that duplicates shared envelopes per tool, echo field descriptions that restate the field name, and identical boilerplate blocks repeated across docstrings. *(maps to §2, §8; see `examples.md` §8 for one host-managed-disclosure shape)*
-- **Capability gating.** Which optional MCP capabilities does the server rely on after initialization?
-  Verify that roots, completions, resource subscriptions, elicitation, tasks, and list-change notifications are advertised before use, and that weaker clients get a structured fallback instead of a mysterious method failure.
+- **Capability gating.** Which optional MCP capabilities does the server rely on?
+  Verify that completions, resource subscriptions, elicitation modes, the tasks extension, and list-change notifications are declared (per-request `clientCapabilities` or `server/discover`) before use, and that weaker clients get a structured fallback — the native `-32021` with `data.requiredCapabilities` — instead of a mysterious method failure.
   *(maps to §1, §2, §4, §6, §7, §9)*
 - **Resource freshness.** If the agent holds a resource URI across turns, can it tell whether the catalog changed vs. the resource body changed?
-  Check `listChanged`, `resources/subscribe`, `notifications/resources/updated`, and `annotations.lastModified` behavior where available.
+  Check `listChanged`, the `resourceSubscriptions` filter of `subscriptions/listen`, `notifications/resources/updated`, `ttlMs`/`cacheScope` on `resources/read`, and `annotations.lastModified` behavior where available.
   *(maps to §4, §9)*
 - **Long-running operation.** Does a 2-minute operation give useful progress, and can the client cancel it or recover the result later? *(maps to §7; see `examples.md` §11 for one valid shape)*
   Exercise the status and cancellation surface, not only the initial call.
