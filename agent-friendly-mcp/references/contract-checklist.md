@@ -461,7 +461,7 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
   A `resultType: "input_required"` interim result is neither carrier: it is not a failure, and it never substitutes for one (see `[6.elicitation]`).
   See `examples.md` §6 for an actionable tool-result error payload.
 
-- `[6.resource-errors]` **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message`.
+- `[6.resource-errors]` **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message` (`[6.rename]`).
 
 - `[6.name-carrier]` **Name the error carrier in the capability summary.** State where the envelope travels — `structuredContent` on the tool result, JSON-RPC `error.data`, and any disclosed degraded mode (below) — so agents know where to parse a failure before the first one occurs.
 
@@ -473,19 +473,24 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 The failure-recovery contract is **one envelope** with identical field semantics regardless of where it surfaces.
 Tool-result errors carry it in `structuredContent` (alongside `isError: true`); resource and other non-tool RPC failures carry it in JSON-RPC `error.data`.
-The *only* permitted divergence is renaming `code`/`message` on the JSON-RPC side, because the native `code`/`message` already occupy those keys — every other field is the same name, shape, and cardinality on both surfaces.
+The *only* permitted divergence is renaming `code`/`message` to `machine_code`/`human_message` on the JSON-RPC side (`[6.rename]` below) — every other field is the same name, shape, and cardinality on both surfaces.
 Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific flags (e.g. `recoverable`).
 
 | Field | Tool result (`structuredContent`) | JSON-RPC (`error.data`) | Required? | Notes |
 | --- | --- | --- | --- | --- |
-| symbolic code | `code` | `machine_code` | yes | Stable symbolic string; the authoritative branch key. Renamed on JSON-RPC only to avoid shadowing native `code`. |
-| human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on JSON-RPC only to avoid shadowing native `message`. |
+| symbolic code | `code` | `machine_code` | yes | Stable symbolic string; the authoritative branch key. Renamed on the JSON-RPC side (`[6.rename]`). |
+| human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on the JSON-RPC side (`[6.rename]`). |
 | field detail | `details` | `details` | where applicable | `{field, value, reason}` for one parameter, `{fields, reason}` for a cross-parameter constraint (see below); redact `value` when sensitive, never omit silently. |
 | transient? | `temporary` | `temporary` | yes | See retryability invariants above. |
 | retry delay | `retry_after_ms` | `retry_after_ms` | yes (nullable) | Always present alongside `temporary`; a non-negative integer when a delay is known, else `null` (and always `null` when `temporary: false`). Always emit the key so agents distinguish `null` from a number without special-casing a missing field. |
 | rate budget | `rate_limit_remaining` | `rate_limit_remaining` | on rate-limit errors | Non-negative integer of remaining calls in the current window, where the surface exposes one. |
 | repair | `repair` | `repair` | where a corrective path exists | A single object `{next_step, tool, arguments, alternative}` — see below. Omit the field entirely when no repair exists (never emit `null` or an empty array). |
 | correlation | `request_id`, `resource_uri`, `fingerprint` | `request_id`, `resource_uri`, `fingerprint` | where applicable | `resource_uri` where the failure is tied to a resource. |
+
+- `[6.rename]` **The JSON-RPC-side rename is mandatory, and disclosure does not waive it.** The rename is not about key collision — inside `error.data` nothing collides with the native `error.code`/`error.message`.
+  It serves two readers instead: an agent reading the *serialized* error object, where a second `"code"` key (a symbolic string beside the numeric JSON-RPC code) invites grabbing the wrong one; and a parser written once against this contract, which finds the branch key under the same spelling on every conforming server.
+  A capability summary that discloses keeping `code`/`message` inside `error.data` repairs neither: the model reading a failure payload may not have the summary in context at that moment, and per-server spellings break the portable parser.
+  Contrast `[6.degraded-carrier]`, where disclosure sanctions a deviation only because a framework *cannot* comply — a preferred spelling is not an inability.
 
 - `[6.details-field]` **`details.field` names a published parameter.** For a tool argument-validation failure, `field` is a single property path from the failing tool's published `inputSchema` (dotted for nested properties); for a constraint spanning several parameters, use `fields` — a non-empty array of unique published property paths — and emit exactly one of `field` or `fields`, never both.
   For a non-tool RPC failure, `field` names the offending request parameter of that method (`uri` for `resources/read`), under the same one-of rule.
