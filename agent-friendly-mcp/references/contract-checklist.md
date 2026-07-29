@@ -429,8 +429,12 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 
 - `[6.field-feedback]` **Provide field-level validation feedback.** Which field, why it's invalid, and which values are allowed. "Invalid input" without a field name forces the agent to guess.
 
-- `[6.offending-value]` **Include the offending value when safe.** The agent's repair attempt depends on knowing what it sent.
-  Redact when sensitive; never omit silently.
+- `[6.offending-value]` **Include the offending value when known-safe; omit it only with disclosure, never silently.** The agent's repair attempt depends on knowing what the server actually received.
+  Emit `details.value` when the received value itself is known-safe: the server minted it (a handle or URI it issued), or it is one of the schema's published enum members arriving where it is invalid.
+  A received value that failed a format check is not known-safe however innocent the parameter — any free-form parameter can receive a mispasted secret, so safety is a property of the value, not of the schema field.
+  Reliable redaction is a precondition for echoing a potentially sensitive value; best-effort pattern matching does not qualify, because a plain secret matches no pattern.
+  For parameters whose received values' sensitivity the server cannot reliably determine, a blanket omission of `value` is conformant when the policy is disclosed on an agent-visible surface (the error-envelope schema/resource or the capability summary) — that disclosure is what "never omit silently" requires.
+  An undisclosed omission is the defect.
 
 - `[6.retryability]` **Signal retryability and rate limits explicitly.** Use `retry_after_ms`, `temporary: true|false`, and `rate_limit_remaining` where applicable.
   Agents need to distinguish "wait and retry" from "stop and reconsider."
@@ -480,7 +484,7 @@ Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific
 | --- | --- | --- | --- | --- |
 | symbolic code | `code` | `machine_code` | yes | Stable symbolic string; the authoritative branch key. Renamed on the JSON-RPC side (`[6.rename]`). |
 | human text | `message` | `human_message` | yes | Short human-readable summary. Renamed on the JSON-RPC side (`[6.rename]`). |
-| field detail | `details` | `details` | where applicable | `{field, value, reason}` for one parameter, `{fields, reason}` for a cross-parameter constraint (see below); redact `value` when sensitive, never omit silently. |
+| field detail | `details` | `details` | where applicable | `{field, value, reason}` for one parameter, `{fields, reason}` for a cross-parameter constraint (see below); emit, redact, or omit `value` per `[6.offending-value]`. |
 | transient? | `temporary` | `temporary` | yes | See retryability invariants above. |
 | retry delay | `retry_after_ms` | `retry_after_ms` | yes (nullable) | Always present alongside `temporary`; a non-negative integer when a delay is known, else `null` (and always `null` when `temporary: false`). Always emit the key so agents distinguish `null` from a number without special-casing a missing field. |
 | rate budget | `rate_limit_remaining` | `rate_limit_remaining` | on rate-limit errors | Non-negative integer of remaining calls in the current window, where the surface exposes one. |
@@ -495,7 +499,7 @@ Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific
 - `[6.details-field]` **`details.field` names a published parameter.** For a tool argument-validation failure, `field` is a single property path from the failing tool's published `inputSchema` (dotted for nested properties); for a constraint spanning several parameters, use `fields` — a non-empty array of unique published property paths — and emit exactly one of `field` or `fields`, never both.
   For a non-tool RPC failure, `field` names the offending request parameter of that method (`uri` for `resources/read`), under the same one-of rule.
   Translate internal names at the MCP boundary; never expose internal or synthetic names the surface does not accept (an internal `office_id` for a tool that takes `office`, a synthetic `bbox` for tools that take `south`/`west`/`north`/`east`).
-  Include `value` only when safe and meaningful; error-code-specific detail keys (such as `required_scopes` on an `insufficient_scope` error) are permitted alongside `reason` when documented with the code.
+  Emit, redact, or omit `value` per `[6.offending-value]`; error-code-specific detail keys (such as `required_scopes` on an `insufficient_scope` error) are permitted alongside `reason` when documented with the code.
 
 - `[6.presence]` **Presence convention.** Fields marked *yes* are always emitted on both surfaces — `retry_after_ms` is the one nullable required field (it is bound to the always-present `temporary`, and `null` meaningfully signals "no known delay").
   Every other field is omitted entirely when it does not apply; do not send a placeholder `null` or empty array for an absent optional field.

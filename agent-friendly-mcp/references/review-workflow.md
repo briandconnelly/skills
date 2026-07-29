@@ -52,6 +52,7 @@ Each should be answerable from concrete evidence — schema text, response paylo
   Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
 - **First repair.** When the agent makes an invalid call, does the error response tell it specifically how to retry — which field, which allowed values, which tool to call instead?
   Force one invalid call per error code documented for the tool and read the payload, not just the message. *(maps to §6; see `examples.md` §6 for the target payload shape)*
+  When `details.value` is absent, check the agent-visible surfaces for a disclosed omission policy before charging `[6.offending-value]` — a disclosed blanket omission is conformant, and "echo the value, redacted" is not a valid remediation where sensitivity is undeterminable (that pushes toward the secrets-leaked Critical above).
 - **Advertised vs. actual.** Inspect captured responses or isolated fixtures for at least one success and one forced error per tool; use live calls only where the Safety rule permits.
   Verify that every required and claimed-always-present field is populated, that conditional fields appear under their documented conditions, and that the error carrier matches the wire — `isError: true`, envelope location, envelope shape.
   Prefer schema-invalid requests known to fail before handler execution; do not probe mutating tools with guessed placeholder values.
