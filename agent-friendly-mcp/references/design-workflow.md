@@ -22,8 +22,8 @@ The checkpoint links at each step point at the relevant `contract-checklist.md` 
 
 ## Step 0: Fix the protocol revision target
 
-Decide which protocol revision(s) and which extensions the target clients speak — modern 2026-07-28, legacy 2025-11-25, or dual-era — and record the decision per `[1.spec-revision]`.
-Every later step designs against that target, and extensions are named individually because they version independently of the core revision.
+Decide which protocol revision(s) and which extensions the target clients speak, and record the decision per `[1.spec-revision]`, which owns the declaration's required content.
+Every later step designs against that target.
 
 Output: a one-line revision-and-extensions target that the capability summary (Step 5) will carry.
 

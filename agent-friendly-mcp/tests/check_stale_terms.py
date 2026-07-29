@@ -46,9 +46,10 @@ STALE_PATTERNS: dict[str, re.Pattern[str]] = {
     ),
 }
 
-# Historical framing near a match means the text is talking *about* the old
-# revision, not teaching it.  Proximity-scoped (not whole-line) so a mixed line
-# — historical clause plus an unrelated stale term taught as current — still fails.
+# Historical framing in the same clause as a match means the text is talking
+# *about* the old revision, not teaching it.  Clause-scoped (not whole-line or
+# character-window) so a mixed sentence — historical clause plus a stale term
+# taught as current in the next clause — still fails.
 HISTORICAL_MARKERS = (
     "no longer",
     "removed",
@@ -63,8 +64,10 @@ HISTORICAL_MARKERS = (
     "deprecated",
 )
 
-# How close (in characters) a historical marker must be to a matched term to excuse it.
-MARKER_WINDOW = 90
+# Clause boundaries: sentence enders and semicolons (only before whitespace or
+# end-of-line, so dots inside identifiers like `execution.taskSupport` do not
+# split), em-dashes, and commas that start a new coordinate clause.
+CLAUSE_SPLIT = re.compile(r"[.;](?=\s|$)|—|,\s+(?:but|so|and now|instead)\b")
 
 # A dated results-table row explicitly labeled with the old contract is a
 # historical record in its entirety (tests/scenarios.md Results section).
@@ -79,28 +82,28 @@ def scan_files() -> list[Path]:
     return [f for f in files if f.name not in EXCLUDED and f.exists()]
 
 
-def _marker_spans(line_lower: str) -> list[tuple[int, int]]:
+def _clause_spans(line: str) -> list[tuple[int, int]]:
     spans = []
-    for marker in HISTORICAL_MARKERS:
-        start = 0
-        while (idx := line_lower.find(marker, start)) != -1:
-            spans.append((idx, idx + len(marker)))
-            start = idx + 1
+    start = 0
+    for boundary in CLAUSE_SPLIT.finditer(line):
+        spans.append((start, boundary.start()))
+        start = boundary.end()
+    spans.append((start, len(line)))
     return spans
 
 
 def scan_line(line: str) -> list[str]:
     if HISTORICAL_ROW.match(line):
         return []
-    spans = _marker_spans(line.lower())
+    clauses = _clause_spans(line)
     hits = []
     for name, pattern in STALE_PATTERNS.items():
         for match in pattern.finditer(line):
-            excused = any(
-                m_start - MARKER_WINDOW <= match.start() <= m_end + MARKER_WINDOW
-                for m_start, m_end in spans
+            start, end = next(
+                ((s, e) for s, e in clauses if s <= match.start() < e), (0, len(line))
             )
-            if not excused:
+            clause = line[start:end].lower()
+            if not any(marker in clause for marker in HISTORICAL_MARKERS):
                 hits.append(name)
                 break
     return hits
@@ -112,8 +115,10 @@ def self_test() -> None:
         # (line, should_flag)
         ("Poll `tasks/get` and fetch the result with `tasks/result` before `ttl` expires.", True),
         ("`tasks/result` and `tasks/list` no longer exist — poll `tasks/get`.", False),
-        # Mixed line: historical clause about roots must not excuse the distant
-        # stale term taught as current at the end of the line.
+        # Mixed clauses: a historical clause must not excuse a stale term taught
+        # as current in an adjacent clause, however close.
+        ("Roots is deprecated; fetch long-running output with `tasks/result`.", True),
+        ("`tasks/result` no longer exists, but use `tasks/list` to recover task IDs.", True),
         (
             "Roots is deprecated and its notification was removed from the revised protocol"
             " surface entirely; meanwhile, to recover long-running output you should fetch it"

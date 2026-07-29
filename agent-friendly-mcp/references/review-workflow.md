@@ -20,9 +20,8 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 ## Audit Procedure
 
-0. **Establish the server's protocol revision target before judging anything.** Determine which revision(s) and extensions the server targets (`[1.spec-revision]`): from its declared summary, or failing that from its wire shapes.
-   A server deliberately targeting legacy 2025-11-25 clients is audited against that baseline via the informative [mcp-2025-11-25-compat.md](mcp-2025-11-25-compat.md) matrix — its legacy shapes are conformance, not findings; the finding is an undeclared target or a missing migration plan.
-   Findings that flag legacy shapes on a declared-legacy surface are themselves review defects.
+0. **Establish the server's protocol revision target before judging anything.** Determine which revision(s) and extensions the server targets: from its declared summary, or failing that from its wire shapes.
+   `[1.spec-revision]` owns which rules bind regardless of target and which wire mechanics are read through the compat matrix for a declared-legacy server; a finding that flags a legacy shape on a declared-legacy surface is itself a review defect.
 1. **Read or generate the server capability summary.** If the server publishes one, start there.
    If it does not, record that absence as a Major finding against §2 and §1 by default; escalate to Critical when the server surface is broad or ambiguous enough that agents predictably fail without it.
    Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
