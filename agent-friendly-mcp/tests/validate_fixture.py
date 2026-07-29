@@ -8,9 +8,15 @@
 """Validate an agent-friendly-mcp wire fixture against the skill's contract.
 
 Checks the corrected outputSchema/error contract (contract-checklist.md
-§3 output rules and §6 "one error envelope, two carriers"):
+§3 output rules and §6 "one error envelope, two carriers") against the
+MCP 2026-07-28 baseline:
 
-  * the success result's structuredContent conforms to the tool's outputSchema;
+  * both results carry the required resultType field with value "complete"
+    (a final tool result is "complete" even when isError is true; interim
+    MRTR results are out of this fixture's scope);
+  * the success result's structuredContent conforms to the tool's outputSchema
+    (any JSON value the schema permits, including null — absence of the key
+    and a present null are distinguished);
   * the error result sets isError: true and carries the §6 envelope in
     structuredContent (or, only when wire.degraded_text_carrier is declared,
     as JSON text in content[0].text);
@@ -94,25 +100,44 @@ def _envelope_invariant_issues(envelope: object, where: str) -> list[Issue]:
     return issues
 
 
+def _result_type_issues(result: dict, where: str) -> list[Issue]:
+    """2026-07-28 requires resultType on every result; a final tool result is 'complete'."""
+    if "resultType" not in result:
+        return [Issue(where, "result missing required 'resultType' field (2026-07-28)")]
+    if result["resultType"] != "complete":
+        return [
+            Issue(
+                where,
+                f"final tool result must carry resultType 'complete', got {result['resultType']!r}",
+            )
+        ]
+    return []
+
+
 def _success_issues(wire: dict) -> list[Issue]:
-    """§3 success path: structuredContent conforms to outputSchema."""
+    """§3 success path: resultType present; structuredContent conforms to outputSchema."""
     success = wire.get("success_result")
     if not isinstance(success, dict):
         return [Issue("success_result", "missing success_result")]
 
     issues: list[Issue] = []
+    issues += _result_type_issues(success, "success_result")
     if success.get("isError") is True:
         issues.append(Issue("success_result", "success_result must not set isError: true"))
     content_issue = _content_fallback_issue(success, "success_result.content")
     if content_issue:
         issues.append(content_issue)
-    sc = success.get("structuredContent")
     output_schema = wire.get("output_schema")
-    if sc is None:
+    if "structuredContent" not in success:
+        # Key absence is the violation; a present null is legal wherever the
+        # outputSchema permits it (structuredContent is any JSON value under
+        # 2026-07-28) and is judged by the schema below.
         issues.append(Issue("success_result", "success_result missing structuredContent"))
     elif isinstance(output_schema, dict):
         issues += _schema_errors(
-            sc, output_schema, "success_result.structuredContent vs output_schema"
+            success["structuredContent"],
+            output_schema,
+            "success_result.structuredContent vs output_schema",
         )
     else:
         issues.append(Issue("wire.output_schema", "missing output_schema"))
@@ -121,9 +146,10 @@ def _success_issues(wire: dict) -> list[Issue]:
 
 def _extract_envelope(error: dict, degraded: bool) -> tuple[object, list[Issue]]:
     """Locate the §6 error envelope on its declared carrier."""
-    envelope = error.get("structuredContent")
-    if envelope is not None:
-        return envelope, []
+    if "structuredContent" in error:
+        # A present-but-null envelope is a real violation reported by the
+        # invariant check, not a cue to fall through to the degraded carrier.
+        return error["structuredContent"], []
 
     if not degraded:
         return None, [
@@ -164,6 +190,7 @@ def _error_issues(wire: dict) -> list[Issue]:
         return [Issue("error_result", "missing error_result")]
 
     issues: list[Issue] = []
+    issues += _result_type_issues(error, "error_result")
     if error.get("isError") is not True:
         issues.append(Issue("error_result", "error_result must set isError: true"))
 
@@ -175,7 +202,7 @@ def _error_issues(wire: dict) -> list[Issue]:
     envelope, carrier_issues = _extract_envelope(error, degraded)
     issues += carrier_issues
 
-    if envelope is not None:
+    if not carrier_issues:
         issues += _envelope_invariant_issues(envelope, "error_result envelope (§6 invariants)")
         error_schema = wire.get("error_schema")
         if isinstance(error_schema, dict):

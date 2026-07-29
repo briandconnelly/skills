@@ -90,20 +90,21 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 **Prompt:**
 
 > Design the agent-facing MCP contract for a `video_render` tool whose renders take 1–10 minutes and can pause waiting for the user to approve a watermark.
-> Target MCP 2025-11-25.
+> Target MCP 2026-07-28 with the `io.modelcontextprotocol/tasks` extension.
 > Produce: the capability declarations, the tool definition, the wire shapes an agent sees when creating, polling, and recovering the render, and whatever fallback you think clients without task support need.
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Task support is declared at both levels: `server.capabilities.tasks.requests.tools.call` AND the tool's `execution.taskSupport` — not the per-tool flag alone (§7).
-- [ ] Native task fields use spec casing (`taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval`) and statuses are exactly `working`/`input_required`/`completed`/`failed`/`cancelled` (§7).
-- [ ] The `CreateTaskResult` nests the `Task` under `result.task`, while `tasks/get` returns it directly — the shapes are not collapsed into one envelope (§7, native-wire-shapes).
-- [ ] Any `progressToken` originates in the request's `_meta`, not minted by the server (§7).
-- [ ] The watermark pause is handled via `input_required` with the native recovery path: the agent preemptively calls `tasks/result` and holds it open, the pending input request arrives as a separate server-to-client request while the call is pending, and the held call returns the terminal result once input is supplied (§7).
+- [ ] Tasks are gated on the extension at both ends: the client's per-request `clientCapabilities.extensions` declaration AND the server's `server/discover` advertisement — the removed `execution.taskSupport` and per-request task opt-in field do not appear (§7).
+- [ ] Native task fields use extension casing (`taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttlMs`, `pollIntervalMs`) and statuses are exactly `working`/`input_required`/`completed`/`failed`/`cancelled` (§7).
+- [ ] The `CreateTaskResult` carries the task fields inline with `resultType: "task"`, while `tasks/get`/`tasks/update`/`tasks/cancel` results are `resultType: "complete"` — and the removed `tasks/result`/`tasks/list` methods do not appear (§7, native-wire-shapes).
+- [ ] Any `progressToken` originates in the request's `_meta`, and post-creation progress rides `statusMessage`/`notifications/tasks`, not `notifications/progress` (§7).
+- [ ] The watermark pause is handled via `input_required` with the native recovery path: `tasks/get` carries the outstanding `inputRequests`, the client answers via `tasks/update` `inputResponses`, honoring the client's declared elicitation modes (§7).
+- [ ] A tool-result error is modeled as a `completed` task whose `result.isError` is true; `failed` is reserved for JSON-RPC errors and carries `error` (§7).
 - [ ] The fallback status/cancel tools are labeled as convention, mirror the native signals (state, when to poll, result location, expiry), and do not replace `tasks/*` (§7).
 - [ ] Native fields and house conventions are not mixed: convention metadata is namespaced or labeled, and native casing is never snake_cased (native-vs-convention rule).
 
-**Expected baseline failures:** per-tool `taskSupport` without the server capability, invented snake_case task fields or statuses (`running`, `succeeded`), one collapsed envelope for all task methods, server-minted progress tokens, `input_required` handled by polling alone with no `tasks/result` channel, fallback tools presented as protocol.
+**Expected baseline failures:** the 2025-11-25 contract reproduced from memory (`execution.taskSupport`, `tasks/result` holds, `ttl`/`pollInterval` spellings, `result.task` nesting), invented snake_case task fields or statuses (`running`, `succeeded`), tool errors mapped to `failed`, server-minted progress tokens, fallback tools presented as protocol.
 
 ## Scenario 4: Instructions and description prose (application test)
 
@@ -112,7 +113,7 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 > You are writing the prose surfaces of an MCP server called `deployctl` that wraps an internal deployment service.
 > The tool schemas already exist; your job is ONLY the prose:
 >
-> 1. The server-level `instructions` string (the capability summary agents see at initialization).
+> 1. The server-level `instructions` string (the capability summary surfaced to agents at connection setup).
 > 2. The `description` field text for two tools: `deployctl_deploy_service` and `deployctl_rollback_service`.
 >
 > Base them on the ops team's notes below (verbatim):
@@ -151,7 +152,7 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 - [ ] Large page bodies are chunkable, and every chunk has its own callable URI published as a resource template (`resources/templates/list` with `uriTemplate`) — because native `resources/read` takes only a URI — or a labeled tool fallback that accepts a chunk id (§4).
 - [ ] Chunk identifiers are stable across reads of the same page version, and a version change is observable via the resource's modification metadata (§4).
 - [ ] Custom/index metadata with no native field rides under a namespaced `_meta` key, never as a new top-level field on the `Resource` record (§4, native-vs-convention).
-- [ ] Mutable pages support subscriptions: the server advertises `resources.subscribe`, accepts `resources/subscribe`, and emits `notifications/resources/updated` for subscribed URIs — distinguished from `notifications/resources/list_changed`, which signals catalog membership changes, not body edits (§4).
+- [ ] Mutable pages support subscriptions: the server advertises `resources.subscribe`, serves the `resourceSubscriptions` filter of `subscriptions/listen`, and emits `notifications/resources/updated` (tagged with `subscriptionId`) for watched URIs — distinguished from `notifications/resources/list_changed`, which signals catalog membership changes, not body edits (§4).
 - [ ] Parameterized lookups are exposed via resource templates, with completion for `{space}`/`{slug}` where clients negotiate `completions`, so an agent can construct a page URI without enumerating every page (§4).
 - [ ] A tool fallback reaches the same indexed content and is self-sufficient from `tools/list` alone, for clients that do not expose resources well (§4).
 
@@ -212,14 +213,16 @@ Unlike Scenarios 1–6, this scenario tests whether the skill's `description` fi
 
 ## Results
 
+Rows dated before 2026-07-29 measured the MCP 2025-11-25 contract that the skill taught at the time (see `decisions/001-mcp-2026-07-28-rebase.md`); their evidence files are immutable historical artifacts, and their assertion sets differ from the current scenario text.
+
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-06-09 | 2 (audit) | baseline | 5/9 | Caught readOnlyHint lie, duplication, error strings, tool count, naming — but no severity scale (used Critical/High/Medium), no five-line format, no §-anchoring, no coverage table, no N/A entries for resources/prompts. |
 | 2026-06-09 | 2 (audit) | with-skill | 9/9 | Five-line findings F1–F7 anchored to §N; coverage table with not-checked reasons; six probes run, three skipped with reasons; remediations name `chat_send_message`, `channel_id`, `search_tools`. Errors rated Critical (within loosened assertion). |
 | 2026-07-11 | 1 (design) | baseline | 4/9 | Tree `d586ce3`. Passed A3/A4/A5/A8; failed granularity (11 endpoint-mirroring tools), naming (no service prefix, noun_verb), negative scope, pagination provenance/detail-toggle, and shown `outputSchema` (claimed in prose only). [evidence](runs/2026-07-11-scenario1-baseline.md) |
 | 2026-07-11 | 1 (design) | with-skill | 9/9 | Tree `d586ce3`. 11 endpoints → 7 task-completing `github_*` tools with justification table; explicit `does_not`; house pagination labeled vs native `nextCursor`; `outputSchema` on the flagship read tool; one-envelope-two-carriers errors. [evidence](runs/2026-07-11-scenario1-with-skill.md) |
-| 2026-07-11 | 3 (long-running) | baseline | 4/7 | Tree `d586ce3`. Passed A1/A2/A3/A7; failed A4 (invented `notifications/tasks/status` instead of request-`progressToken`), A5 (polled instead of preemptive-hold `tasks/result`), A6 (fallback not labeled convention, no expiry). Caveat: A1 used `requests: ["tools/call"]` array vs spec nested shape. [evidence](runs/2026-07-11-scenario3-baseline.md) |
-| 2026-07-11 | 3 (long-running) | with-skill | 7/7 | Tree `d586ce3`. Nested `tasks.requests.tools.call`; request-originated `progressToken`; preemptive-hold `input_required` recovery via `elicitation/create`; labeled-convention fallback mirroring expiry/result-location; `tasks/list` withheld for isolation. [evidence](runs/2026-07-11-scenario3-with-skill.md) |
+| 2026-07-11 | 3 (long-running) | baseline | 4/7 | Tree `d586ce3`, 2025-11-25 contract. Passed A1/A2/A3/A7; failed A4 (invented `notifications/tasks/status` instead of request-`progressToken`), A5 (polled instead of preemptive-hold `tasks/result`), A6 (fallback not labeled convention, no expiry). Caveat: A1 used `requests: ["tools/call"]` array vs spec nested shape. [evidence](runs/2026-07-11-scenario3-baseline.md) |
+| 2026-07-11 | 3 (long-running) | with-skill | 7/7 | Tree `d586ce3`, 2025-11-25 contract. Nested `tasks.requests.tools.call`; request-originated `progressToken`; preemptive-hold `input_required` recovery via `elicitation/create`; labeled-convention fallback mirroring expiry/result-location; `tasks/list` withheld for isolation. [evidence](runs/2026-07-11-scenario3-with-skill.md) |
 | 2026-07-11 | 5 (resources) | baseline | 5/8 | Tree `d586ce3`. Passed URIs/chunk-templates/version-pinning/subscriptions/tool-fallback; failed native triage field names (used `summary`/`sizeBytes`/`updatedAt`), non-namespaced `_meta`, and no completion on templates. [evidence](runs/2026-07-11-scenario5-baseline.md) |
 | 2026-07-11 | 5 (resources) | with-skill | 8/8 | Tree `d586ce3`. Native `size`/`annotations.lastModified` triage fields; namespaced `_meta` (`com.acme-wiki/*`); `completion/complete` for `{space}`/`{slug}`; bounded `resources/list`; one-envelope-two-carriers resource failures. [evidence](runs/2026-07-11-scenario5-with-skill.md) |
 | 2026-07-11 | 6 (prompts) | baseline | 5/7 | Tree `d586ce3`. Passed canonical-name refs, native `PromptArgument` fields, workflow-vs-schema split, no top-level convention fields; failed declared prerequisites and completion on dynamic arguments. [evidence](runs/2026-07-11-scenario6-baseline.md) |

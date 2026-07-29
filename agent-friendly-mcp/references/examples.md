@@ -356,6 +356,10 @@ Completion request for the dynamic `channel_id` variable:
     "argument": {
       "name": "channel_id",
       "value": "dep"
+    },
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {}
     }
   }
 }
@@ -368,6 +372,7 @@ Completion response:
   "jsonrpc": "2.0",
   "id": "req_complete_channel",
   "result": {
+    "resultType": "complete",
     "completion": {
       "values": ["C0123DEPLOYS", "C0456DEPLOYOPS"],
       "total": 2,
@@ -378,7 +383,8 @@ Completion response:
 ```
 
 What to notice: `uriTemplate` is native resource-template metadata, and `completion/complete` is native completion for a resource reference.
-The server must advertise `server.capabilities.completions` during initialization before clients can rely on this path.
+Every request carries the required `_meta` fields (`io.modelcontextprotocol/protocolVersion`, `io.modelcontextprotocol/clientCapabilities`) — shown here and in every request example below, because the protocol is stateless and rejects requests without them.
+The server must advertise the `completions` capability (via `server/discover`) before clients can rely on this path.
 Completion is useful here because Slack channel ids are dynamic and hard to guess; it does not replace normal validation or repair errors for tool-call arguments.
 
 ## 5b. Resource subscription
@@ -386,34 +392,44 @@ Completion is useful here because Slack channel ids are dynamic and hard to gues
 A mutable flags resource that can change during a long-lived agent session.
 *Demonstrates §4 resource subscriptions and §9 update-vs-list-change behavior.*
 
-Subscribe request:
+Listen request naming the watched URI (this replaces the removed `resources/subscribe`):
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_subscribe_flags",
-  "method": "resources/subscribe",
+  "id": 7,
+  "method": "subscriptions/listen",
   "params": {
-    "uri": "slack://workspace/T0123/flags"
+    "notifications": {
+      "resourcesListChanged": true,
+      "resourceSubscriptions": ["slack://workspace/T0123/flags"]
+    },
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {}
+    }
   }
 }
 ```
 
-Update notification:
+Update notification on the listen stream, tagged with the listen request's id:
 
 ```json
 {
   "jsonrpc": "2.0",
   "method": "notifications/resources/updated",
   "params": {
-    "uri": "slack://workspace/T0123/flags"
+    "uri": "slack://workspace/T0123/flags",
+    "_meta": {
+      "io.modelcontextprotocol/subscriptionId": 7
+    }
   }
 }
 ```
 
-What to notice: the update notification tells the agent to re-read a resource body it already cares about.
-It is different from `notifications/resources/list_changed`, which means the resource catalog membership or metadata changed.
-A server must advertise `resources.subscribe` before accepting subscriptions; `annotations.lastModified` remains useful as a passive staleness check for clients that do not subscribe.
+What to notice: the update notification tells the agent to re-read a resource body it already cares about, and `io.modelcontextprotocol/subscriptionId` (the listen request's JSON-RPC id) says which subscription produced it.
+It is different from `notifications/resources/list_changed` (opted into via the `resourcesListChanged` filter type), which means the resource catalog membership or metadata changed.
+A server must advertise `resources.subscribe` before serving `resourceSubscriptions` filters; the stream is opt-in, so an honest `ttlMs` on `resources/read` plus `annotations.lastModified` remain the staleness bound for clients that never listen.
 
 ## 6. Actionable error payload
 
@@ -421,6 +437,7 @@ A failure response from `slack_send_message` when the channel is archived. *Demo
 
 ```json
 {
+  "resultType": "complete",
   "isError": true,
   "content": [
     {"type": "text", "text": "Cannot post to archived channel C0123ABCD. Unarchive it with slack_unarchive_channel, or choose a different channel_id."}
@@ -458,6 +475,7 @@ A more common first-call failure — an unknown channel name passed where an id 
 
 ```json
 {
+  "resultType": "complete",
   "isError": true,
   "content": [
     {"type": "text", "text": "No channel matches 'deploys'. Resolve the name to an id with slack_lookup_channel, then re-call slack_send_message."}
@@ -490,7 +508,7 @@ Every other field — `temporary`, `retry_after_ms`, and (where applicable) `det
   "jsonrpc": "2.0",
   "id": "req_01HXYZ7K3M9ABCDEG",
   "error": {
-    "code": -32002,
+    "code": -32602,
     "message": "Resource not found.",
     "data": {
       "machine_code": "resource_gone",
@@ -518,8 +536,8 @@ Every other field — `temporary`, `retry_after_ms`, and (where applicable) `det
 
 What to notice: the `data` block carries the same error envelope as the tool-result error's `structuredContent`, with the optional `resource_uri` correlation field populated because this failure is tied to a specific resource. `machine_code: resource_gone` with `temporary: false` and `retry_after_ms: null` tells the agent the exact resource is permanently gone — don't back off and retry the same read — while `repair` still routes it to a real next call (`slack_search_messages`) to recover the underlying information a different way. (This is why no separate `recoverable` flag is needed: `machine_code` + `temporary` already say whether *this* resource can return, and a non-empty `repair` already says recovery is possible by another path.) `request_id` here mirrors the envelope `id`, and `fingerprint` ties the failure to the server contract version — the same correlation context the tool surface carries.
 
-`-32002` is MCP's resource-not-found JSON-RPC code under the 2025-11-25 baseline; the `data` block carries the repair contract.
-Branch on `machine_code`, not the numeric code — the numeric code is a likely migration point (see `SKILL.md` Spec Baseline).
+Resource-not-found surfaces as `-32602` (Invalid params) under 2026-07-28 — the old `-32002` is retired, though clients SHOULD still accept it from older servers; the `data` block carries the repair contract either way.
+Branch on `machine_code`, not the numeric code — that is what survives spec-revision renumbering (see `[6.symbolic-codes]`).
 
 ## 7. Server capability summary
 
@@ -555,19 +573,19 @@ The capability summary exposed via a resource, discovery tool, or instructions f
     "required_scopes": ["chat:write", "channels:read", "users:read"],
     "negotiated_capabilities": {
       "server": [
-        "server.capabilities.resources.listChanged",
-        "server.capabilities.resources.subscribe",
-        "server.capabilities.completions",
-        "server.capabilities.tasks.requests.tools.call"
+        "capabilities.resources.listChanged",
+        "capabilities.resources.subscribe",
+        "capabilities.completions",
+        "capabilities.extensions[io.modelcontextprotocol/tasks]"
       ],
       "client": [
-        "client.capabilities.roots",
-        "client.capabilities.elicitation.form",
-        "client.capabilities.elicitation.url"
+        "clientCapabilities.elicitation.form",
+        "clientCapabilities.elicitation.url",
+        "clientCapabilities.extensions[io.modelcontextprotocol/tasks]"
       ],
       "fallbacks": {
         "no_completions": "Return invalid-field errors with allowed channel ids where safe.",
-        "no_resource_subscribe": "Use annotations.lastModified and explicit re-read guidance.",
+        "no_resource_subscribe": "Use annotations.lastModified, resources/read ttlMs, and explicit re-read guidance.",
         "no_tasks": "Use slack_get_export_status and slack_cancel_export fallback tools."
       }
     },
@@ -598,7 +616,7 @@ The summary does not spend first-read tokens on credential wiring details the ag
 The transport choice (`stdio`) is declared.
 The negotiated-capability block is convention metadata, but the capabilities it names are native MCP features.
 It tells the agent which paths are fast paths and which fallbacks to expect on weaker clients.
-Capability strings use fully qualified `server.capabilities.*` and `client.capabilities.*` paths so the server/client side of negotiation is unambiguous.
+Capability strings qualify the side that declares them — the server's `server/discover` `capabilities.*` versus the client's per-request `clientCapabilities.*` — so the direction of the dependency is unambiguous.
 The auth block separates stdio credential sourcing from the optional HTTP variant.
 The `http_variant` fields apply only if the same contract is also exposed over streamable HTTP; stdio-only servers should omit that object.
 It does not ask the model to handle bearer tokens directly.
@@ -642,7 +660,7 @@ On a host that preloads the full catalog, they add tools and round trips with no
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `execution`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending.
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending.
 The fingerprint travels with the response so a cached client can detect drift.
 Other shapes on this same axis: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — all custom surfaces layered over native discovery, and all subject to the same host-integration requirement.
 None of them shrink the native `tools/list` payload a preloading client receives; to lower cost on a client that never lazy-loads, reduce the catalog itself (compact definitions, consolidation, a compact dispatcher, or authorization-scoped catalogs — see §2).
@@ -650,42 +668,55 @@ Fields like `summary`, `stability`, `score`, and `load_definition_with` are conv
 
 ## 8a. Roots-aware workspace behavior
 
-A local code-search server asks the client which project roots are relevant before indexing.
-*Demonstrates §1 roots and capability gating.*
+A local code-search server learns which project roots are relevant before indexing — via MRTR, because server-initiated `roots/list` no longer exists and roots itself is deprecated.
+*Demonstrates §1 workspace scoping and capability gating.*
 
-Request:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req_roots",
-  "method": "roots/list"
-}
-```
-
-Response:
+Interim result to the client's `tools/call` (the client's request declared the deprecated `roots` capability):
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_roots",
+  "id": 3,
   "result": {
-    "roots": [
-      {
-        "uri": "file:///Users/alice/work/frontend",
-        "name": "frontend"
-      },
-      {
-        "uri": "file:///Users/alice/work/backend",
-        "name": "backend"
+    "resultType": "input_required",
+    "inputRequests": {
+      "roots-1": {
+        "method": "roots/list",
+        "params": {}
       }
-    ]
+    }
   }
 }
 ```
 
-What to notice: the server only sends `roots/list` after the client advertised `roots` during initialization.
-It treats those roots as the workspace scope for search and path resolution, and listens for `notifications/roots/list_changed`.
+Retry of the same call with the roots attached:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "code_search",
+    "arguments": {"query": "retry backoff"},
+    "inputResponses": {
+      "roots-1": {
+        "roots": [
+          {"uri": "file:///Users/alice/work/frontend", "name": "frontend"},
+          {"uri": "file:///Users/alice/work/backend", "name": "backend"}
+        ]
+      }
+    },
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {"roots": {}}
+    }
+  }
+}
+```
+
+What to notice: the server may request roots only from a request whose `clientCapabilities` declared `roots`, and the retry is a new request (new id) carrying `inputResponses`.
+Roots is deprecated: the primary design passes workspace scope as ordinary tool arguments (`[1.roots]`), and this MRTR exchange is the compatibility path for clients that still declare it.
 Roots are not access control; the implementation still needs normal filesystem checks and must not assume that a root URI grants permission to every path below it.
 
 ## 9. Capability fingerprint with deprecation
@@ -866,20 +897,17 @@ The same Slack server with 60 endpoint-mirror tools typically expresses 6–10 a
 
 ## 11. Long-running operation
 
-Exporting a wide date range can take minutes, so `slack_export_history` declares task support and recovers through the native MCP task lifecycle rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
+Exporting a wide date range can take minutes, so `slack_export_history` answers with a task and recovers through the `io.modelcontextprotocol/tasks` extension rather than hiding the work behind a silent blocking call. *Demonstrates §7 long-running operations.*
 
-Tasks are **experimental** in MCP 2025-11-25, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for servers or clients that do not implement tasks.
+Tasks are an **extension**, negotiated per request, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for clients that never declare the extension.
 
-**Capability negotiation.** Native task recovery requires two declarations, not one — the server advertises the `tasks` capability, and the tool advertises `execution.taskSupport`.
-The per-tool flag alone is insufficient.
+**Capability negotiation.** The client declares the extension in each request's `clientCapabilities.extensions` (shown in the create request below), and the server advertises it in its `server/discover` capabilities:
 
 ```json
 {
   "capabilities": {
-    "tasks": {
-      "list": {},
-      "cancel": {},
-      "requests": {"tools": {"call": {}}}
+    "extensions": {
+      "io.modelcontextprotocol/tasks": {}
     }
   }
 }
@@ -890,7 +918,7 @@ The per-tool flag alone is insufficient.
 ```json
 {
   "name": "slack_export_history",
-  "description": "Export Slack history for channels and a date range; wide exports run as recoverable tasks.\n\nDuration: typically ~45s, up to ~180s for wide ranges. Run as a task, the call returns a taskId before any server timeout and the result is retrievable until `ttl` elapses.",
+  "description": "Export Slack history for channels and a date range; wide exports run as recoverable tasks.\n\nDuration: typically ~45s, up to ~180s for wide ranges. When the request declares the tasks extension, wide exports return a task (`resultType: \"task\"`) instead of a direct result, and the result is retrievable via `tasks/get` until `ttlMs` elapses.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -911,19 +939,18 @@ The per-tool flag alone is insufficient.
       "message_count": {"type": "integer"}
     },
     "additionalProperties": false
-  },
-  "execution": {"taskSupport": "optional"}
+  }
 }
 ```
 
-**Create the task.** The client augments its `tools/call` with a `task` field in `params`; the receiver returns a `CreateTaskResult` carrying the native `Task` object under `result.task`, not the tool result.
+**Create the task.** The client sends an ordinary `tools/call` whose `clientCapabilities` declare the tasks extension; the server — at its own discretion, per request — answers with a `CreateTaskResult` (the task fields inline, discriminated by `resultType: "task"`) instead of the tool result.
 
 Request:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_01HXYZ",
+  "id": 11,
   "method": "tools/call",
   "params": {
     "name": "slack_export_history",
@@ -932,8 +959,12 @@ Request:
       "started_after": "2026-01-01T00:00:00Z",
       "ended_before": "2026-05-01T00:00:00Z"
     },
-    "task": {"ttl": 86400000},
-    "_meta": {"progressToken": "pt_01J9EXPORT"}
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {
+        "extensions": {"io.modelcontextprotocol/tasks": {}}
+      }
+    }
   }
 }
 ```
@@ -943,103 +974,91 @@ Response (`CreateTaskResult`):
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_01HXYZ",
+  "id": 11,
   "result": {
-    "task": {
-      "taskId": "task_01J9EXPORT",
-      "status": "working",
-      "statusMessage": "Export accepted; collecting messages.",
-      "createdAt": "2026-05-01T18:14:32Z",
-      "lastUpdatedAt": "2026-05-01T18:14:32Z",
-      "ttl": 86400000,
-      "pollInterval": 5000
-    },
-    "_meta": {"io.modelcontextprotocol/model-immediate-response": "Export accepted as task_01J9EXPORT; results retrievable for 24h."}
+    "resultType": "task",
+    "taskId": "task_01J9EXPORT",
+    "status": "working",
+    "statusMessage": "Export accepted; collecting messages.",
+    "createdAt": "2026-05-01T18:14:32Z",
+    "lastUpdatedAt": "2026-05-01T18:14:32Z",
+    "ttlMs": 86400000,
+    "pollIntervalMs": 5000
   }
 }
 ```
 
-**Progress** is keyed by the `progressToken` the requestor supplied in the request's `_meta` — the server echoes that opaque value, never mints its own — and, like other task-associated notifications, carries `io.modelcontextprotocol/related-task` in `_meta`.
+**Progress after creation rides `statusMessage`.** Request-scoped `notifications/progress` ends when the call returns — and a task-returning call returns almost immediately — so ongoing progress is what `tasks/get` reports (`statusMessage`, here doubling as the §7 progress surface), optionally pushed via `notifications/tasks` to clients listening on `subscriptions/listen`.
 
-Notification:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "notifications/progress",
-  "params": {
-    "progressToken": "pt_01J9EXPORT",
-    "progress": 0.62,
-    "total": 1,
-    "message": "Exported 31 of 50 channel-days.",
-    "_meta": {"io.modelcontextprotocol/related-task": {"taskId": "task_01J9EXPORT"}}
-  }
-}
-```
-
-**Poll** with `tasks/get` (`params: {"taskId": "task_01J9EXPORT"}`) until a terminal status or `input_required`, respecting `pollInterval`; the response carries the `Task` directly in `result`.
+**Poll** with `tasks/get` (`params: {"taskId": "task_01J9EXPORT", "_meta": {…}}`), respecting `pollIntervalMs` (it MAY change between polls).
+A terminal `completed` task inlines the underlying tool result — there is no separate retrieval call.
 
 Response:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_poll_2",
+  "id": 12,
   "result": {
+    "resultType": "complete",
     "taskId": "task_01J9EXPORT",
     "status": "completed",
     "createdAt": "2026-05-01T18:14:32Z",
     "lastUpdatedAt": "2026-05-01T18:21:48Z",
-    "ttl": 86400000,
-    "pollInterval": 5000
+    "ttlMs": 86400000,
+    "pollIntervalMs": 5000,
+    "result": {
+      "content": [{"type": "text", "text": "Export ready: 9,214 messages across 50 channel-days."}],
+      "structuredContent": {
+        "result_resource_uri": "slack://exports/task_01J9EXPORT/result.json",
+        "message_count": 9214
+      },
+      "isError": false
+    }
   }
 }
 ```
 
-**Retrieve** the result with `tasks/result` (`params: {"taskId": "task_01J9EXPORT"}`); it blocks until the task is terminal, then returns exactly what the original `tools/call` would have, including the related-task `_meta`.
-Domain payload (export location, counts) rides in `structuredContent`.
-If polling shows `input_required`, call `tasks/result` preemptively and hold it open: the pending input request arrives as a separate server-to-client request (an `elicitation/create` carrying the related-task `_meta`) while the call is pending — not as the `tasks/result` response — and once input arrives the task returns to `working` and the same held call completes with the terminal result (re-call only if the call itself fails).
-
-Response:
+**Mid-flight input.** If polling shows `input_required`, the same `tasks/get` response carries the outstanding `inputRequests` (obeying the client's declared elicitation modes); the client answers with `tasks/update`:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req_result",
-  "result": {
-    "content": [{"type": "text", "text": "Export ready: 9,214 messages across 50 channel-days."}],
-    "structuredContent": {
-      "result_resource_uri": "slack://exports/task_01J9EXPORT/result.json",
-      "message_count": 9214
-    },
-    "isError": false,
-    "_meta": {"io.modelcontextprotocol/related-task": {"taskId": "task_01J9EXPORT"}}
-  }
-}
-```
-
-**Cancel** task-augmented work with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT"}`) — not `notifications/cancelled`, which cancels request-bound non-task calls.
-The receiver transitions the task to the terminal `cancelled` status before responding.
-
-Response:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req_cancel",
-  "result": {
+  "id": 13,
+  "method": "tasks/update",
+  "params": {
     "taskId": "task_01J9EXPORT",
-    "status": "cancelled",
-    "statusMessage": "Export cancelled by request.",
-    "createdAt": "2026-05-01T18:14:32Z",
-    "lastUpdatedAt": "2026-05-01T18:19:02Z",
-    "ttl": 86400000
+    "inputResponses": {"confirm-scope-1": {"action": "accept", "content": {"confirmed": true}}},
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {
+        "elicitation": {"form": {}},
+        "extensions": {"io.modelcontextprotocol/tasks": {}}
+      }
+    }
   }
 }
 ```
 
-**Fallback for clients without task support** (convention, not native).
-When the server cannot rely on the experimental task capability, expose a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
+**Cancel** with `tasks/cancel` (`params: {"taskId": "task_01J9EXPORT", "_meta": {…}}`) — `notifications/cancelled` MUST NOT cancel a task.
+The response is an empty acknowledgement, because cancellation is cooperative and eventually consistent: the ack means the intent was received, not that work stopped, and the task MAY still finish in a different terminal status.
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "result": {
+    "resultType": "complete"
+  }
+}
+```
+
+A client that still cares about the final state observes it via `tasks/get` or `notifications/tasks`; a client that doesn't may drop its task state as soon as the cancel is sent.
+
+**Fallback for clients without the extension** (convention, not native).
+A client that never declares `io.modelcontextprotocol/tasks` can neither receive nor operate on tasks, so the server exposes a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
 
 ```json
 {
@@ -1056,14 +1075,12 @@ When the server cannot rely on the experimental task capability, expose a domain
 }
 ```
 
-What to notice: native recovery needs both the server `server.capabilities.tasks.requests.tools.call` declaration and the tool's `execution.taskSupport` — the per-tool flag alone does nothing.
-The `progressToken` originates in the request's `_meta`; the `model-immediate-response` `_meta` string on the `CreateTaskResult` gives the host something to hand the model immediately instead of silence while the task runs.
-Native task fields use the spec's casing exactly: `taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttl`, `pollInterval` — do not rename them to the snake_case used by domain fields.
-`ttl` and `pollInterval` are both milliseconds per the spec, and the names don't encode the unit — so `86400000` here is a 24-hour TTL and `5000` is a 5-second poll interval; `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
-Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttl` elapsing, after which the receiver may delete the task.
-`CreateTaskResult` nests the `Task` under `result.task`; `tasks/get` and `tasks/cancel` return the `Task` directly in `result`; `tasks/result` returns the underlying tool result — read each shape from the spec rather than assuming one envelope.
-Carry `io.modelcontextprotocol/related-task` in `_meta` only where the payload does not already name the task: it is required on `tasks/result` responses, while `tasks/get`, `tasks/list`, and `tasks/cancel` SHOULD NOT include it because the `taskId` already travels in the message — which is why the poll and cancel responses above omit it.
-The domain-specific status/cancel tools are a labeled fallback for the experimental-task gap, not a replacement for `tasks/*`.
+What to notice: task creation is server-directed — there is no per-tool task flag and no `task` field on the request; the gate is the extension declaration on each request (`clientCapabilities.extensions`) plus the server's `server/discover` advertisement, and a server that cannot proceed without tasking returns the missing-capability error (`-32021`) naming the extension.
+Native task fields use the extension's casing exactly: `taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttlMs`, `pollIntervalMs` — do not rename them to the snake_case used by domain fields; both durations are integer milliseconds (`86400000` is a 24-hour TTL), and `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
+Status is one of `working`, `input_required`, `completed`, `failed`, `cancelled`; there is no `running`, `succeeded`, or `expired` — expiry is `ttlMs` elapsing, after which the receiver may fail and delete the task.
+`completed` is a delivery statement, not a success statement: a tool result with `isError: true` still arrives as `completed` (inspect `result.isError`), while `failed` is reserved for JSON-RPC errors and carries `error` instead of `result` (`[7.failed-task]`).
+`CreateTaskResult` is discriminated by `resultType: "task"`; `tasks/get` and `tasks/update` results are ordinary `resultType: "complete"` results, and `tasks/cancel` returns an empty acknowledgement; `tasks/result` and `tasks/list` no longer exist.
+The domain-specific status/cancel tools are a labeled fallback for clients without the extension, not a replacement for `tasks/*`.
 
 ## 12. Response-delivery artifact
 
@@ -1149,7 +1166,8 @@ A chart-rendering tool returns a small machine summary plus a linked image resou
     "point_count": 90,
     "summary": "Deploy volume increased 12% over the prior 30 days; failure rate stayed below 2%."
   },
-  "isError": false
+  "isError": false,
+  "resultType": "complete"
 }
 ```
 

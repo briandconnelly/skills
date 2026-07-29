@@ -22,6 +22,45 @@ def test_conforming_fixture_has_no_issues():
     assert validate(copy.deepcopy(FIXTURE)) == []
 
 
+def test_missing_result_type_rejected_on_both_results():
+    for key in ("success_result", "error_result"):
+        bad = copy.deepcopy(FIXTURE)
+        del bad["wire"][key]["resultType"]
+        issues = validate(bad)
+        assert any(i.where == key and "resultType" in i.message for i in issues)
+
+
+def test_wrong_result_type_rejected():
+    bad = copy.deepcopy(FIXTURE)
+    bad["wire"]["success_result"]["resultType"] = "task"
+    issues = validate(bad)
+    assert any("resultType 'complete'" in i.message for i in issues)
+
+
+def test_present_null_structuredcontent_is_judged_by_schema_not_reported_missing():
+    bad = copy.deepcopy(FIXTURE)
+    bad["wire"]["success_result"]["structuredContent"] = None
+    issues = validate(bad)
+    # The object-typed outputSchema rejects null, but the violation is a schema
+    # mismatch — never the 'missing structuredContent' report reserved for key absence.
+    assert not any("missing structuredContent" in i.message for i in issues)
+    assert any("output_schema" in i.where for i in issues)
+
+
+def test_absent_structuredcontent_key_still_reported_missing():
+    bad = copy.deepcopy(FIXTURE)
+    del bad["wire"]["success_result"]["structuredContent"]
+    issues = validate(bad)
+    assert any("missing structuredContent" in i.message for i in issues)
+
+
+def test_null_error_envelope_is_invariant_violation_not_degraded_fallthrough():
+    bad = copy.deepcopy(FIXTURE)
+    bad["wire"]["error_result"]["structuredContent"] = None
+    issues = validate(bad)
+    assert any("must be a JSON object" in i.message for i in issues)
+
+
 def test_success_structuredcontent_must_match_output_schema():
     bad = copy.deepcopy(FIXTURE)
     bad["wire"]["success_result"]["structuredContent"]["state"] = "reopened"
