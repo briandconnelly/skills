@@ -71,7 +71,9 @@ Never present this setup as a sandbox.
    An org member who is admin of the target repos can install an App that requests no organization permissions (this App requests none); otherwise it files an installation request for an owner to approve.
 2. Choose **"Only select repositories"** and pick the target repos.
    This list is the real blast-radius limit; enrolling a repo in the program means adding it here.
-3. Note the **Installation ID** from the post-install URL (`.../settings/installations/<id>`), via `gh api orgs/{org}/installations` with an org-admin user token, or via app JWT (`gh api /app/installations` — a normal user token will not work on `/app/*` endpoints).
+3. Note the **Installation ID** from the post-install URL (`.../settings/installations/<id>`), via `gh api orgs/{org}/installations` with an org-admin user token, or via app JWT (a normal user token will not work on app-JWT endpoints).
+   The accessible app-JWT route is `gh api repos/{owner}/{repo}/installation`: it needs no org role, answers the question that matters when debugging — which installation covers this repo — and 404s when the repo is not enrolled anywhere; `gh api /app/installations` lists every installation of the App.
+   Installations are per account, not per App: an App installed on an org and on a personal account has two installation IDs, and `bot-token` must be configured with the one whose account owns the repos being worked.
 4. Get the bot's user ID for commit attribution: `gh api 'users/acme-agent%5Bbot%5D' --jq .id`.
    The bot's commit email is `<BOT_UID>+acme-agent[bot]@users.noreply.github.com`; using it makes commits render with the bot's avatar.
 
@@ -153,10 +155,13 @@ In a fresh agent session in an opted-in repo:
 
 - Run your adapter's activation checks first — see the adapter doc.
 - Do not begin git or `gh` work until your adapter's token check and the command-scope credential-helper check pass — see the adapter doc for which token check applies.
-- If the adapter injects `GH_TOKEN` into the session env (Claude Code): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected the installation token.
+- If the adapter injects `GH_TOKEN` into the session env (Claude Code): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
   This check does not port: under a per-invocation shim adapter (Codex CLI) a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
-- `gh api installation/repositories --jq '.total_count'` → the count of enrolled repos, proving `gh` acts as the bot. Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
-  This is the harness-neutral token check both adapters share; prefer it when writing adapter-agnostic runbooks.
+- Membership: `gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx 'acme/<this-repo>'` → prints the repo, proving the token belongs to the installation that covers this session's repo.
+  Match case-insensitively (`-i`): GitHub's namespace is case-insensitive and `full_name` returns canonical casing, so a hand-written expected name that differs only in case would otherwise false-negative.
+  Write the expected `owner/repo` from what you know the session repo to be; deriving it through the token under test (e.g. `gh repo view`) can fail before the assertion runs.
+  This is the harness-neutral token check both adapters share, and the only check here that a wrong-installation token fails: the `ghs_` prefix, an enrolled-repo *count*, and a direct `gh api repos/{owner}/{repo}` read on a public repo all pass for any valid installation token of the App — a count is a diagnostic, never a pass (`--paginate` matters: the endpoint pages at 30 repos).
+  Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
 - Test commit → author `acme-agent[bot]`, unsigned (`git log -1 --format='%an <%ae> %G?'`).
@@ -167,6 +172,18 @@ In a fresh agent session in an opted-in repo:
 - `gh pr checks` → returns status (proves Checks and Actions read).
 - Negative: `git ls-remote https://github.com/acme/<private-non-enrolled-repo>.git` → fails, proving the installation boundary.
   The probe repo must be private — public repos are readable over unauthenticated HTTPS, so a success there proves nothing.
+  Run it only after the membership check has passed: a wrong-installation or under-scoped token also fails here, so without the positive assertion this failure cannot distinguish the working boundary from a broken setup.
+
+When a Phase 5 check or a later bot operation fails, triage before changing config — the failure statuses overlap:
+
+| Symptom | Distinguish with | Cause |
+| --- | --- | --- |
+| 401 and the credential is `BOT-TOKEN-MINT-FAILED` | — | Mint failed; the fail-closed sentinel is working as designed — debug `bot-token` |
+| 404 on a repo you believe is enrolled | `gh api repos/{owner}/{repo}/installation` under an app JWT (Phase 2) vs the configured Installation ID | IDs differ → token minted from the wrong installation |
+| ↳ that lookup also 404s | — | Repo not enrolled in any installation of this App |
+| Membership check passes but a call 403s with `Resource not accessible by integration` | The App's granted permissions (Phase 1) | Missing permission (e.g. `actions: read` for `gh pr checks`) |
+
+The app-JWT lookup is an out-of-band diagnostic: run it from a personal terminal with explicit JWT auth, never through the adapter's `gh` path, which replaces the JWT with the installation token.
 
 Run your adapter's own routing checks in addition to these — for an automatic adapter, that includes the gate's fail direction (ambiguity resolves to bot, broken guard aborts, mid-session flips). See the adapter doc.
 
@@ -237,7 +254,8 @@ Not enforced — the part everyone overstates:
 | Mistake | Reality |
 | --- | --- |
 | Letting a failed mint leave `GH_TOKEN` empty | `gh` treats empty as unset and silently falls back to the personal stored credentials; substitute a non-empty invalid token so the failure surfaces as an auth error |
-| Probing identity with `gh api user` | Installation tokens have no user and 403 there; use `gh api installation/repositories` |
+| Probing identity with `gh api user` | Installation tokens have no user and 403 there; run the Phase 5 membership assertion instead |
+| Verifying the token with a repo count or the `ghs_` prefix | Both pass for any valid installation token of the App — including one minted from the wrong installation when the App is installed on more than one account; only Phase 5's membership assertion discriminates |
 | Self-assigning issues to signal the bot is working them | A GitHub App bot actor is not a valid assignee, so `gh issue edit --add-assignee` with the bot as target fails — and `Issues: write` is already the max grant, so no wider permission exists; signal work-in-progress with a claim label (e.g. `agent:in-progress`) via `--add-label` instead |
 | Granting Checks read without Actions read | Under an App token `gh pr checks` needs both — the status rollup traverses each check suite's workflow run |
 | Granting Workflows: write "to be safe" | Hands a prompt-injected agent the ability to rewrite CI |
