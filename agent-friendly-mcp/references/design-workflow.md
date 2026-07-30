@@ -189,6 +189,9 @@ Each fixture pairs a prompt with an assertion the harness can check against the 
 Score each run for first-call correctness (did `expect_first_call` match?), first-repair correctness (did the injected error resolve in one hop?), and the two budgets.
 A fixture that no current transcript can satisfy is a finding against the schema, not a flaky test.
 
+`expect_first_call`, `inject_error`, `expect_repair`, and `metrics` are **harness declarations, deliberately abbreviated** — they tell the runner what to do, and `inject_error.repair` names only the fields the assertion turns on.
+Wire conformance is judged on the serialized payloads a fixture records, not on these declarations; keep a fixture's wire section for anything that must satisfy the §3 output contract or the §6 envelope.
+
 Output: at least one eval task suite covering the high-value tasks from Step 1, with metrics for first-call correctness, first-repair correctness, token consumption, and tool-call count.
 Checkpoint: §2, §3, §6, §7, §8, §9 — the eval should exercise discovery, tool selection, error repair, long-running behavior, token consumption, and upgrade behavior.
 
