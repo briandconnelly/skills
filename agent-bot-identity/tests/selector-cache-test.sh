@@ -2,9 +2,11 @@
 # Verifies installation selection and the per-installation token cache:
 # bot-token honors BOT_INSTALL_ID, refuses non-numeric ids, never reads the
 # legacy unkeyed cache, and bot-env resolves, propagates, and clears the
-# selection. Offline by construction: bot-token positives are cache hits,
-# negatives fail before or at the (absent) key read, and bot-env runs
-# against a stub bot-token that echoes the selection it saw.
+# selection. No GitHub API access anywhere: bot-token positives are cache
+# hits, negatives fail before or at the (absent) key read, and bot-env runs
+# against a stub bot-token that echoes the selection it saw. The real
+# bot-token is a `uv run` script, so a cold uv cache may resolve its
+# pyjwt/httpx dependencies from the package index once.
 set -euo pipefail
 # A Git hook may export repository context that makes scratch `git -C` commands
 # target the real repository instead of the fixture.
@@ -113,6 +115,44 @@ rm -f "$ERR"
 # 11. git-credential-bot propagates the exported selection to its sibling mint.
 out="$(printf 'protocol=https\nhost=github.com\n\n' | BOT_INSTALL_ID=111 "$DIR/git-credential-bot" get)"
 echo "$out" | grep -q '^password=ghs_stub-111$' || { echo "FAIL: git-credential-bot did not pass the selection through to bot-token"; FAIL=1; }
+
+# 12. A mapped account plus an unmapped one (the fork/upstream shape) keeps the
+#     mapped account's selection — the installation boundary, not the gate, is
+#     what fails loudly for the unmapped remote. Pins intended semantics.
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:acme/scratch.git
+git -C "$REPO" remote add upstream git@github.com:oss-project/scratch.git
+out="$(cd "$REPO" && "$DIR/bot-env")"
+echo "$out" | grep -qF "export BOT_INSTALL_ID='111'" || { echo "FAIL: mapped+unmapped remotes did not keep the mapped selection"; FAIL=1; }
+rm -rf "$REPO"
+
+# 13. Duplicate map keys are a config error that must abort, not a silent
+#     first-entry win — a typo'd duplicate would mint a valid token for the
+#     wrong installation.
+awk '{ if ($0 == "acme:REPLACE") { print "acme:111"; print "acme:222" } else print }' "$SRC/bot-env" > "$DIR/bot-env-dup"
+chmod +x "$DIR/bot-env-dup"
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+git -C "$REPO" remote add origin git@github.com:notacme/scratch.git
+ERR="$(mktemp)"
+out="$(cd "$REPO" && "$DIR/bot-env-dup" 2>"$ERR")" && { echo "FAIL: duplicate map keys did not abort"; FAIL=1; }
+[ -z "$out" ] || { echo "FAIL: duplicate-map abort still emitted env lines"; FAIL=1; }
+grep -q 'duplicate' "$ERR" || { echo "FAIL: duplicate-map abort gave no explanation"; FAIL=1; }
+rm -rf "$REPO"
+rm -f "$ERR"
+
+# 14. A malformed map entry (no id, or an uppercase/unsafe account name) is a
+#     config error that must abort.
+for bad in 'acme' 'Acme:111' 'acme:bad id'; do
+  awk -v bad="$bad" '{ if ($0 == "acme:REPLACE") print bad; else print }' "$SRC/bot-env" > "$DIR/bot-env-bad"
+  chmod +x "$DIR/bot-env-bad"
+  ERR="$(mktemp)"
+  out="$(cd "$DIR" && "$DIR/bot-env-bad" 2>"$ERR")" && { echo "FAIL: malformed map entry [$bad] did not abort"; FAIL=1; }
+  [ -z "$out" ] || { echo "FAIL: malformed-map abort still emitted env lines ([$bad])"; FAIL=1; }
+  grep -q 'ORG_INSTALLS' "$ERR" || { echo "FAIL: malformed map entry [$bad] gave no explanation"; FAIL=1; }
+  rm -f "$ERR"
+done
 
 [ "$FAIL" -eq 0 ] && echo "selector-cache-test: PASS"
 exit "$FAIL"

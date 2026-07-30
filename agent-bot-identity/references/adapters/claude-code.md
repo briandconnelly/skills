@@ -98,7 +98,7 @@ Register the hook in `~/.claude/settings.json` (applies to all projects; replace
 The hook entry uses exec form (`args: []`) so the absolute script path is passed directly instead of shell-tokenized.
 Install `scripts/claude/bot-env-hook.sh` and `scripts/bot-env` from this skill's bundled resources.
 Customize `bot-env` with the bot name, the bot noreply email, and the account→installation map (`ORG_INSTALLS`) — one `account:id` line per GitHub account the bot serves.
-The map is also the activation gate: a repo whose remotes match a mapped account gets the bot verdict and that account's installation via the SKILL Phase 3 `BOT_INSTALL_ID` contract; remotes matching more than one mapped account abort the command rather than guess; personal and ambiguous verdicts clear the variable so a selection never leaks from a previously visited repo.
+The map is also the activation gate: a repo whose remotes match a mapped account gets the bot verdict and that account's installation, per the SKILL Phase 3 `BOT_INSTALL_ID` selection contract (whose semantics — fail-closed resolution, clearing, ambiguity — live there, not here).
 
 `bot-env-hook.sh` installs one unevaluated guard line into `$CLAUDE_ENV_FILE`.
 The guard line itself checks that `bot-env` exists and is executable before every Bash command, then captures `bot-env` output, aborts on script failure, and only then evaluates the emitted shell.

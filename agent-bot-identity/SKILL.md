@@ -135,7 +135,7 @@ An adapter for a local agent harness must supply all of the following, without e
 - Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, org-scoped `insteadOf`, `commit.gpgsign false`.
 - A dynamic `GH_TOKEN` re-minted across hour-plus sessions.
 - A fail-closed substitute when minting fails: a non-empty invalid token, never an empty value.
-- When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract, resolved fail-closed from the repo's raw remotes and cleared when the verdict is personal.
+- When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract.
 
 A harness missing one of these capabilities is pending, not approximated — a half-wired adapter fails open to the personal identity.
 Do not port an adapter mechanically: Claude Code's per-command env-file evaluation has no assumed equivalent elsewhere.

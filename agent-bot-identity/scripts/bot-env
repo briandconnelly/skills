@@ -32,6 +32,32 @@ mapped_orgs() {
   for _line in $ORG_INSTALLS; do printf '%s ' "${_line%%:*}"; done
 }
 
+# Validate the map before any verdict: a malformed or duplicate entry is a
+# config error that must abort the command, never a silent first-entry win —
+# a typo'd duplicate would mint a *valid* token for the wrong installation.
+# The id shape is allowlisted here because it is emitted inside single quotes
+# below; numeric enforcement (including the unreplaced placeholder) is
+# bot-token's.
+_seen_orgs=""
+for _entry in $ORG_INSTALLS; do
+  case "$_entry" in
+    *:*) ;;
+    *) echo "bot-env: ORG_INSTALLS entry '${_entry}' is not account:id; refusing to run" >&2; exit 1 ;;
+  esac
+  _org="${_entry%%:*}"
+  _id="${_entry#*:}"
+  case "$_org" in
+    ""|*[!a-z0-9-]*) echo "bot-env: ORG_INSTALLS account '${_org}' must be lowercase a-z, 0-9, or -; refusing to run" >&2; exit 1 ;;
+  esac
+  case "$_id" in
+    ""|*[!A-Za-z0-9]*) echo "bot-env: ORG_INSTALLS id for '${_org}' has an unsafe shape; refusing to run" >&2; exit 1 ;;
+  esac
+  case "$_seen_orgs" in
+    *"|${_org}|"*) echo "bot-env: ORG_INSTALLS has a duplicate entry for '${_org}'; refusing to run" >&2; exit 1 ;;
+  esac
+  _seen_orgs="${_seen_orgs}|${_org}|"
+done
+
 verdict=personal
 ssh_prefixes=""
 matched_orgs=""
@@ -154,14 +180,10 @@ if [ "$n_matched" -gt 1 ]; then
   exit 1
 fi
 
-# The id is emitted inside single quotes below; allowlist its shape here.
-# Numeric enforcement (including the unreplaced placeholder) is bot-token's.
+# The id's emission-safe shape was enforced by the map validation above.
 bot_install_id=""
 if [ -n "$matched_org" ]; then
   bot_install_id="$(install_id_for_org "$matched_org")"
-  case "$bot_install_id" in
-    ""|*[!A-Za-z0-9]*) echo "bot-env: installation id for ${matched_org} has an unsafe shape; refusing to run with undetermined installation" >&2; exit 1 ;;
-  esac
 fi
 
 # A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
