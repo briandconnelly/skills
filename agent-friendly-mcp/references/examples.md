@@ -19,6 +19,7 @@ Use these as concrete shapes to mimic — not as schemas to copy verbatim.
 - [8. `search_tools` response shape](#8-search_tools-response-shape)
 - [8a. Roots-aware workspace behavior](#8a-roots-aware-workspace-behavior)
 - [9. Capability fingerprint with deprecation](#9-capability-fingerprint-with-deprecation)
+- [9a. Lifecycle metadata on the native record](#9a-lifecycle-metadata-on-the-native-record)
 - [10. Worked task: API mirroring vs. task completion](#10-worked-task-api-mirroring-vs-task-completion)
 - [11. Long-running operation](#11-long-running-operation)
 - [12. Response-delivery artifact](#12-response-delivery-artifact)
@@ -107,6 +108,8 @@ This four-code catalog is small enough to inline; a tool with a long error taxon
 
 Two responses from `slack_list_messages` showing the concise vs detailed result pattern: a structured concise default with an opt-in detail mode. *Demonstrates §3 output rules and §8 token efficiency together.*
 
+Both blocks below are the **`structuredContent` payload only** — the tool-result envelope around them (`resultType`, `content`, `isError`, `_meta`) is omitted for focus; see `native-wire-shapes.md` for the full `tools/call` result.
+
 Concise (default, `detail: "summary"`):
 
 ```json
@@ -186,6 +189,7 @@ On clients that support it, deliver this payload as `structuredContent` paired w
 
 A success result from `hvac_set_zone_temperature` where the command was dispatched but its effect is not yet confirmed.
 *Demonstrates the §3 dispatched-vs-applied rule: the dispatch fact, a confirmation status, and a `follow_up` that reuses the §6 `repair` object shape on the success carrier.*
+The block is the **`structuredContent` payload only**, without the surrounding tool-result envelope.
 
 ```json
 {
@@ -260,7 +264,8 @@ Each chunk is addressable through its own URI, published as a resource template 
 }
 ```
 
-Body fragment read at `slack://channels/C0123ABCD/messages/1714600000.001200/chunks/replies-1-6`:
+Body fragment read at `slack://channels/C0123ABCD/messages/1714600000.001200/chunks/replies-1-6` — this is the **resource body itself**, the JSON carried in `contents[0].text`, not a `resources/read` result envelope (which adds `resultType`, `ttlMs`, `cacheScope`, and wraps this in `contents[]` — see `native-wire-shapes.md`).
+Its `content` key is a domain field of the chunk payload and is unrelated to the native `content` block array on a tool result:
 
 ```json
 {
@@ -660,7 +665,7 @@ On a host that preloads the full catalog, they add tools and round trips with no
 }
 ```
 
-What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools. `score` is the search-relevance score for the supplied query, ranked descending.
+What to notice: only summaries come back, not full schemas; the agent calls `describe_tool(name)` — which returns the full native `Tool` record (`name`, `title`, `description`, `inputSchema`, `outputSchema`, `annotations`, `_meta`) plus the server's documented error catalog under `_meta` (`com.slack-mcp/errors`, a convention extension — `errors` is not a native `Tool` field; see `examples.md` §1 and the native-vs-convention rule in `SKILL.md`) — to load the definitions it actually needs. `stability` is included so the agent can filter out preview tools; a capability on its way out is signalled by a `deprecation` marker rather than a `stability` value (`[9.stability-tiers]`), so an adoption decision reads both. `score` is the search-relevance score for the supplied query, ranked descending.
 The fingerprint travels with the response so a cached client can detect drift.
 Other shapes on this same axis: a tool catalog endpoint, a topic-tagged tool index, a paginated `list_tools` with filtering — all custom surfaces layered over native discovery, and all subject to the same host-integration requirement.
 None of them shrink the native `tools/list` payload a preloading client receives; to lower cost on a client that never lazy-loads, reduce the catalog itself (compact definitions, consolidation, a compact dispatcher, or authorization-scoped catalogs — see §2).
@@ -745,7 +750,7 @@ Fingerprint at `slack-mcp@1.4.0` — `slack_post` is deprecated, `slack_send_mes
   "tools": [
     {
       "name": "slack_post",
-      "stability": "deprecated",
+      "stability": "stable",
       "schema_hash": "sha256:9c…",
       "deprecation": {
         "since": "1.4.0",
@@ -776,11 +781,56 @@ Fingerprint at `slack-mcp@2.0.0` — `slack_post` removed:
 }
 ```
 
-What to notice: the deprecated tool stays discoverable in `1.4.0` with a stability tier change, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
+What to notice: the deprecated tool stays discoverable in `1.4.0` with a `deprecation` marker, a `replaced_by` pointer, and concrete migration text — clients that cached the old surface get a discoverable signal, not a silent break.
+`slack_post` keeps `stability: "stable"` while deprecated, because the two fields answer different questions (`[9.stability-tiers]`): the contract is not churning, it is ending.
+Presence of the `deprecation` marker is the signal — an agent that filters on `stability` alone would adopt a tool scheduled for removal.
 The removal in `2.0.0` is itself recorded under `removed_in_this_version` so a client jumping `1.3.0 → 2.0.0` can still trace what happened.
 Every fingerprint string changes when any covered surface changes, including resource templates, completion behavior, and subscription support.
 The fingerprint and its `covers`, `deprecation`, and `schema_hash` fields are a convention extension, not a native MCP structure (see the native-vs-convention rule in `SKILL.md`).
 When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
+
+### 9a. Lifecycle metadata on the native record
+
+The fingerprint above is a house surface.
+A client that reads only native `tools/list` never sees it, so the same two facts ride each capability's own discovery record under one namespaced `_meta` key (`[9.tier-metadata]`).
+
+The native `Tool` record for the deprecated tool, exactly as `tools/list` returns it:
+
+```json
+{
+  "name": "slack_post",
+  "title": "Post a Slack message",
+  "description": "Deprecated: use slack_send_message. Post a message to a Slack channel.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["channel_id", "text"],
+    "properties": {
+      "channel_id": {"type": "string", "description": "Slack channel id, e.g. C0123ABCD."},
+      "text": {"type": "string", "description": "Message body as Slack mrkdwn."}
+    }
+  },
+  "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false},
+  "_meta": {
+    "com.slack-mcp/lifecycle": {
+      "stability": "stable",
+      "deprecation": {
+        "since": "1.4.0",
+        "removal_at_or_after": "2.0.0",
+        "replaced_by": "slack_send_message",
+        "migration": "Rename `slack_post` to `slack_send_message`. Argument shape is unchanged; the new tool adds an optional `broadcast_to_channel` field."
+      }
+    }
+  }
+}
+```
+
+What to notice: `stability` and `deprecation` are the same two fields the fingerprint carries, with the same values — one vocabulary, two surfaces, so the two cannot drift into separate dialects.
+`com.slack-mcp/lifecycle` is a convention extension under the spec-sanctioned `_meta` extension point; `stability` and `deprecation` are **not** native `Tool` fields and never appear at the top level of the record.
+The identical key rides `Resource`, `ResourceTemplate`, and `Prompt` records, where `replaced_by` names a `uri`, a `uriTemplate`, and a prompt `name` respectively (`[9.deprecation-marker]`) — those identifier spaces are not interchangeable, so a `replaced_by` copied across record kinds is a defect.
+The description repeats the deprecation in prose because `_meta` **may not be surfaced to the model** by a given client: the machine-readable marker is for integrated clients, and the prose is what an off-the-shelf client's agent actually reads.
+That redundancy is deliberate and bounded — it is the one fact worth paying for twice, not license to restate the whole contract in prose.
 
 ## 10. Worked task: API mirroring vs. task completion
 
@@ -901,7 +951,7 @@ Exporting a wide date range can take minutes, so `slack_export_history` answers 
 
 Tasks are an **extension**, negotiated per request, so this example leads with native task operations and keeps a domain-specific status/cancel fallback (below) for clients that never declare the extension.
 
-**Capability negotiation.** The client declares the extension in each request's `clientCapabilities.extensions` (shown in the create request below), and the server advertises it in its `server/discover` capabilities:
+**Capability negotiation.** The client declares the extension in each request's `clientCapabilities.extensions` (shown in the create request below), and the server advertises it in its `server/discover` capabilities — the fragment below is the `capabilities` object alone, not a full `server/discover` result:
 
 ```json
 {
@@ -1059,6 +1109,7 @@ A client that still cares about the final state observes it via `tasks/get` or `
 
 **Fallback for clients without the extension** (convention, not native).
 A client that never declares `io.modelcontextprotocol/tasks` can neither receive nor operate on tasks, so the server exposes a domain-specific status tool and cancel tool that surface the same signals the native lifecycle would — current state, when to poll again, the result location, and expiry.
+The block is the status tool's **`structuredContent` payload only**, without the surrounding tool-result envelope.
 
 ```json
 {
@@ -1106,7 +1157,7 @@ A read-only query tool whose result is delivered as a local CSV file rather than
 }
 ```
 
-A successful response:
+A successful response — the **`structuredContent` payload only**, without the surrounding tool-result envelope:
 
 ```json
 {

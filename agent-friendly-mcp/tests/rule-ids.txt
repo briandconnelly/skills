@@ -171,6 +171,7 @@
 9.additive-direction
 9.rename
 9.stability-tiers
+9.deprecation-marker
 9.tier-metadata
 9.error-codes
 9.fingerprint-format

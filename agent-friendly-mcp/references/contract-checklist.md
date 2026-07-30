@@ -668,8 +668,9 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
   Where a fingerprint is published, disclose its coverage in documented agent-readable metadata such as a `covers` field (see `examples.md` §9); the disclosure does not permit excluding any agent-visible surface.
   A separately named schema-only hash, if published, is per-capability diagnostic metadata; it must not be used to decide that discovery can be skipped, and it never narrows or replaces the fingerprint.
 
-- `[9.deprecation-semantics]` **Define deprecation semantics.** How a tool, resource, or prompt is marked deprecated, how long it remains available, and what replaces it.
-  Deprecation is a contract, not a sticky note.
+- `[9.deprecation-semantics]` **Define deprecation semantics.** Commit to how long a deprecated capability remains available before removal, and publish that window where agents and integrators can read it.
+  Deprecation is a contract, not a sticky note: a marker with no committed window is an announcement, not a deprecation.
+  The marker's own field set — including what replaces the capability — is `[9.deprecation-marker]`; state the window once here rather than restating the shape.
 
 - `[9.deprecated-discoverable]` **Deprecated capabilities remain discoverable.** They continue to appear in discovery (see §2) until removal, with a deprecation marker and a pointer to the replacement.
   Silently dropping them breaks cached clients.
@@ -684,10 +685,21 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
   Keep the old name with a deprecation pointer for the documented window.
   A rename sweeps every agent-visible reference atomically with the alias window: repair hints (`repair.tool`), server `instructions`, the capability summary, prompts, and other tools' descriptions.
 
-- `[9.stability-tiers]` **Declare stability tiers if used.** `stable`, `preview`, `experimental`.
-  Mixing tiers without labels makes every capability look stable, which is worse than labeling some as risky.
+- `[9.stability-tiers]` **Declare stability tiers if used, from a closed set: `stable`, `preview`, `experimental`.** Mixing tiers without labels makes every capability look stable, which is worse than labeling some as risky.
+  The set is closed because `stability` answers one question — how much the contract may still change — and agents filter on it directly.
+  **Deprecation is an orthogonal axis and never a tier value.** A deprecated capability keeps the maturity tier it earned and carries the deprecation marker beside it (`[9.deprecation-marker]`), so `stability: "deprecated"` is not a legal value.
+  An agent deciding whether to adopt a capability reads both fields: `stability` for churn risk, the deprecation marker for remaining life.
 
-- `[9.tier-metadata]` **Stability tier is discovery metadata.** Each capability's tier is part of its discovery record so agents can filter by tier (see §2).
+- `[9.deprecation-marker]` **The deprecation marker is one object with a fixed field set.** `since` (the version the deprecation took effect), `removal_at_or_after` (the earliest version the capability may disappear), `replaced_by` (the successor, or `null` when there is none), and `migration` (concrete prose telling an agent what to change).
+  Presence of the marker *is* the deprecation signal; absence means not deprecated.
+  `replaced_by` identifies the successor in the terms of the record it sits on — a tool `name`, a resource `uri`, a resource template `uriTemplate`, or a prompt `name` — because those identifier spaces are not interchangeable.
+  This is a convention extension, not a native MCP structure.
+
+- `[9.tier-metadata]` **Stability and deprecation ride each capability's own discovery record.** Each capability's tier (`[9.stability-tiers]`) and deprecation marker (`[9.deprecation-marker]`) are part of its discovery record so agents can filter by tier and spot a dying capability without a second lookup (see §2).
+  Native `Tool`, `Resource`, `ResourceTemplate`, and `Prompt` records have no `stability` or `deprecation` field, so both ride under one namespaced `_meta` key — `<reverse-dns>/lifecycle` — on all four record types, per the native-vs-convention rule in `SKILL.md`.
+  Publishing them only on a house surface such as a fingerprint or a `search_tools` envelope does not satisfy this rule: a client reading native `tools/list` would see no tier at all.
+  Because `_meta` is a convention extension, an off-the-shelf client ignores it unless it was built to read that key — so the same facts stay available through the capability summary and the fingerprint where one is published.
+  See `examples.md` §9 for the worked record.
 
 - `[9.error-codes]` **Error codes are part of the versioned surface (see §6).** Changing a code's meaning is a breaking change; introducing a new code is additive but still recorded in the fingerprint where one is published.
 

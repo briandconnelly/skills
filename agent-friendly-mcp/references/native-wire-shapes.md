@@ -7,7 +7,7 @@ The MUST/MUST NOT language here restates the *protocol's* obligations for refere
 **Baseline:** **MCP 2026-07-28** (see `SKILL.md` → Spec Baseline; 2025-11-25 differences are cataloged in [mcp-2025-11-25-compat.md](mcp-2025-11-25-compat.md)).
 Authoritative schema and pagination rules: <https://modelcontextprotocol.io/specification/2026-07-28>.
 
-**Not exhaustive.** This covers the high-risk native shapes — per-request metadata, list pagination and cache hints, completion, the `tools/call` result envelope, MRTR, subscriptions, HTTP routing headers, and the tasks extension lifecycle — not the full protocol surface.
+**Not exhaustive.** This covers the high-risk native shapes — per-request metadata, list pagination and cache hints, `resources/read`, `prompts/get`, completion, the `tools/call` result envelope, MRTR, subscriptions, HTTP routing headers, and the tasks extension lifecycle — not the full protocol surface.
 For methods not listed here, read the spec rather than inferring from these rows.
 Convention extensions (`errors`, `repair`, `fingerprint`, `has_more`/`next_cursor` in a tool's own payload, etc.) are **not** shown as native fields; see the native-vs-convention rule in `SKILL.md`.
 
@@ -68,6 +68,52 @@ Rules that examples must not contradict:
 - Servers SHOULD return `tools/list` in a deterministic order.
 - A tool's *own* result payload (the body of a `tools/call` result, not a list method) MAY use a documented house pagination convention such as `has_more` / `next_cursor` / `estimated_total`.
   That is convention, lives in the tool's `structuredContent` under its `outputSchema`, and must be labeled as such — see §8 of `contract-checklist.md`.
+
+## Resource read — `resources/read`
+
+Request `params` carry the required `_meta` (above) plus the resource `uri`:
+
+```json
+{ "jsonrpc": "2.0", "id": "2", "method": "resources/read", "params": { "uri": "slack://channels/C0123ABCD", "_meta": { "...": "..." } } }
+```
+
+Result — the required `resultType`, the required cache hints, and a `contents` array:
+
+```json
+{ "jsonrpc": "2.0", "id": "2", "result": { "resultType": "complete", "ttlMs": 60000, "cacheScope": "private",
+    "contents": [ { "uri": "slack://channels/C0123ABCD", "mimeType": "application/json", "text": "{\"channel_id\":\"C0123ABCD\"}" } ] } }
+```
+
+- `ReadResourceResult` is a `CacheableResult`, so `ttlMs` and `cacheScope` are **required** here exactly as on the four list methods.
+- `contents` is **required** and is an array — a single resource read returns a list, and each element is a `TextResourceContents` (adds `text`) or a `BlobResourceContents` (adds base64 `blob`).
+  Both share `uri` (required), `mimeType` (optional), and `_meta` (optional).
+  There is no native `content`, `body`, `data`, or `chunks` field on a resource read.
+- A read MAY answer with an MRTR interim result instead (`resultType: "input_required"`), so a client must branch on `resultType` before reading `contents`.
+- House chunking, versioning, and next-chunk pointers are convention: they live inside the `text` payload under the resource's own documented shape, or under a namespaced `_meta` key — see `examples.md` ex§4.
+
+## Prompt get — `prompts/get`
+
+Request `params` carry the required `_meta`, the prompt `name`, and optional `arguments`:
+
+```json
+{ "jsonrpc": "2.0", "id": "3", "method": "prompts/get", "params": { "name": "release_announcement",
+    "arguments": { "channels": "C0123ABCD,C0456EFGH", "pin": "true" }, "_meta": { "...": "..." } } }
+```
+
+Result:
+
+```json
+{ "jsonrpc": "2.0", "id": "3", "result": { "resultType": "complete", "description": "Draft a release announcement.",
+    "messages": [ { "role": "user", "content": { "type": "text", "text": "Announce v2.4.1 in the listed channels." } } ] } }
+```
+
+- **`arguments` on the wire is a map of string to string** (`{ [key: string]: string }`) and is optional.
+  There are no arrays, booleans, numbers, or nested objects in a `prompts/get` call, so a prompt argument that means a list or a flag has to document its **encoding** — see `examples.md` ex§5 for the worked shape.
+- This is distinct from `PromptArgument`, which is the **discovery-record** type on `Prompt.arguments` (`prompts/list`): `name` (required), `title`, `description`, `required`.
+  `PromptArgument` has no `type`, `items`, `default`, or `enum` — it is not a JSON Schema, and the value shape belongs in its `description`.
+- `GetPromptResult` is **not** a `CacheableResult`: `messages` is required, `description` is optional, and there are no `ttlMs`/`cacheScope` fields — unlike `resources/read` above.
+- `messages[].role` is `"user" | "assistant"` only (no `"system"`), and `content` is a single `ContentBlock`, not an array.
+- `prompts/get` MAY also answer with an MRTR interim result.
 
 ## Completion — `completion/complete`
 
