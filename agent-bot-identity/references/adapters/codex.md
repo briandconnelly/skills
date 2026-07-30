@@ -208,7 +208,7 @@ Run these together with the SKILL's Phase 5 checks, from a fresh invocation thro
 Skip the SKILL's `GH_TOKEN`-prefix and `as-me` bullets; check 6 below replaces the latter, and check 2 is the SKILL's own Phase 5 membership assertion (the prefix check has no Codex equivalent).
 (A session-level `GH_TOKEN` is an audit smell here, not a pass: the shim exports it per invocation.)
 Sandboxed checks use `/Users/<you>/.config/acme-agent/bin/codex-bot sandbox -c 'sandbox_mode="workspace-write"' sh -c '<cmd>'`; the commit checks use `/Users/<you>/.config/acme-agent/bin/codex-bot exec -s workspace-write --skip-git-repo-check '<prompt>'`.
-Ten checks were run live; each is one line with its expected result.
+Each check is one line with its expected result; the 2026-07-07 run exercised all ten in their then-current form, and check 2's criterion has since changed, so its entry is pending rather than passed.
 
 1. Launch by the absolute `codex-bot` path, then run `command -v gh` → the shim path (`~/.config/acme-agent/bin/gh`), proving the launcher selected the profile and the shim wins PATH. (PASS)
 2. The SKILL's Phase 5 membership assertion, exactly as Phase 5 states it. **Pending: not yet live-run under Codex.**
