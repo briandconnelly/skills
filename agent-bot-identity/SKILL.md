@@ -96,14 +96,21 @@ Use these resources:
 
 Each harness adapter (Phase 4) adds its own glue scripts on top of these; see the adapter doc.
 
-Customize `bot-token` with the App ID, installation ID, key path, and cache path.
-Its cache defaults to `~/.cache/acme-agent/token.json`, deliberately outside the key-and-scripts directory: a sandboxed harness can then grant write access to the cache without also granting it to `key.pem` and the fail-closed scripts (see the Codex adapter's sandbox profile).
+Customize `bot-token` with the App ID, the default installation ID, the key path, and the cache location.
+`bot-token` mints for its default installation unless the environment carries `BOT_INSTALL_ID`, the numeric id of another installation of the same App — the selection contract adapters use when one machine serves more than one GitHub account (installations are per account, Phase 2).
+It refuses a non-numeric id — including the unreplaced placeholder — rather than minting, because the id reaches both the API URL and the cache filename.
+An adapter that sets `BOT_INSTALL_ID` must resolve it from the repo's raw remotes and fail closed: an unmapped account gets a hard error or the personal verdict, never a fallback to another entry's id — a fallback mints a *valid* token for the wrong installation, which 404s on the repo instead of failing at auth.
+The Claude adapter's Variant B implements this resolution inside `bot-env`'s existing remote parse and clears the variable on personal and ambiguous verdicts so a selection never leaks from a previously visited repo; Variant A can pin a per-project value in its static env; the Codex adapter performs no selection (single-installation — see its doc).
+The cache lives at `~/.cache/acme-agent/token-<installation id>.json`, deliberately outside the key-and-scripts directory: a sandboxed harness can then grant write access to the cache without also granting it to `key.pem` and the fail-closed scripts (see the Codex adapter's sandbox profile).
+The cache filename is keyed by the installation id because a cache entry must be keyed by every input that changes what its token can reach; a token minted for one installation must never be served to a caller working under another.
+Upgrading from a pre-keying install: delete the old unkeyed `token.json` once — nothing reads it.
 It parses `expires_at`, writes the token cache through a `0600` temp file swapped in with `os.replace()`, and sets a request timeout so a hung mint does not hang git or `gh` indefinitely.
 It refuses to print an empty token — from the cache or from the API — because an empty `GH_TOKEN` is the fail-open case every caller here guards against.
 The `uv run` shebang requires `uv` on PATH where the script is invoked; use an absolute path to `uv` if that is not guaranteed.
 On a cache hit this runs in well under 100 ms, cheap enough to call before every Bash command.
 There is no lock around the mint: concurrent cold-cache invocations may each mint a token — duplicate API work, not a correctness problem, since both tokens are valid and the last cache write wins.
-Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked, at the cost of the shared cache.
+Optional hardening: pass a `"repositories"` field in the token request to scope each token to the repo being worked.
+If you do, extend the cache key with a digest of the scoping fields, per the keying rule above: a cache keyed only by installation silently serves a token minted for one repo's scope to a caller needing another — no error, for the whole cache-validity window.
 
 Keep `git-credential-bot` host-gated.
 For an eligible `https://github.com` request, a crashed or empty mint must return the complete invalid credential `username=x-access-token` and `password=BOT-TOKEN-MINT-FAILED` so Git cannot fall through to askpass, terminal prompting, or a personal credential source.
@@ -128,6 +135,7 @@ An adapter for a local agent harness must supply all of the following, without e
 - Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, org-scoped `insteadOf`, `commit.gpgsign false`.
 - A dynamic `GH_TOKEN` re-minted across hour-plus sessions.
 - A fail-closed substitute when minting fails: a non-empty invalid token, never an empty value.
+- When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract, resolved fail-closed from the repo's raw remotes and cleared when the verdict is personal.
 
 A harness missing one of these capabilities is pending, not approximated — a half-wired adapter fails open to the personal identity.
 Do not port an adapter mechanically: Claude Code's per-command env-file evaluation has no assumed equivalent elsewhere.
@@ -145,6 +153,7 @@ Implemented adapters:
 | Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) |
 | Automatic user-level routing | ✅ Variant B | ❌ pending |
 | `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) |
+| Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) |
 | Verification status | Scenarios 1–5 tested | Partially verified; GitHub write path not exercised; scenarios C1–C2 tested |
 
 ("Fail-closed" is scoped to routing, never containment.)
@@ -260,6 +269,7 @@ Not enforced — the part everyone overstates:
 | Granting Checks read without Actions read | Under an App token `gh pr checks` needs both — the status rollup traverses each check suite's workflow run |
 | Granting Workflows: write "to be safe" | Hands a prompt-injected agent the ability to rewrite CI |
 | Write token cache, then chmod | umask window exposes the token; create `0600` atomically |
+| One shared token cache across installations or scopes | A cached token minted under one authority is silently served to callers needing another for the whole cache window; key the cache per Phase 3's rule |
 | Assuming one-hour token life | Parse `expires_at` from the response |
 | Leaving the personal GPG key signing bot commits | Attribution mismatch — human signature on bot-authored work; set `commit.gpgsign false` |
 | Expecting the Verified badge on bot commits | Local commits pushed with an App token are not auto-verified; only API-path commits (e.g. GraphQL `createCommitOnBranch`) get the badge |
