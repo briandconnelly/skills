@@ -11,6 +11,7 @@ Variant A is **partially verified; the GitHub write path was not exercised**, an
 Checks 1, 3–5, 7, and 8 of the verification list below passed for PATH takeover, static identity env, the credential-helper rewrite, sandbox minting, fail-closed token handling, and the installation access boundary.
 Check 2 (the token-identity check) passed only in its superseded count form — proving the shim minted a valid installation token, not that it was the right installation's; its current membership form (SKILL Phase 5, changed for issue #135) has not been live-run under Codex.
 One known capability limitation is `as-me` — see the `as-me` limitation section: under this Codex version's sandbox the human-authorship override cannot run, so collaborated authorship happens outside Codex.
+This adapter also performs no installation selection: the shim mints with `bot-token`'s default installation, so multi-account use (the SKILL Phase 3 `BOT_INSTALL_ID` contract) is **pending** here — serve one GitHub account per Codex install.
 
 Scope of the live verification, stated honestly: no branch was pushed and no `gh pr create` was run under Codex.
 Check 4 proved the authenticated HTTPS-rewrite path with `git ls-remote` and check 5 made a local commit; the write path to GitHub (push, PR creation) rides the same token and credential helper but was not exercised end-to-end here.
@@ -175,8 +176,8 @@ What each is for, from the minting probes:
   A cache hit needs no network, but the profile keeps it enabled because the invocation cannot know cold-vs-warm in advance.
 - The `~/.cache/uv` writable root is required on **every** run, cold or warm — the `bot-token` script is a `uv run --script` shebang, and `uv` must write to its own cache (`sdists-v9/.git`) just to resolve the script's environment before the token-cache logic runs.
   Omitting it fails immediately: `failed to open file .../uv/sdists-v9/.git: Operation not permitted`.
-- The `~/.cache/acme-agent` writable root is the single leaf directory `bot-token` writes its `token.json` cache into.
-  It need not exist beforehand: a cold mint with the directory absent creates it and succeeds (verified).
+- The `~/.cache/acme-agent` writable root is the single leaf directory `bot-token` writes its per-installation `token-<id>.json` cache files into.
+  It need not exist beforehand: a cold mint with the directory absent creates it and succeeds (verified against the pre-keying `token.json` layout; the keyed filenames live in the same directory, so the root is unchanged).
 
 **Grant these two roots and nothing else.**
 Do **not** make the bot *config* directory (`~/.config/acme-agent`) writable: under the SKILL's flat-install recommendation it holds `key.pem` **and** every fail-closed script — `bot-token`, `git-credential-bot`, and this `gh` shim.
