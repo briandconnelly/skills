@@ -207,6 +207,11 @@ def _repair_callability_issues(envelope: dict, tools: object, where: str) -> lis
             if isinstance(entry_name, str):
                 catalog[entry_name] = entry
     name = repair.get("tool")
+    # Fail closed on a non-string name. `error_schema` also rejects it, but this
+    # check runs first, and an unhashable value (a JSON object or array) would
+    # raise on the membership test below before the schema ever reported it.
+    if not isinstance(name, str) or not name:
+        return [Issue(where, f"repair.tool must be a non-empty string naming a tool, got {name!r}")]
     if name not in catalog:
         return [
             Issue(

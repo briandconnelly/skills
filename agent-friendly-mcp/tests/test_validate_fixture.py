@@ -278,6 +278,22 @@ def test_repair_naming_an_unresolvable_tool_rejected():
     assert any("does not resolve in the wire.tools catalog" in i.message for i in issues)
 
 
+def test_non_string_repair_tool_fails_closed_instead_of_raising():
+    """An unhashable `repair.tool` must be reported, not crash the membership test.
+
+    The callability check runs before schema validation, so a JSON object or array
+    here reached `name not in catalog` and raised TypeError — the validator died
+    instead of reporting the fixture as bad.
+    """
+    for bad_name in ([1, 2], {"a": 1}, 42, None, ""):
+        bad = copy.deepcopy(FIXTURE)
+        bad["wire"]["error_result"]["structuredContent"]["repair"]["tool"] = bad_name
+        issues = validate(bad)  # must report, not raise
+        assert any("repair.tool must be a non-empty string" in i.message for i in issues), (
+            f"repair.tool={bad_name!r} was not reported"
+        )
+
+
 def test_repair_arguments_must_validate_against_the_named_tools_input_schema():
     bad = copy.deepcopy(FIXTURE)
     # 'state' is an enum; a placeholder is not a literally callable value
