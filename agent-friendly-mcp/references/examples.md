@@ -108,7 +108,8 @@ This four-code catalog is small enough to inline; a tool with a long error taxon
 
 Two responses from `slack_list_messages` showing the concise vs detailed result pattern: a structured concise default with an opt-in detail mode. *Demonstrates §3 output rules and §8 token efficiency together.*
 
-Both blocks below are the **`structuredContent` payload only** — the tool-result envelope around them (`resultType`, `content`, `isError`, `_meta`) is omitted for focus; see `native-wire-shapes.md` for the full `tools/call` result.
+Both blocks below are the value of the native **`structuredContent`** field on a `tools/call` result — its sibling envelope fields (`resultType`, `content`, `isError`, `_meta`) are omitted for focus, not absent from the wire.
+See `native-wire-shapes.md` for the full result envelope, `structuredContent` included.
 
 Concise (default, `detail: "summary"`):
 

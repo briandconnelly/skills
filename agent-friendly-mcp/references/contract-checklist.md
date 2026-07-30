@@ -699,7 +699,7 @@ Audit prompt: Could an agent complete a typical task on this server in a single 
   Native `Tool`, `Resource`, `ResourceTemplate`, and `Prompt` records have no `stability` or `deprecation` field, so both ride under one namespaced `_meta` key — `<reverse-dns>/lifecycle` — on all four record types, per the native-vs-convention rule in `SKILL.md`.
   Publishing them only on a house surface such as a fingerprint or a `search_tools` envelope does not satisfy this rule: a client reading native `tools/list` would see no tier at all.
   Because `_meta` is a convention extension, an off-the-shelf client ignores it unless it was built to read that key — so the same facts stay available through the capability summary and the fingerprint where one is published.
-  See `examples.md` §9 for the worked record.
+  See `examples.md` §9a for the worked native record.
 
 - `[9.error-codes]` **Error codes are part of the versioned surface (see §6).** Changing a code's meaning is a breaking change; introducing a new code is additive but still recorded in the fingerprint where one is published.
 
