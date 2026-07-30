@@ -189,6 +189,24 @@ def test_both_carriers_are_exercised_somewhere_in_the_fixture_suite():
     assert all(carriers.values()), f"carrier(s) never exercised: {carriers}"
 
 
+def test_declaring_one_tool_result_key_requires_the_other():
+    """The tool-result pair is all-or-nothing. A resource-only fixture is legal
+    (pinned by test_conforming_resource_fixture_has_no_issues), but a fixture that
+    declares either key must declare both — it cannot show the success shape and
+    skip the error shape.
+    """
+    for present, dropped in (
+        ("success_result", "error_result"),
+        ("error_result", "success_result"),
+    ):
+        partial = copy.deepcopy(FIXTURE)
+        del partial["wire"][dropped]
+        issues = validate(partial)
+        assert any(f"missing {dropped}" in i.message for i in issues), (
+            f"declaring {present} without {dropped} was accepted"
+        )
+
+
 def test_jsonrpc_envelope_must_use_the_renamed_keys():
     bad = copy.deepcopy(RESOURCE)
     data = bad["wire"]["resource_error"]["error"]["data"]

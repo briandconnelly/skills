@@ -503,9 +503,10 @@ def validate(fixture: object) -> list[Issue]:
         return [Issue("wire", "fixture has no 'wire' object")]
 
     issues: list[Issue] = []
-    # The tool-result carrier is required only of fixtures that declare one, so a
-    # resource-only fixture is legal; carrier coverage across the whole suite is
-    # asserted by test_validate_fixture.py, not per fixture.
+    # The tool-result pair is optional as a unit — a resource-only fixture is legal —
+    # but declaring either key requires both, so no fixture can show the success shape
+    # and skip the error shape. Carrier coverage across the whole suite is asserted by
+    # test_validate_fixture.py, not per fixture.
     if "success_result" in wire or "error_result" in wire:
         issues += _success_issues(wire) + _error_issues(wire)
     issues += _resource_read_result_issues(wire)
