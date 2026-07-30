@@ -57,6 +57,9 @@ for _entry in $ORG_INSTALLS; do
   esac
   _seen_orgs="${_seen_orgs}|${_org}|"
 done
+# With zero entries the ambiguous-toward-bot paths would emit a broken rewrite
+# pair (`url.https://github.com//.insteadOf`) and the gate would never match.
+[ -n "$_seen_orgs" ] || { echo "bot-env: ORG_INSTALLS is empty; refusing to run" >&2; exit 1; }
 
 verdict=personal
 ssh_prefixes=""

@@ -142,6 +142,17 @@ grep -q 'duplicate' "$ERR" || { echo "FAIL: duplicate-map abort gave no explanat
 rm -rf "$REPO"
 rm -f "$ERR"
 
+# 14a. An empty map is a config error that must abort — with zero entries the
+#      ambiguous-toward-bot paths would otherwise emit a broken rewrite pair
+#      (`url.https://github.com//.insteadOf`).
+awk '$0 != "acme:REPLACE"' "$SRC/bot-env" > "$DIR/bot-env-empty"
+chmod +x "$DIR/bot-env-empty"
+ERR="$(mktemp)"
+out="$(cd "$DIR" && "$DIR/bot-env-empty" 2>"$ERR")" && { echo "FAIL: empty ORG_INSTALLS did not abort"; FAIL=1; }
+[ -z "$out" ] || { echo "FAIL: empty-map abort still emitted env lines"; FAIL=1; }
+grep -q 'ORG_INSTALLS' "$ERR" || { echo "FAIL: empty-map abort gave no explanation"; FAIL=1; }
+rm -f "$ERR"
+
 # 14. A malformed map entry (no id, or an uppercase/unsafe account name) is a
 #     config error that must abort.
 for bad in 'acme' 'Acme:111' 'acme:bad id'; do
