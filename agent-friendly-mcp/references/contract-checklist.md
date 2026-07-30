@@ -95,6 +95,10 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
 - `[2.summary]` **Provide a server capability summary.** A concise overview of what the server does, what it does not do, and any prerequisites that affect whether or how an agent should use it.
   Expose it via a resource, discovery tool, or instructions field, whichever the client honors.
 
+- `[2.discover-first]` **Treat `server/discover` as the discovery surface's native first read.** Its mandate and required content are `[1.negotiated-caps]`'s concern; this rule owns the discovery consequence: the identity, supported versions, and capability advertisement it returns are what a modern client can read before any house surface, so the capability summary, the catalogs, and any fingerprint claim must agree with what it advertises.
+  The optional `instructions` field rides this result under 2026-07-28 — it is no longer carried by an `initialize` response — and remains advisory wherever it travels (`[2.instructions-advisory]`).
+  Say in the capability summary how an agent gets from `server/discover` to the house surfaces, because a capability advertisement does not carry the task-level guidance `[2.summary]` requires.
+
 - `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, so behavior that exists only there is invisible to those agents.
   Essential selection, prerequisite, safety, and repair behavior must also reach the agent through a surface it is guaranteed to see — the tool and resource schemas, or a discovery tool or resource the client does honor.
   Using `instructions` is fine; relying on it alone is not.
@@ -421,6 +425,12 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
 - `[6.symbolic-codes]` **Use stable, machine-readable error codes.** Codes are symbolic strings (e.g., `not_found`, `rate_limited`, `invalid_field`), not numeric exit codes.
   The symbolic code is the authoritative branch key for agents.
 
+- `[6.jsonrpc-code-allocation]` **Allocate numeric JSON-RPC `error.code` values per the spec's partition of the reserved range.** This rule governs only the numeric code on JSON-RPC failures (`[6.resource-errors]`, and the admissibility exceptions in `[6.tool-errors]`); the symbolic branch key stays with `[6.symbolic-codes]`.
+  `-32020` to `-32099` is reserved for the MCP specification: emit a code from this band only when the spec defines it, and only with its specified meaning — the assigned codes are cited where their conditions live (`[1.transport]`, `[6.capability-missing]`, `[6.tool-errors]`).
+  `-32000` to `-32019` is a closed legacy band: new codes MUST NOT be allocated there, new implementations SHOULD NOT use it at all, and receivers MUST NOT assume a specific meaning for codes received from it.
+  A server-defined error purpose the spec does not cover SHOULD take a code outside the JSON-RPC reserved range (`-32768` to `-32000`); the rest of the integer space is open for application-defined codes.
+  Codes retired by earlier revisions stay reserved: never emit the retired `-32002` (folded into `-32602`; clients SHOULD still accept it from 2025-11-25 servers) or the removed `-32042`.
+
 - `[6.document-codes]` **Document every error code per tool — without bloating every definition.** An undocumented code is an undiscoverable code; agents cannot branch on it reliably.
   But a full error catalog embedded in every `tools/list` entry inflates the definition each preloading client pays for (see §2), so choose placement by cost: keep only selection- and repair-critical codes inline in the definition, and serve the complete per-tool catalog through an on-demand surface (`describe_tool`, a resource, or the capability summary) that repair hints can reference.
 
@@ -466,6 +476,7 @@ Audit prompt: If every prompt on this server were removed, would any tool or res
   See `examples.md` §6 for an actionable tool-result error payload.
 
 - `[6.resource-errors]` **Resource semantic errors return as JSON-RPC errors.** `resources/read` and `resources/list` are non-tool RPC methods, so failures surface through the JSON-RPC envelope; carry the same unified error envelope (below) in structured `error.data`, renaming only `code`→`machine_code` and `message`→`human_message` (`[6.rename]`).
+  The numeric `error.code` on that envelope is allocated per `[6.jsonrpc-code-allocation]`.
 
 - `[6.name-carrier]` **Name the error carrier in the capability summary.** State where the envelope travels — `structuredContent` on the tool result, JSON-RPC `error.data`, and any disclosed degraded mode (below) — so agents know where to parse a failure before the first one occurs.
 
