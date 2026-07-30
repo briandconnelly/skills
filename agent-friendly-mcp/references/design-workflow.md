@@ -119,7 +119,7 @@ Design the error surface as deliberately as the success surface.
 - Field-level validation feedback: which field, why invalid, allowed values; include the offending value per `[6.offending-value]`.
 - Retryability and rate-limit signals: `retry_after_ms`, `temporary`, `rate_limit_remaining` where applicable.
 - Tool semantic errors return as tool result errors with `isError: true`.
-- Resource failures return JSON-RPC errors with structured `error.data` repair fields.
+- Resource failures return JSON-RPC errors with structured `error.data` repair fields; allocate their numeric `error.code` per `[6.jsonrpc-code-allocation]`.
 - Repair hints reference real callable surfaces — tool names, parameter names, valid enum values — not free-form prose.
 - Capability failures use the native error (`MissingRequiredClientCapability`, `-32021`, with `data.requiredCapabilities`) and name the fallback path in the same `error.data` (`[6.capability-missing]`).
 - If the server can use elicitation for missing input or sensitive external flows, define both the elicitation path and the non-elicitation fallback error.

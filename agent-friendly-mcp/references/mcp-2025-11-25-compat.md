@@ -23,6 +23,7 @@ These failures happen before any tool is invoked, so diagnose them at the protoc
 | Surface | 2025-11-25 | 2026-07-28 |
 | --- | --- | --- |
 | Capability exchange | `initialize` handshake, per-session | Per-request `_meta` + `server/discover` (`[1.negotiated-caps]`) |
+| Server `instructions` | Carried on the `initialize` result | Optional field on the `server/discover` result (`[2.discover-first]`) |
 | Results | No `resultType` | Required `resultType` (`complete` / `input_required` / extension values) |
 | List/read results | No cache fields | Required `ttlMs` + `cacheScope` (`[8.cacheable-results]`) |
 | Resource not found | `-32002` | `-32602` (still accept `-32002` from old servers) |

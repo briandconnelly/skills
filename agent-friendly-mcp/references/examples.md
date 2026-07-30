@@ -537,7 +537,7 @@ Every other field — `temporary`, `retry_after_ms`, and (where applicable) `det
 What to notice: the `data` block carries the same error envelope as the tool-result error's `structuredContent`, with the optional `resource_uri` correlation field populated because this failure is tied to a specific resource. `machine_code: resource_gone` with `temporary: false` and `retry_after_ms: null` tells the agent the exact resource is permanently gone — don't back off and retry the same read — while `repair` still routes it to a real next call (`slack_search_messages`) to recover the underlying information a different way. (This is why no separate `recoverable` flag is needed: `machine_code` + `temporary` already say whether *this* resource can return, and a non-empty `repair` already says recovery is possible by another path.) `request_id` here mirrors the envelope `id`, and `fingerprint` ties the failure to the server contract version — the same correlation context the tool surface carries.
 
 Resource-not-found surfaces as `-32602` (Invalid params) under 2026-07-28 — the old `-32002` is retired, though clients SHOULD still accept it from older servers; the `data` block carries the repair contract either way.
-Branch on `machine_code`, not the numeric code — that is what survives spec-revision renumbering (see `[6.symbolic-codes]`).
+Branch on `machine_code`, not the numeric code — that is what survives spec-revision renumbering (see `[6.symbolic-codes]`); which numeric codes a server may allocate is `[6.jsonrpc-code-allocation]`.
 
 ## 7. Server capability summary
 
@@ -622,7 +622,7 @@ The `http_variant` fields apply only if the same contract is also exposed over s
 It does not ask the model to handle bearer tokens directly.
 The `error_carriers` block names where the §6 error envelope travels on each surface; a server whose framework forces a `content[0].text` mirror on error results would declare that degraded mode here, with its trigger (§6).
 The fingerprint appears here too so agents can short-circuit re-discovery (see §9).
-This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`).
+This summary is a convention surface, not a native MCP structure — expose it through whatever the client honors (a resource, a discovery tool, or the server `instructions` field, which rides the `server/discover` result) and keep its shape documented (see the native-vs-convention rule in `SKILL.md`, and `[2.discover-first]` for agreeing with the native advertisement).
 
 ## 8. `search_tools` response shape
 

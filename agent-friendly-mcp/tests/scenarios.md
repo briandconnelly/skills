@@ -46,7 +46,7 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 - [ ] Pagination is cursor-based and provenance-correct: a tool's own list-shaped result payload may use the `has_more` house convention, while native list methods (`tools/list`, etc.) use `nextCursor` (omission = done) — not a house convention; responses also have a concise default with a `detail` toggle (§8).
 - [ ] Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) are present and honest — e.g., create-issue is not marked read-only or idempotent (§3).
 - [ ] Tool definitions publish an `outputSchema`, and success results are described as `structuredContent` conforming to it, with `content` kept as a textual fallback (§3 output contract).
-- [ ] **(Scored.)** The error path is contract-correct and distinct from the success shape: `isError: true` results carry the §6 error envelope in `structuredContent` (with a `content` textual fallback), and `outputSchema` is scoped to **success** results — stated as this skill's reading of an unsettled spec point, not as settled MCP law (`contract-checklist.md:190`). The design does one of: documents a success-only `outputSchema` with the error envelope validated separately, or unions success and error branches into `outputSchema`. A text-only error carrier counts only when disclosed as a degraded mode (`contract-checklist.md:471`).
+- [ ] **(Scored.)** The error path is contract-correct and distinct from the success shape: `isError: true` results carry the §6 error envelope in `structuredContent` (with a `content` textual fallback), and `outputSchema` is scoped to **success** results — stated as this skill's reading of an unsettled spec point, not as settled MCP law (`[3.output-schema-scope]`). The design does one of: documents a success-only `outputSchema` with the error envelope validated separately, or unions success and error branches into `outputSchema`. A text-only error carrier counts only when disclosed as a degraded mode (`[6.degraded-carrier]`).
 
 **Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations, no output schema / free-text results, and error results that reuse the success `structuredContent` shape or omit the structured error envelope entirely.
 
@@ -72,7 +72,7 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 
 - [ ] **(Scored — defect detection.)** Surfaces the load-bearing defects: the `readOnlyHint` lie on `send`, the `send`/`post_message` overlap, the unstructured error strings, the 61-tool no-reduction gap, and the missing `additionalProperties: false` — independent of how they are worded or labeled.
 - [ ] **(Scored — priority judgment, predeclared bands.)** Ranks by impact against `review-workflow.md:9–19`: the false `readOnlyHint` is highest-priority and merge-blocking; the `send`/`post_message` overlap and the unstructured error strings are at least must-fix / major-equivalent. Score the impact judgment, not the label word.
-- [ ] **(Non-scored conformance.)** May use the five-line finding layout and the exact `Critical / Major / Minor / Nit` vocabulary from `review-workflow.md:79–86`; recorded, never the reason a run fails.
+- [ ] **(Non-scored conformance.)** May use the five-line finding layout and the exact `Critical / Major / Minor / Nit` vocabulary from `review-workflow.md` § Report Format; recorded, never the reason a run fails.
 - [ ] **(Covered by the priority-band bullet above.)** The `readOnlyHint: true` claim on the mutating `send` tool is ranked highest-priority / merge-blocking (§3 annotation honesty); the exact word "Critical" is non-scored.
 - [ ] Flags `send` vs `post_message` overlap as a wrong-tool-selection finding (§3).
 - [ ] Flags `delete_all_messages` as needing an explicit `destructiveHint: true` and a confirmation boundary (§3 security) — without claiming omission declared it safe, since the spec default for an omitted `destructiveHint` is already `true`.
@@ -190,16 +190,16 @@ Unlike Scenarios 1–6, this scenario tests whether the skill's `description` fi
    Where the harness exposes no such signal, fall back to a labeled description-classifier proxy: ask a dispatcher "which of these skills, if any, applies?" — recorded as a **proxy**, not proof the host loads the skill.
 3. Run each case several times with a pinned model/runtime and report a **trigger rate**, not a single pass/fail.
 
-**Cases — close-boundary minimal pairs (grounded in `SKILL.md:56–69`):**
+**Cases — close-boundary minimal pairs (grounded in `SKILL.md` § When To Use / § When Not To Use):**
 
 | # | Prompt (abbreviated) | Expected |
 | --- | --- | --- |
 | T1 | "Design the MCP server contract for our billing API so agents can call it." | fire |
-| T2 | "Review the internal Python of our MCP server for dead code and style." | quiet (non-agent-facing internals, `SKILL.md:64`) |
+| T2 | "Review the internal Python of our MCP server for dead code and style." | quiet (non-agent-facing internals, `SKILL.md` § When Not To Use — "General code review of MCP server internals") |
 | T3 | "Harden the input schemas on our `deploy` and `rollback` MCP tools — agents keep passing ambiguous args." | fire |
-| T4 | "Add one optional `note` field to a tool on our already agent-friendly MCP server." | quiet (trivial addition, `SKILL.md:66`) |
+| T4 | "Add one optional `note` field to a tool on our already agent-friendly MCP server." | quiet (trivial addition, `SKILL.md` § When Not To Use — "Trivial schema additions") |
 | T5 | "Design the recovery + progress contract for a 5-minute MCP render task." | fire |
-| T6 | "Design the operator dashboard that shows our MCP server's request volume." | quiet (operator dashboard, `SKILL.md:67`) |
+| T6 | "Design the operator dashboard that shows our MCP server's request volume." | quiet (operator dashboard, `SKILL.md` § When Not To Use — "server-operator dashboards") |
 | T7 | "Write the client code that calls the `incidents://active` resource on someone else's MCP server." | quiet (consuming, not designing) |
 | T8 | "Our agents keep picking the wrong tool out of the 60 we expose — help." | fire (symptom, no literal "MCP server") |
 
