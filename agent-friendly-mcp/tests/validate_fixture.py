@@ -141,6 +141,17 @@ _SPEC_ASSIGNED_CODES = {-32020, -32021, -32022}  # HeaderMismatch, MissingRequir
 _RETIRED_CODES = {-32002, -32042}  # retired by earlier revisions; never emit
 
 
+def _band_text(band: tuple[int, int]) -> str:
+    """Render a `(low, high)` band the way `contract-checklist.md` writes it: the
+    code nearest zero first, e.g. `(-32019, -32000)` -> `-32000..-32019`.
+
+    The tuples are ordered low-to-high so the range checks read naturally; the
+    diagnostics are ordered to match the rule text a reader will look it up in.
+    """
+    low, high = band
+    return f"{high}..{low}"
+
+
 def _details_issues(envelope: dict, where: str) -> list[Issue]:
     """`[6.details-field]`: emit exactly one of `field` or `fields`, never both."""
     details = envelope.get("details")
@@ -224,7 +235,7 @@ def _code_allocation_issues(code: object, where: str) -> list[Issue]:
             Issue(
                 where,
                 f"error.code {code} falls in the closed legacy band "
-                f"{_LEGACY_BAND[1]}..{_LEGACY_BAND[0]}; "
+                f"{_band_text(_LEGACY_BAND)}; "
                 "new implementations must not allocate there (§6)",
             )
         ]
@@ -233,7 +244,7 @@ def _code_allocation_issues(code: object, where: str) -> list[Issue]:
             Issue(
                 where,
                 f"error.code {code} falls in the spec-reserved band "
-                f"{_MCP_BAND[0]}..{_MCP_BAND[1]} but is not a "
+                f"{_band_text(_MCP_BAND)} but is not a "
                 f"spec-assigned code {sorted(_SPEC_ASSIGNED_CODES)} (§6)",
             )
         ]

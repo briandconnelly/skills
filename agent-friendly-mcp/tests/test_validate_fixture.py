@@ -209,6 +209,9 @@ def test_legacy_band_error_code_rejected():
     bad["wire"]["resource_error"]["error"]["code"] = -32004
     issues = validate(bad)
     assert any("closed legacy band" in i.message for i in issues)
+    # The band renders in the order `contract-checklist.md` states it, nearest
+    # zero first, so the diagnostic does not read as an inverted range.
+    assert any("-32000..-32019" in i.message for i in issues)
 
 
 def test_retired_error_code_rejected():
@@ -223,6 +226,7 @@ def test_unassigned_spec_band_error_code_rejected():
     bad["wire"]["resource_error"]["error"]["code"] = -32055
     issues = validate(bad)
     assert any("spec-reserved band" in i.message for i in issues)
+    assert any("-32020..-32099" in i.message for i in issues)
 
 
 def test_spec_assigned_code_accepted():
