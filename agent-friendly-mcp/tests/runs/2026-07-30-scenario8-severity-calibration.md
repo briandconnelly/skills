@@ -1,6 +1,6 @@
 # Scenario 8 (Severity calibration) — paired wording comparison
 
-- **Date:** 2026-07-31
+- **Date:** 2026-07-30
 - **Trees:** control arm at `f733b93` (main); treatment arm at `f733b93` plus the #125 edit to `references/review-workflow.md` and nothing else
 - **Mode:** two fresh general-purpose subagents on `claude-fable-5`, run concurrently against isolated copies of `SKILL.md` + `references/` in scratchpad; both explicitly forbidden from reading anything under the repository, from writing files, and from running git
 - **Score (treatment):** 5/5 scored assertions
@@ -41,10 +41,12 @@ A run reaching Minor by reasoning from the *absence* of failure evidence rather 
 
 ## Cross-arm agreement on the rest of the surface
 
-Both arms independently found, at comparable severity: the missing credential-failure code distinct from `carrier_unavailable` (both Major), the `^1Z[0-9A-Z]{16}$` pattern silently rejecting valid non-1Z UPS formats (control Minor, treatment Major), and the under-specified `outputSchema` — untyped `scans` items and undefined `delivered_at` presence semantics (control Major, treatment Minor).
+Both arms independently found the same other defects: the missing credential-failure code distinct from `carrier_unavailable` (both Major), the `^1Z[0-9A-Z]{16}$` pattern silently rejecting valid non-1Z UPS formats (control Minor, treatment Major), and the under-specified `outputSchema` — untyped `scans` items and undefined `delivered_at` presence semantics (control Major, treatment Minor).
+Two of those three moved bands between arms, in opposite directions, so this run does not hold the rest of the report constant and no such claim is made.
 Both measured discovery cost by counting serialized bytes rather than estimating (1,451 and 1,463 bytes respectively, the difference being minification choice), and both correctly credited the honest annotations and the declared omission semantics on `detail`.
 
-That agreement is what distinguishes the treatment arm's Minor from a run that simply went easy on the server: it scaled one finding down while holding the rest of the report at the same severity as the control.
+What that agreement supports is narrow: the treatment arm found the same defects as the control and did not soften the report uniformly, which is the alternative explanation a single Minor rating would otherwise leave open.
+It is not evidence that only the intended finding changed band, because two others did.
 
 ## Fixture defects surfaced by the runs
 

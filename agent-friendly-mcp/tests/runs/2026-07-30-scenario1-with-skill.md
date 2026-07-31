@@ -1,6 +1,6 @@
 # Scenario 1 (Design) — with-skill run (post-#122 per-tool `outputSchema`)
 
-- **Date:** 2026-07-31
+- **Date:** 2026-07-30
 - **Tree:** `36f6096` (branch `fix/milestone-2-evidence-base`, the #122/#124/#125 commit)
 - **Mode:** with-skill (fresh general-purpose subagent on `claude-fable-5`; read `SKILL.md` + all eight `references/` files from an isolated scratchpad snapshot, explicitly forbidden from the repository, from writing files, and from git; 11 tool-uses, all reads)
 - **Score:** 11/11

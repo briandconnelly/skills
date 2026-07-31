@@ -23,8 +23,8 @@ A review is grounded when its findings cite evidence from the schema, the respon
 0. **Establish the server's protocol revision target before judging anything.** Determine which revision(s) and extensions the server targets: from its declared summary, or failing that from its wire shapes.
    `[1.spec-revision]` owns which rules bind regardless of target and which wire mechanics are read through the compat matrix for a declared-legacy server; a finding that flags a legacy shape on a declared-legacy surface is itself a review defect.
 1. **Read or generate the server capability summary.** If the server publishes one, start there.
-   If it does not, record that absence as a finding against §2 and §1, and derive its severity from the demonstrated cost to an agent rather than from a fixed default.
-   `[2.summary]` owns whether a summary is required; this step owns only what its absence costs, scaled by catalog breadth, ambiguity, prerequisite complexity, and cold-start evidence.
+   If it does not, `[2.summary]` decides whether that absence is a finding at all; where it is, this step decides only what the absence costs.
+   Derive that severity from the demonstrated cost to an agent rather than from a fixed default, scaled by catalog breadth, ambiguity, prerequisite complexity, and cold-start evidence.
    - **Critical** — the surface is broad or ambiguous enough that agents predictably fail: an observed repeated wrong first call, or an ambiguity no reading of the schemas resolves.
    - **Major** — the midpoint, and the band to use whenever the evidence does not place the finding elsewhere: a multi-tool catalog whose native definitions leave scope, prerequisites, or negative scope unstated.
    - **Minor** — a cold start reaches a correct first call without the summary, the catalog is small, and the native definitions are self-sufficient on scope and prerequisites.
