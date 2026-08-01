@@ -3,7 +3,7 @@
 - **Date:** 2026-07-29
 - **Tree:** `1b0b743` (main, post #130 rebase + #133 §6 fixes)
 - **Mode:** with-skill (fresh general-purpose subagent on `claude-fable-5`; read `SKILL.md` + all eight `references/` files, explicitly forbidden from `tests/` and `decisions/`; 11 tool-uses, all reads)
-- **Score:** 10/10, as scored on 2026-07-29 against the assertion set in force at this tree.
+- **Score:** 10/10
 
 **Erratum, 2026-07-30 (#122).** The A9 evidence cell below originally read "Closed `outputSchema` shown per tool."
 That overstated what this run produced: 8 tool definitions appear below and 7 carry an `outputSchema`, with `github_get_capabilities` publishing none.
@@ -29,7 +29,7 @@ Same GitHub Issues prompt as the baseline (see `2026-07-29-scenario1-baseline.md
 | A9 | `outputSchema` published; success `structuredContent` + `content` fallback | **PASS** | Closed `outputSchema` shown on 7 of the 8 tools defined below, with the pairing prose stated: "success results return `structuredContent` conforming to a published `outputSchema` (closed), with the same JSON serialized in `content[0].text` as fallback". `github_get_capabilities` publishes none — see the erratum above. |
 | A10 | **(Scored.)** Error path distinct; `outputSchema` scoped to success, attributed to the skill's reading, or a documented union | **PASS** (caveat) | "`isError: true` results carry the §6 error envelope instead — `outputSchema` scopes to success only, documented per tool (`[3.output-schema-scope]`)"; envelope in `structuredContent` with a text mirror. Caveat: attributes the scoping to the checklist rule by id rather than verbalizing "unsettled spec point" — attribution satisfied, hedge not repeated. |
 
-**Passed:** all (10/10), as scored on 2026-07-29.
+**Passed:** all (10/10).
 Notable beyond the assertions: per-request `_meta` gating and `server/discover` cache hints (`[8.cacheable-results]` matrix with per-surface `ttlMs`/`cacheScope`), an optimistic-concurrency `version`/`expected_version` design with a worked `version_conflict` repair, the `[6.rename]` spellings on the JSON-RPC carrier, and a disclosed blanket `details.value`-omission policy for free-form parameters citing the exact `[6.offending-value]` distinction shipped in #133.
 
 ## Full final output
