@@ -26,7 +26,7 @@ A review is grounded when its findings cite evidence from the schema, the respon
    If it does not, `[2.summary]` decides whether that absence is a finding at all; where it is, this step decides only what the absence costs.
    Derive that severity from the demonstrated cost to an agent rather than from a fixed default, scaled by catalog breadth, ambiguity, prerequisite complexity, and cold-start evidence.
    - **Critical** — the surface is broad or ambiguous enough that agents predictably fail: an observed repeated wrong first call, or an ambiguity no reading of the schemas resolves.
-   - **Major** — the midpoint, and the band to use whenever the evidence does not place the finding elsewhere: a multi-tool catalog whose native definitions leave scope, prerequisites, or negative scope unstated.
+   - **Major** — the midpoint, and the band to use whenever the evidence does not place the finding elsewhere; the typical case is a catalog whose native definitions leave scope, prerequisites, or negative scope unstated, at any tool count.
    - **Minor** — a cold start reaches a correct first call without the summary, the catalog is small, and the native definitions are self-sufficient on scope and prerequisites.
    The cold-start evidence for Minor may be simulated rather than captured, on the same terms the probe rules below allow, but it must be positive evidence that an agent gets there — not merely the absence of evidence that it fails.
    Name the evidence that placed the finding in its band.

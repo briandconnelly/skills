@@ -270,7 +270,9 @@ Record which wording a run was scored against.
 
 Every row is scored against the assertion text in force at its recorded tree, not against the current text.
 Where a later change tightens an assertion and restates a score, the row carries both figures and names the issue that tightened it; the restatement lives here, never rewritten into the run file.
-Rows dated before 2026-07-29 additionally measured the MCP 2025-11-25 contract that the skill taught at the time (see `agent-friendly-mcp/decisions/001-mcp-2026-07-28-rebase.md`), and their evidence files are immutable historical artifacts.
+A run file's own text is edited only to correct a claim that was factually wrong about what that run produced, judged against the assertions in force when it was written — never to track a later assertion change, and never to restate a score.
+Such a correction is recorded in the run file as a dated erratum quoting the sentence it replaces, so the original claim stays legible.
+Rows dated before 2026-07-29 additionally measured the MCP 2025-11-25 contract that the skill taught at the time (see `agent-friendly-mcp/decisions/001-mcp-2026-07-28-rebase.md`), and their evidence files are immutable historical artifacts — the erratum allowance above does not reach them, and a factual error in one is noted in its Results row instead.
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
