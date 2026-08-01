@@ -45,10 +45,14 @@ A static design/audit assertion — "the contract describes a symbolic error cod
 - [ ] A capability summary exists stating what the server does NOT do (§1/§2 negative scope).
 - [ ] Pagination is cursor-based and provenance-correct: a tool's own list-shaped result payload may use the `has_more` house convention, while native list methods (`tools/list`, etc.) use `nextCursor` (omission = done) — not a house convention; responses also have a concise default with a `detail` toggle (§8).
 - [ ] Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) are present and honest — e.g., create-issue is not marked read-only or idempotent (§3).
-- [ ] **(Scored — per tool, not per catalog.)** Every tool definition the run produces satisfies `[3.output-schema]`, scored across the whole catalog rather than on one worked example. Scenario premise: the tasks this prompt implies — search, read, create, update, comment, label — all return machine-contract fields, as does any discovery or capability-summary tool a run chooses to add, so no tool here is expected to reach that rule's carve-out. A tool that omits an `outputSchema` without justifying the carve-out for itself fails.
+- [ ] **(Scored — per tool, not per catalog.)** Every tool definition the run produces is scored independently against every requirement of `[3.output-schema]`.
+  Scenario premise: the tasks this prompt implies — search, read, create, update, comment, label — all return machine-contract fields, as does any discovery or capability-summary tool a run chooses to add, so no tool here is expected to reach that rule's carve-out.
+  Fail any tool that violates any part of the rule, and evaluate each claimed carve-out independently.
 - [ ] **(Scored.)** The error path is contract-correct and distinct from the success shape: `isError: true` results carry the §6 error envelope in `structuredContent` (with a `content` textual fallback), and `outputSchema` is scoped to **success** results — stated as this skill's reading of an unsettled spec point, not as settled MCP law (`[3.output-schema-scope]`). The design does one of: documents a success-only `outputSchema` with the error envelope validated separately, or unions success and error branches into `outputSchema`. A text-only error carrier counts only when disclosed as a degraded mode (`[6.degraded-carrier]`).
 
-- [ ] **(Scored — disposition honesty.)** The prompt supplies no runnable server, so Step 9 of `design-workflow.md` cannot be executed. The output must either report eval-measured results or record Step 9 as `not-run` naming the specific missing prerequisite. Silently omitting the step, or claiming measured improvement against a baseline that was never run, fails this assertion.
+- [ ] **(Scored — disposition honesty.)** Scenario premise: the prompt supplies no runnable server or eval harness.
+  The output must therefore satisfy the Step 9 `not-run` disposition in `design-workflow.md`.
+  Silently omitting Step 9 or claiming measured improvement fails this assertion.
 
 **Expected baseline failures:** endpoint-mirroring (one tool per endpoint), prose-only error descriptions, no negative scope, no pagination contract, missing or dishonest annotations, no output schema / free-text results, and error results that reuse the success `structuredContent` shape or omit the structured error envelope entirely.
 
