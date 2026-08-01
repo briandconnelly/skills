@@ -211,9 +211,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - `[3.output-schema]` **Publish an `outputSchema` and return `structuredContent` when targeting MCP versions that support them.** This is the normative target, not an optional nicety: when a tool declares an `outputSchema`, servers MUST return conforming `structuredContent` on success results, and clients SHOULD validate against it (the `isError: true` carve-out is the next item).
   The obligation is per tool, not per catalog: every tool whose success result carries machine-contract fields publishes its own `outputSchema`, and one worked example on a flagship tool does not discharge it for the rest.
-  The carve-out is narrow: `outputSchema` binds `structuredContent` and never `content`, so only a tool returning no `structuredContent` at all — a result carried entirely in `content` as `text`, `image`, `audio`, or a `resource_link` (`[3.content-types]`) — has nothing for a schema to bind.
-  Note that in the tool's description rather than leaving the omission unexplained.
-  Returning a `resource_link` does not by itself qualify: those records carry their own fields (`uri`, `mimeType`, `size`), and `[3.resource-links]` pairs the link with a concise `structuredContent` summary, which is schema-bound like any other.
+  The carve-out is narrow: a tool returning no `structuredContent` has nothing for `outputSchema` to bind.
+  Note the omission in the tool's description.
+  Evaluate `resource_link` results under `[3.resource-links]`.
   Keep parser-compatible JSON in `content` as a fallback for older or weaker clients; support varies across MCP versions, so the fallback stays useful — but it is the fallback, not the contract.
 
 - `[3.output-schema-scope]` **Scope `outputSchema` to success results — a deliberate reading of an unsettled point.** The spec does not say whether `outputSchema` binds `isError: true` results.
