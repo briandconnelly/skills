@@ -4,7 +4,7 @@ Artifacts from the examples set — see [README.md](README.md) for the full inde
 
 ## Agent Identity Setup
 
-Implements: §4 (T8, T9)
+Implements: §4 (T8, T9, T10)
 
 Provision a distinct GitHub App identity for agent work.
 The App gets fine-grained permissions scoped to the target repository, produces short-lived installation tokens, and creates a clear audit trail.
@@ -65,6 +65,9 @@ Permissions that must NOT be granted, each because its absence is itself a contr
 |---|---|
 | `administration: write` | Lets the identity edit or delete the ruleset that gates it — the precondition all of §2 rests on (T10). |
 | `workflows: write` | GitHub rejects App-token pushes touching `.github/workflows/` without it, which is a server-side guard on the checks themselves (T3). |
-| release / package write | Lets the agent publish to consumers without any protected branch changing (T11). |
 | `actions: write` | Workflow dispatch; grant only in the specific job that needs it, never on the default token. |
+
+There is deliberately NO "release" row here.
+Releases are governed by the Contents permission the agent already needs to push branches, so there is nothing to withhold — the T11 boundary is a protected tag ruleset plus a harness deny rule on the release endpoints (config-checklist.md §2), not a permission you can leave off this list.
+Package publishing follows the registry's own access model, not a GitHub App repository permission.
 These are GitHub App repository permissions — a separate namespace from the workflow `GITHUB_TOKEN` `permissions:` blocks elsewhere in this file; granting one never grants the other.

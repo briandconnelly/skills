@@ -132,7 +132,7 @@ An agent blocked by a gate and optimizing to finish a task has an obvious next m
 
 **Config close:** §2 and §4.
 The load-bearing control is a precondition rather than a rule: the agent's identity holds no repository administration (a GitHub App without `administration: write`; never the `Admin` role), which makes the ruleset immutable from the agent's side and is what every other §2 rule silently depends on.
-For organization-owned repositories, an organization-level ruleset targeting the repo is stronger still — a repository admin cannot edit it, so the boundary survives even an over-permissioned repo-level identity.
+Where the plan provides them (§2 states the gating), an organization-level ruleset targeting the repo is stronger still — a repository admin cannot edit it, so the boundary survives even an over-permissioned repo-level identity.
 Where the agent unavoidably holds admin — the solo pre-identity interim, where it runs on the maintainer's own credentials — no GitHub control closes this, and the boundary moves to the agent harness's permission configuration (see the solo interim posture in config-checklist.md, which is the canonical statement of that exception).
 
 **Operate close:** Never modify a ruleset, branch protection rule, required check, Actions permission, environment, or secret to unblock your own work; if a gate blocks you, stop and report it.
@@ -145,6 +145,8 @@ This is the T9 escalation rule applied to the repository itself — the scope yo
 **Why agents amplify it:** The guardrails in §2 target branches, and `contents: write` — which the agent needs to push its own feature branches — also permits creating and moving tags.
 An agent that has been correctly walled off from `main` may still hold, unremarked, the ability to publish; and a release artifact is executed by downstream consumers with none of the review the source code received.
 
-**Config close:** §2 and §4 (a tag ruleset on the release tag pattern blocking creation, deletion, and force-update by non-bypass actors; no release or package write permission on the agent identity by default; automated publishing runs from a protected ref behind an environment gate rather than from PR context; immutable releases where the plan offers them).
+**Config close:** §2 — a tag ruleset on the release tag pattern blocking creation, deletion, and force-update by non-bypass actors, and automated publishing that runs from a protected ref behind an environment gate rather than from PR context.
+This class is only PARTLY closable by configuration, and §2 is the authority on where the line falls: releases are governed by the Contents permission the agent already needs, so unlike every other threat here there is no permission to withhold, and a tag ruleset does not stop a release published against an existing tag.
+The remainder sits in the agent harness's deny rules, alongside T10's.
 
 **Operate close:** Never create, move, or delete a release tag, and never publish a release or package, without explicit human authorization for that specific release — the same delegation standard as merge authority (T3).

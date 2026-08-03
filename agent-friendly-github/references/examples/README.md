@@ -11,7 +11,8 @@ Load only the file you need — that is why these are separate files.
 | [workflows.md](workflows.md) | Least-privilege injection-safe CI workflow (with OIDC job), always-running monorepo gate check | §2, §3 (T2, T5, T6) |
 | [required-checks.md](required-checks.md) | Required check: PR links a real open issue; required check: human-only approvals | §1, §2 (T3) |
 | [codeowners.md](codeowners.md) | CODEOWNERS patterns (monorepo and solo), draft-first convention note | §1 (T3) |
-| [identity.md](identity.md) | GitHub App registration steps, token scope inventory, co-authorship trailers | §4 (T8, T9, T10, T11) |
+| [identity.md](identity.md) | GitHub App registration steps, token scope inventory, co-authorship trailers | §4 (T8, T9, T10) |
+| [harness-deny.md](harness-deny.md) | Deny rules for the surface no GitHub setting can gate, and how to verify them | §2, §4 (T3, T10, T11) |
 | [repo-files.md](repo-files.md) | Issue and PR templates, `AGENTS.md` pattern, label taxonomy, starter `.gitignore`, minimal `.gitattributes`, `CONTRIBUTING.md` and `SECURITY.md` | §1 (T1, T5) |
 
 ## Before you copy anything

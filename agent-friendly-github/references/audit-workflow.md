@@ -37,8 +37,18 @@ Remediation is not to tighten the review rule but to provision a distinct agent 
 **A correctly-configured solo interim is still a finding.**
 Never record it as `OK`.
 The posture is a documented degraded state whose enforced boundary sits in the agent harness rather than in GitHub, so an audit that scores it clean tells the reader the repo is protected by configuration when it is not.
-Record it as **High** (T3, T10) with remediation "provision the distinct agent identity (§4)", and check the two mitigations the posture requires: the affirmative no-merge rule in `AGENTS.md`, and a harness deny rule covering merge AND the mutating administrative API.
-If either mitigation is absent, the finding is **Critical** — the interim without its harness boundary is an agent with unrestricted admin on the repository.
+Record it as **High** (T3, T10) with remediation "provision the distinct agent identity (§4)", and check the two mitigations the posture requires: the affirmative no-merge rule in `AGENTS.md`, and the harness deny rules (run the Harness deny rules probe below — "present" is not the test; covered, unwritable by the agent, and exercised is).
+If either mitigation is absent or unverifiable, the finding is **Critical** — the interim without its harness boundary is an agent with unrestricted admin on the repository.
+
+This does not conflict with the High example above ("no required reviews configured") or with the illusory-gate Medium.
+They are three different findings about the same observable state, and an audit that sees reviews=0 with shared credentials records exactly one of them:
+
+| What you observe | Finding |
+| --- | --- |
+| reviews=0, shared credentials, interim correctly configured and its mitigations verified | **High** — degraded posture (this rule). NOT a "missing required reviews" finding. |
+| reviews=0, shared credentials, mitigations absent or unverifiable | **Critical** — degraded posture with no boundary at all |
+| reviews>=1, shared credentials, agent-reachable human bypass | **Medium** — illusory gate (above) |
+| reviews=0 in any profile with a second human | **High** — missing required reviews (the severity-scale example) |
 
 ## Audit Procedure
 
@@ -113,6 +123,12 @@ Mark each probe with the checklist section and threat class it targets.
   Then record the release side separately and do NOT score it from permissions: releases are governed by the Contents permission the agent already needs, so there is no permission to check. Look instead for a harness deny rule on the release endpoints and for release workflows that run from a protected ref behind an environment gate; absent both, record the residual as open.
   Package publishing follows the registry's access model, not GitHub App repository permissions — audit it there or mark `not-checked` with that reason.
   *(§2, §4, T11)*
+
+- **Harness deny rules** — where the profile depends on them (the solo interim's merge and control-plane residuals, and every profile's release residual), read the agent's permission configuration and check it against the surface table in examples/harness-deny.md, row by row.
+  Two things make this pass or fail: the configuration must live somewhere the agent cannot edit (outside the repo, or CODEOWNERS-owned), and it must have been exercised — a deny list nobody has run is a claim.
+  Ask for the transcript of the verification in that file, including its positive control; without it, mark `not-checked`, which under the standing-interim rule above means the interim finding is Critical rather than High.
+  This probe leaves GitHub entirely and cannot be run from repository data.
+  *(§2, §4; T3, T10, T11)*
 
 - **Review-dismissal restriction** — in the default-branch ruleset's `pull_request` rule, confirm `dismissal_restriction.enabled` is true and `allowed_actors` contains humans only, no agent identity or `[bot]`.
   Absent the restriction, any `pull_requests: write` actor — which the agent holds — can dismiss a human's review.

@@ -28,7 +28,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 - [ ] Picks the solo profile and treats the current state as the pre-identity interim: `required_approving_review_count: 0` now, adopting the solo interim posture in full, including its harness-side boundary (Repository Profiles).
 - [ ] Keeps `bypass_actors` empty in the interim, with the agent-reachable-bypass rationale (§2).
 - [ ] Names the control-plane residual: the agent holds the maintainer's admin rights and can delete the ruleset itself, so the interim's protection depends on a harness deny rule covering the mutating administrative API, not on the ruleset (T10). Treats the interim as a degraded state with identity provisioning as the exit.
-- [ ] Requires the agent identity to hold no repository administration once provisioned, and no release or package write (§4; T10, T11).
+- [ ] Requires the agent identity to hold no repository administration once provisioned (§4; T10). Does NOT claim a withholdable release permission — releases ride on `contents: write`, so a correct run names the tag ruleset and a harness deny rule as the boundary instead (§2; T11).
 - [ ] Plans a distinct identity (GitHub App preferred over fine-grained PAT over shared account) and flips reviews to >= 1 with a human `User` bypass actor in `pull_request` mode — never `always`/`exempt`, never the `Write` role — only after the identity exists (§2, §4).
 - [ ] Required-check context is the job name (`test`), not the `CI / test` PR-UI string (examples/rulesets.md).
 - [ ] Sets `strict_required_status_checks_policy: true` (§2).
@@ -172,8 +172,13 @@ The skill's description currently covers "tracking issues, opening and managing 
 Whether that is over-triggering or intended behavior is an open product question: "Operate as an agent in a configured repo" is a listed use in **When To Use**.
 Run this scenario to answer it with evidence before editing the description.
 
-**How to run:** give a fresh subagent the skill catalog (names + descriptions only, not bodies) and one prompt below; record whether it invokes `agent-friendly-github`.
-No skill body is loaded — this measures the description alone.
+**How to run.** Three things must be pinned or runs are not comparable:
+
+- **Catalog.** Trigger behavior depends on what competes, so fix the catalog and record it with the results. Use every skill in this repository plus the harness's own default skills, names and descriptions only — no bodies. If the catalog changes, the baseline is void.
+- **What counts as a fire.** The subagent invoking the skill (a `Skill` call, or an explicit statement that it is loading `agent-friendly-github`). Merely naming the skill while answering, or describing repo hardening without invoking, is NOT a fire.
+- **Repetitions.** 5 fresh subagents per prompt, scored as fires/5. A single run cannot resolve a ~1-in-4 threshold on a stochastic outcome.
+
+Give each subagent the catalog and one prompt below, with no other context.
 
 **MUST fire:**
 
@@ -192,11 +197,18 @@ No skill body is loaded — this measures the description alone.
 Prompt 4 is the deliberate boundary case: it asks for the operating conventions themselves, which IS an intended use, whereas 5–7 merely perform the actions those conventions cover.
 A description that cannot separate 4 from 5–7 is the finding.
 
-**Scoring:** report fires/total for each group.
-A false-fire rate above ~1/4 on the MUST NOT set justifies narrowing the description; any miss on the MUST set blocks narrowing until the wording is fixed, because a silent failure to trigger on setup/audit is worse than the context cost of over-triggering.
-Record the baseline for the CURRENT description before changing it, or the change cannot be evaluated.
+**Scoring:** report fires/5 per prompt and the aggregate per group (out of 20 each).
+Narrowing is justified when the MUST NOT group exceeds 5/20 fires.
+Narrowing is BLOCKED while the MUST group is below 20/20 — a silent failure to trigger on setup or audit is worse than the context cost of over-triggering, so fix the wording until every must-fire prompt is unanimous before touching the false-fire rate.
+Record the baseline for the CURRENT description, with its catalog, before changing anything; without it the change cannot be evaluated.
 
 ## Results
+
+**All rows below are PRE-REMEDIATION (before the 2026-08-03 review fixes).**
+They were scored against assertion lists that have since changed — Scenario 1 in particular gained the T10 control-plane and T11 release assertions and reworded the interim one, so its "9/10" is not comparable to a current run and a run scoring 9/10 today would be measuring something else.
+Scenario 1 needs re-running before any of these numbers are cited again.
+Scenarios 2 and 3 were not touched by the remediation and their rows still stand.
+Scenario 4 has never been run.
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |

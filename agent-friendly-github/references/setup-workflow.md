@@ -56,9 +56,13 @@ If you adopt signing, decide the accepted mechanism — GitHub App commit signin
 
 See the **agent identity setup** artifact in [examples/identity.md](examples/identity.md) for App registration steps, a token-scope inventory table, and the co-authorship trailer format.
 
+Configure the harness deny rules at the same time — see [examples/harness-deny.md](examples/harness-deny.md).
+They are not optional garnish: they are the only boundary on release publishing in every profile, and on merge and control-plane tampering in the solo interim (§2).
+Verify them with the two-sided check in that file before proceeding; an unexercised deny list is a claim, not a control.
+
 ### Step 2 — Apply branch / repo guardrails (§2)
 
-Create the ruleset targeting the default branch and any release branches — at the **organization** level if the repo is org-owned, per §2, so a repository admin cannot edit it (closes T10).
+Create the ruleset targeting the default branch and any release branches, at the placement §2 specifies for your plan and ownership — organization-level resists T10 but is Enterprise-gated, so check the Plan & Visibility Caveats table before assuming it (closes T10).
 Add a tag ruleset for the release tag pattern at the same time (§2, closes T11).
 Populate `bypass_actors` exactly as §2 specifies for your profile; that bullet is the authority on who may appear there and in which `bypass_mode`, and this step does not restate it.
 Merge queues operate through the normal ruleset flow and need no bypass entry in the common case; if you enable one, every required check's workflow must also trigger on `merge_group`, or queued merges stall (§2) (closes T4).
@@ -207,7 +211,7 @@ Checklist walkthrough by section:
 
 **§3 Actions & Supply Chain** — verify top-level `permissions:` block in every workflow defaults to read-only with write scopes granted narrowly per job only, no untrusted `github.event.*` values interpolated directly into `run:` steps, no `pull_request_target` workflow checks out or executes untrusted head code, any privileged `pull_request_target` job is environment-gated, no `workflow_run` job with secrets or write scope downloads triggering-run artifacts or caches or checks out untrusted head code, `issue_comment`/`issues`-triggered workflows apply the same untrusted-text discipline, all third-party actions pinned to full commit SHAs, `persist-credentials: false` set where later steps run untrusted code, the fork-PR approval policy set on public repos, OIDC used for cloud auth, `ACTIONS_STEP_DEBUG` / `ACTIONS_RUNNER_DEBUG` not set in production, Dependabot enabled for actions and ecosystem dependencies, dependency-update PRs subject to the same required reviews and checks (auto-merge limited to non-major updates with green checks), CodeQL or equivalent code scanning enabled, secret scanning with push protection enabled, dependency review action active on PRs.
 
-**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), the identity holds no repository administration and no release or package write, no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com with its 7-day Git-event subset; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
+**§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), the identity holds no repository administration, the release/package residual is recorded per §2 (there is no permission to withhold — the boundary is the tag ruleset plus a harness deny rule), no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com with its 7-day Git-event subset; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
 Emitted artifacts (confirm each is in place or pointed to in [examples/](examples/README.md)):
 
@@ -221,5 +225,6 @@ Emitted artifacts (confirm each is in place or pointed to in [examples/](example
 - Supporting files (`CONTRIBUTING.md`, `SECURITY.md`)
 - Draft-first convention note
 - Agent identity setup (App registration, token scope table, co-authorship trailer)
+- Harness deny rules, with the transcript of their two-sided verification
 - Always-running monorepo gate check (if monorepo)
 - Production environment gate (if production deployments exist)
