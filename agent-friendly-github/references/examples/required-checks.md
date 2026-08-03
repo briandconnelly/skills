@@ -125,7 +125,8 @@ jobs:
 
 Implements: §2 (T3)
 
-GitHub counts an approving review from any write-access actor — including a `[bot]` — toward `required_approving_review_count`, and the agent's App needs Pull requests write to open PRs, so the permission cannot be dropped.
+GitHub is understood to count an approving review from any write-access actor — including a `[bot]` — toward `required_approving_review_count`, and the agent's App needs Pull requests write to open PRs, so the permission cannot be dropped.
+(That counting behavior is assumption 2 below, and is not confirmed.)
 This check detects that condition: it stays green while no live bot approval exists, and fails while one does, so combined with reviews >= 1 it is intended to force the counting approval to come from a human.
 Mark it REQUIRED in the §2 ruleset.
 

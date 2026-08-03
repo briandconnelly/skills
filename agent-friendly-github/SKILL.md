@@ -27,7 +27,7 @@ Where a bullet reads as a principle rather than a check, treat it as the reason 
 - Right-size to the repo's team and risk — the security boundary is human-vs-agent, not author-vs-reviewer, so never configure a repo such that the legitimate human maintainer cannot merge their own work. Match controls to a repository profile (solo, small-team, org/high-risk) rather than applying every control everywhere; the profiles and their exceptions are defined in [config-checklist.md](references/config-checklist.md).
 - The agent never publishes to consumers — release tags, releases, and packages are protected refs and permissions in their own right, not a side effect of `contents: write`.
 - *(Principle)* Fix flaky or slow required checks before they become a bypass habit — an unreliable green path creates pressure to retry, skip, or override, which is how agents learn to route around guardrails.
-- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check (never `paths:`-filter a required check, because a skipped required check stays pending and blocks merge forever), and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
+- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check rather than `paths:`-filtering a required check, and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
 
 ## Agent-Instruction-File Strategy
 

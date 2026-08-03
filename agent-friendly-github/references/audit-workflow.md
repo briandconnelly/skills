@@ -68,8 +68,8 @@ Run each with `gh api` or `gh ruleset view` unless otherwise stated.
 Mark each probe with the checklist section and threat class it targets.
 
 - **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds).
-  A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in the solo profile once reviews are >= 1 and is not a finding; an empty list is expected in the solo interim (reviews 0) and in small-team and org/high-risk repos (a second human reviewer unblocks merges without a bypass).
-  Flag any `bypass_mode: exempt` entry regardless of actor — exempt (added September 2025) skips the rules silently and writes no bypass audit entry.
+  Whether a human entry is expected, and in which `bypass_mode`, depends on the profile — score against config-checklist.md §2 rather than against a copy of its values here.
+  Flag any `bypass_mode: exempt` entry regardless of actor — exempt skips the rules silently and writes no bypass audit entry.
   The API withholds this field by exact condition: "the `bypass_actors` property is only returned if the user making the API request has write access to the ruleset."
   Write access to the *ruleset* is not the same as repository admin — a repo admin may lack it on an inherited organization-level ruleset, and an App with Administration write may hold it — so check the ruleset's `source`/`source_type` first and confirm your identity can write at THAT scope, rather than treating `permissions.admin` as the test.
   When the field is withheld the read still succeeds and `--jq '.bypass_actors'` prints `null`, so a wrong-identity audit records "no bypass actors" while blind to exactly this item.
@@ -108,9 +108,24 @@ Mark each probe with the checklist section and threat class it targets.
   Settings → Code security → Push protection → bypass list, or the org-level equivalent.
   *(§3, T5)*
 
-- **Tag and release protection** — confirm a tag ruleset (`"target": "tag"`) covers the release tag pattern, and that the agent identity holds no release or package write permission.
-  `gh api repos/{owner}/{repo}/rulesets --jq '.[] | {name, target}'` — a repo with branch rulesets only leaves publishing open to any `contents: write` identity.
+- **Tag and release protection** — list rulesets, then fetch each tag ruleset in FULL and read its `enforcement`, `conditions.ref_name` patterns, `rules`, and `bypass_actors`: `gh api repos/{owner}/{repo}/rulesets --jq '.[] | {id, name, target}'` then `gh api repos/{owner}/{repo}/rulesets/{id}`.
+  A ruleset that exists but is `enforcement: "evaluate"`, targets the wrong pattern, carries no `creation`/`deletion`/`non_fast_forward` rules, or lists a bypass actor the agent can act as, protects nothing — `{name, target}` alone cannot tell you which.
+  Then record the release side separately and do NOT score it from permissions: releases are governed by the Contents permission the agent already needs, so there is no permission to check. Look instead for a harness deny rule on the release endpoints and for release workflows that run from a protected ref behind an environment gate; absent both, record the residual as open.
+  Package publishing follows the registry's access model, not GitHub App repository permissions — audit it there or mark `not-checked` with that reason.
   *(§2, §4, T11)*
+
+- **Review-dismissal restriction** — in the default-branch ruleset's `pull_request` rule, confirm `dismissal_restriction.enabled` is true and `allowed_actors` contains humans only, no agent identity or `[bot]`.
+  Absent the restriction, any `pull_requests: write` actor — which the agent holds — can dismiss a human's review.
+  *(§2, T3)*
+
+- **OIDC trust policy** — read the actual cloud-side role trust document, not the workflow.
+  Confirm it pins `aud`, constrains `sub` to this repository AND a specific ref or environment (in the format this repo issues — legacy or immutable), and that the assumed role's own permissions are least-privilege.
+  This probe leaves GitHub: fetch the policy from the cloud provider, and if you cannot, mark it `not-checked` with that reason rather than recording "OIDC configured" as a pass — "uses OIDC" is not the control.
+  *(§3, T5, T9)*
+
+- **Auto-merge and Actions policy** — confirm the repository's auto-merge setting matches intent (`gh api repos/{owner}/{repo} --jq .allow_auto_merge`; expected `false` unless the repo has a deliberate auto-merge workflow), and that the org or repository Actions policy restricts which actions may run rather than allowing all.
+  `gh api repos/{owner}/{repo}/actions/permissions` and `.../actions/permissions/selected-actions` where the plan exposes them.
+  *(§2, §3, T3, T6)*
 
 - **`.gitignore` coverage and committed secrets** — confirm a `.gitignore` exists and covers secret-bearing paths (`.env*`, `*.pem`, `*.key`, credentials); then grep the tracked tree for already-committed secret files: `git ls-files | grep -iE '(^|/)\.env($|\.)|\.pem$|\.key$|credentials'` — any match is a finding regardless of what `.gitignore` contains, because `.gitignore` does not protect already-tracked files.
   *(§1, T5)*
@@ -151,7 +166,7 @@ The table below shows an illustrative example of a completed audit; replace valu
 | --- | --- | --- |
 | §1 Issues & PRs | finding F1; OK on remaining items | F1 (Medium): CODEOWNERS catch-all only — no explicit path prefixes; templates present at `.github/ISSUE_TEMPLATE/`; `CONTRIBUTING.md` present; `SECURITY.md` absent (private repo — Low) |
 | §2 Branch / Repo Guardrails | finding F2, F3 | F2 (Critical): agent GitHub App present in bypass-actors list on `main` ruleset — `gh ruleset view 42`; F3 (High): `dismiss_stale_reviews` is `false` — `gh api .../branches/main/protection` returns `"dismiss_stale_reviews": false` |
-| §3 Actions & Supply Chain | finding F4; OK on remaining items | F4 (High): three actions pinned to mutable tags (`actions/checkout@v4`, `actions/setup-node@v4`, `github/codeql-action@v3`) — `.github/workflows/ci.yml:12,18,34`; OIDC configured; secret scanning enabled |
+| §3 Actions & Supply Chain | finding F4; OK on remaining items | F4 (High): three actions pinned to mutable tags (`actions/checkout@v4`, `actions/setup-node@v4`, `github/codeql-action@v3`) — `.github/workflows/ci.yml:12,18,34`; OIDC in use but its cloud trust policy `not-checked` (no cloud console access — "uses OIDC" is not a pass on its own); secret scanning enabled with bypass delegated to `@acme/security` |
 | §4 Auditability & Identity | OK | Agent uses GitHub App (App ID 1234); fine-grained tokens only; linear history required; audit-log coverage considered (org log's fixed 180-day window documented; Enterprise streaming not in use) |
 
 ## Done Criteria
@@ -159,6 +174,7 @@ The table below shows an illustrative example of a completed audit; replace valu
 - Every §1–§4 item in config-checklist.md is accounted for in the coverage table: covered by at least one finding (with severity and a `Tn` threat reference), marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
 - Each finding carries all five labeled lines (Severity, Section, Threat, Evidence, Remediation).
 - At least the Critical-risk probes (agent identity holds no administration, bypass-actors list, `pull_request_target` injection surface, agent listed in `CODEOWNERS`, classic PAT scope) were run and their output or a reason they could not be run is recorded.
+- The probes for controls whose evidence lives outside the repository — the OIDC trust policy, push-protection bypass delegation, the Actions allow-list, and package publishing — were each run or explicitly marked `not-checked` with a reason. A control whose evidence you could not reach is never recorded as `OK`.
 - When no Critical or High findings are present, the report says so explicitly and names residual risks (e.g., "bypass-actors probe could not be run — admin access unavailable" or "no live Actions run logs were inspected for secret exposure").
 
 This mirrors the Audit Done Criteria stated in SKILL.md.

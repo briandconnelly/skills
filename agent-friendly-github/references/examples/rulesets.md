@@ -23,6 +23,8 @@ Who may appear there, in which `bypass_mode`, and under which profile conditions
 `require_last_push_approval: true` requires the most recent push to be approved by someone other than its author — this defeats the "approve then sneak a commit" pattern where an author pushes after approval and merges unreviewed code (T3).
 It needs a second human, so omit this parameter in a solo repo, where it would deadlock the lone maintainer.
 `required_review_thread_resolution: true` requires code-review conversations to be resolved before merge.
+`dismissal_restriction` names who may dismiss reviews — substitute a human team's real id, and never list the agent identity: any actor with `pull_requests: write` can otherwise clear a human's review, which launders approval by subtraction (§2, T3).
+Confirm the object's shape (`enabled`, `allowed_actors[]` of `{type, id}`) against the live rulesets schema before applying; it is newer than the rest of this rule.
 Signed commits (`required_signatures`) are intentionally NOT in this baseline: enforce them only when you have opted into signing and every committer (humans and the agent) has a working signing path — see the optional signing variant below (T8).
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
@@ -65,7 +67,13 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
         "required_approving_review_count": 1,
         "require_last_push_approval": true,
         "required_review_thread_resolution": true,
-        "allowed_merge_methods": ["squash", "rebase"]
+        "allowed_merge_methods": ["squash", "rebase"],
+        "dismissal_restriction": {
+          "enabled": true,
+          "allowed_actors": [
+            { "type": "Team", "id": 123456 }
+          ]
+        }
       }
     },
     {

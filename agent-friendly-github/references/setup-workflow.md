@@ -65,9 +65,11 @@ Merge queues operate through the normal ruleset flow and need no bypass entry in
 
 Required ruleset conditions:
 
-- Required status checks, set strict (`strict_required_status_checks_policy: true`, the "Require branches to be up to date before merging" toggle) so a branch green against a stale base cannot merge and silently break the protected branch — load-bearing especially in the solo interim posture, where these checks do the work review otherwise would; in monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge forever.
+- Required status checks, set strict (`strict_required_status_checks_policy: true`, the "Require branches to be up to date before merging" toggle) so a branch green against a stale base cannot merge and silently break the protected branch; include every check the profile makes mandatory, not just the project's test job (§2).
+  In monorepos, use a single always-running gate check that detects changed paths internally rather than `paths:`-filtering the workflow — a skipped required check stays PENDING and blocks merge.
 - `dismiss_stale_reviews` enabled — a post-approval push invalidates the prior approval; this is a ruleset setting, not agent convention (closes T3).
   Note: this is the branch-protection field name; the equivalent ruleset API field is `dismiss_stale_reviews_on_push`.
+- Review dismissal restricted to named human actors, so an actor with `pull_requests: write` cannot clear a human's review (§2) (closes T3).
 - Signed commits (`required_signatures`) only if you opted into signing in Step 1 and every committer has a working signing path — recommended, not a default; otherwise omit it (closes T8).
 - `require_last_push_approval` in small-team/org profiles; omit it in the solo profile, where it would deadlock the lone maintainer (closes T3).
 - Linear history required (closes T8).
@@ -77,7 +79,7 @@ Assemble auto-merge safety as a combination — GitHub has no single "human-only
 Turn the repository's "Allow auto-merge" setting off unless the repo has a deliberate auto-merge workflow (§2).
 
 Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds; enable `prevent_self_review` where a second human exists, and set it to `false` in the solo profile, where it locks the lone maintainer out of their own deployments (§2) (closes T5).
-Note: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they are Enterprise-only — Pro/Team private repos get environments, secrets, and deployment-branch policies, not these protection rules; if the plan does not provide them, use an external deployment-approval mechanism and mark this step N/A with the plan reason.
+Environment required reviewers and wait timers are plan-gated; check the Plan & Visibility Caveats table in [config-checklist.md](config-checklist.md) before configuring, and where the plan does not provide them use an external deployment-approval mechanism and mark this step N/A with the plan reason.
 If the default branch ruleset must require successful production deployment before merge, add a `required_deployments` rule for that environment.
 See the **production environment gate** artifact in [examples/rulesets.md](examples/rulesets.md).
 
