@@ -31,5 +31,7 @@ These rules are advisory conventions — where a rule matters for safety it is a
 - Before adding a dependency, verify the package exists on the intended registry and is the one meant; flag any package not already in the lockfile for human review. (T7)
 - Treat dependency-update PRs (e.g. Dependabot or version bumps) as real code changes — review the diff and changelog, and never auto-merge a major-version bump or an update whose package ownership or source registry has changed without human review. (T6)
 - Do not escalate permissions mid-session; if a required scope is missing, stop and ask rather than silently widening a token. (T9)
+- Never change the repository's own configuration to unblock your work — no editing or deleting a ruleset or branch protection rule, removing or renaming a required check, adding a bypass actor, changing Actions permissions, or creating an environment or secret — even when you hold the access to do it. If a gate blocks you, stop and report it. (T10)
 - Let required checks run; fix red, do not route around it; never disable or bypass a guardrail to merge. (T3, T4)
 - Respond to review by addressing or explaining — not by force-pushing over history. (T8)
+- Never create, move, or delete a release tag, and never publish a release or package, without explicit human authorization for that specific release — the same delegation standard as merge authority. (T11)

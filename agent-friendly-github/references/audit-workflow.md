@@ -11,11 +11,11 @@ Do not run workflows, approve PRs, or write to the repository in any form during
 ## Severity Scale
 
 - **Critical** — an active path to compromise or to an unreviewed merge reaching a protected branch.
-  Examples: an automation identity (the agent, a bot PAT, a deploy key, or a CI app the agent uses) present in the bypass-actors list of a protected-branch ruleset (§2, T4); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity listed in `CODEOWNERS` for protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9).
+  Examples: an automation identity (the agent, a bot PAT, a deploy key, or a CI app the agent uses) present in the bypass-actors list of a protected-branch ruleset (§2, T4); the agent identity holding repository administration — it can delete the ruleset that gates it, so every other §2 control is advisory for it (§4, T10); a `pull_request_target` workflow that checks out and executes untrusted PR code with repository secrets available (§3, T2); an agent identity listed in `CODEOWNERS` for protected paths or whose approvals count toward the required-review threshold, allowing it to approve or auto-merge its own PRs (§1, §2, T3); a classic broad PAT with `repo`-wide write scope used by the agent (§4, T9).
   Blocks confidence; fix before agents operate.
 
 - **High** — a guardrail is missing or easily defeated.
-  Examples: `dismiss_stale_reviews` not enabled, so a post-approval commit avoids re-review (§2, T3); third-party actions pinned to mutable tags or left unpinned (§3, T6); no dependency review or committed lockfile on a repository where agents add dependencies (§3, T7); no required reviews configured on protected branches in any profile that expects them — every multi-human profile, and the solo profile once a distinct agent identity exists (§2, T3) — but `required_approving_review_count: 0` is the EXPECTED posture ONLY in the solo interim (a single maintainer with no distinct agent identity yet) and is not by itself a High "missing required reviews" finding there (see the illusory review gate exception below); force-push or branch deletion not blocked on protected refs (§2, T4); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled where sensitive values flow (§3, T5) — registered secrets stay masked even in debug logs, but verbose output widens the leak surface for unregistered or derived values.
+  Examples: release tags unprotected while the agent holds `contents: write`, so it can publish to consumers without touching a protected branch (§2, §4, T11); push protection enabled but its bypass undelegated, so the agent can clear its own secret-push block (§3, T5); an OIDC role whose trust policy is not constrained to a ref or environment (§3, T5, T9); `dismiss_stale_reviews` not enabled, so a post-approval commit avoids re-review (§2, T3); third-party actions pinned to mutable tags or left unpinned (§3, T6); no dependency review or committed lockfile on a repository where agents add dependencies (§3, T7); no required reviews configured on protected branches in any profile that expects them — every multi-human profile, and the solo profile once a distinct agent identity exists (§2, T3) — but `required_approving_review_count: 0` is the EXPECTED posture ONLY in the solo interim (a single maintainer with no distinct agent identity yet) and is not by itself a High "missing required reviews" finding there (see the illusory review gate exception below); force-push or branch deletion not blocked on protected refs (§2, T4); `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` enabled where sensitive values flow (§3, T5) — registered secrets stay masked even in debug logs, but verbose output widens the leak surface for unregistered or derived values.
 
 - **Medium** — weakens auditability or team productivity without an immediate compromise path.
   Examples: linear history is not required (§2, T8); the repo opted into signing but commits are unsigned (§2, T8); `CODEOWNERS` uses only a catch-all rule rather than explicit path prefixes (§1, T3); issue and PR templates are absent (§1, productivity); debug logging is enabled but no secret is currently exposed (§3, T5); the agent identity is a shared user account rather than a GitHub App or fine-grained PAT (§4, T8, T9).
@@ -27,12 +27,18 @@ Do not run workflows, approve PRs, or write to the repository in any form during
 Rate it **High** normally, or **Critical** when it blocks a security fix or production recovery.
 Examples: a single-maintainer repo with required reviews and a bypass-actors list empty of any human, so the lone maintainer can never merge their own work (§2); `require_last_push_approval` or environment `prevent_self_review` enabled in a solo repo; `required_signatures` enforced where a committer has no signing path, rejecting all their pushes (§2, T8).
 Remediation is profile-aware — add the human bypass actor or relax the opt-in control to match the repository profile, not "remove all bypass actors."
-A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; a human-maintainer bypass in the solo profile with reviews >= 1 is expected, not a defect (in the solo interim with reviews 0, and in small-team and org repos, the list is empty — a green PR merges without a bypass, or a second human reviewer unblocks merges).
+A non-empty bypass list is a finding only when it contains an automation identity the agent can act as; whether a human entry is expected depends on the profile, per config-checklist.md §2.
 Exception — the illusory review gate: if a solo repo has required reviews >= 1, the agent runs on the maintainer's own credentials (no distinct agent identity, §4), AND a human bypass actor is configured so merges are actually possible, then that bypass is agent-reachable and the review requirement is theater — the agent author and the bypassing/approving maintainer are one actor.
 Flag this (Medium; T3): the review setting implies a protection that does not hold.
 (If instead the bypass list is empty in that scenario, no one can merge — the lone human cannot self-approve and there is no second reviewer — so it is the availability/lockout finding above, not an illusory gate.)
-Medium, not High, even though "no required reviews configured" is a High example above: in a solo repo human review is structurally unenforceable (there is no second human), so the illusory gate does not defeat a guardrail that could otherwise have bound — it advertises one that never could, a misleading-auditability harm, while the actor-independent gates (strict checks, linear history, blocked force-push/deletion) still bind.
-Remediation is not to tighten the review rule but to provision a distinct agent identity, or, in the interim, drop required reviews to 0 and lean on the actor-independent gates per the solo interim posture in config-checklist.md.
+Medium, not High, even though "no required reviews configured" is a High example above: in a solo repo human review is structurally unenforceable (there is no second human), so the illusory gate does not defeat a guardrail that could otherwise have bound — it advertises one that never could, which is a misleading-auditability harm rather than a removed protection.
+Remediation is not to tighten the review rule but to provision a distinct agent identity, or, in the interim, adopt the solo interim posture defined in config-checklist.md.
+
+**A correctly-configured solo interim is still a finding.**
+Never record it as `OK`.
+The posture is a documented degraded state whose enforced boundary sits in the agent harness rather than in GitHub, so an audit that scores it clean tells the reader the repo is protected by configuration when it is not.
+Record it as **High** (T3, T10) with remediation "provision the distinct agent identity (§4)", and check the two mitigations the posture requires: the affirmative no-merge rule in `AGENTS.md`, and a harness deny rule covering merge AND the mutating administrative API.
+If either mitigation is absent, the finding is **Critical** — the interim without its harness boundary is an agent with unrestricted admin on the repository.
 
 ## Audit Procedure
 
@@ -64,8 +70,9 @@ Mark each probe with the checklist section and threat class it targets.
 - **Bypass-actors list** — retrieve the default-branch ruleset and confirm `bypass_actors` contains no automation identity the agent can act as (its GitHub App / `Integration`, a bot PAT, a deploy key, or a role such as `Write` that the agent holds).
   A human-maintainer entry (an individual `User`, or `Maintain`/`Repository admin` the agent cannot hold) is expected in the solo profile once reviews are >= 1 and is not a finding; an empty list is expected in the solo interim (reviews 0) and in small-team and org/high-risk repos (a second human reviewer unblocks merges without a bypass).
   Flag any `bypass_mode: exempt` entry regardless of actor — exempt (added September 2025) skips the rules silently and writes no bypass audit entry.
-  Run this probe with a personal identity holding repo admin — confirm `gh api repos/{owner}/{repo} --jq .permissions.admin` returns `true` before reading any ruleset.
-  A GitHub App installation token, or a personal token without admin, gets `bypass_actors` silently withheld: the read succeeds and `--jq '.bypass_actors'` prints `null`, so a wrong-identity audit records "no bypass actors" while blind to exactly this item.
+  The API withholds this field by exact condition: "the `bypass_actors` property is only returned if the user making the API request has write access to the ruleset."
+  Write access to the *ruleset* is not the same as repository admin — a repo admin may lack it on an inherited organization-level ruleset, and an App with Administration write may hold it — so check the ruleset's `source`/`source_type` first and confirm your identity can write at THAT scope, rather than treating `permissions.admin` as the test.
+  When the field is withheld the read still succeeds and `--jq '.bypass_actors'` prints `null`, so a wrong-identity audit records "no bypass actors" while blind to exactly this item.
   Record an omitted or `null` `bypass_actors` field as `not-checked`, never as clean, and before recording a clean result run a positive control — prove the reading identity can see a bypass actor on a ruleset known to have one (the agent-bot-identity skill's Phase 6 documents this failure mode).
   `gh api repos/{owner}/{repo}/rulesets` then `gh ruleset view <id>`.
   *(§2, T4)*
@@ -85,9 +92,25 @@ Mark each probe with the checklist section and threat class it targets.
   Rulesets express the same control as `dismiss_stale_reviews_on_push`; if the repo uses rulesets, check via `gh ruleset view <id>` or the rulesets API instead — audit whichever path the repo actually uses.
   *(§2, T3)*
 
-- **Debug logging flags** — check repository and environment variables for `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG`; confirm neither is set to `true` in any environment used by the agent.
-  `gh api repos/{owner}/{repo}/actions/variables` and per-environment equivalents.
+- **Debug logging flags** — check for `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` as BOTH variables and secrets, at repository, organization, and environment scope.
+  Either name can be set as a secret, and a secret takes precedence over a variable of the same name — an audit that reads only `actions/variables` will report clean while debug logging is on.
+  `gh api repos/{owner}/{repo}/actions/variables`, `.../actions/secrets`, `.../environments/{env}/variables`, `.../environments/{env}/secrets`, and the `orgs/{org}/actions/...` equivalents; secret VALUES are unreadable, so treat the presence of either name as enabled and record it as a finding rather than inspecting further.
+  Debug logging can also be enabled per-rerun without any stored setting, so a clean configuration is not evidence past runs were clean — check run logs for sensitive workflows where the plan retains them.
   *(§3, T5)*
+
+- **Agent identity holds no administration** — confirm the agent's App or PAT lacks Administration write and is not in an `Admin` role: `gh api repos/{owner}/{repo}/installation --jq '.permissions'` for an App installation, or the fine-grained PAT's permission list.
+  An identity with administration can edit or delete the ruleset, which makes every §2 finding in this audit conditional — record this probe's result BEFORE the bypass-actors probe, since a negative result here reframes that one.
+  If the repo is organization-owned, also record whether the protected-branch ruleset is repository-level (editable by a repo admin) or organization-level.
+  *(§2, §4, T10)*
+
+- **Push-protection bypass** — where secret scanning push protection is enabled, confirm bypass is delegated to specific human roles or teams and the agent is not among them.
+  Default behavior is that any actor with push access can clear a block by supplying a reason, so "push protection: enabled" is not by itself a passing result for an agent-facing repo.
+  Settings → Code security → Push protection → bypass list, or the org-level equivalent.
+  *(§3, T5)*
+
+- **Tag and release protection** — confirm a tag ruleset (`"target": "tag"`) covers the release tag pattern, and that the agent identity holds no release or package write permission.
+  `gh api repos/{owner}/{repo}/rulesets --jq '.[] | {name, target}'` — a repo with branch rulesets only leaves publishing open to any `contents: write` identity.
+  *(§2, §4, T11)*
 
 - **`.gitignore` coverage and committed secrets** — confirm a `.gitignore` exists and covers secret-bearing paths (`.env*`, `*.pem`, `*.key`, credentials); then grep the tracked tree for already-committed secret files: `git ls-files | grep -iE '(^|/)\.env($|\.)|\.pem$|\.key$|credentials'` — any match is a finding regardless of what `.gitignore` contains, because `.gitignore` does not protect already-tracked files.
   *(§1, T5)*
@@ -135,7 +158,7 @@ The table below shows an illustrative example of a completed audit; replace valu
 
 - Every §1–§4 item in config-checklist.md is accounted for in the coverage table: covered by at least one finding (with severity and a `Tn` threat reference), marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
 - Each finding carries all five labeled lines (Severity, Section, Threat, Evidence, Remediation).
-- At least the Critical-risk probes (bypass-actors list, `pull_request_target` injection surface, agent listed in `CODEOWNERS`, classic PAT scope) were run and their output or a reason they could not be run is recorded.
+- At least the Critical-risk probes (agent identity holds no administration, bypass-actors list, `pull_request_target` injection surface, agent listed in `CODEOWNERS`, classic PAT scope) were run and their output or a reason they could not be run is recorded.
 - When no Critical or High findings are present, the report says so explicitly and names residual risks (e.g., "bypass-actors probe could not be run — admin access unavailable" or "no live Actions run logs were inspected for secret exposure").
 
 This mirrors the Audit Done Criteria stated in SKILL.md.

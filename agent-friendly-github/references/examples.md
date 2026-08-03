@@ -3,6 +3,8 @@
 Copy-adaptable artifacts implementing the controls in `config-checklist.md`; each is labeled with the §N section and threat class (Tn) it implements.
 Adapt names, paths, org slugs, and SHAs to your repository before use.
 Action SHAs and version comments throughout this file are illustrative examples only — verify and re-pin each SHA against the release you actually intend to use before deploying.
+The pinned SHAs below are deliberately NOT kept current; treat any SHA here as stale and resolve the version you want yourself.
+Note in particular that `actions/checkout` v6 changed where `persist-credentials` stores the token (a file under `$RUNNER_TEMP` rather than `.git/config`); the input still defaults to `true`, so the `persist-credentials: false` guidance is unchanged across versions.
 
 ## Hardened Ruleset JSON
 
@@ -17,11 +19,8 @@ gh api --method POST repos/{owner}/{repo}/rulesets --input hardened-ruleset.json
 JSON has no comment syntax; all caveats are in this prose.
 This baseline implements the **org / high-risk** profile's ruleset-expressible review and merge controls; full org posture adds merge queue and `required_deployments` (see the production environment gate below) where they apply.
 See the solo-profile adaptation note after the JSON.
-The `bypass_actors` array is empty in this baseline — no automation identity is exempted.
-In the solo profile, once a distinct agent identity exists and reviews are >= 1, add the human maintainer here (an individual `User` entry with `bypass_mode: pull_request`, or the `Maintain`/`Repository admin` role only if the agent cannot hold it) so the lone human can merge their own work past the review requirement.
-In the pre-identity solo interim (reviews 0) leave this empty, per the solo interim posture in [config-checklist.md](config-checklist.md).
-Never add the agent identity, a bot PAT, a deploy key, or the `Write` role, and never use `bypass_mode: exempt`, which skips the rules silently with no bypass audit entry.
-Small-team and org repos keep this list empty too — a second human reviewer unblocks merges without a bypass.
+The `bypass_actors` array is empty in this baseline.
+Who may appear there, in which `bypass_mode`, and under which profile conditions is governed by the bypass-actors bullet in [config-checklist.md](config-checklist.md) §2 — read it before changing this array; the JSON below is a rendering of that rule, not a second statement of it.
 `non_fast_forward` blocks force-push to the protected ref.
 `dismiss_stale_reviews_on_push` invalidates approvals after any new push, closing the post-approval-push gap (T3).
 `require_code_owner_review: true` requires a human CODEOWNERS review (T3).
@@ -32,6 +31,9 @@ Signed commits (`required_signatures`) are intentionally NOT in this baseline: e
 `required_linear_history` prevents merge commits (T8).
 `allowed_merge_methods` is restricted to `squash` and `rebase` because `required_linear_history` is enabled — a plain merge commit would not preserve linear history, so it is excluded; squash and rebase both do.
 Note: a squash merge builds a new commit message, so confirm `Co-authored-by:` trailers carry into it (attribution, T8); and if you enable required signing, GitHub blocks a non-author from squash-merging via the web UI — a reason to prefer rebase for attribution- or signing-sensitive agent PRs.
+The `required_status_checks` array carries every check the profile makes mandatory, not just the project's test job: `human-only-approvals` is listed here because config-checklist.md §2 requires it, and a "hardened" ruleset that omits it does not implement the profile it claims to.
+Add the issue-link check the same way in repos whose workflow mandates issue-backed PRs, and drop `human-only-approvals` only if you have deliberately marked that control N/A.
+Before applying, confirm each listed context is a check that actually reports on every PR — a required context no workflow produces stays PENDING and blocks merge forever (see the monorepo gate below).
 Replace `"context"` values under `required_status_checks` with the exact check-run names your CI reports — for a GitHub Actions job this is the job name (the job's `name:`, or its id when no `name:` is set), NOT the `workflow / job` string the PR UI displays; a reusable workflow reports `caller-job / called-job`.
 Verify the exact string via the ruleset UI's check picker or `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`.
 `integration_id` is optional and omitted here — leave it out to match any app reporting that context, or set it to the reporting app's id (for example, the GitHub Actions app) to require that the status come from that specific app.
@@ -77,6 +79,9 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
         "required_status_checks": [
           {
             "context": "test"
+          },
+          {
+            "context": "human-only-approvals"
           }
         ]
       }
@@ -97,10 +102,9 @@ Scoped checks (such as the issue-link verifier in the §1 example below) are add
 
 A local commit pushed with a GitHub App token is not auto-signed, so the agent must either sign locally (GPG/SSH) or commit through the App's verified API path; otherwise its pushes are rejected.
 
-**Solo-profile adaptation.** Starting from the baseline above, for the post-identity solo posture (distinct agent identity, reviews >= 1): add the human maintainer to `bypass_actors`, and remove `require_last_push_approval` from the `pull_request` parameters (the small-team profile keeps both an empty bypass list and `require_last_push_approval` — it has a second human to review).
-Keep `required_approving_review_count: 1` ONLY once the agent has a distinct identity excluded from the bypass list — then lowering it to 0 would let that agent self-merge after checks, so keep it at 1.
-If the agent still runs on the maintainer's own credentials (no distinct identity yet), `required_approving_review_count: 1` is illusory: set it to `0` in that interim, keep `bypass_actors` empty, and rely on the actor-independent gates (strict checks, linear history, blocked force-push/deletion), per the solo interim posture in [config-checklist.md](config-checklist.md).
-Flip reviews to 1 and add the human bypass actor when you provision the distinct identity.
+**Solo-profile adaptation.** The solo profile and its pre-identity interim are defined in [config-checklist.md](config-checklist.md) (Repository Profiles) — that section is the authority on which values apply when, and why.
+Mechanically, adapting this baseline for solo means: set `required_approving_review_count` and `bypass_actors` to the values the profile calls for at your current stage, and remove `require_last_push_approval` (it needs a second human).
+The JSON fragment below is the shape of a human bypass entry, for when the profile calls for one.
 
 ```json
 "bypass_actors": [
@@ -109,8 +113,7 @@ Flip reviews to 1 and add the human bypass actor when you provision the distinct
 ```
 
 Confirm the exact `actor_type`/`actor_id` fields against the current rulesets API, or add the user through the UI (Settings → Rules → Rulesets → Bypass list → Add bypass).
-Where user-level bypass is unavailable, use the `Maintain` or `Repository admin` role instead, but only if the agent provably cannot hold that role — never the `Write` role, which the agent holds.
-The maintainer merges their own PRs via this bypass; the agent, once it has a distinct identity excluded from bypass and unable to self-approve, still cannot merge anything without the human (until that identity exists, see the interim caveat above).
+Fall back from a `User` entry only as §2 permits.
 
 ## Production Environment Gate
 
@@ -327,8 +330,9 @@ jobs:
         # Third-party action pinned to a full 40-hex commit SHA, not a mutable tag (T6).
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
-          # Do not persist the job token into .git/config, where later steps
-          # running project code could read it (T5).
+          # Do not persist the job token, which later steps running project
+          # code could otherwise read (T5). Default is true on every version;
+          # the storage location differs by version, the exposure does not.
           persist-credentials: false
 
       - name: Log PR title safely
@@ -376,6 +380,15 @@ jobs:
       - name: Authenticate to cloud via OIDC
         # Replace with your cloud provider's OIDC action (AWS, GCP, Azure, etc.).
         # OIDC issues a short-lived credential; no long-lived secret is stored.
+        #
+        # The control is the CLOUD-SIDE trust policy, not this step. The assumed
+        # role must pin `aud` and constrain `sub` to this repo AND a specific ref
+        # or environment, e.g.
+        #   "token.actions.githubusercontent.com:sub": "repo:acme/api:ref:refs/heads/main"
+        # A bare "repo:acme/api:*" is satisfied by ANY branch or workflow in the
+        # repo, which turns a short-lived credential into an unbounded one (§3).
+        # Give the role least-privilege cloud permissions as well.
+        #
         # Example for AWS (illustrative — pin to a real SHA before use):
         # uses: aws-actions/configure-aws-credentials@<sha>  # vX.Y.Z
         # with:
@@ -419,8 +432,10 @@ In a monorepo, add a nested `AGENTS.md` per subtree that has meaningfully differ
 
 ## Pull requests
 
-- Open PRs touching CODEOWNERS-owned paths as drafts; only mark ready for review after all checks pass.
+- Open PRs touching CODEOWNERS-owned paths as drafts and leave them in draft: a human promotes them to ready, not the agent.
+  For unowned paths, mark ready once all checks pass.
 - Agents never merge PRs: open the PR, report check status, and stop — the maintainer merges.
+- Agents never change repository configuration to unblock themselves — no editing rulesets, branch protection, required checks, Actions settings, environments, or secrets.
   (If merge automation is ever wanted, the delegation must be written here explicitly.)
 - Never approve your own PR, and never treat a red required check as ignorable.
 - Re-request human review after any post-approval push.
@@ -556,7 +571,14 @@ gh api orgs/{org}/installations \
 | Read PR check status (`gh pr checks`) | `checks: read` + `actions: read` |
 | Trigger workflow dispatch | `actions: write` (add only if needed) |
 
-Keep `actions: write` out of the default token; grant it only in the specific job that needs it.
+Permissions that must NOT be granted, each because its absence is itself a control:
+
+| Permission | Why it stays off |
+|---|---|
+| `administration: write` | Lets the identity edit or delete the ruleset that gates it — the precondition all of §2 rests on (T10). |
+| `workflows: write` | GitHub rejects App-token pushes touching `.github/workflows/` without it, which is a server-side guard on the checks themselves (T3). |
+| release / package write | Lets the agent publish to consumers without any protected branch changing (T11). |
+| `actions: write` | Workflow dispatch; grant only in the specific job that needs it, never on the default token. |
 These are GitHub App repository permissions — a separate namespace from the workflow `GITHUB_TOKEN` `permissions:` blocks elsewhere in this file; granting one never grants the other.
 
 ## Always-Running Monorepo Gate Check
@@ -565,8 +587,9 @@ Implements: §2 (monorepo)
 
 **Why `paths:` filters on a required check are broken.**
 If a workflow is configured with `on: pull_request: paths:` and the PR touches none of those paths, GitHub skips the workflow entirely — it never reports a status.
-If that workflow's job is listed as a required status check in the ruleset, the required check stays PENDING indefinitely and blocks the merge forever.
-There is no way to merge a PR that has a required check stuck in PENDING.
+If that workflow's job is listed as a required status check in the ruleset, the required check stays PENDING indefinitely and blocks the merge.
+No ordinary merge can clear it — the only ways out are a configured bypass actor (which the solo profile deliberately grants a human, and which writes a bypass audit entry) or removing the check from the ruleset.
+That is the real harm: a permanently-stuck check turns the escape hatch into routine practice, which is how agents learn guardrails are negotiable (config-checklist.md §2, "fix flaky or slow required checks").
 
 **The correct pattern: one always-running gate check.**
 Use a single workflow that triggers on every `pull_request` (no `paths:` filter) — and on `merge_group`, so the required check also reports on merge-queue refs (§2) — detects which paths changed internally, runs per-package work conditionally, and always exits with a clear pass/fail status.
@@ -682,7 +705,9 @@ Mark this check REQUIRED in the §2 ruleset ONLY in repos whose workflow mandate
 
 Escape hatch: a `no-issue-required` label exempts hotfixes, reverts, release PRs, and dependency-bump PRs — and because the agent's own `issues: write` scope can apply labels to PRs (PRs are issues to the labels API), the check verifies WHO applied the label and fails if it was a bot or a listed machine user, so the agent cannot clear its own required check by self-applying the exemption.
 
-Scope limitations and failure modes: only same-repo numeric `#N` references are verified — cross-repo `owner/repo#N` and private-repo references are not (they would 404); an issue can be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
+Scope limitations and failure modes: only same-repo numeric `#N` references are matched at all.
+A cross-repo `owner/repo#N` reference does not match the regex (which requires whitespace directly before `#`), so a PR whose only link is cross-repo FAILS the check with "PR body must close an issue" rather than passing unverified — deliberate, but tell contributors, or they will read the failure as a bug.
+An issue can also be closed between PR open and merge (re-running on `synchronize`/`reopened` mitigates this); if unambiguous parsing matters, have the template emit a structured trailer rather than free prose.
 This check verifies the issue state at the last workflow run, not at merge time, so an issue closed after the last run will not be caught; the `merge_group` leg below deliberately reports success without re-verifying (a merge-group payload carries no PR context), so a merge queue does not close this gap either — if it matters, use an external check app that re-validates near merge.
 The `merge_group` trigger itself is still required whenever a merge queue is enabled: a required check that never reports on the merge-group ref stalls every queued merge (config-checklist.md §2).
 The workflow also triggers on `labeled` and `unlabeled` events so that applying or removing the `no-issue-required` escape-hatch label immediately re-runs the check and clears or sets the status — without those triggers, adding the label after a failed run leaves the check permanently red.
@@ -795,11 +820,27 @@ jobs:
 Implements: §2 (T3)
 
 GitHub counts an approving review from any write-access actor — including a `[bot]` — toward `required_approving_review_count`, and the agent's App needs Pull requests write to open PRs, so the permission cannot be dropped.
-This check makes the policy enforceable: it stays green while no live bot approval exists, and fails while one does, so combined with reviews >= 1 the counting approval must come from a human.
+This check detects that condition: it stays green while no live bot approval exists, and fails while one does, so combined with reviews >= 1 it is intended to force the counting approval to come from a human.
 Mark it REQUIRED in the §2 ruleset.
 
+**Status: unverified against a live repository.**
+Treat this as detection, not as an enforced guarantee, until someone runs the adversarial test below.
+Two unproven assumptions carry the whole control:
+
+1. That a `pull_request_review`-triggered run updates the required check for the commit the ruleset evaluates.
+   GitHub's documented `GITHUB_SHA` for `pull_request_review` is the last merge commit on `refs/pull/<n>/merge` — NOT the PR head SHA (the earlier claim to the contrary in this file was wrong).
+   Running the same job name on both `pull_request` and `pull_request_review` is the standard community workaround for this, and it is why both triggers are present, but the skill has not confirmed the resulting check-run actually re-reports.
+2. That a bot's approving review counts toward `required_approving_review_count` at all — asserted throughout §2 and not confirmed in GitHub's primary documentation.
+   If it does not, this check is unnecessary rather than broken.
+
+The failure direction matters: assumption 1 fails **open**.
+The check goes green on `synchronize` while no approval exists; a bot approval arriving later must turn it red. If that later run does not re-report, the stale green stands and the bot approval counts — exactly the outcome the check exists to prevent.
+
+The adversarial test, on a scratch repo: reviews >= 1, this check required, open a PR from the App identity, have a second bot identity approve it, then confirm the check goes red and the merge button is blocked BEFORE any further push.
+Record the result in this file. Until then, the durable form of this control is an external GitHub App check or an org-level required workflow pinned to a protected ref — code the PR cannot edit, posting to the SHA GitHub evaluates, revalidating at queue admission.
+
 It fails on a bot approval even when a human approval is also present — GitHub counts approvals indistinguishably, so the remedy is dismissing the bot review, not outvoting it.
-The `pull_request` triggers keep a required check from sitting PENDING forever on PRs that never receive a review event, and `pull_request_review` (`submitted`, `dismissed`) re-runs it the moment an approval appears or is dismissed; `pull_request_review` runs attach to the PR's head SHA, which is what the ruleset checks.
+The `pull_request` triggers keep a required check from sitting PENDING forever on PRs that never receive a review event, and `pull_request_review` (`submitted`, `dismissed`) re-runs it the moment an approval appears or is dismissed.
 Like any review-state check, it reflects the last run, not merge time; the `merge_group` leg reports success without re-checking (a merge-group payload has no PR context), so treat queue-time re-validation as out of this check's scope — the trigger is still required whenever a merge queue is enabled, or queued merges stall (config-checklist.md §2).
 The `OPERATORS` list is the org-profile leg: a bot-authored PR whose only human approvals come from the App's registered operators fails, forcing a second human.
 Leave it empty in the solo profile, where the operator is the only human reviewer.
@@ -948,7 +989,7 @@ Implements: §1 (T1)
 Agent guidance lives in [`AGENTS.md`](/AGENTS.md); read it before opening any PR.
 
 - Branch off `main`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`.
-- Open PRs touching CODEOWNERS-owned paths as drafts; mark ready for review only after all required checks pass.
+- Open PRs touching CODEOWNERS-owned paths as drafts; a code owner promotes them to ready. For other paths, mark ready once all required checks pass.
 - At least one human reviewer must approve before merge — agents may not self-approve.
 - Run `uv run pytest` locally before marking a PR ready.
 - Follow [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.
