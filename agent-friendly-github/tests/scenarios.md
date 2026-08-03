@@ -25,12 +25,12 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Picks the solo profile and treats the current state as the pre-identity interim: `required_approving_review_count: 0` now, with the actor-independent gates carrying the load (Repository Profiles, solo interim posture).
+- [ ] Picks the solo profile and treats the current state as the pre-identity interim: `required_approving_review_count: 0` now, adopting the solo interim posture in full, including its harness-side boundary (Repository Profiles).
 - [ ] Keeps `bypass_actors` empty in the interim, with the agent-reachable-bypass rationale (§2).
 - [ ] Names the control-plane residual: the agent holds the maintainer's admin rights and can delete the ruleset itself, so the interim's protection depends on a harness deny rule covering the mutating administrative API, not on the ruleset (T10). Treats the interim as a degraded state with identity provisioning as the exit.
 - [ ] Requires the agent identity to hold no repository administration once provisioned, and no release or package write (§4; T10, T11).
 - [ ] Plans a distinct identity (GitHub App preferred over fine-grained PAT over shared account) and flips reviews to >= 1 with a human `User` bypass actor in `pull_request` mode — never `always`/`exempt`, never the `Write` role — only after the identity exists (§2, §4).
-- [ ] Required-check context is the job name (`test`), not the `CI / test` PR-UI string (examples.md, hardened ruleset).
+- [ ] Required-check context is the job name (`test`), not the `CI / test` PR-UI string (examples/rulesets.md).
 - [ ] Sets `strict_required_status_checks_policy: true` (§2).
 - [ ] Requires linear history, and blocks force-push and deletion (§2).
 - [ ] Defers `required_signatures` as opt-in, with the App-token-local-commits-not-auto-signed rationale (§2, §4).

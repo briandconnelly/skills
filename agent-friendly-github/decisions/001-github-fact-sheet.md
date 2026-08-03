@@ -18,7 +18,7 @@ Checked 2026-08-03 against the linked primary sources.
 | Path-scoped required-reviewer rule GA; February 2026 | [changelog 2026-02-17](https://github.blog/changelog/2026-02-17-required-reviewer-rule-is-now-generally-available/) | **Inconsistency:** the REST reference still says "required_reviewers is in beta and subject to change." Validate payloads against the live schema. |
 | Review-dismissal restriction (name who may dismiss reviews) GA; July 2026 | [changelog 2026-07-07](https://github.blog/changelog/2026-07-07-restrict-who-can-dismiss-reviews-in-rulesets/) | Inside the "Require a pull request before merging" rule |
 | `bypass_actors` is returned only to a requester with **write access to the ruleset** | [REST rules API](https://docs.github.com/en/rest/repos/rules) | Not "repository admin" — the distinction matters for inherited org rulesets (audit-workflow.md probe) |
-| `GITHUB_SHA` for `pull_request_review` is the last merge commit on `refs/pull/<n>/merge`, NOT the PR head SHA | [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) | Same as `pull_request`. Corrects an earlier claim in examples.md |
+| `GITHUB_SHA` for `pull_request_review` is the last merge commit on `refs/pull/<n>/merge`, NOT the PR head SHA | [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) | Same as `pull_request`. Corrects an earlier claim in examples/required-checks.md |
 | A `paths:`-filtered workflow that is skipped never reports, so a required check on it stays pending | [Troubleshooting required status checks](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks) | A configured bypass actor can still merge past it |
 | Push protection can be bypassed by any actor with push access unless delegated bypass is configured with an explicit bypass list | [Enabling delegated bypass](https://docs.github.com/en/enterprise-cloud@latest/code-security/secret-scanning/using-advanced-secret-scanning-and-push-protection-features/delegated-bypass-for-push-protection/enabling-delegated-bypass-for-push-protection) | Org-level configuration disables the repo-level setting |
 | Repository admins can create, edit, and delete repository rulesets | [Managing rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/managing-rulesets-for-a-repository) | The basis for T10 and the solo-interim correction |
@@ -38,11 +38,11 @@ Resolve them with a live test on a scratch repository, then move the row up.
 
 | Claim | Where it matters | How to settle it |
 |---|---|---|
-| A GitHub App's approving review counts toward `required_approving_review_count` | The entire premise of the human-only-approvals check (§2, examples.md) | Have an App with Pull requests write approve a PR on a repo with reviews >= 1; observe whether the merge button unblocks |
+| A GitHub App's approving review counts toward `required_approving_review_count` | The entire premise of the human-only-approvals check (§2, references/examples/required-checks.md) | Have an App with Pull requests write approve a PR on a repo with reviews >= 1; observe whether the merge button unblocks |
 | A `pull_request_review`-triggered run updates the required check for the commit the ruleset evaluates | Whether the human-only-approvals check binds at all; it fails **open** if not | Required check + bot approval after a green run; observe whether the check goes red before merge |
 | An installation token scoped to selected repositories can open issues on arbitrary public repos | §4's "treat the enrolled set as the bot's git reach, not its write reach" | Attempt `POST /repos/{other}/{public-repo}/issues` with a scoped installation token |
 
 ## Untested surface
 
 - GitHub Enterprise Server: flagged untested throughout the skill. Field names and API paths have not been checked against any GHES release.
-- None of the executable artifacts in `examples.md` (ruleset JSON, four workflows, environment payload) has been applied to a live repository. They have been parsed (`jq`) and linted (`actionlint`) only.
+- None of the executable artifacts in `references/examples/` (ruleset JSON, four workflows, environment payload) has been applied to a live repository. They have been parsed (`jq`) and linted (`actionlint`) only.

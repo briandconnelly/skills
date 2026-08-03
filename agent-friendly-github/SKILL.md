@@ -97,7 +97,7 @@ Then classify your task and follow the matching path:
 
 Both Set up and Audit walk [config-checklist.md](references/config-checklist.md) as their normative standard; Operate follows [operating-playbook.md](references/operating-playbook.md) and does not walk the checklist — where a playbook rule mirrors a configured control, the configuration is the authoritative, enforced version.
 The rationale behind every checklist rule — including which threat class it mitigates — lives in [threat-model.md](references/threat-model.md).
-Concrete artifacts (ruleset JSON, CODEOWNERS snippets, workflow permission blocks, label YAML) live in [examples.md](references/examples.md).
+Concrete artifacts (ruleset JSON, CODEOWNERS snippets, workflow permission blocks, label YAML) live in [references/examples/](references/examples/README.md).
 Sources for every dated GitHub claim — and the list of claims asserted but not verified — live in [decisions/001-github-fact-sheet.md](decisions/001-github-fact-sheet.md).
 
 ## Done Criteria

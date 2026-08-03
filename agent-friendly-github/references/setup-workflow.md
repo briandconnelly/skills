@@ -1,7 +1,7 @@
 # Setup Workflow
 
 Use this workflow to configure a new repository for agent work, or to harden an existing one.
-The workflow walks every item in [config-checklist.md](config-checklist.md) and emits concrete artifacts — ruleset JSON, CODEOWNERS files, workflow permission blocks, and label definitions — that live in [examples.md](examples.md).
+The workflow walks every item in [config-checklist.md](config-checklist.md) and emits concrete artifacts — ruleset JSON, CODEOWNERS files, workflow permission blocks, and label definitions — that live in [examples/](examples/README.md).
 Steps are ordered by blast-radius: you close the dangerous gaps first and add the productivity surface only after the guardrails are in place.
 
 Note: if you use the GitHub MCP server to carry out these steps, it is subject to the same identity and permission constraints as any other agent surface — the ruleset, CODEOWNERS ownership, and required checks apply regardless of which API surface the agent uses.
@@ -43,7 +43,7 @@ gh api orgs/{org}/installations \
 # Confirm token scopes for a specific installation.
 # NOTE: the /app/* endpoints require authenticating AS THE APP with a JWT signed by the
 # app's private key — a normal `gh auth login` user token will not work here.
-# See the Agent Identity Setup artifact in examples.md.
+# See the Agent Identity Setup artifact in examples/identity.md.
 gh api app/installations/{installation_id}/access_tokens \
   --method POST \
   --field "repositories[]={repo_name}" \
@@ -54,7 +54,7 @@ Decide your commit-signing posture before any agent commits land.
 Signing is strongly recommended but opt-in — do not enforce `required_signatures` (Step 2) unless every committer (humans and the agent) has a working signing path, because a local commit pushed with a GitHub App token is not auto-signed and would be rejected.
 If you adopt signing, decide the accepted mechanism — GitHub App commit signing (automatic when the App pushes via the API), GPG, or SSH — and record it in the repository so audits know what evidence to expect (closes T8).
 
-See the **agent identity setup** artifact in [examples.md](examples.md) for App registration steps, a token-scope inventory table, and the co-authorship trailer format.
+See the **agent identity setup** artifact in [examples/identity.md](examples/identity.md) for App registration steps, a token-scope inventory table, and the co-authorship trailer format.
 
 ### Step 2 — Apply branch / repo guardrails (§2)
 
@@ -79,9 +79,9 @@ Turn the repository's "Allow auto-merge" setting off unless the repo has a delib
 Add an environment protection rule for any production deployment target: require a named human reviewer or a timed wait before the environment job proceeds; enable `prevent_self_review` where a second human exists, and set it to `false` in the solo profile, where it locks the lone maintainer out of their own deployments (§2) (closes T5).
 Note: environment required reviewers and wait timers are available on public repos on all plans, but on private/internal repos they are Enterprise-only — Pro/Team private repos get environments, secrets, and deployment-branch policies, not these protection rules; if the plan does not provide them, use an external deployment-approval mechanism and mark this step N/A with the plan reason.
 If the default branch ruleset must require successful production deployment before merge, add a `required_deployments` rule for that environment.
-See the **production environment gate** artifact in [examples.md](examples.md).
+See the **production environment gate** artifact in [examples/rulesets.md](examples/rulesets.md).
 
-Apply the ruleset via `gh api` (illustrative — substitute your repo and the hardened ruleset JSON from [examples.md](examples.md)):
+Apply the ruleset via `gh api` (illustrative — substitute your repo and the hardened ruleset JSON from [examples/rulesets.md](examples/rulesets.md)):
 
 ```sh
 # Create a repository ruleset from a local JSON file
@@ -94,7 +94,7 @@ gh api repos/{owner}/{repo}/rulesets \
   --jq '.[].name'
 ```
 
-See the **hardened ruleset JSON** artifact in [examples.md](examples.md) for the complete field set including `required_status_checks`, `dismiss_stale_reviews_on_push` (the ruleset field; the branch-protection equivalent is `dismiss_stale_reviews`), and `non_fast_forward`; `required_signatures` is not in the baseline and appears only in the optional signing variant there.
+See the **hardened ruleset JSON** artifact in [examples/rulesets.md](examples/rulesets.md) for the complete field set including `required_status_checks`, `dismiss_stale_reviews_on_push` (the ruleset field; the branch-protection equivalent is `dismiss_stale_reviews`), and `non_fast_forward`; `required_signatures` is not in the baseline and appears only in the optional signing variant there.
 
 ### Step 3 — Wire Actions / supply-chain hardening (§3)
 
@@ -121,7 +121,7 @@ Enable GitHub-native security features:
 
 Do not enable `ACTIONS_STEP_DEBUG` or `ACTIONS_RUNNER_DEBUG` in production environments — registered secrets stay masked, but verbose debug logs widen the leak surface for unregistered or derived sensitive values (closes T5).
 
-See the **least-privilege, injection-safe Actions workflow** artifact in [examples.md](examples.md) for a complete annotated example showing the top-level `permissions:` block, SHA-pinned actions, `env:`-bound event values, and OIDC credential exchange.
+See the **least-privilege, injection-safe Actions workflow** artifact in [examples/workflows.md](examples/workflows.md) for a complete annotated example showing the top-level `permissions:` block, SHA-pinned actions, `env:`-bound event values, and OIDC credential exchange.
 
 ### Step 4 — Lay down the productivity surface (§1)
 
@@ -129,42 +129,42 @@ With guardrails in place, add the surfaces that make agents productive and contr
 
 **Issue and PR templates.**
 Create `.github/ISSUE_TEMPLATE/` with templates for the issue types your project uses, and `.github/PULL_REQUEST_TEMPLATE.md` covering the PR checklist (linked issue, test plan, security consideration).
-See the **issue and PR templates** artifacts in [examples.md](examples.md).
-If your workflow mandates issue-backed PRs, wire up the **Required Check: PR Links a Real Open Issue** artifact in [examples.md](examples.md) and mark it required in the Step 2 ruleset, so the template's linked-issue field is CI-verified rather than trusted (§1).
+See the **issue and PR templates** artifacts in [examples/repo-files.md](examples/repo-files.md).
+If your workflow mandates issue-backed PRs, wire up the **Required Check: PR Links a Real Open Issue** artifact in [examples/required-checks.md](examples/required-checks.md) and mark it required in the Step 2 ruleset, so the template's linked-issue field is CI-verified rather than trusted (§1).
 
 **Label taxonomy.**
 Define type labels (`type/bug`, `type/feature`, `type/chore`, `type/docs`) and priority labels (`priority/p0`–`priority/p2`).
 In a monorepo, add `scope/<area>` labels for each major subtree so PRs and issues are routable without reading the diff.
-See the **label taxonomy** artifact in [examples.md](examples.md).
+See the **label taxonomy** artifact in [examples/repo-files.md](examples/repo-files.md).
 
 **CODEOWNERS.**
 Use explicit path prefixes — never a catch-all-only rule.
 Owners on protected paths must be human users or teams, never bot or agent accounts, so a required review can never be satisfied by an agent (closes T3).
 In a monorepo, one prefix per owned subtree.
-See the **CODEOWNERS Patterns (Monorepo and Solo)** artifact in [examples.md](examples.md).
+See the **CODEOWNERS Patterns (Monorepo and Solo)** artifact in [examples/codeowners.md](examples/codeowners.md).
 
 **Draft-first convention.**
 GitHub has no native "require draft by path" feature.
 Document the convention in `AGENTS.md` and the operating playbook: protected-path changes open as drafts and wait for a human to promote them.
 Do not make draft-state a required merge gate.
 The enforceable control is the CODEOWNERS-required human review.
-See the **draft-first convention** note in [examples.md](examples.md).
+See the **draft-first convention** note in [examples/codeowners.md](examples/codeowners.md).
 
 **`AGENTS.md` and per-tool files.**
 Create a canonical `AGENTS.md` at the repo root covering branching strategy, commit format, review expectations, label use, test commands, and off-limits paths.
 Per-tool files (`CLAUDE.md`, `GEMINI.md`, etc.) are thin pointers — for Claude Code, the full content of `CLAUDE.md` is a single line: `@AGENTS.md`.
 Reusable procedures belong as committed artifacts, not pasted into instruction files.
 In a monorepo, add a nested `AGENTS.md` per subtree whose build or test commands, ownership, review expectations, or off-limits paths differ from the root file's.
-See the **Agent Instruction File Pattern** artifact in [examples.md](examples.md).
+See the **Agent Instruction File Pattern** artifact in [examples/repo-files.md](examples/repo-files.md).
 
 **`.gitignore` and `.gitattributes`.**
-Add a `.gitignore` covering secret-bearing and noise paths before running the first `git add`, so secrets are never staged; see the **Starter .gitignore** artifact in [examples.md](examples.md).
-Add a `.gitattributes` (with `* text=auto eol=lf`) before cross-platform commits land, so line endings normalize from the start and generated files are collapsed in PR diffs; see the **Minimal .gitattributes** artifact in [examples.md](examples.md).
+Add a `.gitignore` covering secret-bearing and noise paths before running the first `git add`, so secrets are never staged; see the **Starter .gitignore** artifact in [examples/repo-files.md](examples/repo-files.md).
+Add a `.gitattributes` (with `* text=auto eol=lf`) before cross-platform commits land, so line endings normalize from the start and generated files are collapsed in PR diffs; see the **Minimal .gitattributes** artifact in [examples/repo-files.md](examples/repo-files.md).
 
 **`CONTRIBUTING` and `SECURITY.md`.**
 Add `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` describing branching, PR, and review expectations.
 Add `SECURITY.md` — this skill requires it for public repos and recommends it for private repos — and cross-reference it with private vulnerability reporting (Step 5).
-See the **Supporting Files (CONTRIBUTING.md, SECURITY.md)** artifact in [examples.md](examples.md).
+See the **Supporting Files (CONTRIBUTING.md, SECURITY.md)** artifact in [examples/repo-files.md](examples/repo-files.md).
 
 ### Step 5 — Confirm public/private and monorepo specifics
 
@@ -207,7 +207,7 @@ Checklist walkthrough by section:
 
 **§4 Auditability & Identity** — verify distinct agent identity provisioned (GitHub App preferred), the identity holds no repository administration and no release or package write, no classic broad PATs in use, fine-grained PATs short-lived if any, commits authored with attribution preserved (and signed if signing was opted into), audit-log coverage explicitly considered (the org log's fixed 180-day window on GitHub.com with its 7-day Git-event subset; Enterprise streaming for longer retention), no mid-session privilege escalation path exists (token scopes provisioned up front), private vulnerability reporting enabled on public repos.
 
-Emitted artifacts (confirm each is in place or pointed to in [examples.md](examples.md)):
+Emitted artifacts (confirm each is in place or pointed to in [examples/](examples/README.md)):
 
 - Hardened ruleset JSON
 - Least-privilege, injection-safe Actions workflow (including OIDC job)
