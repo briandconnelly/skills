@@ -11,10 +11,14 @@ swept, and a human sweeping greps by hand misses files.  This is the sweep.
 Five checks, each independently self-tested:
 
 1. REFUTED   — claims the skill has established are false must not reappear
-               anywhere, in any wording, unless the line negates them.
+               in any wording, unless the line negates them.  Applies inside
+               fenced code blocks as well: those are emitted artifacts that
+               get copied into real repositories, so a refuted claim in an
+               example `AGENTS.md` travels further than one in prose.
 2. GOVERNED  — a rule's values may be STATED only in its declared home; other
                files must cite (name the home file or its owning section)
-               rather than restate.
+               rather than restate.  Skips fences — an example legitimately
+               contains the config values it illustrates.
 3. SECTIONS  — every "§N" reference resolves to a section heading that exists
                in config-checklist.md.
 4. THREATS   — every "Tn" citation resolves to a threat class defined in
@@ -52,7 +56,10 @@ REFUTED: list[tuple[str, re.Pattern[str], tuple[str, ...]]] = [
             r"|permissions in their own right",
             re.IGNORECASE,
         ),
-        ("there is no", "no separable", "deliberately no", "not a permission", "cannot"),
+        # Unambiguous negations only. A modality word like "cannot" would let
+        # "release write permission cannot be dropped" — which restates the
+        # refuted idea — pass as if it denied it.
+        ("there is no", "no separable", "deliberately no", "not a permission"),
     ),
     (
         "the solo interim's gates binding the shared-credential agent",
@@ -134,6 +141,7 @@ CODE_FENCE = re.compile(r"^\s*```")
 SECTION_REF = re.compile(r"§(\d+)")
 THREAT_REF = re.compile(r"\bT(\d+)\b")
 THREAT_DEF = re.compile(r"^##\s+T(\d+)\s+—", re.MULTILINE)
+THREAT_DEF_LINE = re.compile(r"^##\s+T\d+\s+—")
 MD_LINK = re.compile(r"\[[^\]]*\]\(([^)#][^)]*)\)")
 
 
@@ -207,6 +215,8 @@ def self_test() -> None:
         # (check, line, should_flag) — 'check' selects which function to call.
         ("refuted", "the identity holds no release or package write permission", True),
         ("refuted", "There is deliberately NO release row: releases ride on contents:write", False),
+        # Modality is not negation: this restates the refuted idea.
+        ("refuted", "the release write permission cannot be dropped", True),
         ("refuted", "rely on the gates that genuinely bind every actor", True),
         ("refuted", "these gates do not genuinely bind every actor once admin is held", False),
         ("refuted", "pull_request_review runs attach to the PR's head SHA", True),
@@ -252,6 +262,24 @@ def self_test() -> None:
             )
             raise SystemExit(2)
 
+    # THREATS: a definition heading must NOT count as a citation, or the
+    # dead-class check silently never fires (every class would self-cite).
+    cited: set[str] = set()
+    check_refs(SKILL_DIR / "SKILL.md", "## T7 — Dependency confusion", {"7"}, {"7"}, cited)
+    if cited:
+        print(
+            "check_authority: SELF-TEST FAILED (a threat heading counted as a citation)",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    check_refs(SKILL_DIR / "SKILL.md", "mitigated by pinning (T7)", {"7"}, {"7"}, cited)
+    if "7" not in cited:
+        print(
+            "check_authority: SELF-TEST FAILED (a real citation was not counted)",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
     # LINKS must reject a target that does not exist and accept one that does.
     probe = SKILL_DIR / "SKILL.md"
     if not check_links(probe, "[x](references/does-not-exist.md)"):
@@ -270,8 +298,13 @@ def check_refs(
     for n in SECTION_REF.findall(line):
         if n not in sections:
             found.append(f"§{n} does not resolve to a config-checklist.md section")
+    # A threat's own "## Tn — ..." heading is a definition, not a citation.
+    # Counting it would make every defined class self-cite, and the
+    # dead-class check below could then never fire.
+    defines_itself = bool(THREAT_DEF_LINE.match(line))
     for n in THREAT_REF.findall(line):
-        cited.add(n)
+        if not defines_itself:
+            cited.add(n)
         if n not in threats:
             found.append(f"T{n} is cited but not defined in threat-model.md")
     return found
@@ -293,12 +326,23 @@ def main() -> int:
             if CODE_FENCE.match(line):
                 in_fence = not in_fence
                 continue
-            if in_fence:
-                continue
 
-            found = check_refs(path, line, sections, threats, cited_threats)
+            # REFUTED applies inside fences too: the fenced blocks here are
+            # emitted artifacts (AGENTS.md, CONTRIBUTING.md, ruleset JSON) that
+            # get copied into real repositories, so a refuted claim there ships
+            # further than one in prose. GOVERNED and the reference checks skip
+            # fences — an example legitimately contains config values and
+            # illustrative paths that are not restatements or real links.
+            found: list[str] = []
             if path in governed_scope:
                 found += check_refuted(line)
+            if in_fence:
+                for problem in found:
+                    hits.append(f"{relpath}:{lineno}: {problem}\n      {line.strip()[:110]}")
+                continue
+
+            found += check_refs(path, line, sections, threats, cited_threats)
+            if path in governed_scope:
                 found += check_governed(relpath, line)
 
             for problem in found:
