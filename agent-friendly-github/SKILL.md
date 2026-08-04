@@ -12,17 +12,22 @@ Agents err, and they can be prompt-injected; the repo must stay safe regardless.
 
 ## Core Standard
 
+Every rule below is stated in enforceable form in [config-checklist.md](references/config-checklist.md), which is the authority; this section is the shape of the standard, not a second copy of it.
+Where a bullet reads as a principle rather than a check, treat it as the reason a checklist item exists — the checklist item is what an audit scores.
+
 - Configuration is the enforced contract and conventions are advisory — safety-critical rules live in rulesets, required status checks, and CODEOWNERS, never in agent instructions that can be overridden or bypassed.
-- Optimize for the agent's first correct contribution — discoverable conventions (`AGENTS.md`, `CONTRIBUTING`), issue and PR templates, a canonical label set, and a fast unambiguous green path are all part of the setup.
+- The agent's identity never holds repository administration — every rule above depends on this one, because an identity that can edit or delete the ruleset is not bound by it; where the agent unavoidably holds admin, the boundary moves to the agent harness's permission configuration and the repo is in a documented degraded state.
+- *(Principle)* Optimize for the agent's first correct contribution — discoverable conventions (`AGENTS.md`, `CONTRIBUTING`), issue and PR templates, a canonical label set, and a fast unambiguous green path are all part of the setup.
 - Every agent action is attributable and auditable — agents use a distinct identity, commits are authored with attribution preserved (signing is strongly recommended but opt-in, not required), issues and PRs are cross-linked, and no silent force-push or history rewrite occurs on protected branches.
 - All repo-resident text is untrusted input — issue bodies, PR descriptions, comments, and code file content can carry prompt-injection payloads into both the agent and CI; never grant write access or secrets to workflows triggered by untrusted actors, and never interpolate untrusted `${{ github.event.* }}` expressions directly into a `run:` script — bind them through `env:` and reference the variable instead.
 - The agent cannot launder its own approval — an agent that authored a PR must not approve it, trigger auto-merge to satisfy a human-review requirement, or manipulate review requests to make its own work look approved.
   After a post-approval push, the agent requests fresh human review rather than treating stale approval as sufficient.
 - Merge authority defaults to the human — an agent does not merge a PR it authored unless the human has explicitly authorized the agent to merge it (a standing grant in `AGENTS.md` or an in-session instruction that specifically says the agent may merge); green required checks and a zero-review configuration are gate outcomes, not delegation.
 - Constrain blast radius by default — a summary of controls that are each an atomic item in [config-checklist.md](references/config-checklist.md): the least-privilege `GITHUB_TOKEN`, third-party actions pinned to a full commit SHA, OIDC over long-lived PATs, protected branches that no automation identity can bypass, environment gates for production deployments, and dismiss-stale-reviews-on-push.
-- Right-size to the repo's team and risk — the security boundary is human-vs-agent, not author-vs-reviewer, so never configure a repo such that the legitimate human maintainer cannot merge their own work; a single-maintainer repo keeps the agent fully gated while leaving the lone human an escape hatch. Match controls to a repository profile (solo, small-team, org/high-risk) rather than applying every control everywhere.
-- Fix flaky or slow required checks before they become a bypass habit — an unreliable green path creates pressure to retry, skip, or override, which is how agents learn to route around guardrails.
-- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check (never `paths:`-filter a required check, because a skipped required check stays pending and blocks merge forever), and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
+- Right-size to the repo's team and risk — the security boundary is human-vs-agent, not author-vs-reviewer, so never configure a repo such that the legitimate human maintainer cannot merge their own work. Match controls to a repository profile (solo, small-team, org/high-risk) rather than applying every control everywhere; the profiles and their exceptions are defined in [config-checklist.md](references/config-checklist.md).
+- The agent never publishes to consumers — and because releases ride on the same `contents: write` the agent needs to push branches, this one cannot be enforced by withholding a permission: it takes a protected tag ruleset, a harness deny rule on the release and package endpoints, and publishing from a protected ref.
+- *(Principle)* Fix flaky or slow required checks before they become a bypass habit — an unreliable green path creates pressure to retry, skip, or override, which is how agents learn to route around guardrails.
+- Work identically across public/private and monorepo/traditional repos — scope ownership with explicit CODEOWNERS path prefixes, use an always-running monorepo gate check rather than `paths:`-filtering a required check, and do not disable secret scanning, Dependabot, or branch protection just because a repo is private.
 
 ## Agent-Instruction-File Strategy
 
@@ -73,6 +78,7 @@ Treat the canonical file as a first-class repository artifact, not an afterthoug
 - **Untrusted input / injection surface**: any repo-resident text the agent reads and acts on — issue titles, PR bodies, commit messages, code files, comments — that an adversary could craft to alter agent or CI behavior.
 - **Green path**: the end-to-end flow where the agent opens a branch, pushes commits, opens a PR, required checks pass, a human approves, and the PR merges without manual intervention.
 - **Blast radius**: the scope of damage if an agent is compromised or makes an error — limited by least-privilege tokens, pinned actions, protected branches, and environment gates.
+- **Control plane**: the configuration that constrains the agent — rulesets, required checks, Actions settings, environments, secrets — as distinct from the code it works on. An agent that can change the control plane is not constrained by it (T10).
 - **Attribution / audit trail**: the verifiable record of who authored each commit and triggered each action — preserved by a distinct agent identity, retained author and co-author metadata, linear history, and no squash-without-author-preservation; signed commits add tamper-evidence on top (their opt-in status is governed by [config-checklist.md](references/config-checklist.md) §2).
 - **Approval laundering**: a pattern where the agent that authored a PR also satisfies the human-review requirement, either by self-approving or by manipulating the review state.
 - **Dependency confusion / namespace hijacking**: a supply-chain attack where a public package with a higher version number shadows a private internal package; mitigated by explicit registry pinning and private package namespacing.
@@ -91,7 +97,8 @@ Then classify your task and follow the matching path:
 
 Both Set up and Audit walk [config-checklist.md](references/config-checklist.md) as their normative standard; Operate follows [operating-playbook.md](references/operating-playbook.md) and does not walk the checklist — where a playbook rule mirrors a configured control, the configuration is the authoritative, enforced version.
 The rationale behind every checklist rule — including which threat class it mitigates — lives in [threat-model.md](references/threat-model.md).
-Concrete artifacts (ruleset JSON, CODEOWNERS snippets, workflow permission blocks, label YAML) live in [examples.md](references/examples.md).
+Concrete artifacts (ruleset JSON, CODEOWNERS snippets, workflow permission blocks, label YAML) live in [references/examples/](references/examples/README.md).
+Sources for every dated GitHub claim — and the list of claims asserted but not verified — live in [decisions/001-github-fact-sheet.md](decisions/001-github-fact-sheet.md).
 
 ## Done Criteria
 
