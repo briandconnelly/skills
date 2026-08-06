@@ -94,6 +94,8 @@ An R5 finding attaches to the conflicting pair of statements, not to either stat
 ## Summary Format
 
 Report counts per rule and per severity, followed by a one-paragraph overall assessment.
+Count a rule id once for every finding that carries it, secondary ids included, so a finding citing a primary and a secondary rule adds one to each.
+Count a finding once by severity, so the severity total is the number of findings and the per-rule total may exceed it.
 Report safety notes separately and exclude them from counts.
 Do not include a numeric score.
 
