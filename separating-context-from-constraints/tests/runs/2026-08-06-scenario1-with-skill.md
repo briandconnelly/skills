@@ -1,14 +1,16 @@
 # Scenario 1 — With-Skill Confirmation Cell
 
 Date: 2026-08-06
-Run: with-skill confirmation cell for the Summary Format counting change.
+Run: with-skill
 SKILL.md blob: 58ef1a80053fcb64f056f13d62eab63e8f1e199c
+Commit: none — run against the uncommitted working tree, which is why the blob hash is the only pin
 Referenced files: references/example-audit.md 7f4e9b29b7f57ab4dadfd63c9fa32621eff4d3a6
-Model: claude-opus-5
-Harness: Claude Code Agent tool, general-purpose subagent, single dispatch
+Model: claude-opus-5, the session model, inherited by the subagent with no per-agent override
+Harness: Claude Code 2.1.223, Agent tool, general-purpose subagent, single dispatch
 Prompt: the scenario 1 prompt from `tests/scenarios.md`, verbatim, preceded by instructions to follow `SKILL.md`, to read no file under `tests/`, and to make no edits
 Sampling: harness default
 Scorer: plan author, 2026-08-06
+Notes: confirmation cell for the Summary Format counting change; see "Why this cell" below.
 
 ## Why this cell
 

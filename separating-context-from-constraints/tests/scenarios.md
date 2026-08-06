@@ -11,8 +11,9 @@ Scenarios 2 and 3 informed the initial R5 and rewrite-contract iterations, so th
 ## Measurement protocol
 
 This skill adopts [`hypothesis-driven-analysis/tests/PROTOCOL.md`](../../hypothesis-driven-analysis/tests/PROTOCOL.md) and [`hypothesis-driven-analysis/decisions/001-rerun-obligation.md`](../../hypothesis-driven-analysis/decisions/001-rerun-obligation.md) in full: the step ordering, the Iron Law, and the rule scoping which cells owe rerun arms.
-Those documents are the authority.
-This file does not restate their rules, and a rule that appears only here is not one of them.
+Those documents are the authority for the measurement protocol.
+This file does not restate their rules, so a protocol rule stated only here is not one of theirs and carries no protocol authority.
+Requirements this file states in its own right — the run-provenance block below, and the scenarios and assertions themselves — are local to this skill and bind on their own terms.
 
 Adopted 2026-08-06, because this skill had no stated measurement protocol and its 2026-07-11 wave shipped skill edits and run artifacts in one commit with no record of which wording each arm read.
 
@@ -23,14 +24,18 @@ Every run artifact records, before its assertion table:
 ```
 Date: YYYY-MM-DD
 Run: baseline | with-skill | trigger
-SKILL.md blob: <git hash-object SKILL.md, or the commit sha if unmodified>
+SKILL.md blob: <git hash-object SKILL.md — always the blob hash, never a commit sha>
+Commit: <optional; the commit the run was made against, when one exists>
 Referenced files: <blob hash of each file under references/ the arm could read>
 Model: <model id>
 Harness: <dispatcher and version>
 Prompt: <path to the verbatim prompt, or the prompt inline>
 Sampling: <settings, or "harness default">
 Scorer: <who or what scored it>
+Notes: <optional; anything about this run that is not one of the fields above>
 ```
+
+`Run:` takes one of the three enumerated values and nothing else; what kind of run it was within that category belongs in `Notes` or in the artifact's prose.
 
 A hash alone does not establish that the scored output came from the arm it is filed under; the prompt and scorer fields are what make the artifact checkable by someone who was not there.
 
