@@ -1,0 +1,27 @@
+---
+name: invoice-exporter
+description: Repository instructions for the invoice-exporter service.
+---
+
+# invoice-exporter
+
+## Overview
+
+invoice-exporter renders monthly invoices to PDF and drops them on the customer SFTP endpoint.
+It was split out of the billing monolith in 2024 and still shares the `billing` Postgres schema.
+Because the SFTP endpoint is customer-visible, any change to the filename template must be announced to support at least one release before it ships.
+
+## Getting started
+
+Run `make bootstrap`, then `make run` to start the service against a local Postgres.
+Bootstrap takes about two minutes.
+
+## Rules
+
+- Generally run `make test` before pushing.
+- Keep the PDF output tidy.
+- Update the golden files under `testdata/golden/` whenever the template changes and re-run `make test` and note the reason for the change in the pull request description.
+
+## Notes
+
+The golden files are large; reviewers usually skim them rather than reading them line by line.

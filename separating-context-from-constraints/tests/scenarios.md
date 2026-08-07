@@ -311,6 +311,11 @@ It may also quote the fake key verbatim when discussing the example configuratio
 
 ## Scenario 9: Trigger discrimination
 
+**Superseded 2026-08-07.**
+The catalog below was hand-written and matched neither the shipped frontmatter description nor `agents/openai.yaml`, and the question restated its keywords, so the recorded 3/3 is largely lexical matching rather than evidence of selection.
+It is retained so the 2026-07-11 result remains readable against the prompt that produced it.
+Scenario 9R replaces it; do not run this version again.
+
 **Prompt:**
 
 > Available skills:
@@ -328,6 +333,506 @@ It may also quote the fake key verbatim when discussing the example configuratio
 - [ ] The run selects `separating-context-from-constraints`.
 - [ ] The explanation ties the selection to buried or ambiguously hedged binding rules in an agent-consumed instruction document.
 - [ ] The run does not select the broader authoring or documentation skills merely because the target is an `AGENTS.md` file.
+
+## Scenario 9R: Trigger discrimination, rebuilt from shipped metadata
+
+Replaces scenario 9 (W12).
+The catalog below is the verbatim `description` frontmatter of five skills shipped in this repository, reproduced without editing; regenerate it from the files rather than hand-editing it if a description changes.
+The question deliberately shares no distinctive vocabulary with this skill's description: it does not use "buried", "hedged", "generally", "try to", "untestable", "compound", "separation", "context", or "constraints".
+Selection and body-loading are scored as two separate checks, because a selection failure and an execution failure are otherwise indistinguishable.
+
+**Prompt, part 1 — selection:**
+
+> Available skills:
+>
+> - `agent-friendly-cli`: Use when designing, building, auditing, or reviewing a command-line interface that AI agents will invoke directly. Symptoms include agents picking the wrong subcommand from prose help, parsing English to branch on errors, hanging on prompts in CI, mixing banners with JSON on stdout, getting burned by hidden state or surprise side effects, or wasting tokens on unstable output. Also use when defining a machine-readable contract or schema for a CLI.
+> - `agent-friendly-docs`: Use when designing, structuring, auditing, or reviewing the documentation surface of a repository that AI coding agents read while working — instruction files, README, docs/, ADRs, per-directory context files, and code-adjacent comments. Symptoms include agents re-deriving project context every session, reading stale or wrong docs, instruction files bloated with reference material, README token bloat, ADRs mistaken for current policy, embedded commands that fail as written, duplicated content drifting apart, and repo-wide context trapped in code comments. Covers layering and placement, discoverability and read paths, one authoritative home per fact, token economy, freshness mechanisms, and runnable examples. Not for published docs sites or llms.txt, generic prose quality, GitHub repo safety configuration, or rules-vs-context audits of instruction-file content.
+> - `agent-friendly-github`: Use when configuring a GitHub repository so AI agents can work it safely — tracking issues, opening and managing pull requests — while humans keep confidence in code quality and security. Covers repo configuration (rulesets, branch protection, CODEOWNERS, Actions permissions, identity) and the operating conventions agents follow (branching, commits, PRs, review). Use to set up or harden a repo, audit an existing one, or guide how an agent operates in it. Applies to public and private, monorepo and traditional repos.
+> - `agent-friendly-mcp`: Use when designing, building, auditing, or reviewing an MCP server that AI agents will invoke directly. Symptoms include agents picking the wrong tool from many candidates, burning tokens loading hundreds of tool definitions upfront, repeated invalid tool calls due to ambiguous schemas, tools that mirror an underlying API endpoint-by-endpoint instead of completing tasks, missing or unclear resource browsing, prompts that duplicate tool contracts, token-heavy responses that should be paginated or filtered, brittle integrations that break across server versions, long-running operations with no progress, cancellation, or recoverable task status. Also use when defining or hardening tool, resource, or prompt schemas.
+> - `separating-context-from-constraints`: Use when auditing or reviewing a skill, system prompt, CLAUDE.md/AGENTS.md, MCP tool or resource description, slash-command prompt, or any document an AI agent consumes as instructions, to check that binding rules are separated from background context. Symptoms include rules buried mid-paragraph in narrative prose, hedged statements ("generally", "try to") that leave unclear whether they bind, untestable directives like "be concise", compound rules bundling several obligations, rule sections padded with explanation, and agents that follow a document's flavor text but miss its requirements. Produces findings with two-level severity and semantic-preserving suggested rewrites; does not score documents, analyze conflicts with parent instruction layers, or review general prose quality.
+>
+> Our repository's `CLAUDE.md` has grown to about three hundred lines.
+> Agents working in the repo keep repeating its stated philosophy back at us while skipping steps it actually requires, and two reviewers now disagree about which sentences are obligations and which are commentary.
+> Which single skill should handle this, and why in one sentence?
+
+**Prompt, part 2 — body loading (same session, sent after part 1 is answered):**
+
+> Load that skill and use it to review the document below. Report whatever the skill tells you to report.
+>
+> ```markdown
+> # deploy-helper
+>
+> Deploys are cut weekly.
+> Try to keep the release notes short.
+> ```
+
+**Assertions:**
+
+- [ ] Part 1 selects `separating-context-from-constraints`.
+- [ ] Part 1's justification names the substance of the problem — obligations indistinguishable from commentary — rather than only the file type.
+- [ ] Part 1 does not select `agent-friendly-docs` on the ground that the target is a repository instruction file.
+- [ ] Part 2's output contains at least one artifact that exists only in the skill body and not in any catalog description: a rule id of the form R1–R5, or the six-field finding format, or an explicit "clean — no findings" verdict.
+- [ ] Part 2's output is scored for body loading only. Its audit quality is not scored here; that is what scenarios 1–8 and 10–18 measure.
+
+**Known-positive requirement:** before this scenario's negative results are trusted, confirm that assertion 4's check can fail — run part 2 in a session where the skill was never loaded and verify that no R1–R5 id appears.
+A body-loading check that cannot fail is not evidence.
+
+---
+
+# Wave 3 scenarios (preregistered 2026-08-07, not yet run)
+
+Scenarios 10–18 were authored under step 3 of the remediation sequence and are preregistered in [`wave3-2026-08-07/preregistration.md`](wave3-2026-08-07/preregistration.md), which holds the planted-defect lists, the correctly-placed statements, the per-scenario endpoints, and a reachable verdict row for each in which the corresponding skill wording turns out to need no change.
+
+No arm has been run against any of them.
+The assertion lists below are the scoring targets; the preregistration is the authority on what counts as a planted defect and what counts as a false positive.
+Where the two disagree, the preregistration wins, because it was written before any output existed.
+
+Do not reveal the preregistration or these assertion lists to a scored arm.
+
+## Scenario 10: Long sectioned document
+
+Covers W2 (long-document claim), and carries the measurement endpoints for W6 (location convention) and W14 (severity distribution).
+No line count is a threshold; the fixture is long because rules are planted at several depths, not to cross a number.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> ---
+> name: ledger-service
+> description: Repository instructions for the ledger-service backend.
+> ---
+>
+> # ledger-service
+>
+> ## Overview
+>
+> ledger-service is the double-entry accounting core behind the billing platform.
+> It was extracted from the monolith during the 2024 platform split, which is why several module names still echo the old `billing_v1` namespace.
+> The service is written in Go and deployed to three regional clusters.
+> Because every write is replicated synchronously across those clusters, any change touching the `postings` package must be accompanied by a migration plan reviewed by the data team before it is merged.
+> Most contributors find the codebase easier to navigate after reading the architecture overview in `docs/architecture.md`.
+>
+> ## Getting started
+>
+> Clone the repository and run `make bootstrap`.
+> The bootstrap target installs the Go toolchain pinned in `.tool-versions`, provisions a local Postgres instance, and seeds it with the fixtures under `testdata/`.
+> Bootstrap takes about four minutes on a warm cache.
+> If Postgres is already listening on port 5432 the target fails; stop the other instance first.
+>
+> ## Rules
+>
+> - Never commit directly to `main`.
+> - Run `make test` before opening a pull request — this is the same suite CI runs, so catching failures locally saves a round trip through the queue and keeps the shared runners free for everyone else.
+> - Keep the changelog entries readable.
+> - Prefer table-driven tests, which the team has found easier to extend than parallel test functions, and which match the style of the existing `postings` and `journals` suites.
+> - Generally use the `internal/` package for anything not consumed by the public API.
+>
+> ## Working with money
+>
+> Amounts are represented as `Money` structs holding an integer minor-unit value and an ISO 4217 currency code.
+> Never construct a `Money` value from a floating-point literal.
+> The `Money` type deliberately has no `Add` method for mixed currencies; conversion goes through `fx.Convert`, which requires an explicit rate source.
+> Rounding is banker's rounding throughout, matching the ledger's original COBOL implementation.
+>
+> ## Testing
+>
+> The suite is split into unit tests, which run in about twenty seconds, and integration tests behind the `integration` build tag, which need the local Postgres from bootstrap.
+> Integration tests are slow enough that most contributors run them only before pushing.
+> It is worth noting that any test touching the `postings` package must run inside a transaction that is rolled back at the end, because the shared fixture set is not regenerated between tests.
+> The CI pipeline runs both suites plus a race-detector pass.
+>
+> ## Observability
+>
+> Every request carries a trace id propagated through `context.Context`.
+> Structured logs go to stdout as JSON; the collector parses them by the `msg` and `level` keys.
+> Log lines must never include the raw `account_number` field — the log pipeline is replicated to a lower-trust analytics store.
+> Dashboards live in the `ledger` Grafana folder.
+>
+> ## Deployment
+>
+> Deploys are cut from `main` by the release job, which runs every weekday at 10:00 UTC.
+> The release job builds a container, runs the smoke suite against staging, and promotes to production only if the smoke suite passes.
+> Historically the team deployed by hand, and the runbook in `docs/runbook-legacy.md` still describes that process; it is retained for incident archaeology and is not current policy.
+>
+> ## Appendix: common tasks
+>
+> Regenerating fixtures: `make fixtures`.
+> Adding a currency: update `fx/currencies.go` and the `currency_code` enum migration together.
+> By the way, before adding a currency you must open an issue tagged `finance-review` and get sign-off from the finance team, since unsupported currencies leak into customer invoices.
+> Backfilling: use `cmd/backfill`, never a direct SQL update against `postings`.
+> ```
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] The migration-plan requirement in the Overview paragraph gets an R1 finding with the sentence quoted.
+- [ ] The rolled-back-transaction requirement in the Testing paragraph gets an R1 finding with the sentence quoted.
+- [ ] The `finance-review` sign-off requirement in the Appendix gets an R1 finding with the sentence quoted.
+- [ ] "Keep the changelog entries readable." gets an R3 finding.
+- [ ] "Generally use the `internal/` package for anything not consumed by the public API." gets an R2 finding presenting both a promoted and a demoted rewrite, with the choice marked as an author decision.
+- [ ] At least one finding is raised against context living inside the Rules section — the trailing rationale on the `make test` bullet, the rationale clauses on the table-driven-tests bullet, or both.
+- [ ] No finding is raised against any statement on the preregistered correctly-placed list, which includes the legacy-runbook sentence.
+- [ ] Every finding's location field resolves to exactly one statement in the target for a reader holding only the fixture.
+- [ ] The severity labels are not uniform across the findings: at least one finding is **minor** and at least one is **material**.
+
+**Expected baseline failures:** a skill-less run typically reports the three most prominent problems, stops before reaching the Appendix, gives locations as section names only, and treats the legacy-runbook sentence as a contradiction of the release-job paragraph.
+
+**Note on `SKILL.md:27`:** this fixture cannot test the claim that buried rules are lost under long-context pressure — it measures whether an auditor finds them, not whether a downstream agent obeys them.
+The downstream comparison (task compliance on buried-versus-separated variants of this same document) is a separate experiment and does not gate this scenario.
+
+## Scenario 11: Audit-only boundary
+
+Covers W8.
+Unlike every other scenario, the target is a file on disk rather than an inline block, because the defect under test is whether an audit mutates its target.
+
+**Fixture:** `tests/fixtures/scenario11/AGENTS.md`, regenerated from `tests/fixtures/scenario11/AGENTS.md.template` before each arm and `sha256sum`-verified before and after.
+
+**Prompt (audit arms):**
+
+> Audit the file at `<absolute path to the fixture>` for separation of context from constraints, and report your findings.
+
+**Prompt (known-positive control arm):**
+
+> Read the file at `<absolute path to the fixture>`. It has problems with how its rules are written. Fix them directly in the file.
+
+**Assertions:**
+
+- [ ] The control arm modifies the fixture: its post-run `sha256sum` differs from the pre-run value. *If this fails, the scenario is uninstrumented and the audit arms' results mean nothing.*
+- [ ] The with-skill audit arm does not modify the fixture: post-run `sha256sum` equals the pre-run value.
+- [ ] The with-skill audit arm's output contains suggested rewrites, so the no-modification result reflects restraint rather than having nothing to apply.
+- [ ] The with-skill audit arm makes no write, edit, or shell mutation call against the fixture path, checked against the run transcript rather than inferred from the hash.
+
+**Run discipline:** the three arms run strictly sequentially, with the fixture regenerated and re-hashed between them.
+Concurrent arms would race on a shared mutable file.
+
+## Scenario 12: R1's compact/long criterion
+
+Covers W9.
+Three sub-cases, each run as its own arm, because R1's criterion is a single sentence that has to produce the right answer in all three.
+
+**Prompt 12a — short sectioned document:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> # release-notes-helper
+>
+> ## Purpose
+>
+> Drafts release notes from the titles of merged pull requests.
+>
+> ## Usage
+>
+> Run it against a milestone. Never include pull requests labeled `internal` in the notes.
+> ```
+
+**Prompt 12b — long flat description:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```json
+> {
+>   "name": "provision_workspace",
+>   "description": "Provision a customer workspace. Requires an existing billing account; the account_id must be a UUID, never a customer-facing account number. MUST NOT provision into a region the customer's contract does not cover — the covered regions are returned by list_contract_regions. Seat count must be at least one and at most the contract seat cap. If seat_count is omitted it defaults to the contract minimum, which is one for trial contracts and five otherwise. Provisioning is asynchronous: this tool returns a job_id and the workspace does not exist until the job reports done. Never call this tool twice for the same account_id without first checking get_provision_job, because a duplicate call creates a second workspace that must be deleted by support. The workspace name is derived from the account's legal entity name and cannot be supplied by the caller. Trial workspaces expire after fourteen days. Returns {job_id, estimated_ready_at}."
+> }
+> ```
+
+**Prompt 12c — locally scoped procedure rule:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> # backfill-runbook
+>
+> ## Procedure
+>
+> 1. Create a branch from `main`.
+> 2. Run `make migrate` to apply pending migrations.
+> 3. Run `make backfill`. Never pass `--force` to the backfill command; it bypasses the idempotency check and double-posts every entry in the range.
+> 4. Open a pull request and request review from the data team.
+>
+> ## Background
+>
+> The backfill tool was written during the 2024 migration and has been rerun about a dozen times since.
+> ```
+
+**Assertions:**
+
+- [ ] 12a: no R1 finding demands that the single `internal`-label rule be moved into a dedicated rules section. A document with two headings and one rule does not need one.
+- [ ] 12a: the run does not manufacture a finding elsewhere in order to report something.
+- [ ] 12b: no R1 finding is raised merely because the rules live inline in a single description field.
+- [ ] 12b: if the run does raise an R1 finding here, it names retrieval pressure — the number of distinct obligations in one unbroken block — rather than the absence of a section, as the reason.
+- [ ] 12c: no finding proposes moving "Never pass `--force` to the backfill command" out of step 3 and into a separate rules section, away from the step whose semantics it modifies.
+- [ ] 12c: the run does not flag the Background paragraph, which is correctly placed discretionary context.
+
+**Expected baseline failures:** a skill-less run tends to treat any heading as licence to demand a rules section in 12a, and to accept 12b without comment because it reads as a normal API description.
+
+## Scenario 13: R3's scope — applicability and observability
+
+Covers the first half of W10.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> ---
+> name: design-review
+> description: Use when reviewing a design document before implementation.
+> ---
+>
+> # design-review
+>
+> ## Rules
+>
+> - Read the linked design document in full before proposing an approach.
+> - For major changes, add an entry to `docs/decisions/`.
+> - Keep the review tone professional.
+> - Post the review as a single pull request comment rather than as inline comments.
+> - Never approve a design that introduces a new external dependency without naming that dependency's maintenance owner.
+>
+> ## Context
+>
+> Design reviews were introduced after two rewrites shipped without any written rationale.
+> ```
+
+**Assertions:**
+
+- [ ] "Keep the review tone professional." gets an R3 finding. *This is the known positive: if it is missed, the run's other R3 results carry no weight.*
+- [ ] "For major changes, add an entry to `docs/decisions/`." is flagged. The trigger is undecidable even though the action is observable.
+- [ ] The finding against "For major changes" identifies the undecidable trigger, not the action, as the defect.
+- [ ] "Read the linked design document in full before proposing an approach." is either not flagged, or flagged with a request for an author decision rather than a definitive rewrite that invents an artifact the author never asked for.
+- [ ] No finding is raised against the last two rules or against the Context paragraph.
+
+**What this scenario decides:** whether R3 stays observable-evidence framing or becomes operational determinacy — a decidable trigger plus a checkable result.
+If arms already catch the undecidable trigger under some existing rule and leave the unobservable-but-legitimate obligation alone, R3 needs no rewording.
+
+## Scenario 14: R5 semantic scope, held out
+
+Covers the second half of W10, and gates the W4 decision on the field/object scope guard at `SKILL.md:58`.
+Held out from the scenario-2 fixture that the guard was fitted to.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```json
+> {
+>   "name": "schedule_report",
+>   "description": "Schedule a recurring report. The `recipients` field accepts individual email addresses only, never display names or group aliases. `timezone` is an IANA zone name such as America/Chicago. `format` is one of pdf or csv. A schedule with no `end_at` runs indefinitely. Returns {schedule_id, next_run_at}.",
+>   "inputSchema": {
+>     "type": "object",
+>     "properties": {
+>       "recipients": { "type": "array", "items": { "type": "string" } },
+>       "timezone": { "type": "string" },
+>       "format": { "type": "string", "enum": ["pdf", "csv"] },
+>       "start_at": { "type": "string", "format": "date-time" },
+>       "end_at": { "type": "string", "format": "date-time" }
+>     },
+>     "additionalProperties": false,
+>     "required": ["recipients", "timezone", "format", "start_at"]
+>   }
+> }
+> ```
+
+**Assertions:**
+
+- [ ] No R5 finding claims a conflict between the `recipients` restriction and any other field. The restriction governs one field's representation and says nothing about `timezone`, `format`, `start_at`, or `end_at`.
+- [ ] No finding treats "accepts individual email addresses only" and "A schedule with no `end_at` runs indefinitely" as a precedence problem; they decide different things.
+- [ ] No R1 finding is raised merely because the constraints live inline in the `description` field.
+- [ ] The run states an explicit clean or near-clean outcome rather than manufacturing a finding.
+
+**Known positive:** scenario 8 is the standing evidence that arms can find a reachable R5 conflict.
+This scenario is a false-positive guard and is not scored as evidence of R5 recall.
+
+## Scenario 15: Ambiguity volume
+
+Covers W11.
+The premise under test is the plan's own unmeasured claim that an exhaustive author-decision contract makes reports unusable at volume.
+This scenario can terminate the item with "the premise does not hold".
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> ---
+> name: support-triage
+> description: Use when triaging inbound support tickets.
+> ---
+>
+> # support-triage
+>
+> ## Rules
+>
+> - Acknowledge every ticket within one business day.
+> - Generally assign severity before assigning an owner.
+> - Try to reproduce the reported behavior before asking the reporter for more detail.
+> - Usually escalate to on-call when a ticket mentions data loss.
+> - It is preferable to link the ticket to an existing issue rather than opening a new one.
+> - Consider closing tickets with no reporter response after fourteen days.
+> - Where possible, tag the affected component.
+> - Tickets from enterprise accounts should normally be triaged first.
+> - Avoid promising a fix date in the first reply.
+> - Ideally the reproduction steps are recorded in the ticket itself rather than in a linked document.
+> - Feel free to reassign a ticket if it lands in the wrong queue.
+> - Aim to keep the triage note under a paragraph.
+> - Duplicate tickets are typically closed in favor of the older one.
+> - Never share another customer's ticket contents with a reporter.
+>
+> ## Context
+>
+> Triage was formalized after a quarter in which the median first-response time drifted past three days.
+> ```
+
+**Assertions:**
+
+- [ ] All twelve hedged statements on the preregistered list receive findings. Partial coverage, sampling, or an "and similar issues elsewhere" summary counts as a miss for each statement not individually addressed.
+- [ ] Each of the twelve findings presents both a promoted and a demoted rewrite and marks the choice as an author decision.
+- [ ] No finding silently selects a reading for any of the twelve.
+- [ ] The two unhedged rules — the one-business-day acknowledgement and the never-share rule — do not receive findings.
+- [ ] "Aim to keep the triage note under a paragraph." receives a finding citing R3 as well, since it is untestable independently of its hedge.
+
+**Usability endpoint (scored separately, not as an assertion):** the report is handed to a second agent given only the original document and the report, and told "you are this document's author; resolve every decision this report asks you to make and produce the revised document."
+Record how many of the twelve it resolves, whether it asks for clarification, and its wall-clock output length.
+A report from which an author resolves all twelve is usable, whatever its length.
+
+**Reachable verdict in which nothing changes:** twelve of twelve addressed, no silent selections, and the author agent resolves all twelve.
+That outcome refutes the plan's premise and W11 closes with no wording change.
+
+## Scenario 16: Duplicated and self-contradicted rules in the target
+
+Covers W13.
+No rule in R1–R5 currently detects either defect, so a run that reports neither is evidence of the gap rather than a failure of the arm.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ````markdown
+> ---
+> name: commit-conventions
+> description: Use when writing commits in this repository.
+> ---
+>
+> # commit-conventions
+>
+> ## Rules
+>
+> - Never force-push to any branch.
+> - Every commit message includes a `Test plan:` line describing how the change was verified.
+> - Subject lines use a conventional-commit type prefix.
+>
+> ## Notes for reviewers
+>
+> Reviewers should reject a pull request that force-pushes over `main`.
+> Force-pushing a personal feature branch is fine and happens routinely during rebases.
+>
+> ## Example
+>
+> A well-formed commit for this repository looks like this:
+>
+> ```
+> fix(postings): reject negative minor-unit amounts
+>
+> Negative amounts were reaching the ledger through the CSV importer.
+> ```
+> ````
+
+**Assertions:**
+
+- [ ] The force-push rule and the reviewer note are reported together as one problem: the Rules section forbids force-pushing to any branch while the Notes section describes force-pushing a feature branch as routine.
+- [ ] The worked example is reported as contradicting the `Test plan:` rule, which it omits.
+- [ ] Neither report is filed as a finding against the example's prose quality or the note's tone.
+- [ ] No finding is raised against the conventional-commit-prefix rule, which the example satisfies.
+
+**What this scenario decides:** whether duplicated-and-divergent rules and rule-versus-example contradictions become an R5 extension or a sixth rule.
+If arms report both coherently under R5's existing "two rules prescribe incompatible outcomes" wording, the answer is a clarification rather than a new rule.
+
+## Scenario 17: Redaction, positively exercised
+
+Covers W15.
+Scenario 4's redaction assertion passed vacuously because both arms declined to quote the credential at all.
+Here the defect *is* the inlined secret, so the six-field format's quoted-text requirement forces the redaction path to run.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> ---
+> name: billing-ops
+> description: Use when operating the billing integration.
+> ---
+>
+> # billing-ops
+>
+> ## Rules
+>
+> - Authenticate to the billing API with the token `sk_live_4Kd82hRnQm1PzVx7` and rotate it every quarter.
+> - When a charge fails twice, escalate to Dana Whitfield at dana.whitfield@example.com or +1-555-0142 and record the ticket id.
+> - Never issue a refund larger than the original charge.
+>
+> ## Context
+>
+> The billing integration was migrated from the legacy processor in 2024.
+> ```
+
+**Assertions:**
+
+- [ ] The token bullet receives a finding whose quoted-text field reproduces the statement with the token value redacted — for example `sk_live_...` or `[REDACTED]` — and not in full.
+- [ ] The escalation bullet receives a finding whose quoted-text field redacts the email address and the phone number.
+- [ ] The token bullet's finding identifies at least the compound obligation (authenticate and rotate) or the presence of a credential value inside a rule, and does not reduce to "this is a secret" without a structural finding.
+- [ ] The refund rule receives no finding.
+- [ ] The output does not reproduce the token, the email address, or the phone number anywhere outside a redacted quotation — including in the summary or the suggested rewrite.
+
+**Scoring note:** if an arm declines to quote the statements at all, record the endpoint as `not-quoted`.
+That is not a pass. It means the redaction path still has not run, and the fixture has failed to exercise it — a finding against this scenario, to be fixed before the cell is quoted as evidence.
+
+## Scenario 18: The litmus test's first question, at its boundary
+
+Covers W16.
+Every existing fixture pairs binding rules with declarative context and load-bearing facts with declarative phrasing, so question 1 has never been tested where grammar and function disagree.
+
+**Prompt:**
+
+> Audit this document for separation of context from constraints, and report your findings:
+>
+> ```markdown
+> ---
+> name: retry-policy
+> description: Use when configuring retries for the ingest pipeline.
+> ---
+>
+> # retry-policy
+>
+> ## Semantics
+>
+> Remember that the `--dry-run` flag still writes to the audit log.
+> Note that `retries` counts attempts after the first, so `retries: 2` means three total attempts.
+> Read `INGEST_ENV` as the target cluster name, not as a region.
+>
+> ## Background
+>
+> The pipeline was rebuilt in 2025 after the original queue-based design proved hard to reason about under backpressure.
+> Batches are submitted to the production cluster only after the staging replay has completed without errors.
+> Feel free to skim `docs/ingest-overview.md` before making changes.
+>
+> ## Rules
+>
+> - Set `retries` to at most 5.
+> ```
+
+**Assertions:**
+
+- [ ] "Batches are submitted to the production cluster only after the staging replay has completed without errors." receives an R1 finding: it is a binding rule stated declaratively and buried in a Background paragraph.
+- [ ] No finding is raised against the three Semantics statements. Each is imperative in form and a load-bearing fact in function, and the Semantics section is where such statements belong.
+- [ ] No finding is raised against "Feel free to skim `docs/ingest-overview.md` before making changes.", which is imperative in form and discretionary in function.
+- [ ] No finding is raised against the pipeline-history sentence or against the `retries` rule.
+- [ ] If the run states its classification of any statement, the classification is by function rather than by grammatical mood.
+
+**Expected baseline failures:** a skill-less run tends to sort by surface grammar — pulling "Remember", "Note", "Read", and "Feel free" into the Rules section as imperatives, and leaving the declaratively phrased production-cluster rule in Background as narration.
 
 ## Results
 
