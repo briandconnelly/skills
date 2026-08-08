@@ -37,4 +37,6 @@ Either means "reaches the changed text" is not tracking what actually changes be
 
 ## Where the rule lives
 
-`tests/PROTOCOL.md`, step ordering; the Iron Law itself is in `tests/scenarios.md`.
+`tests/PROTOCOL.md`, step ordering; the Iron Law itself is stated once at `tests/PROTOCOL.md:6`.
+
+*(Corrected 2026-08-08: this line previously pointed at `tests/scenarios.md`, which has never carried a statement of the law — a calibrated grep finds none, and none appears in its history. `tests/PROTOCOL.md:6` was and is the only operative statement, so the pointer named a home that did not exist. PROTOCOL.md is the right home under decisions/004: it is the file that owns how a wording change gets measured. The law is stated there and nowhere else; `scenarios.md:4` points at PROTOCOL.md rather than restating it.)*

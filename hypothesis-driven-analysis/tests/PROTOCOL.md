@@ -3,7 +3,9 @@
 How a wording change to this skill gets measured, and in what order.
 `scenarios.md` says what the scenarios are; this says how to run a change through them without paying for the same measurement twice.
 
-The Iron Law is unchanged: **measure before wording**, and a measured result belongs to the exact wording it was measured against.
+**The Iron Law, stated here and nowhere else:** *measure before wording*, and a measured result belongs to the exact wording it was measured against.
+This file is the law's single home — `decisions/001` scopes what a changed file owes in rerun arms, and `scenarios.md` points here rather than restating it.
+(Before 2026-08-08 this line read "The Iron Law is unchanged: …", which presented it as a restatement of a canonical text held elsewhere; `decisions/001` pointed at `scenarios.md` for that text, and no such statement was ever there.)
 Everything here is about ordering the work so that law costs less to obey.
 
 ## Why the order matters
