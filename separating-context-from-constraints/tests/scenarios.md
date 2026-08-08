@@ -10,7 +10,7 @@ Scenarios 2 and 3 informed the initial R5 and rewrite-contract iterations, so th
 
 ## Measurement protocol
 
-This skill adopts [`hypothesis-driven-analysis/tests/PROTOCOL.md`](../../hypothesis-driven-analysis/tests/PROTOCOL.md) and [`hypothesis-driven-analysis/decisions/001-rerun-obligation.md`](../../hypothesis-driven-analysis/decisions/001-rerun-obligation.md) in full: the step ordering, the Iron Law, and the rule scoping which cells owe rerun arms.
+This skill adopts [`hypothesis-driven-analysis/tests/PROTOCOL.md`](https://github.com/briandconnelly/data-reasoning/blob/main/skills/hypothesis-driven-analysis/tests/PROTOCOL.md) and [`hypothesis-driven-analysis/decisions/001-rerun-obligation.md`](https://github.com/briandconnelly/data-reasoning/blob/main/skills/hypothesis-driven-analysis/decisions/001-rerun-obligation.md) in full: the step ordering, the Iron Law, and the rule scoping which cells owe rerun arms.
 Those documents are the authority for the measurement protocol.
 This file does not restate their rules, so a protocol rule stated only here is not one of theirs and carries no protocol authority.
 Requirements this file states in its own right — the run-provenance block below, and the scenarios and assertions themselves — are local to this skill and bind on their own terms.
