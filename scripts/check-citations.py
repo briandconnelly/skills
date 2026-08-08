@@ -49,8 +49,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # agent-friendly-mcp/tests/scenarios.md carries 7 line-number citations into
 # live reference files, and those need converting before the rule can bind
 # there without failing on work this check was not part of.
+#
+# `decisions/*.md` is in scope because those records quote SKILL.md verbatim to
+# say what was decided about it -- decisions/005 quotes it three times -- and a
+# decision record whose quote no longer matches the body misreports the state of
+# the rule it settles. That is exactly the drift channel decisions/004 polices,
+# and it was outside every instrument until 2026-08-08.
 DEFAULT_SCOPE = ("hypothesis-driven-analysis",)
-SCOPE_PATTERNS = ("SKILL.md", "references/*.md", "tests/scenarios.md")
+SCOPE_PATTERNS = ("SKILL.md", "references/*.md", "tests/scenarios.md", "decisions/*.md")
 
 # Citations into these directories are frozen and may carry line numbers.
 FROZEN_DIRS = ("tests/runs",)
@@ -247,6 +253,25 @@ def check(path: Path) -> list[str]:
 def main(argv: list[str]) -> int:
     paths = [Path(a).resolve() for a in argv] if argv else scope_files()
     targets = [p for p in paths if p.is_file() and in_scope(p)]
+
+    # A file named explicitly on the command line but filtered out by in_scope
+    # used to vanish without a word: exit 0, no output, byte-identical to a
+    # clean pass on a file that was actually read. Someone checking a file this
+    # tool does not cover would have been told it passed. Same principle as
+    # shallow() above -- a check that silently stops checking is worse than no
+    # check -- so say what was skipped and why. Exit status is unchanged: being
+    # out of scope is not a violation, it is a thing the caller must know.
+    if argv:
+        for p in paths:
+            if not p.is_file():
+                print(f"skipped: {p}: not a file", file=sys.stderr)
+            elif not in_scope(p):
+                print(
+                    f"skipped: {p}: outside this check's scope "
+                    f"({'/'.join(DEFAULT_SCOPE)}: {', '.join(SCOPE_PATTERNS)}) "
+                    f"-- NOT checked, and this is not a pass",
+                    file=sys.stderr,
+                )
 
     violations = [v for target in targets for v in check(target)]
     for violation in violations:

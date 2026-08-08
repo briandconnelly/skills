@@ -7,6 +7,19 @@
 line-length = 100
 target-version = "py311"
 
+# Markdown is out of scope for both lint and format.
+#
+# Ruff 0.16 formats Python code blocks inside Markdown; the version prek pins
+# (0.15.21) does not. Without this, a contributor running a bare `ruff format .`
+# with a newer ruff silently rewrites Python blocks in archived run records
+# under hypothesis-driven-analysis/tests/runs/ and in scenario fixtures like
+# tests/fixtures/s18-analytics/SKILL.md. Both are measured stimulus and
+# historical evidence: an archived run is what an agent actually wrote, and a
+# fixture's wording is the thing an arm was scored against. Reformatting either
+# invalidates the measurement it carries, and does it invisibly — the diff looks
+# like harmless whitespace. Observed 2026-08-08 on both files.
+extend-exclude = ["*.md"]
+
 [lint]
 select = [
   "E",   # pycodestyle errors (incl. E501 line length)
