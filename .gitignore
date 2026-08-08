@@ -14,3 +14,6 @@ docs/superpowers/
 # Generated Python/test caches
 __pycache__/
 .pytest_cache/
+
+# Subagent-driven-development workspace (ledgers, briefs, review packages)
+.superpowers/
