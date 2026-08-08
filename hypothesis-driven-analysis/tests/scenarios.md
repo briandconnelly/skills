@@ -1210,6 +1210,7 @@ The working rule stands: extract the transcript, count what can be counted, quot
 **S4 and S5 have been re-run with corrected prompts, and both corrections changed the result.**
 S4's telegraph concealed a broken gate (above).
 S5's schema naming had preregistered the very hypothesis the scenario meant to catch post-peek; with it removed, the `retrospective` rule fired for the first time and passed, and the with-skill run refuted a causal claim the baseline asserted.
+*(Corrected 2026-08-08: the first half of that sentence no longer holds. The adversarial review recorded in the S5 section — same day, after the corrected run — found the scenario invalid as written: SKILL.md permits inspecting the source inventory before preregistering, so a compliant agent lists the directory, sees `checkout_errors.csv`, and legitimately preregisters a payment hypothesis. The corrected run passed assertion 1 only by crossing into relationships and blanket-labeling everything `retrospective`, which is why the S5 section records the run as invalid and the `retrospective` promotion bar as **unverified — neither confirmed nor refuted**. Read the S5 section, not this line, for that rule's status. What survives here is the second half: the with-skill run did refute a causal claim the baseline asserted.)*
 
 **Two scenarios are too easy.** S6 and S8 baselines score full marks — S8 in a single tool call. Both need tightening per the methodology at the top of this file.
 *(Addressed 2026-07-18, issue #67: S6 gained a distributional trap and a median-appropriate sensitivity ground truth; S8 gained a corroborating decoy that makes adjudicating the injected CDN claim cross-file work. The Seventh wave above re-runs both arms against the tightened fixtures.)*
@@ -1376,3 +1377,35 @@ Honest limits, and they matter.
 - **One model, one fixture family, one world.** Every packet is the same causal H2 over the same two days.
 - **d5 and d7 are the only coverage of a cleared-but-unrepeatable return anywhere in the corpus,** and they were built for this wave. They are what a rule keyed on the limitation's wording rather than on the conflict would have broken, and they are why that draft was killed before any arm ran.
 - **A return whose execution records are absent rather than conflicting is untested** — the free check cannot run on one, so neither branch covers it. Named as a gap in decision 005, not measured here.
+
+### Owed measurements as of 2026-08-08 (external audit, instrument-only pass)
+
+An external audit reviewed all agent-facing prose, the decision records, this catalog, and the four Python checkers.
+Its instrument findings were reproduced by execution here and fixed in the same pass; its two behavioural findings are debts, recorded here rather than paid, because paying them means running arms.
+
+**1. The current trigger surface has no valid runs behind it — highest-priority debt.**
+The 2026-07-20 ungated description edit superseded S2, S3, S17, and S18, and this file already says all four "must be re-run" (above).
+None has been.
+The latest S2/S3/S17 runs are 2026-07-18 and scored the previous description; the two S18 runs are 2026-07-20 but scored the pre-edit text by the same reasoning.
+So the description that gates every activation — including the guardrail that a bounded "break it down by Y" with nothing to explain still routes `direct`, now that "break it down" is a quoted trigger — currently rests on zero arms.
+It also sits at 1020 of 1024 characters, so any future edit must displace text.
+Batch any description change with these four reruns rather than paying the measurement twice; a further ungated edit compounds an already unvalidated surface and makes attribution of later results harder.
+
+**2. The retrospective promotion bar remains unverified,** and this file contradicted itself about it until 2026-08-08.
+The S5 section records the corrected run as invalid and the rule as neither confirmed nor refuted; the Findings section said it "fired for the first time and passed".
+The Findings line is now corrected in place and points at the S5 section, which is the authority.
+The rule itself is still unverified: a valid S5 needs a signal unreachable from inventory and schema, plus a held-out slice to promote against.
+
+**3. Two prose rules stay measured-unreliable and are not touched here.**
+The coverage matrix rule is 3 caught / 4 runs, and its catches came by a route the rule does not prescribe ("Do not describe this rule as fixed", above).
+The worst-case adequacy bound shipped once with a true false-refutation rate of 39–58%, and `references/ledger-template.md` tells the reader the checker treats the `±` uncertainty as optional, which invites minimal compliance.
+Both are agent-facing wording and owe arms; neither was changed.
+
+**4. Structural accrual is acknowledged and unresolved.**
+Single authority (decisions/004) plus the measured S19 finding that reference files go unread force every rule into SKILL.md's body, and the Iron Law makes deletion owe arms — so the body only accrues, at a measured token premium of up to 138%.
+Roughly thirty dense lines on faulted-worker-return disposition, a state about two measured runs have ever reached, are read on every activation.
+The audit's proposed relief — pointing live agents at `tests/score_ledger.py` — was examined and rejected on the scorer's own stated scope; see `decisions/006`.
+Compressing the worker-return rules remains possible, but only inside SKILL.md and only against the specific S16/S20/S21 cells each changed sentence reaches.
+
+**What was fixed in the same pass, none of it agent-facing, none owing arms:** nothing ran the instruments' own unit suite (now a prek hook, with `tests/conftest.py` holding out the deliberately-broken S3 fixture); the Problem section's precommitted stop condition and effort budget were outside every instrument and could be silently rewritten between plan and final; the necessary-prediction column could be deleted from both ledgers and pass; `status_of` read "NOT REFUTED" as `REFUTED`; C3a missed the bare-comparative form of the very claim it polices; a descriptive row could omit its estimand unless it ended up `REFUTED`; and `scripts/check-citations.py` silently dropped explicitly-passed out-of-scope files while `decisions/` — where 005 quotes SKILL.md verbatim — sat outside its scope entirely.
+Each was reproduced by execution before being fixed, each fix is pinned by a test that fails without it, and `tests/compare_prereg.py` has a test file for the first time.

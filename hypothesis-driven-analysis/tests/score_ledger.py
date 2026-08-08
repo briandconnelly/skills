@@ -139,6 +139,11 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 EMPHASIS = re.compile(r"[*_`]")
 SPACES = re.compile(r"\s+")
 STATUS_TOKEN = re.compile(r"\b(REFUTED|UNRESOLVED)\b")
+# A negator sitting immediately before the first status token, allowing only
+# markdown emphasis, quotes, and whitespace between. Anchored to the end of the
+# preceding text so it cannot reach back across a clause: in "NOT CONFIRMED --
+# REFUTED" the negator belongs to CONFIRMED, and the cell still reads REFUTED.
+STATUS_NEGATOR = re.compile(r"\b(?:NOT|NEVER|NEITHER|NO LONGER|ISN'T|WASN'T)\b[\s*_`\"']*$")
 # The recognized Tests-table outcome tokens. First-token classification (see
 # outcome_of) mirrors STATUS_TOKEN/status_of: a bare substring search for
 # CONTRADICTED would also fire inside "NON_DISCRIMINATING; not CONTRADICTED" or
@@ -223,6 +228,28 @@ _C3A_TARGETED = re.compile(r"\b(?:bias|skew|push|shift|mask)\w*\b", re.IGNORECAS
 _C3A_OUTCOME_TARGET = re.compile(
     r"\b(?:estimate|result|comparison|effect|performance|median|mean|"
     r"figure|picture|time[- ]to[- ]close|responder[- ]minutes|cost)s?\b",
+    re.IGNORECASE,
+)
+# The bare comparative form of a direction claim: a true/underlying quantity set
+# against a reported/observed one by a comparative or positional term ("the true
+# median is higher than the reported figure"). Measured 2026-08-08: this is the
+# most natural phrasing of C3a's own target, and every variant of it passed while
+# the synonym "understates" failed -- `higher`/`lower` appeared in this module
+# only inside _C3A_OPPOSING, which suppresses, never triggers.
+#
+# Deliberately compound, not a bare comparative list. "p95 is higher on mobile"
+# is an ordinary finding, not a claim about which way an estimate is wrong; only
+# the true-vs-reported contrast makes it directional. All three parts must land
+# in the same unit, so the ratchet widens to the measured evasion without
+# swallowing routine comparative prose.
+_C3A_CMP_TRUE = re.compile(r"\b(?:true|actual|real|underlying|truth)\b", re.IGNORECASE)
+_C3A_CMP_REPORTED = re.compile(
+    r"\b(?:reported|observed|measured|recorded|computed|shown|stated|apparent)\b",
+    re.IGNORECASE,
+)
+_C3A_CMP_TERM = re.compile(
+    r"\b(?:higher|lower|longer|shorter|greater|larger|smaller|bigger|worse|better|"
+    r"above|below|exceeds?|understates|overstates|sits?\s+(?:above|below))\b",
     re.IGNORECASE,
 )
 _C3A_ANCHOR = [
@@ -707,7 +734,13 @@ def check_c3b(final: str, source_id: str) -> list[str]:
 def _c3a_has_direction(unit: str) -> bool:
     if any(p.search(unit) for p in _C3A_DIRECTION):
         return True
-    return bool(_C3A_TARGETED.search(unit) and _C3A_OUTCOME_TARGET.search(unit))
+    if _C3A_TARGETED.search(unit) and _C3A_OUTCOME_TARGET.search(unit):
+        return True
+    # The bare-comparative form: true/underlying quantity vs reported/observed
+    # one, joined by a comparative term. All three required in the same unit.
+    return bool(
+        _C3A_CMP_TRUE.search(unit) and _C3A_CMP_REPORTED.search(unit) and _C3A_CMP_TERM.search(unit)
+    )
 
 
 def _c3a_has_anchor(unit: str) -> bool:
@@ -1274,9 +1307,23 @@ def status_of(cell: str) -> str | None:
     Matches a whole word, not a substring, so prose like "UNRESOLVED, was
     REFUTED before amendment" reads as UNRESOLVED (its first token) instead
     of tripping on REFUTED appearing later in the sentence.
+
+    A first token carrying a negator immediately before it ("NOT REFUTED") is
+    not that status: it is the *denial* of it, and reading it as REFUTED routes
+    a non-refutation into C1/C2 as though the hypothesis had been refuted --
+    the false-positive dual of the #85 F1 defect outcome_of guards against.
+    Such a cell returns None, which _check_row reports as an unrecognized
+    status cell. That is the fail-closed reading and the one this scorer's
+    strictness elsewhere calls for: `NOT REFUTED` is not in the closed status
+    vocabulary, so it is a cell to fix, not a cell to interpret.
     """
-    m = STATUS_TOKEN.search(cell.upper())
-    return m.group(1) if m else None
+    upper = cell.upper()
+    m = STATUS_TOKEN.search(upper)
+    if m is None:
+        return None
+    if STATUS_NEGATOR.search(upper[: m.start()]):
+        return None
+    return m.group(1)
 
 
 def outcome_of(cell: str) -> str | None:

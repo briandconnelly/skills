@@ -2019,3 +2019,83 @@ def test_adequacy_of_allows_a_parenthetical_inside_the_bound():
     # closed with a misleading "records no adequacy bound" message)
     atom = sl.adequacy_of("adequacy: ~34% under resampling (S1 §3) (variants: any decay)")
     assert atom == ("~34% under resampling (S1 §3)", "any decay")
+
+
+# --------------------------------------------------------------------------- #
+# status_of — a negated status token is not that status (2026-08-08 audit)
+# --------------------------------------------------------------------------- #
+# Measured: "NOT REFUTED" in a summary status cell produced the identical C1
+# failure as a bare "REFUTED" — a non-refutation policed as a refutation. That
+# is the false-positive dual of the #85 F1 defect outcome_of already guards.
+# The fix returns None, which _check_row reports as an unrecognized status cell:
+# `NOT REFUTED` is not in the closed status vocabulary, so it is a cell to fix,
+# not a cell to interpret.
+@pytest.mark.parametrize(
+    "cell",
+    [
+        "NOT REFUTED",
+        "not refuted",
+        "**NOT REFUTED**",
+        "never refuted",
+        "no longer refuted",
+        "NOT UNRESOLVED",
+    ],
+)
+def test_status_of_rejects_a_negated_status_token(cell):
+    assert sl.status_of(cell) is None
+
+
+def test_negation_guard_does_not_reach_across_a_clause():
+    # the negator governs CONFIRMED, not the REFUTED that follows it
+    assert sl.status_of("NOT CONFIRMED -- REFUTED") == "REFUTED"
+    # and the established first-token rule is untouched
+    assert sl.status_of("UNRESOLVED, was REFUTED before amendment") == "UNRESOLVED"
+
+
+def test_not_refuted_row_is_a_parse_failure_not_a_c1_violation():
+    f = fails(summary("| H1 | causal | NOT REFUTED | timing evidence |"))
+    assert any("unrecognized status cell" in m for m in f)
+    assert not any("C1:" in m for m in f), "a non-refutation must not be scored as a refutation"
+
+
+# --------------------------------------------------------------------------- #
+# C3a — the bare-comparative direction claim (2026-08-08 audit)
+# --------------------------------------------------------------------------- #
+# Measured: the synonym "understates" fired, but the most natural phrasing of
+# the same claim — a true quantity set against a reported one by a comparative —
+# passed. `higher`/`lower` existed in this module only inside _C3A_OPPOSING,
+# which suppresses and never triggers. The vocabulary is a closed ratchet
+# extended when a new evasion is measured; these are the measured evasions.
+@pytest.mark.parametrize(
+    "unit",
+    [
+        "The 11 incidents with no recorded closure are excluded from the denominator, "
+        "so the true median is higher than the reported figure.",
+        "The 11 incidents with no recorded closure are excluded, so the true median "
+        "is longer than the reported figure.",
+        "The 11 incidents with no recorded closure are excluded, so the reported "
+        "median is lower than the truth.",
+        "The 11 incidents with no recorded closure are excluded, so the reported "
+        "median sits below the true value.",
+    ],
+)
+def test_c3a_fires_on_the_bare_comparative_form(unit):
+    f = sl.check_c3a(concl("- " + unit))
+    assert any("C3a" in m for m in f), f"expected C3a to fire on: {unit!r}"
+
+
+@pytest.mark.parametrize(
+    "unit",
+    [
+        # an ordinary comparative finding: no true-vs-reported contrast at all
+        "The missing rows are sev1 and p95 latency is higher on mobile than desktop.",
+        "The missing incidents are excluded and the observed rate is lower in week 2.",
+        # the contrast is present but the direction is declined
+        "The excluded incidents mean the true median could be higher or lower than reported.",
+        "The incidents have no recorded closure, so we cannot conclude the true median "
+        "is higher than the reported figure.",
+        "Assuming the missing closures resolve slowly, the true median is higher than reported.",
+    ],
+)
+def test_c3a_bare_comparative_does_not_fire_on_correct_work(unit):
+    assert sl.check_c3a(concl("- " + unit)) == []
