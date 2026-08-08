@@ -6,6 +6,9 @@ Wave 3 is step 3 of the remediation sequence: write the held-out scenarios that 
 It authors and preregisters fixtures. It runs no arms.
 Steps 4 (cross-model design review), 5 (canary), 6 (batch the wording changes), and 7 (run the full batch) follow.
 
+Step 4 ran on 2026-08-08 and its result is [`design-review.md`](design-review.md), which returned eight blocking defects.
+This file is not yet amended for them, so it is preregistered but not yet runnable; no arm may be dispatched until those eight are resolved here.
+
 This file is the authority on what counts as a planted defect and what counts as a false positive for scenarios 9R and 10–18.
 Where it and the assertion lists in [`../scenarios.md`](../scenarios.md) disagree, this file wins, because it was written before any output existed.
 
