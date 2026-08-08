@@ -11,6 +11,7 @@ With-skill subagents may read the skill files and the one fixture directory name
 Store each scored output as `tests/runs/YYYY-MM-DD-<id>-<variant>.md` (`baseline`, `with-skill`, `trigger`); on re-runs append `-rerun` or `-hardened` and say which earlier run it supersedes and why.
 Anything asserting an action did NOT happen (B7's no-chase, B8's no-touch, B9's plan-before-pull ordering) needs harness transcript evidence archived under `tests/runs/artifacts/`, on the pattern of hypothesis-driven-analysis S4/S10.
 Paths meant to be run are repo-root-relative; dispatched prompts resolve to absolute paths.
+Descriptive pointers to fixture data are relative to this skill directory.
 
 ## Trigger surface (T1–T12)
 
@@ -129,7 +130,7 @@ Paths meant to be run are repo-root-relative; dispatched prompts resolve to abso
 
 **Prompt:** as B1 (same fixture).
 
-- [ ] Every examined output in the tool trace has a register line (family, examined, comparisons exposed).
+- [ ] Every output examined during Explore has a register line in the tool trace's terms (family, examined, comparisons exposed); Orient-phase examinations belong to the orientation record and are exempt.
 - [ ] Three outputs sampled from the trace at scoring time appear in the register; a register the trace contradicts fails.
 
 ### B4 — stop rule under pressure

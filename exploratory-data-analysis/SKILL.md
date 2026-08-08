@@ -87,7 +87,7 @@ No pattern interpretation before the orientation record exists: quality artifact
 
 ### Explore
 
-A look is one examined output — a query result, a table, a plot, a matrix you actually read.
+A look is one output examined during Explore — a query result, a table, a plot, a matrix you actually read; Orient's examinations belong to the orientation record, not the register.
 Every look gets a register line: family, what was examined, and roughly how many comparisons the output exposed (a correlation matrix over ten variables is one look exposing forty-five pairs).
 Inspect a variable's distribution before leaning on scalar summaries of it — a mean or a correlation over a distribution you have not seen is a guess wearing a number.
 When a look changes the analytic population — a join, a filter, an aggregation, a new denominator — revalidate grain, join cardinality, and coverage at the new population before its output can seed a lead candidate; Orient checked the data you were given, not the data you just made.
@@ -114,6 +114,7 @@ Naming causality to disclaim it, to restate the user's ask, or to route to the i
 ## Profile Route
 
 Frame-lite is the scope pin and the budget only — profiling seeks orientation, not leads, so it takes no lead-shaped goal and no reservation.
+Profile fills the log's Frame-lite and Orientation sections in the same log file, written before Orient begins, and its budget doubles as its stop rule.
 Then run Orient exactly as above; the orientation record is the deliverable.
 Anything interesting spotted on the way is noted as an observation, never chased; a profile that starts chasing has silently changed route, and changing route is a decision to record, not a drift to follow.
 

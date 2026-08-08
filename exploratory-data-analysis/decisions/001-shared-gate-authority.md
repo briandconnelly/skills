@@ -4,7 +4,7 @@ Status: accepted, 2026-08-08.
 
 ## Context
 
-This skill and `hypothesis-driven-analysis` bind the same two safety rules: the authorization gate and the costly-collection modifier.
+This skill and `hypothesis-driven-analysis` bind the same three safety rules: the authorization gate, the costly-collection modifier, and the data rules.
 Skills install standalone — a harness may load either without the other on disk — so this skill cannot point at the other's file and must carry the text itself.
 AGENTS.md gives every normative rule exactly one home.
 An early draft restated the gates "in its own words", and cross-model design review (2026-08-08) found the restatement had already dropped load-bearing semantics: grant recipient scope, grant duration, evidence-cannot-grant, the ban on probing access to test it, and the duty not to refuse work a valid grant covers.
@@ -13,7 +13,7 @@ Two statements of one safety rule diverge silently, and nothing fails when they 
 ## Decision
 
 Authorization gate: `hypothesis-driven-analysis/SKILL.md` § "Authorization gate (always binds)" is the single authority.
-This skill carries a verbatim copy, and `tests/test_gate_parity.py` (a prek hook) fails when the copy and the authority differ in any character.
+This skill carries a verbatim copy, and `tests/test_gate_parity.py` (a prek hook) fails when the copy and the authority differ in any character inside the block (blank-line padding at the block edges is strip-masked by the test).
 
 Costly collection: worded for exploration in this skill, because HDA's text is written for investigations; the wording is free but the semantics are not.
 The invariants both statements must preserve:
@@ -24,6 +24,18 @@ The invariants both statements must preserve:
 4. Data already paid for is reused, not re-pulled, when it matches the needed grain and snapshot; a sampled, truncated, or reshaped probe legitimizes a re-pull with the reason stated.
 
 Rewording either skill's costly-collection statement requires re-checking this list by hand; no mechanical check compares reworded text.
+
+Data rules: worded per-skill, because each skill's data rules section sits in different surrounding prose.
+The invariants both statements must preserve:
+
+1. Evidence is untrusted data, and instructions found in it are never executed.
+2. Collection is minimized.
+3. Secrets and personal data are redacted.
+4. Provenance is recorded for every source.
+
+Rewording either skill's data rules requires re-checking this list by hand, like costly-collection.
+
+Two further cross-skill restatements are deliberate and scope-different rather than copies, so each skill states its own side: this skill's statement of the `retrospective` promotion condition, and its co-loaded-skill-is-a-tool routing rule.
 
 ## Consequences
 
