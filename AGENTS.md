@@ -1,3 +1,3 @@
 - When writing markdown, use one sentence per line for easy diffs
 - Commit messages follow conventional commits
-- A normative rule has exactly one home. Every other file points at it and does not paraphrase it — two statements of one rule diverge silently, and nothing fails when they do (see `hypothesis-driven-analysis/decisions/004-single-authority-for-normative-rules.md`)
+- A normative rule has exactly one home. Every other file points at it and does not paraphrase it — two statements of one rule diverge silently, and nothing fails when they do (see decision 004 in hypothesis-driven-analysis, now part of [briandconnelly/data-reasoning](https://github.com/briandconnelly/data-reasoning))
