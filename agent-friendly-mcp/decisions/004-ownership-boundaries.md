@@ -16,6 +16,7 @@ Keep current homes; narrow the claims to match them.
 - `native-wire-shapes.md` owns exact wire shapes and may restate protocol obligations, per its own line-5 carve-out.
 - `decisions/` records are dated historical evidence, never current authority.
 - Rule text and wire reference may restate the mechanics they govern; summaries (Checklist Map, workflow steps) cite rule ids wherever they compress a rule.
+- The two native-field enumerations in `references/examples.md` (ex§5 Prompt, ex§8 Tool) are deliberate synchronized copies of the SKILL.md inventory, pinned by `check_fact_sync` probes rather than replaced with pointers.
 - `tests/check_fact_sync.py` trips on the two demonstrated drift modes (cache-hint carriers, notification routing, native-field inventories).
 
 ## Rejected

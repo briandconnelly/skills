@@ -12,6 +12,11 @@ Semantics: within the probe's scope, at least one line must match `anchor`
 (deletion protection), and every anchor-matching line must also match
 `requires` (rewording protection).
 
+Limitation: probes assert token co-occurrence, not meaning — a rewrite that
+keeps every token on the line but inverts the statement passes this gate.
+That class of change is a deliberate edit for human/model review to catch;
+this instrument exists to catch silent omission.
+
 Self-test: before scanning, every probe must flag its recorded `bad_sample`
 (the pre-fix text) — a probe that can no longer detect its own known-bad
 line fails the build itself.
