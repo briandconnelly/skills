@@ -63,7 +63,7 @@ Keep them — but never let them masquerade as protocol.
 - Defining or hardening tool, resource, or prompt schemas for an existing server.
 - Auditing an existing MCP server for agent-friendliness.
 - Diagnosing concrete agent failures: wrong-tool selection from many candidates, repeated invalid tool calls, token waste from upfront definition loading, endpoint-mirroring tools that force long chains, broken cross-server upgrades.
-- Designing long-running work: progress notifications, cancellation, tasks via the negotiated extension, and long-running operation patterns (see [contract-checklist.md](references/contract-checklist.md) §7 and [examples.md](references/examples.md) §11).
+- Designing long-running work: progress notifications, cancellation, tasks via the negotiated extension, and long-running operation patterns (see [contract-checklist.md](references/contract-checklist.md) §7 and [examples.md](references/examples.md) ex§11).
 
 ## When Not To Use
 
@@ -76,7 +76,7 @@ Keep them — but never let them masquerade as protocol.
 
 ## Vocabulary
 
-Shared terms — discovery surface, repair signal, state handle, capability fingerprint, negotiated capability, task-capable tool, and the rest — are defined in [vocabulary.md](references/vocabulary.md); consult it when a term in the checklist or workflows is unfamiliar.
+Shared terms — discovery surface, repair signal, state handle, capability fingerprint, negotiated capability, task-returning tool, and the rest — are defined in [vocabulary.md](references/vocabulary.md); consult it when a term in the checklist or workflows is unfamiliar.
 
 ## Checklist Map
 
