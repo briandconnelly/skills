@@ -1,7 +1,7 @@
 # 004 — Ownership boundaries after the 2026-08-15 three-model review
 
 Decided 2026-08-15.
-Triggered by review finding F4 (`agent-friendly-mcp-skill-review.md`, repo root): three absolute non-restatement claims did not match the corpus, and two live drift instances (F1/F2 in SKILL.md's Spec Baseline, F3 in examples.md) showed the risk is real.
+Triggered by finding F4 of the 2026-08-15 three-model skill review (Claude, Codex, and Kimi; conducted in-session and not archived in-repo): three absolute non-restatement claims did not match the corpus, and two live drift instances (F1/F2 in SKILL.md's Spec Baseline, F3 in examples.md) showed the risk is real.
 
 ## Question
 

@@ -22,14 +22,16 @@ def test_each_bad_sample_fails_its_probe(probe):
 @pytest.mark.parametrize("probe", cfs.PROBES, ids=lambda p: p.name)
 def test_anchor_disappearance_fails(probe, tmp_path):
     # Deleting every anchor-matching line is a failure, not a silent pass.
-    src = (SKILL_ROOT / probe.path).read_text().splitlines()
+    src = (SKILL_ROOT / probe.path).read_text(encoding="utf-8").splitlines()
     stripped = [ln for ln in src if not probe.anchor.search(ln)]
     root = tmp_path / "skillcopy"
     (root / Path(probe.path)).parent.mkdir(parents=True, exist_ok=True)
-    (root / probe.path).write_text("\n".join(stripped) + "\n")
+    (root / probe.path).write_text("\n".join(stripped) + "\n", encoding="utf-8")
     for other in {p.path for p in cfs.PROBES} - {probe.path}:
         (root / Path(other)).parent.mkdir(parents=True, exist_ok=True)
-        (root / other).write_text((SKILL_ROOT / other).read_text())
+        (root / other).write_text(
+            (SKILL_ROOT / other).read_text(encoding="utf-8"), encoding="utf-8"
+        )
     violations = cfs.run_probes(root)
     assert any(probe.name in v for v in violations)
 
@@ -37,15 +39,17 @@ def test_anchor_disappearance_fails(probe, tmp_path):
 def test_mutated_line_fails(tmp_path):
     # Reword SKILL.md's cache-hint sentence back to the pre-fix shape; the probe must catch it.
     probe = next(p for p in cfs.PROBES if p.name == "spec-baseline-cache-hint-carriers")
-    text = (SKILL_ROOT / probe.path).read_text()
+    text = (SKILL_ROOT / probe.path).read_text(encoding="utf-8")
     mutated = "\n".join(
         probe.bad_sample if probe.anchor.search(ln) else ln for ln in text.splitlines()
     )
     root = tmp_path / "skillcopy"
     for other in {p.path for p in cfs.PROBES}:
         (root / Path(other)).parent.mkdir(parents=True, exist_ok=True)
-        (root / other).write_text((SKILL_ROOT / other).read_text())
-    (root / probe.path).write_text(mutated + "\n")
+        (root / other).write_text(
+            (SKILL_ROOT / other).read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    (root / probe.path).write_text(mutated + "\n", encoding="utf-8")
     violations = cfs.run_probes(root)
     assert any(probe.name in v for v in violations)
 

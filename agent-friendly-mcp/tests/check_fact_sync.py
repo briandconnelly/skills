@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Fail if a shared fact drifts at one of its known restatement sites.
 
-Two review-demonstrated drift modes motivate this checker
-(agent-friendly-mcp-skill-review.md F1-F3, 2026-08-15): a summary sentence
-in SKILL.md's Spec Baseline silently dropping part of a spec fact, and an
-examples.md enumeration silently dropping a native field.  Each probe names
-one fact, an anchor regex that finds its restatement lines, and a co-term
-every such line must carry.
+Two review-demonstrated drift modes motivate this checker (findings F1-F3
+of the 2026-08-15 three-model skill review; not archived in-repo): a
+summary sentence in SKILL.md's Spec Baseline silently dropping part of a
+spec fact, and an examples.md enumeration silently dropping a native
+field.  Each probe names one fact, an anchor regex that finds its
+restatement lines, and a co-term every such line must carry.
 
 Semantics: within the probe's scope, at least one line must match `anchor`
 (deletion protection), and every anchor-matching line must also match
