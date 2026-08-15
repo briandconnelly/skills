@@ -790,7 +790,7 @@ Every fingerprint string changes when any covered surface changes, including res
 The fingerprint and its `covers`, `deprecation`, and `schema_hash` fields are a convention extension, not a native MCP structure (see the native-vs-convention rule in `SKILL.md`).
 When tool, resource, or prompt lists change, emit the corresponding native `notifications/*/list_changed` message and keep list ordering deterministic; the fingerprint is additive, not a substitute.
 
-### 9a. Lifecycle metadata on the native record
+## 9a. Lifecycle metadata on the native record
 
 The fingerprint above is a house surface.
 A client that reads only native `tools/list` never sees it, so the same two facts ride each capability's own discovery record under one namespaced `_meta` key (`[9.tier-metadata]`).
