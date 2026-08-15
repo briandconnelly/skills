@@ -16,14 +16,15 @@ Server-initiated requests are gone: elicitation, sampling, and roots requests ri
 Every result carries a required `resultType`, and `server/discover`, list, and read results carry the native cache hints `ttlMs` and `cacheScope`.
 Roots, sampling, logging, the HTTP+SSE transport, and Dynamic Client Registration are deprecated on a twelve-month minimum window; design new servers without them.
 The extensions framework is formal but demanding: an extension needs a reverse-DNS identifier, its own maintained specification, and negotiation by both peers (declared in `clientCapabilities.extensions` and `server/discover`), so a namespaced `_meta` key remains a private convention until someone does that work.
-This section is the single home for spec-revision facts; other files cite it rather than restating them.
+This section is the single home for revision-level facts: which revision is baseline, its release status, the tasks-extension caveat, and what is deprecated or removed.
+Checklist rules and [native-wire-shapes.md](references/native-wire-shapes.md) necessarily restate the wire mechanics they govern; for the revision-level frame they cite this section rather than restating it.
 For clients that still speak **2025-11-25**, the binding rules here still govern what you build; the old revision's wire differences and version-bound failure modes are cataloged in the informative [mcp-2025-11-25-compat.md](references/mcp-2025-11-25-compat.md), and `decisions/001-mcp-2026-07-28-rebase.md` records the rebase decision, verified fact sheet, and impact matrix.
 
 ## Where The Recurring Concerns Live
 
 A routing table, not a summary.
 Each row names a concern this skill keeps returning to and the rules that govern it; the rules themselves are stated only in [contract-checklist.md](references/contract-checklist.md).
-Read the cited ids — nothing here restates them, so a row is never a substitute for the rule.
+Read the cited ids — a row names the concern but does not define the rule, so a row is never a substitute for it.
 
 | Concern | Governing rules |
 | --- | --- |
@@ -40,8 +41,9 @@ Cold-start first-call and first-repair success are the outcome measures this ski
 
 ## Native Fields vs Convention Extensions
 
-This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, a capability `fingerprint`, prompt prerequisites, and detail toggles.
-Keep them — but never let them masquerade as protocol.
+This skill is deliberately opinionated: native MCP fields alone are often insufficient for agent-friendliness, so well-designed servers add convention extensions such as structured `errors`, `repair` hints, prompt prerequisites, detail toggles, and — where target clients cache or pin the surface (`[9.fingerprint]`) — a capability `fingerprint`.
+Keep the conventions whose applicability rules hold — but never let them masquerade as protocol.
+The native-vs-convention rule is homed in this section; [contract-checklist.md](references/contract-checklist.md), [native-wire-shapes.md](references/native-wire-shapes.md), and [examples.md](references/examples.md) cite it here rather than restating it.
 
 - **Preserve native MCP field names and casing exactly; prefer `snake_case` for house/domain fields.**
   A field's provenance is determined by the MCP type that contains it, **not** by its casing — native `_meta` carries an underscore, `name`/`code`/`repair` are lowercase on both sides, and a convention object may hold a `mimeType`-style name.
@@ -80,14 +82,15 @@ Shared terms — discovery surface, repair signal, state handle, capability fing
 
 ## Checklist Map
 
-The normative standard lives in [contract-checklist.md](references/contract-checklist.md); walk it top to bottom for any design or review.
-This index orients and routes — it does not restate the rules.
+The normative standard lives in [contract-checklist.md](references/contract-checklist.md), with two named exceptions homed in this file: the Spec Baseline facts and the native-vs-convention rule.
+Walk the checklist top to bottom for any design or review.
+This index orients and routes — its one-line summaries aid navigation and never define or override a rule.
 State-handle discipline and long-running-operation contracts are normative in §1/§8 and §7 respectively; consult them there rather than a second copy here.
 Notation: bare `§N` always means a contract-checklist section; `ex§N` means section N of [examples.md](references/examples.md).
 A single rule is cited by its stable id, `` `[section.slug]` `` — `[3.naming]`, `[6.repair-object]` — which resolves to exactly one bullet in contract-checklist.md and survives rewording of that bullet.
 Prefer a rule id over a section reference when you mean one specific rule; `tests/check_rule_ids.py` fails the build if a cited id does not resolve.
 
-| § | Section | One-line rule | Worked examples |
+| § | Section | Section gist | Worked examples |
 | --- | --- | --- | --- |
 | §1 | Server-Level | Identity, transport (including required HTTP routing headers), auth modes, agent-actionable prerequisites, per-request capability declaration, and workspace scope — learnable in one read. State handles are declared here: opaque IDs, lifetime, expiry, auth on every use. | ex§7, ex§8a |
 | §2 | Discovery | A capability summary plus compact definitions as the universal baseline; progressive disclosure is a client-dependent optimization — pick a mechanism by cost axis (host-managed context, server-managed catalog, or client-independent surface reduction). | ex§7, ex§8 |
