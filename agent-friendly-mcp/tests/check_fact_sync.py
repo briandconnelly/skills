@@ -49,6 +49,9 @@ PROBES: list[Probe] = [
             "the native cache hints `ttlMs` and `cacheScope`."
         ),
     ),
+    # Conservative by design: if the notification sentence is ever split across
+    # lines (listen-stream line separate from the request-scoped carve-out), this
+    # fires a false positive — update the probe rather than deleting it.
     Probe(
         name="spec-baseline-notification-split",
         path="SKILL.md",
@@ -87,9 +90,11 @@ def line_ok(probe: Probe, line: str) -> bool:
 def _scoped_lines(text: str, section: str | None) -> list[str]:
     if section is None:
         return text.splitlines()
-    lines, out, inside = text.splitlines(), [], False
+    lines, out, inside, in_fence = text.splitlines(), [], False, False
     for ln in lines:
-        if ln.startswith("## "):
+        if ln.startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and ln.startswith("## "):
             inside = ln[3:].strip() == section
             continue
         if inside:

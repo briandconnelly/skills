@@ -17,7 +17,7 @@ Every result carries a required `resultType`, and `server/discover`, list, and r
 Roots, sampling, logging, the HTTP+SSE transport, and Dynamic Client Registration are deprecated on a twelve-month minimum window; design new servers without them.
 The extensions framework is formal but demanding: an extension needs a reverse-DNS identifier, its own maintained specification, and negotiation by both peers (declared in `clientCapabilities.extensions` and `server/discover`), so a namespaced `_meta` key remains a private convention until someone does that work.
 This section is the single home for revision-level facts: which revision is baseline, its release status, the tasks-extension caveat, and what is deprecated or removed.
-Checklist rules and [native-wire-shapes.md](references/native-wire-shapes.md) necessarily restate the wire mechanics they govern; for the revision-level frame they cite this section rather than restating it.
+Checklist rules and [native-wire-shapes.md](references/native-wire-shapes.md) necessarily restate the mechanics they govern, including a governed surface's deprecation status; for the revision-level frame they cite this section rather than restating it.
 For clients that still speak **2025-11-25**, the binding rules here still govern what you build; the old revision's wire differences and version-bound failure modes are cataloged in the informative [mcp-2025-11-25-compat.md](references/mcp-2025-11-25-compat.md), and `decisions/001-mcp-2026-07-28-rebase.md` records the rebase decision, verified fact sheet, and impact matrix.
 
 ## Where The Recurring Concerns Live

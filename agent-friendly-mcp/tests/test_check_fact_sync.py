@@ -62,3 +62,25 @@ def test_selftest_catches_sabotaged_probe():
     )
     assert not cfs.self_test([broken])
     assert cfs.self_test(cfs.PROBES)
+
+
+def test_scoped_lines_ignores_headings_inside_fences():
+    text = "\n".join(
+        [
+            "## Spec Baseline",
+            "real line",
+            "```",
+            "## Not A Heading",
+            "fenced line",
+            "```",
+            "after fence",
+            "## Next Section",
+            "outside",
+        ]
+    )
+    scoped = cfs._scoped_lines(text, "Spec Baseline")
+    assert "real line" in scoped
+    assert "## Not A Heading" in scoped
+    assert "fenced line" in scoped
+    assert "after fence" in scoped
+    assert "outside" not in scoped
