@@ -9,9 +9,17 @@ An assertion the with-skill run misses is a finding against the skill, not again
 1. **Baseline:** dispatch a subagent with only the scenario prompt below.
    Record which assertions its output satisfies.
 2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt.
+   Load agent-friendly-docs only.
+   Sibling skills are named in its text but are not loaded, so a scenario that tests delegation expects the treatment run to route by name and to decline the delegated work, not to apply the sibling's rules.
 3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the transcript.
    Record results in the table at the bottom.
    Assertion lists may be tightened over time; a results row reflects the assertions as of its date.
+
+**Scoring rule.**
+A scenario passes when the treatment run satisfies every assertion.
+A scenario is valid only when the baseline run fails at least one assertion that is about analysis rather than format — a missed finding, a wrong severity, an unfounded certainty.
+A baseline that fails only on format (no coverage table, no evidence labels) does not establish that the skill improves judgment; tighten that scenario before its treatment result counts for anything.
+Record baseline and treatment per assertion, not per scenario, so a regression can be traced to the assertion it broke.
 
 ## Scenario 1: Design (application test)
 
@@ -40,7 +48,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Every listed doc is assigned to exactly one layer — instruction, orientation, reference, or decision history — with `CLAUDE.md`/`copilot-instructions.md` in the instruction layer and `ADR-001`/`ADR-002` in decision history (Layer Placement).
+- [ ] Every listed doc is given one primary layer — instruction, orientation, reference, or decision history — with `CLAUDE.md`/`copilot-instructions.md` in the instruction layer and `ADR-001`/`ADR-002` in decision history (Layer Placement).
 - [ ] The build/lint/test commands duplicated between `CLAUDE.md` and `copilot-instructions.md` are flagged as an authority problem: exactly one authoritative home is named and the duplicate is reduced to a reference rather than a second copy, with the choice of adapter shape routed to agent-friendly-github rather than restated (Layer Placement, Authority And Precedence).
 - [ ] A named, ordered read path is produced for each of the four tasks — add a feature, fix a bug, run the tests, cut a release — reachable from an entry point rather than left implicit (Task-To-Doc Routing).
 - [ ] The database choice and the queue choice each get exactly one authoritative home, with `ADR-001`/`ADR-002` reduced to historical record plus a forward pointer if either decision is still binding (Authority And Precedence, ADR Status And Supersession).
@@ -142,21 +150,19 @@ An assertion the with-skill run misses is a finding against the skill, not again
 > # - every mismatch retries 3x with exponential backoff starting at 200ms
 > # - a mismatch that survives 3 retries pages the on-call rotation
 > # - this applies to every reconciliation job in the service, not just this file
-> # (There is no other doc that states this; it lives only here.)
 > import ...
 > ```
 >
-> No doc anywhere mentions how to cut a release.
 
 **Assertions (with-skill run must satisfy):**
 
 - [ ] `ADR-0003` is flagged `blocking` under ADR Status And Supersession: it carries no status field, is cited by `CLAUDE.md` as current policy, and the service has since moved off Postgres per the buried Slack note — evidence labeled `observed` for the doc text and `inferred` for whether DynamoDB fully replaced the pattern in code.
 - [ ] The `CLAUDE.md`/`copilot-instructions.md` divergence (85% vs. 95% coverage, `--cov=ledgerly` flag present vs. dropped) is flagged `blocking` under Authority And Precedence as a contradictory-authority finding, `observed` directly from the two quoted files.
-- [ ] The `pytest tests/unit -v` command in both `README.md` and `docs/testing.md` is flagged `blocking` under Runnable Examples And Commands: the tree shows tests live at `test/unit` (singular), not `tests/unit`, so the command fails as written — `observed` from the tree plus the quoted command.
+- [ ] The `pytest tests/unit -v` command in both `README.md` and `docs/testing.md` is flagged `blocking` under Runnable Examples And Commands: the tree shows tests live at `test/unit` (singular), not `tests/unit`. The path mismatch is labeled `observed` from the tree and the quoted command; the conclusion that the command fails is labeled `inferred`, because this scenario forbids running it.
 - [ ] `README.md`'s duplicated API reference, test instructions, and full changelog are flagged `degrading` under Token Economy as bulk reference material carried in the orientation layer instead of pointed to, `observed` from the excerpt.
-- [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged `degrading` under Comment-Vs-Doc Placement: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc.
-- [ ] The missing release read path is flagged `degrading` under Task-To-Doc Routing, evidence labeled `absence-of-evidence`.
-- [ ] A section-by-section coverage table is produced covering all ten docs-checklist.md sections, with `not-checked` and a reason for any section the captured material cannot answer (e.g., Discoverability And Read Path beyond what the tree shows, Generated-Doc Provenance).
+- [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged `degrading` under Comment-Vs-Doc Placement: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc. The comment no longer states that it is the only home; the agent must check the rest of the captured material to establish that.
+- [ ] The absence of any release documentation is noticed unprompted and flagged `degrading` under Task-To-Doc Routing, evidence labeled `absence-of-evidence`. The prompt does not state that the gap exists; the agent must find it by walking the common tasks against the tree.
+- [ ] A section-by-section coverage table is produced covering all eleven docs-checklist.md sections, with `not-checked` and a reason for any section the captured material cannot answer (e.g., Discoverability And Read Path beyond what the tree shows, Generated-Doc Provenance). Canonical Claim Validation is marked `not-checked` for lack of a runnable checkout, not `OK`.
 - [ ] Findings are ordered blocking first, then degrading, per Report Format, and each uses the six-part finding format: severity, checklist section, location, evidence labels, impact, remediation.
 
 **Expected baseline failures:** ad-hoc or no severity scale, no distinction between the three blocking findings and the three degrading ones (or all six flattened to one tier), no evidence labels, the adapter drift and the stale-ADR-as-policy finding conflated or missed entirely, the `test/unit` vs. `tests/unit` path mismatch missed because the command "looks fine" without cross-checking the tree, no coverage table.
@@ -174,7 +180,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 **Assertions (with-skill run must satisfy):**
 
 - [ ] Names the most likely failure path: the agent loads `CLAUDE.md` (and possibly the top of `README.md`) but never reaches `CONTRIBUTING.md`'s "Testing" section, so the conventions never enter its context — the doc locations `observed` from the prompt, the "never reaches it" mechanism `inferred`.
-- [ ] Leads with the smallest immediate mitigation — pointing `CLAUDE.md`'s test-command entry directly at `CONTRIBUTING.md`'s Testing section, or pulling the conventions themselves into `CLAUDE.md` — before proposing a larger restructuring (Review Workflow §1).
+- [ ] Leads with the smallest immediate mitigation — a pointer from `CLAUDE.md`'s test-command entry to `CONTRIBUTING.md`'s Testing section — before proposing a larger restructuring (Review Workflow §1). If it instead proposes moving the conventions into `CLAUDE.md`, it must replace the `CONTRIBUTING.md` text with a pointer in the same change; leaving both copies standing fails this assertion, because it creates the duplicate authority the skill exists to prevent.
 - [ ] Separates that immediate mitigation from owner-side restructuring (e.g., reconsidering why test conventions live inside a contributing-process doc rather than as their own referenced doc) and frames the latter as a follow-up, not a blocker to today's fix.
 - [ ] Stays diagnosis-sized: no full checklist coverage table, no audit of unrelated sections (SKILL.md Done Criteria, Diagnosis tasks).
 
@@ -190,11 +196,39 @@ An assertion the with-skill run misses is a finding against the skill, not again
 **Assertions (with-skill run must satisfy):**
 
 - [ ] Declines to design the per-harness adapter mechanics itself and routes that question to agent-friendly-github instead of proposing an adapter file format or pointer syntax (SKILL.md Vocabulary, Workflow §5).
-- [ ] Declines to adjudicate which `CLAUDE.md` lines bind versus inform and routes that question to separating-context-from-constraints, applying the one-line inline fallback ("does this sentence bind behavior or just inform it?") only if that skill is stated as unavailable rather than working the full distinction itself (Workflow §5).
+- [ ] Declines to adjudicate which `CLAUDE.md` lines bind versus inform and routes that question to separating-context-from-constraints. Because treatment loads this skill alone, the sibling is not available, so the run may apply the one screening question ("does this sentence bind behavior or just inform it?"), label the result provisional, and recommend the full audit — it must not work the full distinction itself (Workflow §5).
 - [ ] Does not silently answer both delegated questions in full as though they were in scope, and does not refuse the entire prompt outright — it names what it can still speak to directly, such as where the canonical file and its adapters sit in the layer model (Layer Placement) once the mechanics and the binds-vs-informs split are handled elsewhere.
 - [ ] Does not restate agent-friendly-github's or separating-context-from-constraints's content from memory as if it were this skill's own material.
 
 **Expected baseline failures:** answers the adapter-format question directly with an invented pointer syntax, sorts the "concise" vs. "never delete" lines into bind/inform buckets itself instead of naming the boundary, no mention of either sibling skill, or the whole prompt waved off as entirely out of scope with nothing addressed.
+
+## Scenario 5: Restraint (negative-trigger test)
+
+Run each prompt below as its own trial.
+The skill's exclusions are part of its contract, so a treatment run that walks the checklist against any of these prompts is a failure, not a thorough answer.
+
+**Prompt 5a:**
+
+> Our public documentation site is built with Docusaurus and goes live next week.
+> Read through the getting-started page and tighten the writing — it's wordy and the tone is inconsistent.
+
+**Prompt 5b:**
+
+> Write an `llms.txt` for our project so language models can consume our published docs.
+
+**Prompt 5c:**
+
+> Our `AGENTS.md` is a wall of vague lines — "prefer small commits", "be careful with migrations", "never force-push to main".
+> Sort out which of these actually bind the agent and which are just advice.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] 5a: treats the request as prose editing for a published docs site, and does not produce a layer assignment, read path, or checklist walk (SKILL.md When Not To Use).
+- [ ] 5b: declines `llms.txt` as out of scope, or answers it without invoking this skill's standard; no docs-checklist.md section is walked (SKILL.md When Not To Use).
+- [ ] 5c: routes the bind-versus-inform question to separating-context-from-constraints rather than sorting the lines itself; because that skill is not loaded in treatment, it may apply the one screening question, label the result provisional, and recommend the full audit (SKILL.md Workflow §5).
+- [ ] None of the three responses produces a severity-labeled finding list against the docs-checklist.md sections.
+
+**Expected failure mode this scenario guards against:** a description broadened to fix a false negative starts firing on human-facing prose reviews and on the sibling skill's core request, and no other scenario would catch it.
 
 ## Results
 

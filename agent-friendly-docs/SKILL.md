@@ -9,11 +9,16 @@ Use this skill to make a repo's documentation surface cheap for agents to naviga
 
 ## Core Standard
 
-- Structure docs by layer and route by task: an agent reaches the doc that answers its question without reading everything.
-- Give every fact exactly one authoritative home; everything else links to it.
+The checks that decide a pass or a finding live in [docs-checklist.md](references/docs-checklist.md).
+That file is the standard; this section is the shape of it, and states no check of its own.
+Where the two read differently, the checklist wins.
+
+- Structure docs by layer and route by task, so an agent reaches the doc that answers its question by following links.
+- Give every claim that could diverge exactly one authoritative home; everything else links to it.
 - Label historical material (ADRs, postmortems) as historical, not current policy.
-- Spend agent tokens deliberately: keep the instruction layer minimal and always-loaded; put heavier material behind explicit pointers.
-- Treat freshness as a mechanism, not an intention: ownership, PR doc-update expectations, generated-doc provenance, and verifiable links and commands.
+- Keep the always-loaded instruction layer to what every task needs, and put the rest behind explicit pointers.
+- Treat freshness as a mechanism, not an intention: ownership, PR doc-update expectations, generated-doc provenance, and checked links and commands.
+- Check commands and current-state claims against the code that implements them, not against another doc.
 - Make every embedded command or example runnable as written from the repo root, or state its preconditions.
 
 ## When To Use
@@ -54,11 +59,14 @@ Use this skill to make a repo's documentation surface cheap for agents to naviga
 
 1. Identify the audience: repo owner, who can restructure, versus contributor or agent operator, who works within what exists.
    Audience decides what to lead with.
+   Where the user does not say and the repo gives no ownership signal, assume the repo owner, state that assumption, and mark each owner-only remediation as such.
 2. Classify the task: design/restructure, audit of an existing surface, or diagnosis of a concrete failure.
 3. For design or restructure, follow [design-workflow.md](references/design-workflow.md); for audit or diagnosis, follow [review-workflow.md](references/review-workflow.md).
 4. Both workflows walk [docs-checklist.md](references/docs-checklist.md) as the shared standard.
 5. Delegate instruction-file strategy questions to agent-friendly-github.
-   Delegate rules-vs-context content audits of instruction-layer docs to separating-context-from-constraints when available; otherwise apply a one-line inline check: does this sentence bind behavior or just inform it?
+   Delegate rules-vs-context content audits of instruction-layer docs to separating-context-from-constraints.
+   That skill counts as available when it is loaded in the current session.
+   When it is not loaded, apply one screening question — does this sentence bind behavior or just inform it? — label the result provisional, and recommend a full audit with that skill.
 6. Use [examples.md](references/examples.md) for concrete shapes.
 
 ## Done Criteria

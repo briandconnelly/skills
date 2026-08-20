@@ -29,9 +29,16 @@ Absence of a required piece is itself a finding, not a gap to note and move past
 
 Read the repo's actual doc tree rather than trusting an index or a prior summary of it; a doc that moved or was deleted since the index was written produces a false `OK`.
 
+Two checks are never satisfied by reading alone:
+
+- **Runnable Examples And Commands.** Run each embedded command from the working directory the doc states, in a checkout you can execute. Where you cannot execute, resolve every path, file, and directory the command names against the repo tree, and label the result `inferred` with the unresolved parts named. Never mark this section `OK` from a command that only looks correct.
+- **Canonical Claim Validation.** Check the claim against the source that implements it, not against another doc.
+
+A command that reads as plausible and a command that runs are different findings; only one of them is evidence.
+
 ## 3. Walk The Checklist
 
-Walk every section of [docs-checklist.md](docs-checklist.md) in order: Layer Placement, Discoverability And Read Path, Task-To-Doc Routing, Authority And Precedence, Token Economy, Freshness Mechanisms, Runnable Examples And Commands, Comment-Vs-Doc Placement, Generated-Doc Provenance, and ADR Status And Supersession.
+Walk every section of [docs-checklist.md](docs-checklist.md) in order: Layer Placement, Discoverability And Read Path, Task-To-Doc Routing, Authority And Precedence, Canonical Claim Validation, Token Economy, Freshness Mechanisms, Runnable Examples And Commands, Comment-Vs-Doc Placement, Generated-Doc Provenance, and ADR Status And Supersession.
 
 For each section, produce at least one of:
 
@@ -44,11 +51,15 @@ Cite the checklist's own checks by section name rather than restating them; this
 
 ## 4. Severity Scale
 
-- `blocking` — agents get wrong or contradictory answers: authority conflicts between two docs, a stale ADR read as current policy, an embedded command that fails as written.
-- `degrading` — agents pay an avoidable cost: token bloat in the instruction layer, a missing read path forcing rediscovery, context buried where an agent won't find it in time.
-- `polish` — friction without measurable cost: inconsistent terminology, a link that could be one hop shorter, formatting noise.
+Assign severity by what the finding changes, and decide it in this order:
 
-Rank ties toward the effect on the agent's next action, not the effort to fix them.
+- `blocking` — the evidence shows an agent can produce a wrong result: it edits the wrong file, runs a command that fails or does the wrong thing, or follows a superseded decision as current policy. Authority conflicts between two docs belong here.
+- `degrading` — the agent still reaches the correct result, but pays an avoidable cost to get there: token bloat in the instruction layer, a missing read path that forces rediscovery, context buried where the agent finds it late.
+- `polish` — neither cost is demonstrable from the evidence you hold: inconsistent terminology, a link that could be one hop shorter, formatting noise.
+
+Apply the first tier whose test the evidence satisfies.
+Where the evidence supports two tiers, assign the higher one and state the doubt in the impact line.
+Never lower a severity because the fix is large; effort belongs in remediation, not in severity.
 
 ## 5. Finding Format
 

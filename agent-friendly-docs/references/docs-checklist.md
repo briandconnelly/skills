@@ -4,23 +4,25 @@ Use this as the detailed standard for both design and review tasks.
 
 ## Layer Placement
 
-- Every doc is assigned to exactly one layer: instruction, orientation, reference, decision history, or code-adjacent context.
-- No doc serves two layers at once (e.g., an instruction file that also carries reference-depth material).
-- The instruction layer contains only binding norms, not orientation or reference material.
+- Every doc is assigned exactly one primary layer: instruction, orientation, reference, decision history, or code-adjacent context.
+- Every section whose loading cost, authority, or lifecycle differs from its doc's primary layer is named.
+- A named section is split out when leaving it in place causes one of: material loaded for tasks that never need it, two plausible homes for one claim, or a section that is maintained on its own schedule. A short quick-start command inside an orientation README fails none of these tests and stays.
+- The instruction layer carries binding norms and pointers only, not reference-depth material.
 - Decision history is labeled historical, not current policy.
 
 Layer names and definitions live in SKILL.md Vocabulary; this section only checks that every doc has been placed in one of them.
-A doc that seems to need two layers is a signal to split it, not to leave it ambiguous.
-Whether a given sentence in the instruction layer is a binding norm or merely informative context is a separating-context-from-constraints question, not one this checklist re-derives; apply that skill (or its one-line inline fallback) when available.
+A doc that straddles two layers is a signal to name the straddling section, then to split it only when one of the three tests above is met; splitting on sight fragments a usable doc into many small ones and raises navigation cost.
+Whether a given sentence in the instruction layer is a binding norm or merely informative context is a separating-context-from-constraints question, not one this checklist re-derives; see SKILL.md Workflow for when to apply that skill and what to do when it is not loaded.
 Canonical-instruction-file and per-harness-adapter strategy is owned by agent-friendly-github; this section checks placement only, not adapter mechanics.
 
 ## Discoverability And Read Path
 
-- Every doc is reachable by links from at least one entry point (README or an instruction file).
-- An agent orienting itself can locate the doc that answers a given question without reading the whole repo.
-- No doc is orphaned: reachable only by knowing its path in advance.
+- Every instruction, orientation, reference, and decision-history doc is reachable by links from at least one entry point (README or an instruction file).
+- An agent orienting itself can reach the doc that answers a given question by following links, without reading unrelated docs first.
+- No doc in those layers is orphaned: reachable only by knowing its path in advance.
+- Code-adjacent comments and generated internals are exempt from the link requirement, and the audit states that exemption rather than reporting them as orphans.
 
-Entry points carry the map; everything else earns its keep by being linked from somewhere on that map.
+Entry points carry the map; a doc that no entry point links to is found only by search, and an agent that does not know it exists does not search for it.
 
 ## Task-To-Doc Routing
 
@@ -32,18 +34,30 @@ This is Discoverability And Read Path applied to specific, recurring tasks rathe
 
 ## Authority And Precedence
 
-- Every fact has exactly one authoritative home.
-- Every other mention of that fact is a link to the authoritative home, not a restatement.
-- Where two docs could plausibly conflict, a stated precedence order resolves which one wins.
+- Every normative or operational claim has exactly one authoritative home. A claim is in scope when two copies of it could diverge and change what an agent does: commands, versions, thresholds, paths, ownership, conventions, and policy statements. Names, restated background, quotations, and generated mirrors are not in scope.
+- Every other mention of an in-scope claim is a link to the authoritative home, not a restatement.
+- Every generated mirror or quotation of an in-scope claim is marked as non-authoritative, so it is not read as a second home.
+- Where two docs stating in-scope claims can conflict, a stated precedence order resolves which one wins.
+- Where instruction files nest (a root file plus per-package files), the more deeply nested file wins on conflict, and the root file states that precedence.
 
 Duplication is the symptom; the fix is a link, not a rewrite in both places.
 
+## Canonical Claim Validation
+
+- Every command, version, path, and current-state claim in an authoritative doc is checked against the source that implements it: the code, CI configuration, build files, manifests, or schema.
+- No claim is marked `OK` because no other doc contradicts it.
+- Every claim that cannot be checked against a source is marked `not-checked` with the reason.
+- Where the repo is too large to check every claim, the sampling boundary is stated.
+
+Authority And Precedence finds two docs that disagree; it cannot find one doc that is uniformly wrong.
+A single stale command with no competitor passes every other section in this checklist, and an agent runs it with full confidence.
+
 ## Token Economy
 
-- The instruction layer is minimal: it does not carry material that only some tasks need.
-- Heavy or task-specific material sits behind an explicit pointer from the instruction layer, not inline in it.
+- Every statement in the instruction layer applies to every task in the repo's common-task list. A statement that fewer tasks need moves behind a pointer.
+- The instruction layer carries pointers, not procedures, for anything an agent can complete a common task without.
 - No bulk content is duplicated across layers (e.g., reference material copied into the instruction file for convenience).
-- Orientation-layer docs stay lean; bulk reference or historical material (full API detail, changelogs) moves behind a pointer to its own layer.
+- Every orientation-layer doc that carries reference or historical material — full API detail, changelogs — moves that material behind a pointer to its own layer.
 
 Every always-loaded token is a token spent on every single turn; the instruction layer's size is a standing cost, not a one-time one.
 
@@ -85,4 +99,4 @@ An agent that doesn't know a doc is generated will edit it directly and lose the
 - Every superseded ADR links forward to the ADR or doc that superseded it.
 - No ADR is treated as binding current policy unless its content has been promoted into a current-policy doc; ADRs are decision history by default, per SKILL.md Vocabulary.
 
-Status and forward links are what let an agent tell a live decision from a dead one without reading the whole history.
+Status and forward links are what let an agent tell a decision that is in force from a superseded decision, without reading the whole history.
