@@ -29,7 +29,7 @@ lighthouse/
 Two things this layout makes visible at a glance:
 
 - Nothing in `docs/` is always-loaded; an agent reaches `api-reference.md` or `testing.md` only by following a link from `README.md` or `AGENTS.md` when the task calls for it.
-- `adr/` sits outside both the instruction and orientation layers; an agent that finds an ADR by search rather than by link should still read its status line before treating its decision as live (see section 4 below).
+- `adr/` sits outside both the instruction and orientation layers; an agent that finds an ADR by search rather than by link reads its status line first, and does not treat its decision as current policy (see section 4 below).
 
 ## 2. Monorepo layout with nested context files
 
@@ -151,12 +151,16 @@ Supersedes: [ADR 0002](0002-async-job-queue.md)
 ```
 
 How an agent should read this: on opening `0002-async-job-queue.md`, the `Status` line is the first fact after the title, before any context or rationale prose.
-`Superseded by` means the decision in this ADR is historical, not current policy; the agent follows the forward link to `0003-replace-rabbitmq-with-kafka.md` and treats that ADR's decision as live instead.
-If current code or a current-policy doc (e.g., `docs/architecture.md`) still describes RabbitMQ, that is itself a finding — the ADR's content was never promoted forward when the decision changed.
+`Superseded by` means the decision in this ADR is historical, not current policy.
+The agent follows the forward link to `0003-replace-rabbitmq-with-kafka.md` to find which decision replaced it.
+`Status: Accepted` on 0003 tells the agent that this ADR is the current record of the decision — it does not by itself make the ADR current policy.
+Per SKILL.md Vocabulary, an ADR binds only after its content is promoted into a current-policy doc, so the agent reads `docs/architecture.md` for the policy and uses 0003 only for the reason behind it.
+If no current-policy doc states the Kafka choice, that is a finding: the decision was never promoted, and every agent must re-derive current policy from decision history.
+If a current-policy doc still describes RabbitMQ, that is also a finding — the promotion never happened when the decision changed.
 
 ## 5. PR doc-update convention
 
-Freshness in `lighthouse` is enforced two ways: a PR template line that prompts the doc update, and a CODEOWNERS line that routes doc changes to a reviewer who can catch a missing one.
+Freshness in `lighthouse` uses two mechanisms: a PR template line that prompts the doc update, and a CODEOWNERS line that routes doc changes to a reviewer.
 
 `.github/pull_request_template.md` (excerpt):
 
@@ -175,25 +179,16 @@ AGENTS.md   @lighthouse-org/docs-owners
 adr/        @lighthouse-org/docs-owners
 ```
 
-The checklist line makes the expectation visible on every PR; the CODEOWNERS line makes it enforceable — a PR that touches behavior without touching the doc still routes past someone who owns the doc and can ask for the update before merge.
+The checklist line makes the expectation visible on every PR, but the line does not enforce the update.
+CODEOWNERS requests a review only for the paths a PR changes, so these doc-path rules do nothing on a PR that changes behavior in `src/` and touches no doc.
+The doc-path rules catch a bad edit to a doc; they do not catch a missing one.
+Adding the source paths to CODEOWNERS does not enforce the update either, because a code owner can approve a source-only PR that changes no doc.
+Source-path ownership buys routing, not enforcement: the PR reaches a reviewer who is accountable for the doc and can ask for the update.
+Only a required check that tests for the doc change can fail the PR, and that check is the difference between a prompt and a gate.
+Ownership rules and required checks are owned by agent-friendly-github; this example only states which mechanism catches which failure.
 
-## 6. Harness adapter syntax
+## 6. Harness adapters
 
-As of 2026-07.
-Include and reference syntax for coding-agent instruction files changes across tools without much notice — verify the current syntax against your harness's own documentation before relying on the specifics below.
-
-This is the only section in this skill's references where harness-specific syntax appears; everywhere else, "canonical instruction file" and "per-harness adapter" are used generically (see [SKILL.md](../SKILL.md) Vocabulary).
-The authoritative home for the adapter pattern — including the `CLAUDE.md` include shape below — is the agent-friendly-github skill's Agent-Instruction-File Strategy section; this section is a dated illustration for doc-surface design, and if the two ever disagree, that skill wins.
-
-For Claude Code, the entire content of `CLAUDE.md` is a single line, and Claude Code resolves the reference automatically at load time:
-
-```text
-@AGENTS.md
-```
-
-Other harnesses use their own mechanism, and some may not support a live include at all:
-
-- A tool whose instruction file supports an include directive: point it at the canonical file the same way, using that tool's own syntax rather than `@`-include — do not assume the syntax is identical across tools.
-- A tool whose instruction file has no include mechanism: the adapter is a short file manually kept in sync with the canonical file instead of a live pointer, and the sync burden is the tradeoff for supporting that harness.
-
-Confirm which case a given harness falls into from its current docs before choosing the adapter shape.
+Adapter mechanics — which file each harness reads, the include or reference syntax it supports, and what to do when it supports none — are owned by the agent-friendly-github skill's Agent-Instruction-File Strategy section.
+Apply that skill directly; this skill states no harness-specific syntax anywhere, because a copy here would age out of step with the authoritative rule and nothing would fail when it did.
+For doc-surface design, the only fact this skill needs is the shape shown in sections 1 and 2: one canonical instruction file, with per-harness files as adapters that point at it.
