@@ -182,7 +182,9 @@ adr/        @lighthouse-org/docs-owners
 The checklist line makes the expectation visible on every PR, but it does not enforce it.
 CODEOWNERS requests a review only for the paths a PR changes, so these doc-path rules do nothing on a PR that changes behavior in `src/` and touches no doc.
 They catch a bad edit to a doc; they do not catch a missing one.
-To enforce the doc update itself, own the source paths as well, or add a required check that fails a behavior change that carries no doc change.
+Owning the source paths as well does not enforce the update either: a code owner can approve a source-only PR without any doc change.
+What it buys is routing — the PR reaches a reviewer who is accountable for the doc and can ask for it.
+Only a required check that tests for the doc change can fail the PR, and writing one is the difference between a prompt and a gate.
 Ownership rules and required checks are owned by agent-friendly-github; this example only states which mechanism catches which failure.
 
 ## 6. Harness adapters

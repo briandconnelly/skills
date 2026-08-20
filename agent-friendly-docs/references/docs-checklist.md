@@ -6,12 +6,18 @@ Use this as the detailed standard for both design and review tasks.
 
 - Every doc is assigned exactly one primary layer: instruction, orientation, reference, decision history, or code-adjacent context.
 - Every section whose loading cost, authority, or lifecycle differs from its doc's primary layer is named.
-- A named section is split out when leaving it in place causes one of: material loaded for tasks that never need it, two plausible homes for one claim, or a section that is maintained on its own schedule. A short quick-start command inside an orientation README fails none of these tests and stays.
+- A named section is split out only when the audit can state the evidence for one of three tests.
+Loading: name a task on the repo's common-task list that loads the doc and never needs that section.
+Authority: name a second doc that states the same claim, so which one governs is open.
+Lifecycle: name a distinct owner, generator, or change trigger for the section.
+- A section that meets none of the three tests stays where it is.
+A short quick-start command inside an orientation README meets none of them.
 - The instruction layer carries binding norms and pointers only, not reference-depth material.
 - Decision history is labeled historical, not current policy.
 
 Layer names and definitions live in SKILL.md Vocabulary; this section only checks that every doc has been placed in one of them.
-A doc that straddles two layers is a signal to name the straddling section, then to split it only when one of the three tests above is met; splitting on sight fragments a usable doc into many small ones and raises navigation cost.
+A doc that straddles two layers is a signal to name the straddling section, then to split it only when one of the three tests above is met.
+Splitting on sight fragments a usable doc into many small ones and raises navigation cost.
 Whether a given sentence in the instruction layer is a binding norm or merely informative context is a separating-context-from-constraints question, not one this checklist re-derives; see SKILL.md Workflow for when to apply that skill and what to do when it is not loaded.
 Canonical-instruction-file and per-harness-adapter strategy is owned by agent-friendly-github; this section checks placement only, not adapter mechanics.
 
@@ -34,11 +40,13 @@ This is Discoverability And Read Path applied to specific, recurring tasks rathe
 
 ## Authority And Precedence
 
-- Every normative or operational claim has exactly one authoritative home. A claim is in scope when two copies of it could diverge and change what an agent does: commands, versions, thresholds, paths, ownership, conventions, and policy statements. Names, restated background, quotations, and generated mirrors are not in scope.
+- Every normative or operational claim has exactly one authoritative home.
+A claim is in scope when two copies of it could diverge and change what an agent does: commands, versions, thresholds, paths, ownership, conventions, policy statements, and current-state descriptions of architecture or deployment.
+Out of scope: names, quotations, historical statements, and explanatory background that cannot change an action.
+Prose role does not decide this — a current-state fact written as background is in scope, because an agent implements against it.
 - Every other mention of an in-scope claim is a link to the authoritative home, not a restatement.
 - Every generated mirror or quotation of an in-scope claim is marked as non-authoritative, so it is not read as a second home.
 - Where two docs stating in-scope claims can conflict, a stated precedence order resolves which one wins.
-- Where instruction files nest (a root file plus per-package files), the more deeply nested file wins on conflict, and the root file states that precedence.
 
 Duplication is the symptom; the fix is a link, not a rewrite in both places.
 
@@ -54,7 +62,10 @@ A single stale command with no competitor passes every other section in this che
 
 ## Token Economy
 
-- Every statement in the instruction layer applies to every task in the repo's common-task list. A statement that fewer tasks need moves behind a pointer.
+- Every procedure or reference statement in the instruction layer applies to every task in the repo's common-task list.
+A procedure that fewer tasks need moves behind a pointer, and the pointer stays.
+- A routing pointer is exempt from the rule above: a one-line pointer that names a task and the doc it routes to belongs in the instruction layer even when only one task needs it.
+Pointers are what make the layer small; the rule removes procedures, not routes.
 - The instruction layer carries pointers, not procedures, for anything an agent can complete a common task without.
 - No bulk content is duplicated across layers (e.g., reference material copied into the instruction file for convenience).
 - Every orientation-layer doc that carries reference or historical material — full API detail, changelogs — moves that material behind a pointer to its own layer.

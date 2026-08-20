@@ -9,17 +9,18 @@ Use this skill to make a repo's documentation surface cheap for agents to naviga
 
 ## Core Standard
 
-The checks that decide a pass or a finding live in [docs-checklist.md](references/docs-checklist.md).
-That file is the standard; this section is the shape of it, and states no check of its own.
-Where the two read differently, the checklist wins.
+The checks that decide a pass or a finding live in [docs-checklist.md](references/docs-checklist.md), one per section.
+This list names what each section is about so you can pick one; it is a map, not a second copy of the rules.
+Read the section before you apply it, and where this list and the checklist read differently, the checklist wins.
 
-- Structure docs by layer and route by task, so an agent reaches the doc that answers its question by following links.
-- Give every claim that could diverge exactly one authoritative home; everything else links to it.
-- Label historical material (ADRs, postmortems) as historical, not current policy.
-- Keep the always-loaded instruction layer to what every task needs, and put the rest behind explicit pointers.
-- Treat freshness as a mechanism, not an intention: ownership, PR doc-update expectations, generated-doc provenance, and checked links and commands.
-- Check commands and current-state claims against the code that implements them, not against another doc.
-- Make every embedded command or example runnable as written from the repo root, or state its preconditions.
+- **Layer Placement** — which layer each doc belongs to, and when a straddling section is split out.
+- **Discoverability And Read Path**, **Task-To-Doc Routing** — whether an agent reaches the right doc by following links, per task.
+- **Authority And Precedence** — one home per claim that could diverge, and what resolves a conflict.
+- **Canonical Claim Validation** — whether the authoritative doc is true, checked against the code rather than against another doc.
+- **Token Economy** — what earns a place in the always-loaded layer.
+- **Freshness Mechanisms**, **Generated-Doc Provenance**, **ADR Status And Supersession** — what keeps a doc correct, marks a generated one, and separates a live decision from a superseded one.
+- **Runnable Examples And Commands** — whether an embedded command runs as written.
+- **Comment-Vs-Doc Placement** — which constraints travel with the code and which need a doc.
 
 ## When To Use
 
@@ -71,8 +72,10 @@ Where the two read differently, the checklist wins.
 
 ## Done Criteria
 
-Before declaring done, read the relevant workflow and walk [docs-checklist.md](references/docs-checklist.md) against your output.
+Before declaring done, read the relevant workflow, then apply the criteria for your task type below.
+Only design tasks and audits walk [docs-checklist.md](references/docs-checklist.md) section by section.
 
 - **Design tasks**: every checklist section is answered in the produced structure or explicitly marked not-applicable with a one-line justification.
 - **Review tasks**: every checklist section is covered by a finding, marked OK with brief evidence, or noted not-checked with reason.
-- **Diagnosis tasks**: response names the most likely failure path and separates immediate mitigation from owner-side restructuring.
+- **Diagnosis tasks**: the response names the most likely failure path, leads with the immediate mitigation, and separates it from owner-side restructuring.
+No checklist walk and no coverage table — naming the one or two sections the failure falls under is the whole of the checklist's role here.
