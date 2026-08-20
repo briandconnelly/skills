@@ -78,4 +78,4 @@ Only design tasks and audits walk [docs-checklist.md](references/docs-checklist.
 - **Design tasks**: every checklist section is answered in the produced structure or explicitly marked not-applicable with a one-line justification.
 - **Review tasks**: every checklist section is covered by a finding, marked OK with brief evidence, or noted not-checked with reason.
 - **Diagnosis tasks**: the response names the most likely failure path, leads with the immediate mitigation, and separates it from owner-side restructuring.
-No checklist walk and no coverage table — naming the one or two sections the failure falls under is the whole of the checklist's role here.
+  No checklist walk and no coverage table — naming the one or two sections the failure falls under is the whole of the checklist's role here.

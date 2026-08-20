@@ -179,12 +179,12 @@ AGENTS.md   @lighthouse-org/docs-owners
 adr/        @lighthouse-org/docs-owners
 ```
 
-The checklist line makes the expectation visible on every PR, but it does not enforce it.
+The checklist line makes the expectation visible on every PR, but the line does not enforce the update.
 CODEOWNERS requests a review only for the paths a PR changes, so these doc-path rules do nothing on a PR that changes behavior in `src/` and touches no doc.
-They catch a bad edit to a doc; they do not catch a missing one.
-Owning the source paths as well does not enforce the update either: a code owner can approve a source-only PR without any doc change.
-What it buys is routing — the PR reaches a reviewer who is accountable for the doc and can ask for it.
-Only a required check that tests for the doc change can fail the PR, and writing one is the difference between a prompt and a gate.
+The doc-path rules catch a bad edit to a doc; they do not catch a missing one.
+Adding the source paths to CODEOWNERS does not enforce the update either, because a code owner can approve a source-only PR that changes no doc.
+Source-path ownership buys routing, not enforcement: the PR reaches a reviewer who is accountable for the doc and can ask for the update.
+Only a required check that tests for the doc change can fail the PR, and that check is the difference between a prompt and a gate.
 Ownership rules and required checks are owned by agent-friendly-github; this example only states which mechanism catches which failure.
 
 ## 6. Harness adapters

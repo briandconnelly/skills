@@ -38,8 +38,8 @@ Read the repo's actual doc tree rather than trusting an index or a prior summary
 Two checks are never satisfied by reading alone:
 
 - **Runnable Examples And Commands.** Run each embedded command from the working directory the doc states, in a checkout you can execute.
-Where you cannot execute, resolve every path, file, and directory the command names against the repo tree, and label the result `inferred` with the unresolved parts named.
-Never mark this section `OK` from a command that only looks correct.
+  Where you cannot execute, resolve every path, file, and directory the command names against the repo tree, and label the result `inferred` with the unresolved parts named.
+  Never mark this section `OK` from a command that only looks correct.
 - **Canonical Claim Validation.** Check the claim against the source that implements it, not against another doc.
 
 A command that reads as plausible and a command that runs are different findings; only one of them is evidence.
@@ -62,7 +62,7 @@ Cite the checklist's own checks by section name rather than restating them; this
 Assign severity by what the finding changes, and decide it in this order:
 
 - `blocking` — the evidence shows an agent can produce a wrong result: it edits the wrong file, runs a command that fails or does the wrong thing, or follows a superseded decision as current policy.
-Authority conflicts between two docs belong here.
+  Authority conflicts between two docs belong here.
 - `degrading` — the agent still reaches the correct result, but pays an avoidable cost to get there: token bloat in the instruction layer, a missing read path that forces rediscovery, context buried where the agent finds it late.
 - `polish` — neither cost is demonstrable from the evidence you hold: inconsistent terminology, a link that could be one hop shorter, formatting noise.
 

@@ -7,11 +7,11 @@ Use this as the detailed standard for both design and review tasks.
 - Every doc is assigned exactly one primary layer: instruction, orientation, reference, decision history, or code-adjacent context.
 - Every section whose loading cost, authority, or lifecycle differs from its doc's primary layer is named.
 - A named section is split out only when the audit can state the evidence for one of three tests.
-Loading: name a task on the repo's common-task list that loads the doc and never needs that section.
-Authority: name a second doc that states the same claim, so which one governs is open.
-Lifecycle: name a distinct owner, generator, or change trigger for the section.
+  Loading: name a task on the repo's common-task list that loads the doc and never needs that section.
+  Authority: name a second doc that states the same claim, so which one governs is open.
+  Lifecycle: name a distinct owner, generator, or change trigger for the section.
 - A section that meets none of the three tests stays where it is.
-A short quick-start command inside an orientation README meets none of them.
+  A short quick-start command inside an orientation README meets none of them.
 - The instruction layer carries binding norms and pointers only, not reference-depth material.
 - Decision history is labeled historical, not current policy.
 
@@ -41,9 +41,9 @@ This is Discoverability And Read Path applied to specific, recurring tasks rathe
 ## Authority And Precedence
 
 - Every normative or operational claim has exactly one authoritative home.
-A claim is in scope when two copies of it could diverge and change what an agent does: commands, versions, thresholds, paths, ownership, conventions, policy statements, and current-state descriptions of architecture or deployment.
-Out of scope: names, quotations, historical statements, and explanatory background that cannot change an action.
-Prose role does not decide this — a current-state fact written as background is in scope, because an agent implements against it.
+  A claim is in scope when two copies of it could diverge and change what an agent does: commands, versions, thresholds, paths, ownership, conventions, policy statements, and current-state descriptions of architecture or deployment.
+  Out of scope: names, quotations, historical statements, and explanatory background that cannot change an action.
+  Prose role does not decide this — a current-state fact written as background is in scope, because an agent implements against it.
 - Every other mention of an in-scope claim is a link to the authoritative home, not a restatement.
 - Every generated mirror or quotation of an in-scope claim is marked as non-authoritative, so it is not read as a second home.
 - Where two docs stating in-scope claims can conflict, a stated precedence order resolves which one wins.
@@ -63,9 +63,9 @@ A single stale command with no competitor passes every other section in this che
 ## Token Economy
 
 - Every procedure or reference statement in the instruction layer applies to every task in the repo's common-task list.
-A procedure that fewer tasks need moves behind a pointer, and the pointer stays.
+  A procedure that fewer tasks need moves behind a pointer, and the pointer stays.
 - A routing pointer is exempt from the rule above: a one-line pointer that names a task and the doc it routes to belongs in the instruction layer even when only one task needs it.
-Pointers are what make the layer small; the rule removes procedures, not routes.
+  Pointers are what make the layer small; the rule removes procedures, not routes.
 - The instruction layer carries pointers, not procedures, for anything an agent can complete a common task without.
 - No bulk content is duplicated across layers (e.g., reference material copied into the instruction file for convenience).
 - Every orientation-layer doc that carries reference or historical material — full API detail, changelogs — moves that material behind a pointer to its own layer.

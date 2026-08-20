@@ -164,14 +164,14 @@ Record baseline and treatment per assertion, not per scenario, so a regression c
 - [ ] `ADR-0003` is flagged `blocking` under ADR Status And Supersession: it carries no status field, is cited by `CLAUDE.md` as current policy, and the service has since moved off Postgres per the buried Slack note — evidence labeled `observed` for the doc text and `inferred` for whether DynamoDB fully replaced the pattern in code.
 - [ ] The `CLAUDE.md`/`copilot-instructions.md` divergence (85% vs. 95% coverage, `--cov=ledgerly` flag present vs. dropped) is flagged `blocking` under Authority And Precedence as a contradictory-authority finding, `observed` directly from the two quoted files.
 - [ ] The `pytest tests/unit -v` command in both `README.md` and `docs/testing.md` is flagged `blocking` under Runnable Examples And Commands: the tree shows tests live at `test/unit` (singular), not `tests/unit`.
-The path mismatch is labeled `observed` from the tree and the quoted command; the conclusion that the command fails is labeled `inferred`, because this scenario forbids running it.
+  The path mismatch is labeled `observed` from the tree and the quoted command; the conclusion that the command fails is labeled `inferred`, because this scenario forbids running it.
 - [ ] `README.md`'s duplicated API reference, test instructions, and full changelog are flagged `degrading` under Token Economy as bulk reference material carried in the orientation layer instead of pointed to, `observed` from the excerpt.
 - [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged under Comment-Vs-Doc Placement at `degrading`, or at `blocking` with the severity doubt stated as Review Workflow §4 requires: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc.
-The comment no longer states that it is the only home; the agent must check the rest of the captured material to establish that.
+  The comment no longer states that it is the only home; the agent must check the rest of the captured material to establish that.
 - [ ] The absence of any release documentation is noticed unprompted and flagged `degrading` under Task-To-Doc Routing, evidence labeled `absence-of-evidence`.
-The prompt does not state that the gap exists; the agent must find it by walking the common tasks against the tree.
+  The prompt does not state that the gap exists; the agent must find it by walking the common tasks against the tree.
 - [ ] A section-by-section coverage table is produced covering all eleven docs-checklist.md sections, with `not-checked` and a reason for any section the captured material cannot answer (e.g., Discoverability And Read Path beyond what the tree shows, Generated-Doc Provenance).
-Canonical Claim Validation is marked `not-checked` for lack of a runnable checkout, not `OK`.
+  Canonical Claim Validation is marked `not-checked` for lack of a runnable checkout, not `OK`.
 - [ ] Findings are ordered blocking first, then degrading, per Report Format, and each uses the six-part finding format: severity, checklist section, location, evidence labels, impact, remediation.
 
 **Expected baseline failures:** ad-hoc or no severity scale, no distinction between the three blocking findings and the three degrading ones (or all six flattened to one tier), no evidence labels, the adapter drift and the stale-ADR-as-policy finding conflated or missed entirely, the `test/unit` vs. `tests/unit` path mismatch missed because the command "looks fine" without cross-checking the tree, no coverage table.
@@ -190,10 +190,10 @@ Canonical Claim Validation is marked `not-checked` for lack of a runnable checko
 
 - [ ] Names the most likely failure path: the agent loads `CLAUDE.md` (and possibly the top of `README.md`) but never reaches `CONTRIBUTING.md`'s "Testing" section, so the conventions never enter its context — the doc locations `observed` from the prompt, the "never reaches it" mechanism `inferred`.
 - [ ] Leads with a smallest immediate mitigation drawn from Review Workflow §1 — a reminder in the task prompt, or a pointer from `CLAUDE.md`'s test-command entry to `CONTRIBUTING.md`'s Testing section — stated before any restructuring.
-Any of the §1 mitigations passes; leading with the restructuring fails.
+  Any of the §1 mitigations passes; leading with the restructuring fails.
 - [ ] Does not create a second authoritative home.
-If it proposes moving the conventions into `CLAUDE.md`, it replaces the `CONTRIBUTING.md` text with a pointer in the same change.
-Leaving both copies standing fails, because that is the duplicate authority the skill exists to prevent.
+  If it proposes moving the conventions into `CLAUDE.md`, it replaces the `CONTRIBUTING.md` text with a pointer in the same change.
+  Leaving both copies standing fails, because that is the duplicate authority the skill exists to prevent.
 - [ ] Separates that immediate mitigation from owner-side restructuring (e.g., reconsidering why test conventions live inside a contributing-process doc rather than as their own referenced doc) and frames the latter as a follow-up, not a blocker to today's fix.
 - [ ] Stays diagnosis-sized: no full checklist coverage table, no audit of unrelated sections (SKILL.md Done Criteria, Diagnosis tasks).
 
@@ -210,7 +210,7 @@ Leaving both copies standing fails, because that is the duplicate authority the 
 
 - [ ] Declines to design the per-harness adapter mechanics itself and routes that question to agent-friendly-github instead of proposing an adapter file format or pointer syntax (SKILL.md Vocabulary, Workflow §5).
 - [ ] Declines to adjudicate which `CLAUDE.md` lines bind versus inform and routes that question to separating-context-from-constraints.
-Because treatment loads this skill alone, the sibling is not available, so the run may apply the one screening question ("does this sentence bind behavior or just inform it?"), label the result provisional, and recommend the full audit — it must not work the full distinction itself (Workflow §5).
+  Because treatment loads this skill alone, the sibling is not available, so the run may apply the one screening question ("does this sentence bind behavior or just inform it?"), label the result provisional, and recommend the full audit — it must not work the full distinction itself (Workflow §5).
 - [ ] Does not silently answer both delegated questions in full as though they were in scope, and does not refuse the entire prompt outright — it names what it can still speak to directly, such as where the canonical file and its adapters sit in the layer model (Layer Placement) once the mechanics and the binds-vs-informs split are handled elsewhere.
 - [ ] Does not restate agent-friendly-github's or separating-context-from-constraints's content from memory as if it were this skill's own material.
 
@@ -272,8 +272,8 @@ Scenario 2's comment-placement assertion was also loosened afterward, for the re
 - Scenario 4 and Scenario 5 discriminate well: the baseline fails them on analysis, not on formatting.
 - Scenario 2 now discriminates on analysis too — removing the self-announcing hints made the release-routing gap a real find, and the baseline missed it.
 - Scenario 1 is the weakest.
-The baseline found every content answer and failed mainly on layer vocabulary and the checklist walk, which is close to a format-only failure.
-Tighten it before its treatment result carries weight — plant a defect that needs the standard to see, such as a command that contradicts a CI file.
+  The baseline found every content answer and failed mainly on layer vocabulary and the checklist walk, which is close to a format-only failure.
+  Tighten it before its treatment result carries weight — plant a defect that needs the standard to see, such as a command that contradicts a CI file.
 - Scenario 3 is labeled `regression`, not `discrimination`.
-The baseline passes it fully, so it is not evidence that the skill helps; it caught the skill actively doing harm, which is what a regression test is for.
-The re-run after the fix passed, so keep it as a standing guard against audit creep.
+  The baseline passes it fully, so it is not evidence that the skill helps; it caught the skill actively doing harm, which is what a regression test is for.
+  The re-run after the fix passed, so keep it as a standing guard against audit creep.
