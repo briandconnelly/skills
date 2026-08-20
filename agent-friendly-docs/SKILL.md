@@ -62,7 +62,7 @@ Where the two read differently, the checklist wins.
    Where the user does not say and the repo gives no ownership signal, assume the repo owner, state that assumption, and mark each owner-only remediation as such.
 2. Classify the task: design/restructure, audit of an existing surface, or diagnosis of a concrete failure.
 3. For design or restructure, follow [design-workflow.md](references/design-workflow.md); for audit or diagnosis, follow [review-workflow.md](references/review-workflow.md).
-4. Both workflows walk [docs-checklist.md](references/docs-checklist.md) as the shared standard.
+4. Design tasks and audits walk [docs-checklist.md](references/docs-checklist.md) as the shared standard; a diagnosis names only the sections its failure touches and produces no coverage table.
 5. Delegate instruction-file strategy questions to agent-friendly-github.
    Delegate rules-vs-context content audits of instruction-layer docs to separating-context-from-constraints.
    That skill counts as available when it is loaded in the current session.

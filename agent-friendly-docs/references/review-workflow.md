@@ -6,14 +6,20 @@ Use this workflow when auditing an existing documentation surface or diagnosing 
 
 If the user reports a concrete failure — an agent missed a convention, read a stale doc, or re-derived context it should have found — start in diagnosis mode.
 
-In diagnosis mode:
+Diagnosis mode is the whole workflow for that request, not its first stage.
+Produce these four things and stop:
 
 - name the most likely failure path: which doc the agent should have read, and why it didn't
-- give the smallest caller-side mitigation that unblocks the agent today (a pointer, a link, a reminder in the task prompt)
+- lead with the smallest caller-side mitigation that unblocks the agent today (a pointer, a link, a reminder in the task prompt), stated before any restructuring
 - separate that from the owner-side restructuring that fixes the surface itself
 - if confirming the hypothesis needs reading a doc the caller hasn't shared, ask before assuming its contents
 
-If the user is asking for a general audit of the documentation surface, continue with the full workflow below.
+In diagnosis mode, do not walk the checklist, do not produce a coverage table, and do not open sections the reported failure does not touch.
+Sections 2 to 6 below are for audits only.
+A diagnosis answered with a full section-by-section audit buries the one fix the user needs today, and charges them for ten sections of a surface they did not ask about.
+Use the checklist only to name which section the failure falls under, in a few words.
+
+Only when the user asks for a general audit of the documentation surface, continue with the full workflow below.
 
 ## 2. Establish Evidence
 

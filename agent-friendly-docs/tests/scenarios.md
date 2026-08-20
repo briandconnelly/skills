@@ -160,7 +160,7 @@ Record baseline and treatment per assertion, not per scenario, so a regression c
 - [ ] The `CLAUDE.md`/`copilot-instructions.md` divergence (85% vs. 95% coverage, `--cov=ledgerly` flag present vs. dropped) is flagged `blocking` under Authority And Precedence as a contradictory-authority finding, `observed` directly from the two quoted files.
 - [ ] The `pytest tests/unit -v` command in both `README.md` and `docs/testing.md` is flagged `blocking` under Runnable Examples And Commands: the tree shows tests live at `test/unit` (singular), not `tests/unit`. The path mismatch is labeled `observed` from the tree and the quoted command; the conclusion that the command fails is labeled `inferred`, because this scenario forbids running it.
 - [ ] `README.md`'s duplicated API reference, test instructions, and full changelog are flagged `degrading` under Token Economy as bulk reference material carried in the orientation layer instead of pointed to, `observed` from the excerpt.
-- [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged `degrading` under Comment-Vs-Doc Placement: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc. The comment no longer states that it is the only home; the agent must check the rest of the captured material to establish that.
+- [ ] The reconciliation retry/backoff policy embedded only in `reconcile.py`'s header comment is flagged under Comment-Vs-Doc Placement at `degrading`, or at `blocking` with the severity doubt stated as Review Workflow §4 requires: repo-wide policy with no doc-level authoritative home, `observed` from the comment plus `absence-of-evidence` for a corresponding doc. The comment no longer states that it is the only home; the agent must check the rest of the captured material to establish that.
 - [ ] The absence of any release documentation is noticed unprompted and flagged `degrading` under Task-To-Doc Routing, evidence labeled `absence-of-evidence`. The prompt does not state that the gap exists; the agent must find it by walking the common tasks against the tree.
 - [ ] A section-by-section coverage table is produced covering all eleven docs-checklist.md sections, with `not-checked` and a reason for any section the captured material cannot answer (e.g., Discoverability And Read Path beyond what the tree shows, Generated-Doc Provenance). Canonical Claim Validation is marked `not-checked` for lack of a runnable checkout, not `OK`.
 - [ ] Findings are ordered blocking first, then degrading, per Report Format, and each uses the six-part finding format: severity, checklist section, location, evidence labels, impact, remediation.
@@ -232,5 +232,26 @@ The skill's exclusions are part of its contract, so a treatment run that walks t
 
 ## Results
 
+First run: 2026-08-19, on commit 355b641 (all five scenarios, both arms, one repetition each).
+Treatment loaded agent-friendly-docs only; baseline was blocked from the skills directory.
+Single repetition, one model — treat every row as a signal, not a measurement.
+
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-08-19 | 1 Design | baseline | ~5.5/8 | Produced layered tree, one-home fix, four read paths, ADR statuses, owners, PR template. Missed: explicit per-doc layer assignment, delegation of adapter choice, checklist walk. |
+| 2026-08-19 | 1 Design | treatment | 8/8 | Named three straddling docs against the split tests, delegated to both siblings, marked Canonical Claim Validation `not-checked`, walked all eleven sections. |
+| 2026-08-19 | 2 Audit | baseline | ~4/8 | Found every planted content defect, including the `test/unit` path mismatch as its top finding. Missed: the unprompted release-routing gap, evidence labels, the severity scale, the coverage table. |
+| 2026-08-19 | 2 Audit | treatment | 8/8 | Ten findings, six-part format, correct `inferred` label on the unexecuted command, sampling boundary stated under Canonical Claim Validation. |
+| 2026-08-19 | 3 Diagnosis | baseline | 4/4 | Named the failure path, led with the pointer fix, kept one authoritative home, stayed diagnosis-sized. |
+| 2026-08-19 | 3 Diagnosis | treatment | 2/4 | **Regression — treatment worse than baseline.** Produced six findings and a full eleven-section coverage table for a two-file problem, and buried the immediate mitigation below them. Cause: review-workflow §1 said "start in diagnosis mode" without saying stop, and SKILL.md said *both* workflows walk the checklist. Fixed after this run; re-run owed. |
+| 2026-08-19 | 4 Boundary | baseline | ~1/4 | Answered both delegated questions in full, including an invented adapter file layout and a complete bind-vs-inform framework. No sibling skill named. |
+| 2026-08-19 | 4 Boundary | treatment | 4/4 | Declined adapter mechanics and stated no harness syntax, routed the bind-vs-inform question and labeled its screening result provisional, still answered the layer-placement part. Strongest discrimination in the suite. |
+| 2026-08-19 | 5 Restraint | baseline | 3/4 | 5a and 5b answered normally, as intended. Failed 5c: sorted the binding lines itself with its own framework and named no sibling skill. |
+| 2026-08-19 | 5 Restraint | treatment | 4/4 | Declined 5a and 5b against When Not To Use after reading SKILL.md alone, routed 5c, walked no checklist section. |
+
+**What this run says about the scenarios themselves.**
+
+- Scenario 4 and Scenario 5 discriminate well: the baseline fails them on analysis, not on formatting.
+- Scenario 2 now discriminates on analysis too — removing the self-announcing hints made the release-routing gap a real find, and the baseline missed it.
+- Scenario 1 is the weakest. The baseline found every content answer and failed mainly on layer vocabulary and the checklist walk, which is close to a format-only failure. Tighten it before its treatment result carries weight — plant a defect that needs the standard to see, such as a command that contradicts a CI file.
+- Scenario 3 was too easy for the baseline (4/4) and caught a real defect in the skill instead. Keep it; its value is as a regression test against audit creep.
