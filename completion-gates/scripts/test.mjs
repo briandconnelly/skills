@@ -1,0 +1,312 @@
+#!/usr/bin/env node
+// test.mjs : regression tests for the completion-gates enforcement scripts.
+// Zero dependencies. Run: node test.mjs
+//
+// Every false-success path found in the ancestor project (unlazy v2) has a
+// test here: silently dropped file args, EXPECT match excusing a nonzero
+// exit, evidence that only existed in memory, empty ledgers reporting
+// success, abandoned gates counted as met, and hook release counters reset
+// by cosmetic edits.
+
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, readFileSync, appendFileSync, rmSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
+import assert from "node:assert/strict";
+
+const SCRIPTS = dirname(fileURLToPath(import.meta.url));
+const tempDirs = [];
+
+function makeDir() {
+  const d = mkdtempSync(join(tmpdir(), "completion-gates-test-"));
+  tempDirs.push(d);
+  return d;
+}
+
+function gitInit(dir) {
+  const git = (...a) =>
+    spawnSync("git", a, { cwd: dir, encoding: "utf8", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" } });
+  git("init", "-q");
+  git("config", "user.email", "t@t");
+  git("config", "user.name", "t");
+  writeFileSync(join(dir, "src.txt"), "v1\n");
+  git("add", "-A");
+  git("commit", "-qm", "init");
+  return git;
+}
+
+const gateCheck = (dir, ...args) =>
+  spawnSync("node", [join(SCRIPTS, "gate-check.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+const stopHook = (dir) =>
+  spawnSync("node", [join(SCRIPTS, "stop-hook.mjs")], {
+    cwd: dir,
+    encoding: "utf8",
+    input: JSON.stringify({ cwd: dir, stop_hook_active: false }),
+  });
+
+const SIMPLE_GATES = `# Gates: test
+
+- [ ] G1: says hello
+  CHECK: echo hello
+  EXPECT: hello
+  EVIDENCE: pending
+`;
+
+function freshGated(content = SIMPLE_GATES, { git = false } = {}) {
+  const dir = makeDir();
+  if (git) gitInit(dir);
+  writeFileSync(join(dir, "GATES.md"), content);
+  return dir;
+}
+
+let passed = 0;
+let failed = 0;
+function test(name, fn) {
+  try {
+    fn();
+    passed++;
+    console.log(`  ok    ${name}`);
+  } catch (e) {
+    failed++;
+    console.log(`  FAIL  ${name}\n        ${e.message.split("\n")[0]}`);
+  }
+}
+
+// ---------------------------------------------------------------- runner soundness
+
+test("happy path: freeze + run proves the gate, flips the box, writes an artifact", () => {
+  const dir = freshGated();
+  assert.equal(gateCheck(dir, "freeze").status, 0);
+  const run = gateCheck(dir, "run");
+  assert.equal(run.status, 0, run.stdout + run.stderr);
+  assert.match(run.stdout, /OVERALL: PROVEN/);
+  assert.match(readFileSync(join(dir, "GATES.md"), "utf8"), /- \[x\] G1/);
+  assert.match(readFileSync(join(dir, ".completion-gates/artifacts/G1.log"), "utf8"), /hello/);
+});
+
+test("all positional file args are processed — none silently dropped", () => {
+  const dir = makeDir();
+  writeFileSync(join(dir, "a.md"), "# Gates: a\n\n- [ ] A1: a\n  CHECK: echo aaa\n  EXPECT: aaa\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "b.md"), "# Gates: b\n\n- [ ] B1: b\n  CHECK: echo bbb\n  EXPECT: bbb\n  EVIDENCE: pending\n");
+  assert.equal(gateCheck(dir, "freeze", "a.md", "b.md").status, 0);
+  const run = gateCheck(dir, "run");
+  assert.equal(run.status, 0, run.stdout + run.stderr);
+  assert.match(readFileSync(join(dir, "a.md"), "utf8"), /- \[x\] A1/);
+  assert.match(readFileSync(join(dir, "b.md"), "utf8"), /- \[x\] B1/);
+});
+
+test("EXPECT match never excuses a nonzero exit", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: lies\n  CHECK: echo hello; exit 1\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  const run = gateCheck(dir, "run");
+  assert.equal(run.status, 1, run.stdout);
+  assert.match(run.stdout, /FAIL G1/);
+  assert.match(readFileSync(join(dir, "GATES.md"), "utf8"), /- \[ \] G1/);
+});
+
+test("a declared EXIT makes a nonzero exit passing", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: fails by design\n  CHECK: echo hello; exit 3\n  EXPECT: hello\n  EXIT: 3\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "run").status, 0);
+});
+
+test("freeze rejects a gate with no EVIDENCE line (no in-memory-only evidence)", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: no evidence slot\n  CHECK: echo hi\n  EXPECT: hi\n");
+  const res = gateCheck(dir, "freeze");
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /no EVIDENCE line/);
+});
+
+test("zero gates is an error, never an empty success", () => {
+  const dir = freshGated("# Gates: empty\n\nnothing here\n");
+  const res = gateCheck(dir, "freeze");
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /no gates found/);
+  assert.equal(gateCheck(dir, "run").status, 2); // and run without a manifest is an error too
+});
+
+test("duplicate gate ids are rejected at freeze", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: a\n  EVIDENCE: pending\n\n- [ ] G1: b\n  EVIDENCE: pending\n");
+  const res = gateCheck(dir, "freeze");
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /duplicate gate id G1/);
+});
+
+test("unknown flags and missing flag values are errors, not ignored", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "run", "--bogus").status, 2);
+  assert.equal(gateCheck(dir, "run", "--timeout").status, 2);
+});
+
+// ---------------------------------------------------------------- contract integrity
+
+test("weakening a CHECK after freeze is spec drift: run refuses until amended", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: real check\n  CHECK: node --version\n  EXPECT: /v\\d+/\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: real check\n  CHECK: echo ok\n  EXPECT: ok\n  EVIDENCE: pending\n");
+  const run = gateCheck(dir, "run");
+  assert.equal(run.status, 2);
+  assert.match(run.stderr, /drift/);
+  const amend = gateCheck(dir, "amend", "--reason", "check was wrong for this platform");
+  assert.equal(amend.status, 0, amend.stderr);
+  assert.equal(gateCheck(dir, "run").status, 0);
+  const manifest = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
+  assert.equal(manifest.revisions.length, 1);
+  assert.equal(manifest.revisions[0].changes[0].id, "G1");
+});
+
+test("amend requires a reason and a real change", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "amend").status, 2);
+  const noop = gateCheck(dir, "amend", "--reason", "nothing changed");
+  assert.equal(noop.status, 2);
+  assert.match(noop.stderr, /nothing to amend/);
+});
+
+test("abandoned gates yield INCOMPLETE-HANDOFF (exit 3), never PROVEN", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  appendFileSync(join(dir, "GATES.md"), "\nABANDON: G1 environment lacks the tool\n");
+  const res = gateCheck(dir, "status");
+  assert.equal(res.status, 3, res.stdout);
+  assert.match(res.stdout, /INCOMPLETE-HANDOFF/);
+  assert.doesNotMatch(res.stdout, /OVERALL: PROVEN/);
+});
+
+test("criteria traceability: unmapped criterion or unknown FOR fails freeze", () => {
+  const unmapped = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n- C2: goodbye works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const r1 = gateCheck(unmapped, "freeze");
+  assert.equal(r1.status, 2);
+  assert.match(r1.stderr, /criterion C2 is mapped to no gate/);
+
+  const unknown = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C9\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const r2 = gateCheck(unknown, "freeze");
+  assert.equal(r2.status, 2);
+  assert.match(r2.stderr, /unknown criterion C9/);
+
+  const good = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  assert.equal(gateCheck(good, "freeze").status, 0);
+});
+
+test("manual gates: unmet until checked with real evidence, then attested", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: design reviewed by hand\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "status").status, 1);
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [x] G1: design reviewed by hand\n  EVIDENCE: reviewed layout.tsx:120-180, all three tiers present\n");
+  const res = gateCheck(dir, "status");
+  assert.equal(res.status, 0, res.stdout);
+  assert.match(res.stdout, /ATTESTED/);
+});
+
+test("checked box with pending evidence is still unmet", () => {
+  const dir = freshGated("# Gates: t\n\n- [x] G1: claimed done\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  const res = gateCheck(dir, "status");
+  assert.equal(res.status, 1);
+  assert.match(res.stdout, /EVIDENCE still pending/);
+});
+
+test("staleness: workspace change after a passing run demotes PROVEN (git)", () => {
+  const dir = freshGated(SIMPLE_GATES, { git: true });
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  assert.equal(gateCheck(dir, "status").status, 0);
+  writeFileSync(join(dir, "src.txt"), "v2 changed after the passing run\n");
+  const res = gateCheck(dir, "status");
+  assert.equal(res.status, 1, res.stdout);
+  assert.match(res.stdout, /STALE/);
+  assert.equal(gateCheck(dir, "run").status, 0); // re-running re-proves
+});
+
+test("negative control: passes when the CHECK fails pre-fix, refuses when it already passes", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "control", "G1").status, 0); // pre-fix: check fails => control ok
+  writeFileSync(join(dir, "built.txt"), "x");
+  assert.equal(gateCheck(dir, "control", "G1").status, 1); // post-fix: check passes => no sensitivity shown
+});
+
+test("run preserves a prior negative-control record in state", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "control", "G1").status, 0);
+  writeFileSync(join(dir, "built.txt"), "x");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
+  assert.equal(state.gates.G1.status, "pass");
+  assert.equal(state.gates.G1.control.failedAsExpected, true, "run must not erase the control record");
+});
+
+// ---------------------------------------------------------------- stop hook
+
+test("hook: no manifest means allow, even with a bare GATES.md present", () => {
+  const dir = makeDir();
+  writeFileSync(join(dir, "GATES.md"), SIMPLE_GATES);
+  const res = stopHook(dir);
+  assert.equal(res.status, 0);
+  assert.equal(res.stdout.trim(), "");
+});
+
+test("hook: blocks on open gates, allows on PROVEN", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  const blocked = JSON.parse(stopHook(dir).stdout);
+  assert.equal(blocked.decision, "block");
+  assert.match(blocked.reason, /G1/);
+  gateCheck(dir, "run");
+  assert.equal(stopHook(dir).stdout.trim(), "");
+});
+
+test("hook: abandoning everything allows stop but labels it a handoff, not success", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  appendFileSync(join(dir, "GATES.md"), "\nABANDON: G1 cannot run in this environment\n");
+  const res = JSON.parse(stopHook(dir).stdout);
+  assert.equal(res.decision, undefined);
+  assert.match(res.systemMessage, /INCOMPLETE-HANDOFF/);
+});
+
+test("hook: cosmetic edits do not reset the release counter; resolution progress does", () => {
+  const dir = freshGated(
+    "# Gates: t\n\n- [ ] G1: a\n  CHECK: echo aaa\n  EXPECT: aaa\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n",
+  );
+  gateCheck(dir, "freeze");
+  stopHook(dir);
+  appendFileSync(join(dir, "GATES.md"), "\n\n"); // cosmetic edit
+  stopHook(dir);
+  let hs = JSON.parse(readFileSync(join(dir, ".completion-gates/hook-state.json"), "utf8"));
+  assert.equal(hs.blocks, 2, "cosmetic edit must not reset the counter");
+  gateCheck(dir, "run"); // proves G1: real progress
+  stopHook(dir);
+  hs = JSON.parse(readFileSync(join(dir, ".completion-gates/hook-state.json"), "utf8"));
+  assert.equal(hs.blocks, 1, "resolving a gate must reset the counter");
+});
+
+test("hook: releases with a warning after MAX_BLOCKS stops without progress", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  let last;
+  for (let i = 0; i < 7; i++) last = stopHook(dir);
+  const res = JSON.parse(last.stdout);
+  assert.equal(res.decision, undefined);
+  assert.match(res.systemMessage, /releasing after 6 blocks/);
+  assert.match(res.systemMessage, /Do not report this work as done/);
+});
+
+test("hook: broken gate state allows stop with a warning instead of trapping", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  rmSync(join(dir, "GATES.md"));
+  const res = JSON.parse(stopHook(dir).stdout);
+  assert.equal(res.decision, undefined);
+  assert.match(res.systemMessage, /allowing stop rather than trapping/);
+});
+
+// ----------------------------------------------------------------
+
+console.log(`\n${passed} passed, ${failed} failed`);
+for (const d of tempDirs) rmSync(d, { recursive: true, force: true });
+process.exit(failed ? 1 : 0);

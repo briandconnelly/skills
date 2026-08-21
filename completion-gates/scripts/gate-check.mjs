@@ -1,0 +1,301 @@
+#!/usr/bin/env node
+// gate-check.mjs : freeze, run, and audit completion gates.
+// Zero dependencies. Node 18+. Part of the completion-gates skill.
+//
+// Usage:
+//   gate-check.mjs freeze [files...] [--force]     validate gate files, write the frozen manifest
+//   gate-check.mjs run [--gate ID] [--timeout N]   execute unproven/stale CHECK gates from the manifest
+//   gate-check.mjs status                          report only, change nothing
+//   gate-check.mjs amend --reason "<why>"          record a visible spec revision after gate files change
+//   gate-check.mjs control <ID> [--timeout N]      negative control: verify the CHECK can fail (run pre-fix)
+//
+// Exit codes: 0 = PROVEN, 1 = INCOMPLETE, 2 = usage/parse/drift error, 3 = INCOMPLETE-HANDOFF
+// (abandoned gates present, everything else proven). An ABANDON line never produces exit 0.
+
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { join, relative, isAbsolute } from "node:path";
+import {
+  DIR,
+  manifestPath,
+  statePath,
+  artifactsDir,
+  readJSON,
+  atomicWriteJSON,
+  parseGateFile,
+  validateForFreeze,
+  specOf,
+  specDrifted,
+  expectMatches,
+  workspaceFingerprint,
+  computeStatus,
+  formatLedger,
+} from "./lib.mjs";
+
+const cwd = process.cwd();
+const argv = process.argv.slice(2);
+const command = argv[0];
+
+function fail(msg) {
+  console.error(`gate-check: ${msg}`);
+  process.exit(2);
+}
+
+// Deliberately positional-safe: consume flags and their values explicitly,
+// everything left over is a positional argument, none silently dropped.
+function parseArgs(rest, flagsWithValue = [], booleanFlags = []) {
+  const flags = {};
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (flagsWithValue.includes(a)) {
+      if (i + 1 >= rest.length) fail(`${a} requires a value`);
+      flags[a.replace(/^--/, "")] = rest[++i];
+    } else if (booleanFlags.includes(a)) {
+      flags[a.replace(/^--/, "")] = true;
+    } else if (a.startsWith("--")) {
+      fail(`unknown flag ${a}`);
+    } else {
+      positional.push(a);
+    }
+  }
+  return { flags, positional };
+}
+
+const relPath = (p) => (isAbsolute(p) ? relative(cwd, p) : p).replaceAll("\\", "/");
+
+function discoverDefaultFiles() {
+  const found = [];
+  if (existsSync(join(cwd, "GATES.md"))) found.push("GATES.md");
+  const gdir = join(cwd, "gates");
+  if (existsSync(gdir))
+    for (const f of readdirSync(gdir).sort()) if (f.endsWith(".md")) found.push(`gates/${f}`);
+  return found;
+}
+
+function parseFiles(files) {
+  return files.map((f) => {
+    let text;
+    try {
+      text = readFileSync(join(cwd, f), "utf8");
+    } catch (e) {
+      fail(`cannot read ${f}: ${e.message}`);
+    }
+    return parseGateFile(text, f);
+  });
+}
+
+function exitForStatus(status) {
+  console.log(formatLedger(status));
+  process.exit(status.overall === "PROVEN" ? 0 : status.overall === "INCOMPLETE-HANDOFF" ? 3 : 1);
+}
+
+function loadManifestOrFail() {
+  const manifest = readJSON(manifestPath(cwd));
+  if (!manifest) fail("no manifest — run `gate-check.mjs freeze` first");
+  return manifest;
+}
+
+function runCheck(spec, timeoutSec) {
+  const res = spawnSync(spec.check, {
+    cwd,
+    shell: true,
+    encoding: "utf8",
+    timeout: timeoutSec * 1000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  const output = `${res.stdout || ""}\n${res.stderr || ""}`;
+  const timedOut = res.error?.code === "ETIMEDOUT" || (res.status === null && res.signal);
+  const expectedExit = spec.exit === null ? 0 : Number(spec.exit);
+  // Both must hold — an EXPECT match never excuses a wrong exit status.
+  const pass = !timedOut && res.status === expectedExit && (!spec.expect || expectMatches(spec.expect, output));
+  return { pass, exit: res.status, timedOut, output };
+}
+
+function writeArtifact(id, output) {
+  mkdirSync(artifactsDir(cwd), { recursive: true });
+  const rel = `${DIR}/artifacts/${id}.log`;
+  writeFileSync(join(cwd, rel), output);
+  return rel;
+}
+
+// Rewrites only the checkbox and EVIDENCE lines of one gate in its file.
+// Evidence is metadata only — raw output stays in the untracked artifact file,
+// so secrets a CHECK prints never land in a tracked markdown file.
+function recordInMarkdown(file, gateId, pass, summary) {
+  const path = join(cwd, file);
+  const lines = readFileSync(path, "utf8").split(/\r?\n/);
+  const parsed = parseGateFile(lines.join("\n"), file);
+  const gate = parsed.gates.find((g) => g.id === gateId);
+  if (!gate) return;
+  lines[gate.line] = lines[gate.line].replace(/^- \[( |x|X)\]/, pass ? "- [x]" : "- [ ]");
+  if (gate.evidenceLine !== -1) {
+    const indent = lines[gate.evidenceLine].match(/^\s*/)[0];
+    lines[gate.evidenceLine] = `${indent}EVIDENCE: ${summary}`;
+  }
+  writeFileSync(path, lines.join("\n"));
+}
+
+// ---------------------------------------------------------------- freeze
+if (command === "freeze") {
+  const { flags, positional } = parseArgs(argv.slice(1), [], ["--force"]);
+  if (existsSync(manifestPath(cwd)) && !flags.force)
+    fail("manifest already exists — use `amend --reason` for spec changes, or --force to start over");
+
+  const files = positional.length ? positional.map(relPath) : discoverDefaultFiles();
+  if (!files.length) fail("no gate files found (GATES.md or gates/*.md) and none given");
+
+  const parsed = parseFiles(files);
+  const errors = validateForFreeze(parsed);
+  if (errors.length) {
+    for (const e of errors) console.error(`  ${e}`);
+    fail(`${errors.length} validation error(s) — fix the gate files, then freeze again`);
+  }
+
+  const criteria = parsed.flatMap((p) => p.criteria);
+  const gates = parsed.flatMap((p) => p.gates.map(specOf));
+  atomicWriteJSON(manifestPath(cwd), {
+    schema: 1,
+    frozen_at: new Date().toISOString(),
+    files,
+    criteria,
+    gates,
+    revisions: [],
+  });
+  // state, hook state, and artifacts are machine-local; the manifest itself is auditable and committable
+  writeFileSync(join(cwd, DIR, ".gitignore"), "state.json\nhook-state.json\nartifacts/\n*.tmp\n");
+
+  console.log(`Frozen ${gates.length} gates (${criteria.length} criteria) from: ${files.join(", ")}`);
+  console.log("Review the commands this manifest authorizes for execution:");
+  for (const g of gates) if (g.check) console.log(`  ${g.id}: ${g.check}`);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- run
+if (command === "run" || command === undefined) {
+  const { flags } = parseArgs(argv.slice(1), ["--gate", "--timeout"], []);
+  const timeoutSec = flags.timeout ? Number(flags.timeout) : 120;
+  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) fail("--timeout must be a positive number");
+  loadManifestOrFail();
+
+  let status = computeStatus(cwd);
+  if (status.error) fail(status.error);
+
+  const drifted = status.rows.filter((r) => r.detail.includes("drift"));
+  if (drifted.length)
+    fail(
+      `spec drift on ${drifted.map((r) => r.id).join(", ")} — the gate files no longer match the frozen manifest; run \`amend --reason\` to record the change`,
+    );
+
+  const runnable = status.manifest.gates.filter((g) => {
+    if (!g.check) return false;
+    if (flags.gate && g.id !== flags.gate) return false;
+    const row = status.rows.find((r) => r.id === g.id);
+    return row.resolution === "unmet" || row.resolution === "stale";
+  });
+  if (flags.gate && !runnable.length && !status.manifest.gates.some((g) => g.id === flags.gate))
+    fail(`no gate named ${flags.gate} in the manifest`);
+
+  const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
+  const ranNow = [];
+  for (const spec of runnable) {
+    const res = runCheck(spec, timeoutSec);
+    const artifact = writeArtifact(spec.id, res.output);
+    const at = new Date().toISOString();
+    state.gates[spec.id] = {
+      ...(state.gates[spec.id] || {}), // preserve the control record — it is part of the audit trail
+      status: res.pass ? "pass" : "fail",
+      exit: res.exit,
+      at,
+      artifact,
+    };
+    const why = res.timedOut ? `timeout after ${timeoutSec}s` : `exit=${res.exit}`;
+    recordInMarkdown(spec.file, spec.id, res.pass, `${res.pass ? "pass" : "FAIL"} ${why} ${at} artifact=${artifact}`);
+    console.log(`  ${res.pass ? "PASS" : "FAIL"} ${spec.id}: ${spec.title} (${why})`);
+    if (res.pass) ranNow.push(spec.id);
+  }
+
+  // One fingerprint for the whole invocation, taken after every check ran,
+  // so a check that writes build output doesn't immediately stale its siblings.
+  const fp = workspaceFingerprint(cwd, status.manifest.files);
+  for (const id of ranNow) state.gates[id].fingerprint = fp;
+  atomicWriteJSON(statePath(cwd), state);
+
+  status = computeStatus(cwd);
+  if (status.error) fail(status.error);
+  exitForStatus(status);
+}
+
+// ---------------------------------------------------------------- status
+if (command === "status") {
+  const status = computeStatus(cwd);
+  if (status.error) fail(status.error);
+  exitForStatus(status);
+}
+
+// ---------------------------------------------------------------- amend
+if (command === "amend") {
+  const { flags, positional } = parseArgs(argv.slice(1), ["--reason"], []);
+  if (!flags.reason?.trim()) fail("amend requires --reason \"<why the contract changed>\"");
+  const manifest = loadManifestOrFail();
+
+  const files = [...new Set([...manifest.files, ...positional.map(relPath)])];
+  const parsed = parseFiles(files);
+  const errors = validateForFreeze(parsed);
+  if (errors.length) {
+    for (const e of errors) console.error(`  ${e}`);
+    fail(`${errors.length} validation error(s) — fix the gate files, then amend again`);
+  }
+
+  const nextGates = parsed.flatMap((p) => p.gates.map(specOf));
+  const prevById = new Map(manifest.gates.map((g) => [g.id, g]));
+  const nextById = new Map(nextGates.map((g) => [g.id, g]));
+  const changes = [];
+  for (const [id, g] of nextById)
+    if (!prevById.has(id)) changes.push({ op: "added", id, spec: g });
+    else if (specDrifted(prevById.get(id), g))
+      changes.push({ op: "changed", id, from: prevById.get(id), to: g });
+  for (const id of prevById.keys())
+    if (!nextById.has(id)) changes.push({ op: "removed", id, spec: prevById.get(id) });
+  if (!changes.length) fail("nothing to amend — gate specs match the manifest");
+
+  manifest.files = files;
+  manifest.criteria = parsed.flatMap((p) => p.criteria);
+  manifest.gates = nextGates;
+  manifest.revisions.push({ at: new Date().toISOString(), reason: flags.reason.trim(), changes });
+  atomicWriteJSON(manifestPath(cwd), manifest);
+
+  console.log(`Revision ${manifest.revisions.length} recorded: ${flags.reason.trim()}`);
+  for (const c of changes)
+    console.log(
+      `  ${c.op} ${c.id}${c.op === "changed" ? `: CHECK/EXPECT/EXIT/FOR now ${JSON.stringify({ check: c.to.check, expect: c.to.expect, exit: c.to.exit, for: c.to.for })}` : ""}`,
+    );
+  console.log("Surface this revision (and its reason) in your final report.");
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- control
+if (command === "control") {
+  const { flags, positional } = parseArgs(argv.slice(1), ["--timeout"], []);
+  const id = positional[0];
+  if (!id) fail("control requires a gate id");
+  const manifest = loadManifestOrFail();
+  const spec = manifest.gates.find((g) => g.id === id);
+  if (!spec) fail(`no gate named ${id} in the manifest`);
+  if (!spec.check) fail(`${id} is a manual gate — negative controls apply to CHECK gates`);
+
+  const res = runCheck(spec, flags.timeout ? Number(flags.timeout) : 120);
+  const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
+  state.gates[id] = { ...(state.gates[id] || {}), control: { at: new Date().toISOString(), failedAsExpected: !res.pass } };
+  atomicWriteJSON(statePath(cwd), state);
+
+  if (res.pass) {
+    console.log(`CONTROL FAILED for ${id}: the CHECK already passes, so it cannot demonstrate sensitivity.`);
+    console.log("Run controls on the pre-fix state, or sharpen the CHECK until it fails without the work.");
+    process.exit(1);
+  }
+  console.log(`CONTROL OK for ${id}: the CHECK fails without the work (exit=${res.exit}). Recorded.`);
+  process.exit(0);
+}
+
+fail(`unknown command "${command}" (expected freeze | run | status | amend | control)`);
