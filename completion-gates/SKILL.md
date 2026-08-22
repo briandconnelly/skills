@@ -10,7 +10,7 @@ The failure this skill kills is the unverified completion claim: the done report
 
 **Honesty clause — read this first.** Every artifact here (gate files, manifest, hook state) is writable by you, the agent it constrains. This system is an auditable discipline, not enforcement: it cannot make cheating impossible, only visible. Deleting the manifest, weakening a CHECK, or hand-forging evidence all leave records a reviewer will see — and each is a worse outcome for your user than an honest INCOMPLETE.
 
-The parser enforces: pending evidence is unmet; a changed CHECK/EXPECT/EXIT/FOR/CONTROL, a reworded criterion, an added gate, or an ABANDON naming no gate blocks `run` and `status` until amended; evidence from a run under an old spec never satisfies the amended one; a `CONTROL: required` gate needs an `ok` control recorded before its passing run. It does not judge the *content* of attested evidence, whether a CHECK was truthfully declared new, or whether a control failed for the intended reason (add `CONTROL_EXPECT:` to pin the failure signature) — those are trust, and the ledger labels them.
+What the scripts enforce versus what is trust is specified once, in [references/gates.md](references/gates.md). In short: the ledger labels the trust cases (attested evidence, exempt or waived controls) — read those labels, never assume them.
 
 **Escape rule (the only permitted ways to change or drop a gate):**
 - `ABANDON: <id> <reason>` — the gate stays in the ledger as surrendered.

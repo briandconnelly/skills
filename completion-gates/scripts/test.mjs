@@ -542,7 +542,7 @@ test("control records the workspace fingerprint; same-workspace as the passing r
   assert.equal(gateCheck(dir, "run").status, 0);
   assert.doesNotMatch(gateCheck(dir, "status").stdout, /same-workspace/);
   // a flaky check: fails on control, passes on run, workspace untouched
-  const flaky = freshGated(REQ("test -f .completion-gates/artifacts/G1.control.log"), { git: true });
+  const flaky = freshGated(REQ("test -f .completion-gates/artifacts/G1.control.1.log"), { git: true });
   gateCheck(flaky, "freeze");
   gateCheck(flaky, "control", "G1"); // log does not exist yet -> fails -> ok; and writes the log
   assert.equal(gateCheck(flaky, "run").status, 0);
@@ -770,6 +770,122 @@ test("pauses survive reset and close in the audit trail", () => {
   const epochs = readdirSync(join(dir, ".completion-gates/history"));
   const closure = JSON.parse(readFileSync(join(dir, ".completion-gates/history", epochs[0], "manifest.json"), "utf8"));
   assert.equal(closure.closure.pauses[0].reason, "q2");
+});
+
+// ---------------------------------------------------------------- copilot review (PR #158)
+
+test("a gates/*.md file created after freeze is drift, not invisible", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  mkdirSync(join(dir, "gates"));
+  writeFileSync(join(dir, "gates/new.md"), "# Gates: new\n\n- [ ] N1: thing\n  EVIDENCE: pending\n");
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 2, st.stdout);
+  assert.match(st.stderr, /gates\/new.md is not in the frozen manifest/);
+  assert.equal(gateCheck(dir, "amend", "--reason", "add leaf").status, 0);
+  const m = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
+  assert.deepEqual(m.files, ["GATES.md", "gates/new.md"]);
+  assert.equal(gateCheck(dir, "status").status, 1);
+});
+
+test("duplicate ABANDON across files is rejected at freeze and live", () => {
+  const dir = makeDir();
+  mkdirSync(join(dir, "gates"));
+  writeFileSync(join(dir, "GATES.md"), "# Gates: d\n\n- [ ] D1: x\n  CHECK: echo ok\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n\nABANDON: L1 from driver\n");
+  writeFileSync(join(dir, "gates/leaf.md"), "# Gates: l\n\n- [ ] L1: y\n  EVIDENCE: pending\n\nABANDON: L1 from leaf\n");
+  const fr = gateCheck(dir, "freeze");
+  assert.equal(fr.status, 2);
+  assert.match(fr.stderr, /ABANDON L1 declared more than once/);
+  writeFileSync(join(dir, "gates/leaf.md"), "# Gates: l\n\n- [ ] L1: y\n  EVIDENCE: pending\n");
+  assert.equal(gateCheck(dir, "freeze").status, 0);
+  appendFileSync(join(dir, "gates/leaf.md"), "\nABANDON: L1 again\n");
+  assert.match(gateCheck(dir, "status").stderr, /ABANDON L1 declared more than once/);
+});
+
+test("close clears live checkboxes and evidence so a new contract cannot inherit attestations", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: manual\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [x] G1: manual\n  EVIDENCE: reviewed by hand\n");
+  assert.equal(gateCheck(dir, "close").status, 0);
+  const live = readFileSync(join(dir, "GATES.md"), "utf8");
+  assert.match(live, /- \[ \] G1/);
+  assert.match(live, /EVIDENCE: pending/);
+  const epochs = readdirSync(join(dir, ".completion-gates/history"));
+  assert.match(readFileSync(join(dir, ".completion-gates/history", epochs[0], "GATES.md"), "utf8"), /reviewed by hand/);
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "status").status, 1);
+});
+
+test("reset clears live checkboxes and evidence too", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: manual\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [x] G1: manual\n  EVIDENCE: reviewed by hand\n");
+  gateCheck(dir, "reset", "--reason", "start over");
+  assert.match(readFileSync(join(dir, "GATES.md"), "utf8"), /- \[ \] G1[^]*EVIDENCE: pending/);
+  assert.equal(gateCheck(dir, "status").status, 1);
+});
+
+test("control validates --timeout like run does", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  for (const bad of ["nope", "-1", "0"]) {
+    const r = gateCheck(dir, "control", "G1", "--timeout", bad);
+    assert.equal(r.status, 2, bad);
+    assert.match(r.stderr, /--timeout must be a positive number/);
+  }
+});
+
+test("each control attempt keeps its own artifact", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: f\n  CHECK: test -f built.txt\n  CONTROL: required\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "control", "G1");
+  gateCheck(dir, "control", "G1");
+  const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
+  const [a, b] = state.gates.G1.controls.map((c) => c.artifact);
+  assert.notEqual(a, b);
+  assert.ok(existsSync(join(dir, a)) && existsSync(join(dir, b)));
+});
+
+test("removing a gate's EVIDENCE line after freeze is a live validation error", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  writeFileSync(join(dir, "GATES.md"), readFileSync(join(dir, "GATES.md"), "utf8").replace(/\n  EVIDENCE:[^\n]*/, ""));
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 2, st.stdout);
+  assert.match(st.stderr, /G1 has no EVIDENCE line/);
+});
+
+test("a manifest frozen before CONTROL existed is refused until amended", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  const mp = join(dir, ".completion-gates/manifest.json");
+  const m = JSON.parse(readFileSync(mp, "utf8"));
+  for (const g of m.gates) delete g.control;
+  writeFileSync(mp, JSON.stringify(m));
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 2, st.stdout);
+  assert.match(st.stderr, /manifest predates CONTROL/);
+  assert.equal(gateCheck(dir, "amend", "--reason", "upgrade").status, 0);
+  assert.equal(gateCheck(dir, "status").status, 1);
+});
+
+test("close archives artifacts-reset-* too and clears a stale close notice", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "close", "--reason", "abandoned"); // writes last-close.json, never consumed
+  assert.ok(existsSync(join(dir, ".completion-gates/last-close.json")));
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  gateCheck(dir, "reset", "--reason", "x"); // creates artifacts-reset-*
+  assert.ok(readdirSync(join(dir, ".completion-gates")).some((f) => f.startsWith("artifacts-reset-")));
+  gateCheck(dir, "run");
+  assert.equal(gateCheck(dir, "close").status, 0);
+  const top = readdirSync(join(dir, ".completion-gates"));
+  assert.ok(!top.some((f) => f.startsWith("artifacts-reset-")), "reset archives moved into the epoch");
+  assert.ok(!top.includes("last-close.json"), "stale notice cleared by a PROVEN close");
+  assert.equal(stopHook(dir).stdout.trim(), "");
 });
 
 // ----------------------------------------------------------------

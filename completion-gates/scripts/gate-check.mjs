@@ -29,6 +29,8 @@ import {
   historyDir,
   closeNoticePath,
   recordedPauses,
+  discoverDefaultFiles,
+  clearLiveCompletion,
   readJSON,
   atomicWriteJSON,
   parseGateFile,
@@ -73,15 +75,6 @@ function parseArgs(rest, flagsWithValue = [], booleanFlags = []) {
 }
 
 const relPath = (p) => (isAbsolute(p) ? relative(cwd, p) : p).replaceAll("\\", "/");
-
-function discoverDefaultFiles() {
-  const found = [];
-  if (existsSync(join(cwd, "GATES.md"))) found.push("GATES.md");
-  const gdir = join(cwd, "gates");
-  if (existsSync(gdir))
-    for (const f of readdirSync(gdir).sort()) if (f.endsWith(".md")) found.push(`gates/${f}`);
-  return found;
-}
 
 function parseFiles(files) {
   return files.map((f) => {
@@ -149,7 +142,8 @@ function recordInMarkdown(file, gateId, pass, summary) {
 // Validates the given (or discovered) gate files and returns the contract
 // they define. Shared by freeze and reset; both refuse on any validation error.
 function buildContract(positional) {
-  const files = positional.length ? positional.map(relPath) : discoverDefaultFiles();
+  const explicit = positional.length > 0;
+  const files = explicit ? positional.map(relPath) : discoverDefaultFiles(cwd);
   if (!files.length) fail("no gate files found (GATES.md or gates/*.md) and none given");
   const parsed = parseFiles(files);
   const errors = validateForFreeze(parsed);
@@ -157,7 +151,7 @@ function buildContract(positional) {
     for (const e of errors) console.error(`  ${e}`);
     fail(`${errors.length} validation error(s) — fix the gate files, then try again`);
   }
-  return { files, criteria: parsed.flatMap((p) => p.criteria), gates: parsed.flatMap((p) => p.gates.map(specOf)) };
+  return { files, explicit, criteria: parsed.flatMap((p) => p.criteria), gates: parsed.flatMap((p) => p.gates.map(specOf)) };
 }
 
 function writeManifest(contract, revisions) {
@@ -165,6 +159,7 @@ function writeManifest(contract, revisions) {
     schema: 1,
     frozen_at: new Date().toISOString(),
     files: contract.files,
+    explicit_files: contract.explicit,
     criteria: contract.criteria,
     gates: contract.gates,
     revisions,
@@ -219,6 +214,7 @@ if (command === "reset") {
   rmSync(hookStatePath(cwd), { force: true });
   if (existsSync(artifactsDir(cwd)))
     renameSync(artifactsDir(cwd), join(cwd, DIR, `artifacts-reset-${at.replace(/[:.]/g, "-")}`));
+  clearLiveCompletion(cwd, contract.files);
   writeManifest(contract, revisions);
   console.log(`Revision ${revisions.length} recorded (reset): ${flags.reason.trim()} — surface it in your final report.`);
   process.exit(0);
@@ -362,9 +358,13 @@ if (command === "close") {
     mkdirSync(join(dest, f, ".."), { recursive: true });
     copyFileSync(join(cwd, f), join(dest, f));
   }
-  for (const name of ["state.json", "hook-state.json", "artifacts"])
-    if (existsSync(join(cwd, DIR, name))) renameSync(join(cwd, DIR, name), join(dest, name));
+  const movable = readdirSync(join(cwd, DIR)).filter(
+    (name) => ["state.json", "hook-state.json", "artifacts"].includes(name) || name.startsWith("artifacts-reset-"),
+  );
+  for (const name of movable) renameSync(join(cwd, DIR, name), join(dest, name));
   rmSync(manifestPath(cwd));
+  rmSync(closeNoticePath(cwd), { force: true });
+  clearLiveCompletion(cwd, manifest.files);
   if (status.overall !== "PROVEN") {
     const open = status.rows.filter((r) => r.resolution !== "proven" && r.resolution !== "attested").map((r) => `${r.id} (${r.resolution})`);
     atomicWriteJSON(closeNoticePath(cwd), { closed_at: at, final_status: status.overall, reason, open });
@@ -383,7 +383,8 @@ if (command === "amend") {
   if (!flags.reason?.trim()) fail("amend requires --reason \"<why the contract changed>\"");
   const manifest = loadManifestOrFail();
 
-  const files = [...new Set([...manifest.files, ...positional.map(relPath)])];
+  const discovered = manifest.explicit_files ? [] : discoverDefaultFiles(cwd);
+  const files = [...new Set([...manifest.files, ...discovered, ...positional.map(relPath)])];
   const parsed = parseFiles(files);
   const errors = validateForFreeze(parsed);
   if (errors.length) {
@@ -440,8 +441,11 @@ if (command === "control") {
   if (!spec.check) fail(`${id} is a manual gate — negative controls apply to CHECK gates`);
 
   const timeoutSec = flags.timeout ? Number(flags.timeout) : 120;
+  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) fail("--timeout must be a positive number");
   const res = runCheck(spec, timeoutSec);
-  const artifact = writeArtifact(`${id}.control`, res.output);
+  const priorState = readJSON(statePath(cwd), { schema: 1, gates: {} });
+  const attempt = (priorState.gates[id]?.controls?.length || (priorState.gates[id]?.control ? 1 : 0)) + 1;
+  const artifact = writeArtifact(`${id}.control.${attempt}`, res.output);
   // Outcomes, never collapsed to one boolean. "ok" means the CHECK did not
   // pass (and, with CONTROL_EXPECT, failed with the expected signature) — it
   // does not prove the failure was caused by the missing fix.
@@ -461,7 +465,7 @@ if (command === "control") {
   } else {
     outcome = "ok";
   }
-  const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
+  const state = priorState;
   const prior = state.gates[id] || {};
   const record = {
     at: new Date().toISOString(),

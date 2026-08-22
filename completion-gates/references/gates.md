@@ -84,9 +84,12 @@ authorizes — review them; they will be executed as shell. After freezing:
   `counts`, `rows`, `pauses`, `final_ledger`, `workspace_fingerprint`), copies
   of the gate files, and the moved `state.json`, `hook-state.json`, and
   `artifacts/`. Nothing live remains. Exit code follows `final_status`
-  (0/3/1). A non-PROVEN close writes `last-close.json`, which the hook
-  consumes to label exactly one stop. `close` refuses when the ledger cannot
-  be computed. `reset` folds consumed pauses into its revision.
+  (0/3/1). `close` and `reset` also reset every live checkbox and EVIDENCE
+  line to pending (the archive keeps the filled-in copy), so the next contract
+  inherits no attestation. A non-PROVEN close writes `last-close.json`, which
+  the hook consumes to label exactly one stop; any stale notice is cleared.
+  `close` refuses when the ledger cannot be computed. `reset` folds consumed
+  pauses into its revision.
 - Which of these is allowed when is governed by the escape rule in SKILL.md;
   this file describes mechanics only.
 
@@ -138,8 +141,8 @@ claim; evidence is the proof.
   amend it shows `stale`) and the workspace fingerprint; `same-workspace`
   flags a control and passing run on identical files, i.e. a nondeterministic
   CHECK. `ok` means "did not pass", not "failed because the fix was missing" —
-  use `CONTROL_EXPECT` when that distinction matters. Output goes to
-  `artifacts/<id>.control.log`. A trivially-green CHECK (`echo ok`) is the
+  use `CONTROL_EXPECT` when that distinction matters. Each attempt's output
+  goes to its own `artifacts/<id>.control.<n>.log`. A trivially-green CHECK (`echo ok`) is the
   gamed ledger this system exists to expose.
 - **Waivers are visible.** Amending `CONTROL: required` to `exempt <reason>`
   is legal; the gate's row shows `control: waived rev N` and OVERALL counts

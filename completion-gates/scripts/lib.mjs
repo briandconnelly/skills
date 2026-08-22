@@ -7,6 +7,8 @@ import {
   renameSync,
   mkdirSync,
   statSync,
+  existsSync,
+  readdirSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -24,6 +26,17 @@ export const closeNoticePath = (cwd) => join(cwd, DIR, "last-close.json");
 // pause in one atomic write). Consumed pauses only; a pending token is not a pause.
 export function recordedPauses(cwd) {
   return readJSON(hookStatePath(cwd), {}).pauses || [];
+}
+
+// The default contract files: GATES.md plus gates/*.md. A contract frozen from
+// these (no explicit file list) must keep seeing new leaf files.
+export function discoverDefaultFiles(cwd) {
+  const found = [];
+  if (existsSync(join(cwd, "GATES.md"))) found.push("GATES.md");
+  const gdir = join(cwd, "gates");
+  if (existsSync(gdir))
+    for (const f of readdirSync(gdir).sort()) if (f.endsWith(".md")) found.push(`gates/${f}`);
+  return found;
 }
 
 export function readJSON(path, fallback = null) {
@@ -189,9 +202,13 @@ export function validateForFreeze(parsedFiles) {
   }
   for (const [id, c] of allCriteria)
     if (!c.covered) errors.push(`criterion ${id} is mapped to no gate (unmapped acceptance criterion)`);
+  const abandonSeen = new Set();
   for (const p of parsedFiles)
-    for (const id of p.abandoned.keys())
+    for (const id of p.abandoned.keys()) {
       if (!ids.has(id)) errors.push(`${p.file}: ABANDON ${id} names no gate`);
+      if (abandonSeen.has(id)) errors.push(`${p.file}: ABANDON ${id} declared more than once`);
+      abandonSeen.add(id);
+    }
   if (!gateCount) errors.push("no gates found");
   return errors;
 }
@@ -204,7 +221,11 @@ export function validateForFreeze(parsedFiles) {
 export function validateLive(parsedFiles, manifest) {
   const errors = [];
   const manifestIds = new Set(manifest.gates.map((g) => g.id));
+  for (const g of manifest.gates)
+    if (g.check && g.control === undefined)
+      errors.push(`manifest predates CONTROL: gate ${g.id} has no control declaration — add CONTROL lines, then amend --reason`);
   const seen = new Set();
+  const abandonSeen = new Set();
   for (const p of parsedFiles) {
     errors.push(...p.errors);
     for (const g of p.gates) {
@@ -212,9 +233,13 @@ export function validateLive(parsedFiles, manifest) {
       seen.add(g.id);
       if (!manifestIds.has(g.id))
         errors.push(`${p.file}: gate ${g.id} is not in the frozen manifest (amend with a reason)`);
+      if (g.evidenceLine === -1) errors.push(`${p.file}: gate ${g.id} has no EVIDENCE line`);
     }
-    for (const id of p.abandoned.keys())
+    for (const id of p.abandoned.keys()) {
       if (!manifestIds.has(id)) errors.push(`${p.file}: ABANDON ${id} names no gate`);
+      if (abandonSeen.has(id)) errors.push(`${p.file}: ABANDON ${id} declared more than once`);
+      abandonSeen.add(id);
+    }
   }
   const liveCriteria = new Map(parsedFiles.flatMap((p) => p.criteria).map((c) => [c.id, c.text.trim()]));
   const frozenCriteria = new Map((manifest.criteria || []).map((c) => [c.id, c.text.trim()]));
@@ -277,6 +302,31 @@ export function expectMatches(expect, output) {
     }
   }
   return output.includes(expect);
+}
+
+// Resets every gate's checkbox and EVIDENCE line in the live files, so a
+// contract that ends (close/reset) leaves no completion marks for the next
+// one to inherit. The archive keeps the filled-in copy.
+export function clearLiveCompletion(cwd, files) {
+  for (const f of files) {
+    const path = join(cwd, f);
+    let text;
+    try {
+      text = readFileSync(path, "utf8");
+    } catch {
+      continue;
+    }
+    const lines = text.split(/\r?\n/);
+    const parsed = parseGateFile(text, f);
+    for (const g of parsed.gates) {
+      lines[g.line] = lines[g.line].replace(/^- \[( |x|X)\]/, "- [ ]");
+      if (g.evidenceLine !== -1) {
+        const indent = lines[g.evidenceLine].match(/^\s*/)[0];
+        lines[g.evidenceLine] = `${indent}EVIDENCE: pending`;
+      }
+    }
+    writeFileSync(path, lines.join("\n"));
+  }
 }
 
 // Tripwire, not a security boundary: hashes HEAD plus the dirty-file list
@@ -347,6 +397,11 @@ export function computeStatus(cwd) {
   const abandoned = new Map();
   const currentById = new Map();
   const parsedFiles = [];
+  if (!manifest.explicit_files) {
+    const extra = discoverDefaultFiles(cwd).filter((f) => !manifest.files.includes(f));
+    if (extra.length)
+      return { error: extra.map((f) => `${f} is not in the frozen manifest (amend with a reason)`).join("; ") };
+  }
   for (const f of manifest.files) {
     let text;
     try {
