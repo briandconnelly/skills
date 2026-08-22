@@ -8,6 +8,7 @@
   FOR: C1
   CHECK: <shell command>
   EXPECT: <substring that only appears on success, or /regex/>
+  CONTROL: <required | exempt <reason>> (which applies: see the control rule in SKILL.md)
   EVIDENCE: pending
 
 - [ ] G2: <manual outcome — no CHECK possible>

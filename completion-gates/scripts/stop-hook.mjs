@@ -26,8 +26,8 @@
 // stdin: hook JSON with { cwd, stop_hook_active, ... }. The block/release
 // counter bounds re-blocking, so stop_hook_active does not change the logic.
 
-import { readFileSync, existsSync } from "node:fs";
-import { manifestPath, hookStatePath, readJSON, atomicWriteJSON, computeStatus } from "./lib.mjs";
+import { readFileSync, existsSync, rmSync } from "node:fs";
+import { manifestPath, hookStatePath, closeNoticePath, readJSON, atomicWriteJSON, computeStatus } from "./lib.mjs";
 
 const MAX_BLOCKS = 6;
 
@@ -39,7 +39,23 @@ try {
 }
 const cwd = payload.cwd || process.cwd();
 
-if (!existsSync(manifestPath(cwd))) process.exit(0);
+if (!existsSync(manifestPath(cwd))) {
+  // A contract closed as anything but PROVEN gets exactly one labeled stop.
+  const notice = readJSON(closeNoticePath(cwd));
+  if (notice) {
+    try {
+      rmSync(closeNoticePath(cwd));
+    } catch {
+      /* non-fatal */
+    }
+    console.log(
+      JSON.stringify({
+        systemMessage: `completion-gates: contract closed as ${notice.final_status}${notice.reason ? ` — ${notice.reason}` : ""}; open at close: ${notice.open.join(", ")}. Do not report this work as done.`,
+      }),
+    );
+  }
+  process.exit(0);
+}
 
 const status = computeStatus(cwd);
 
@@ -68,13 +84,9 @@ if (status.overall === "INCOMPLETE-HANDOFF") {
 const resolved = status.counts.proven + status.counts.attested + status.counts.abandoned;
 const key = `resolved:${resolved}/${status.counts.total}`;
 let hookState = readJSON(hookStatePath(cwd), { key: "", blocks: 0 });
-if (hookState.key !== key) hookState = { key, blocks: 0 };
-hookState.blocks += 1;
-try {
-  atomicWriteJSON(hookStatePath(cwd), hookState);
-} catch {
-  /* non-fatal */
-}
+const { pause, pauses = [] } = hookState;
+if (hookState.key !== key) hookState = { key, blocks: 0, pauses };
+delete hookState.pause;
 
 const open = status.rows.filter((r) => r.resolution === "unmet" || r.resolution === "stale");
 const list =
@@ -82,6 +94,46 @@ const list =
     .slice(0, 5)
     .map((r) => `${r.id} (${r.resolution})`)
     .join(", ") + (open.length > 5 ? `, +${open.length - 5} more` : "");
+
+// A pending pause (minted under this same gate state) allows one labeled stop.
+// It never touches the block counter, so pausing cannot reach the release.
+if (pause && pause.key === key) {
+  const msg = typeof payload.last_assistant_message === "string" ? payload.last_assistant_message : null;
+  if (msg !== null && !msg.toLowerCase().includes(pause.reason.toLowerCase())) {
+    hookState.pause = pause; // keep the token for a stop that actually asks
+    try {
+      atomicWriteJSON(hookStatePath(cwd), hookState);
+    } catch {
+      /* non-fatal */
+    }
+    console.log(
+      JSON.stringify({
+        decision: "block",
+        reason: `completion-gates: a pause is pending but the final message does not present the question ${JSON.stringify(pause.reason)}. End the turn with that question, or continue working the ${open.length} open gate(s): ${list}.`,
+      }),
+    );
+    process.exit(0);
+  }
+  hookState.pauses = [...pauses, { ...pause, consumed_at: new Date().toISOString() }];
+  try {
+    atomicWriteJSON(hookStatePath(cwd), hookState);
+  } catch {
+    /* non-fatal */
+  }
+  console.log(
+    JSON.stringify({
+      systemMessage: `completion-gates: paused, not done — ${pause.reason}; ${open.length} gate(s) open: ${list}.`,
+    }),
+  );
+  process.exit(0);
+}
+
+hookState.blocks += 1;
+try {
+  atomicWriteJSON(hookStatePath(cwd), hookState);
+} catch {
+  /* non-fatal */
+}
 
 if (hookState.blocks > MAX_BLOCKS) {
   console.log(
