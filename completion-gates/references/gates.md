@@ -18,6 +18,8 @@ errors at freeze time, not silent weaknesses.
   FOR: C1
   CHECK: <shell command>
   EXPECT: <substring or /regex/>
+  CONTROL: required | exempt <reason>
+  CONTROL_EXPECT: <optional: substring or /regex/ the pre-fix failure must print>
   EVIDENCE: pending
 
 - [ ] G2: <manual outcome no command can decide>
@@ -31,8 +33,12 @@ Rules the parser enforces:
 
 - A gate line is `- [ ]` or `- [x]` with an `<id>:` prefix on the title. Ids
   must be unique across all frozen files.
-- Indented `CHECK:` / `EXPECT:` / `EXIT:` / `FOR:` / `EVIDENCE:` lines up to the
-  next gate belong to the gate above. Every gate must have an `EVIDENCE:` line.
+- Indented `CHECK:` / `EXPECT:` / `EXIT:` / `FOR:` / `CONTROL:` /
+  `CONTROL_EXPECT:` / `EVIDENCE:` lines up to the next gate belong to the gate
+  above. Every gate must have an `EVIDENCE:` line.
+- Every CHECK gate must have `CONTROL: required` or `CONTROL: exempt <reason>`;
+  a bare `exempt` or any other value is rejected, as is CONTROL on a manual
+  gate. `CONTROL_EXPECT` is optional and only meaningful with a CHECK.
 - `EXPECT:` is a substring match against combined stdout+stderr, or a JavaScript
   regex when wrapped in slashes (`/8\/8 passed/`).
 - A CHECK passes only when the exit status matches (default `0`, override with
@@ -54,7 +60,7 @@ map into `.completion-gates/manifest.json` and prints the commands it
 authorizes — review them; they will be executed as shell. After freezing:
 
 - `run` and `status` check the live files against the manifest as a whole and
-  refuse on any mismatch: a gate whose CHECK/EXPECT/EXIT/FOR changed, a gate
+  refuse on any mismatch: a gate whose CHECK/EXPECT/EXIT/FOR/CONTROL/CONTROL_EXPECT changed, a gate
   added or removed, a criterion added/removed/reworded, a duplicate id, or an
   ABANDON that names no gate.
 - `amend --reason "<why>"` records a contract change as a revision
@@ -80,7 +86,8 @@ markdown `EVIDENCE:` line — check output routinely contains secrets, and
 tracked markdown plus pasted ledgers is how they leak. Quote from artifacts
 selectively.
 
-A passing run is stamped with a spec fingerprint (CHECK, EXPECT, EXIT) and a
+A passing run is stamped with a spec fingerprint (CHECK, EXPECT, EXIT,
+CONTROL_EXPECT — not CONTROL, so waiving a control keeps the run) and a
 workspace fingerprint (git HEAD + dirty-file list). If the spec is amended,
 the old run resolves **unmet** ("spec amended since last run") — evidence
 produced by a different command never satisfies the new one. When the workspace changes afterward, the gate shows **stale** and must
@@ -102,13 +109,24 @@ claim; evidence is the proof.
   all; if not, sharpen the outcome.
 - **Make EXPECT decisive.** Match the line that only appears on success
   (`8/8 passed`), never one that appears either way (`done`).
-- **Prove sensitivity.** For a new CHECK, `control <id>` on the pre-fix state
-  records that it can fail. Outcomes: `ok` (ran and failed, as a pre-fix check
-  should), `insensitive` (already passed — shows nothing), `invalid` (timed out
-  or could not run — shows nothing). The record carries the spec fingerprint;
-  after an amend it shows as `stale`. Output goes to
+- **Prove sensitivity.** `control <id>` on the pre-fix state records whether
+  the CHECK can fail. Outcomes: `ok` (did not pass; with `CONTROL_EXPECT`, also
+  printed the expected failure), `insensitive` (already passed — shows
+  nothing), `invalid` (timed out, could not run, exit 126/127, or failed
+  without the expected signature — shows nothing). Every attempt is kept
+  (`controls` in state; the ledger shows `(N attempts)`); the latest one
+  counts. A control invalidates any earlier run, so evidence is always ordered
+  control → fix → run. Each record carries the spec fingerprint (after an
+  amend it shows `stale`) and the workspace fingerprint; `same-workspace`
+  flags a control and passing run on identical files, i.e. a nondeterministic
+  CHECK. `ok` means "did not pass", not "failed because the fix was missing" —
+  use `CONTROL_EXPECT` when that distinction matters. Output goes to
   `artifacts/<id>.control.log`. A trivially-green CHECK (`echo ok`) is the
   gamed ledger this system exists to expose.
+- **Waivers are visible.** Amending `CONTROL: required` to `exempt <reason>`
+  is legal; the gate's row shows `control: waived rev N` and OVERALL counts
+  waived gates. Which gates may be required or exempt is policy, owned by
+  SKILL.md.
 - **Numbers rule.** Any number destined for the final report gets its own gate
   with a CHECK that measures it. Reports written from memory get numbers wrong;
   measured runs of the ancestor project showed exactly this failure.

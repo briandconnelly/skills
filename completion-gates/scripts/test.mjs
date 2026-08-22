@@ -49,6 +49,7 @@ const SIMPLE_GATES = `# Gates: test
 
 - [ ] G1: says hello
   CHECK: echo hello
+  CONTROL: exempt fixture
   EXPECT: hello
   EVIDENCE: pending
 `;
@@ -87,8 +88,8 @@ test("happy path: freeze + run proves the gate, flips the box, writes an artifac
 
 test("all positional file args are processed — none silently dropped", () => {
   const dir = makeDir();
-  writeFileSync(join(dir, "a.md"), "# Gates: a\n\n- [ ] A1: a\n  CHECK: echo aaa\n  EXPECT: aaa\n  EVIDENCE: pending\n");
-  writeFileSync(join(dir, "b.md"), "# Gates: b\n\n- [ ] B1: b\n  CHECK: echo bbb\n  EXPECT: bbb\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "a.md"), "# Gates: a\n\n- [ ] A1: a\n  CHECK: echo aaa\n  CONTROL: exempt fixture\n  EXPECT: aaa\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "b.md"), "# Gates: b\n\n- [ ] B1: b\n  CHECK: echo bbb\n  CONTROL: exempt fixture\n  EXPECT: bbb\n  EVIDENCE: pending\n");
   assert.equal(gateCheck(dir, "freeze", "a.md", "b.md").status, 0);
   const run = gateCheck(dir, "run");
   assert.equal(run.status, 0, run.stdout + run.stderr);
@@ -97,7 +98,7 @@ test("all positional file args are processed — none silently dropped", () => {
 });
 
 test("EXPECT match never excuses a nonzero exit", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: lies\n  CHECK: echo hello; exit 1\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: lies\n  CHECK: echo hello; exit 1\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   const run = gateCheck(dir, "run");
   assert.equal(run.status, 1, run.stdout);
@@ -106,13 +107,13 @@ test("EXPECT match never excuses a nonzero exit", () => {
 });
 
 test("a declared EXIT makes a nonzero exit passing", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: fails by design\n  CHECK: echo hello; exit 3\n  EXPECT: hello\n  EXIT: 3\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: fails by design\n  CHECK: echo hello; exit 3\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EXIT: 3\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   assert.equal(gateCheck(dir, "run").status, 0);
 });
 
 test("freeze rejects a gate with no EVIDENCE line (no in-memory-only evidence)", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: no evidence slot\n  CHECK: echo hi\n  EXPECT: hi\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: no evidence slot\n  CHECK: echo hi\n  CONTROL: exempt fixture\n  EXPECT: hi\n");
   const res = gateCheck(dir, "freeze");
   assert.equal(res.status, 2);
   assert.match(res.stderr, /no EVIDENCE line/);
@@ -143,9 +144,9 @@ test("unknown flags and missing flag values are errors, not ignored", () => {
 // ---------------------------------------------------------------- contract integrity
 
 test("weakening a CHECK after freeze is spec drift: run refuses until amended", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: real check\n  CHECK: node --version\n  EXPECT: /v\\d+/\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: real check\n  CHECK: node --version\n  CONTROL: exempt fixture\n  EXPECT: /v\\d+/\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
-  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: real check\n  CHECK: echo ok\n  EXPECT: ok\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: real check\n  CHECK: echo ok\n  CONTROL: exempt fixture\n  EXPECT: ok\n  EVIDENCE: pending\n");
   const run = gateCheck(dir, "run");
   assert.equal(run.status, 2);
   assert.match(run.stderr, /drift/);
@@ -177,17 +178,17 @@ test("abandoned gates yield INCOMPLETE-HANDOFF (exit 3), never PROVEN", () => {
 });
 
 test("criteria traceability: unmapped criterion or unknown FOR fails freeze", () => {
-  const unmapped = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n- C2: goodbye works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const unmapped = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n- C2: goodbye works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EVIDENCE: pending\n");
   const r1 = gateCheck(unmapped, "freeze");
   assert.equal(r1.status, 2);
   assert.match(r1.stderr, /criterion C2 is mapped to no gate/);
 
-  const unknown = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C9\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const unknown = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C9\n  CHECK: echo hello\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EVIDENCE: pending\n");
   const r2 = gateCheck(unknown, "freeze");
   assert.equal(r2.status, 2);
   assert.match(r2.stderr, /unknown criterion C9/);
 
-  const good = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n");
+  const good = freshGated("# Gates: t\n\n## Criteria\n- C1: hello works\n\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EVIDENCE: pending\n");
   assert.equal(gateCheck(good, "freeze").status, 0);
 });
 
@@ -222,7 +223,7 @@ test("staleness: workspace change after a passing run demotes PROVEN (git)", () 
 });
 
 test("negative control: passes when the CHECK fails pre-fix, refuses when it already passes", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   assert.equal(gateCheck(dir, "control", "G1").status, 0); // pre-fix: check fails => control ok
   writeFileSync(join(dir, "built.txt"), "x");
@@ -230,7 +231,7 @@ test("negative control: passes when the CHECK fails pre-fix, refuses when it alr
 });
 
 test("run preserves a prior negative-control record in state", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   assert.equal(gateCheck(dir, "control", "G1").status, 0);
   writeFileSync(join(dir, "built.txt"), "x");
@@ -242,7 +243,7 @@ test("run preserves a prior negative-control record in state", () => {
 
 // ---------------------------------------------------------------- live-ledger integrity
 
-const CRIT_GATES = "# Gates: t\n\n## Criteria\n- C1: hello works\n\n## Gates\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n";
+const CRIT_GATES = "# Gates: t\n\n## Criteria\n- C1: hello works\n\n## Gates\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  CONTROL: exempt fixture\n  EXPECT: hello\n  EVIDENCE: pending\n";
 
 test("ABANDON of an unknown gate id is rejected at freeze, amend, status, run, and hook", () => {
   const dir = freshGated(SIMPLE_GATES + "\nABANDON: G99 typo\n");
@@ -314,8 +315,8 @@ test("criteria-only edits are drift and are amendable", () => {
 test("ABANDON for a leaf gate may live in the driver's file", () => {
   const dir = makeDir();
   mkdirSync(join(dir, "gates"));
-  writeFileSync(join(dir, "GATES.md"), "# Gates: driver\n\n- [ ] D1: integrates\n  CHECK: echo ok\n  EXPECT: ok\n  EVIDENCE: pending\n\nABANDON: L1 tool missing\n");
-  writeFileSync(join(dir, "gates/leaf.md"), "# Gates: leaf\n\n- [ ] L1: leaf thing\n  CHECK: false\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: driver\n\n- [ ] D1: integrates\n  CHECK: echo ok\n  CONTROL: exempt fixture\n  EXPECT: ok\n  EVIDENCE: pending\n\nABANDON: L1 tool missing\n");
+  writeFileSync(join(dir, "gates/leaf.md"), "# Gates: leaf\n\n- [ ] L1: leaf thing\n  CHECK: false\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   assert.equal(gateCheck(dir, "freeze").status, 0);
   const r = gateCheck(dir, "run");
   assert.equal(r.status, 3, r.stdout);
@@ -337,10 +338,10 @@ test("amending a CHECK invalidates the old passing run — the new command must 
 });
 
 test("amending a CHECK invalidates its control record", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   assert.equal(gateCheck(dir, "control", "G1").status, 0);
-  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f other.txt\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f other.txt\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   gateCheck(dir, "amend", "--reason", "rename");
   const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
   assert.ok(state.gates.G1.control.specFp, "control stores the spec fingerprint");
@@ -370,7 +371,7 @@ test("reset requires a reason and an existing manifest, and keeps the revision t
   stopHook(dir);
   assert.equal(gateCheck(dir, "reset").status, 2);
 
-  writeFileSync(join(dir, "GATES.md"), "# Gates: v2\n\n- [ ] G1: brand new contract\n  CHECK: echo new\n  EXPECT: new\n  EVIDENCE: pending\n");
+  writeFileSync(join(dir, "GATES.md"), "# Gates: v2\n\n- [ ] G1: brand new contract\n  CHECK: echo new\n  CONTROL: exempt fixture\n  EXPECT: new\n  EVIDENCE: pending\n");
   const r = gateCheck(dir, "reset", "--reason", "start over after scope change");
   assert.equal(r.status, 0, r.stderr);
   const m = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
@@ -390,7 +391,7 @@ test("reset requires a reason and an existing manifest, and keeps the revision t
 // ---------------------------------------------------------------- control outcomes
 
 test("ledger shows control outcome per runnable gate: none, ok, insensitive", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   let out = gateCheck(dir, "status").stdout;
   assert.match(out, /G1: file exists \[control: none\]/);
@@ -400,11 +401,11 @@ test("ledger shows control outcome per runnable gate: none, ok, insensitive", ()
   writeFileSync(join(dir, "built.txt"), "x");
   gateCheck(dir, "control", "G1");
   out = gateCheck(dir, "status").stdout;
-  assert.match(out, /\[control: insensitive\]/);
+  assert.match(out, /\[control: insensitive \(2 attempts\)\]/);
 });
 
 test("a control that times out is invalid, not ok", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: slow\n  CHECK: sleep 5\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: slow\n  CHECK: sleep 5\n  CONTROL: exempt fixture\n  EVIDENCE: pending\n");
   gateCheck(dir, "freeze");
   const r = gateCheck(dir, "control", "G1", "--timeout", "1");
   assert.equal(r.status, 1);
@@ -416,10 +417,136 @@ test("a control that times out is invalid, not ok", () => {
 });
 
 test("an invalid EXPECT regex is rejected at freeze instead of silently never matching", () => {
-  const dir = freshGated("# Gates: t\n\n- [ ] G1: bad\n  CHECK: echo x\n  EXPECT: /(unclosed/\n  EVIDENCE: pending\n");
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: bad\n  CHECK: echo x\n  CONTROL: exempt fixture\n  EXPECT: /(unclosed/\n  EVIDENCE: pending\n");
   const r = gateCheck(dir, "freeze");
   assert.equal(r.status, 2);
   assert.match(r.stderr, /EXPECT regex is invalid/);
+});
+
+// ---------------------------------------------------------------- CONTROL: required
+
+const REQ = (check = "test -f built.txt", extra = "") =>
+  `# Gates: t\n\n- [ ] G1: file exists\n  CHECK: ${check}\n  CONTROL: required\n${extra}  EVIDENCE: pending\n`;
+
+test("every CHECK gate must declare CONTROL: required or CONTROL: exempt <reason>", () => {
+  const absent = freshGated("# Gates: t\n\n- [ ] G1: x\n  CHECK: echo x\n  EVIDENCE: pending\n");
+  let r = gateCheck(absent, "freeze");
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /G1 has a CHECK but no CONTROL line/);
+  const bare = freshGated("# Gates: t\n\n- [ ] G1: x\n  CHECK: echo x\n  CONTROL: exempt\n  EVIDENCE: pending\n");
+  r = gateCheck(bare, "freeze");
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /CONTROL: exempt needs a reason/);
+  const bogus = freshGated("# Gates: t\n\n- [ ] G1: x\n  CHECK: echo x\n  CONTROL: maybe\n  EVIDENCE: pending\n");
+  assert.match(gateCheck(bogus, "freeze").stderr, /CONTROL must be "required" or "exempt <reason>"/);
+  const manual = freshGated("# Gates: t\n\n- [ ] G1: x\n  CONTROL: required\n  EVIDENCE: pending\n");
+  assert.match(gateCheck(manual, "freeze").stderr, /CONTROL without a CHECK/);
+});
+
+test("required: unmet without a control, with an insensitive one, and with an invalid one", () => {
+  const dir = freshGated(REQ());
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "built.txt"), "x");
+  assert.equal(gateCheck(dir, "run").status, 1);
+  let out = gateCheck(dir, "status").stdout;
+  assert.match(out, /UNMET.*control required, none recorded/);
+  gateCheck(dir, "control", "G1"); // already passes -> insensitive
+  out = gateCheck(dir, "status").stdout;
+  assert.match(out, /control required but insensitive/);
+  const slow = freshGated(REQ("sleep 5"));
+  gateCheck(slow, "freeze");
+  gateCheck(slow, "control", "G1", "--timeout", "1");
+  assert.match(gateCheck(slow, "status").stdout, /control required but invalid/);
+});
+
+test("required: proven only with ok control recorded before the passing run", () => {
+  const dir = freshGated(REQ());
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "control", "G1").status, 0);
+  writeFileSync(join(dir, "built.txt"), "x");
+  const r = gateCheck(dir, "run");
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.stdout, /PROVEN.*\[control: ok\]/);
+});
+
+test("required: a control recorded after the passing run invalidates that run", () => {
+  const dir = freshGated(REQ());
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "built.txt"), "x");
+  gateCheck(dir, "run"); // passes, but unmet (no control)
+  rmSync(join(dir, "built.txt"));
+  assert.equal(gateCheck(dir, "control", "G1").status, 0); // ok, but post-hoc
+  writeFileSync(join(dir, "built.txt"), "x");
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 1, st.stdout);
+  assert.match(st.stdout, /no recorded run/); // control wiped the earlier run
+  assert.equal(gateCheck(dir, "run").status, 0); // a fresh run after the control proves it
+});
+
+test("missing command (exit 127) is an invalid control, not ok", () => {
+  const dir = freshGated(REQ("no-such-tool-xyz --version"));
+  gateCheck(dir, "freeze");
+  const r = gateCheck(dir, "control", "G1");
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /CONTROL INVALID.*exit=127/);
+});
+
+test("CONTROL_EXPECT: control is ok only when the failure matches the expected signature", () => {
+  const dir = freshGated(REQ("sh -c 'echo wrong reason; exit 1'", "  CONTROL_EXPECT: AssertionError\n"));
+  gateCheck(dir, "freeze");
+  const r = gateCheck(dir, "control", "G1");
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /did not match CONTROL_EXPECT/);
+  const good = freshGated(REQ("sh -c 'echo AssertionError: off by one; exit 1'", "  CONTROL_EXPECT: AssertionError\n"));
+  gateCheck(good, "freeze");
+  assert.equal(gateCheck(good, "control", "G1").status, 0);
+});
+
+test("changing CONTROL or CONTROL_EXPECT is spec drift; waiving required does not invalidate the run", () => {
+  const dir = freshGated(REQ());
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "control", "G1");
+  writeFileSync(join(dir, "built.txt"), "x");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  writeFileSync(join(dir, "GATES.md"), REQ().replace("CONTROL: required", "CONTROL: exempt pre-fix state gone"));
+  let st = gateCheck(dir, "status");
+  assert.equal(st.status, 1, st.stdout);
+  assert.match(st.stdout, /spec drifted/);
+  assert.equal(gateCheck(dir, "run").status, 2);
+  const am = gateCheck(dir, "amend", "--reason", "pre-fix state gone");
+  assert.equal(am.status, 0, am.stderr);
+  assert.match(am.stdout, /changed G1/);
+  st = gateCheck(dir, "status");
+  assert.equal(st.status, 0, st.stdout);
+  assert.match(st.stdout, /\[control: waived rev 1\]/);
+  assert.match(st.stdout, /OVERALL: PROVEN \(1 proven, 1 waived of 1\)/);
+});
+
+test("control attempts accumulate; ledger shows the count", () => {
+  const dir = freshGated(REQ());
+  gateCheck(dir, "freeze");
+  writeFileSync(join(dir, "built.txt"), "x");
+  gateCheck(dir, "control", "G1"); // insensitive
+  rmSync(join(dir, "built.txt"));
+  gateCheck(dir, "control", "G1"); // ok
+  const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
+  assert.equal(state.gates.G1.controls.length, 2);
+  assert.match(gateCheck(dir, "status").stdout, /control: ok \(2 attempts\)/);
+});
+
+test("control records the workspace fingerprint; same-workspace as the passing run is flagged (git)", () => {
+  const dir = freshGated(REQ("grep -q v2 src.txt"), { git: true });
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "control", "G1"); // src.txt is v1 -> fails -> ok
+  writeFileSync(join(dir, "src.txt"), "v2\n");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  assert.doesNotMatch(gateCheck(dir, "status").stdout, /same-workspace/);
+  // a flaky check: fails on control, passes on run, workspace untouched
+  const flaky = freshGated(REQ("test -f .completion-gates/artifacts/G1.control.log"), { git: true });
+  gateCheck(flaky, "freeze");
+  gateCheck(flaky, "control", "G1"); // log does not exist yet -> fails -> ok; and writes the log
+  assert.equal(gateCheck(flaky, "run").status, 0);
+  assert.match(gateCheck(flaky, "status").stdout, /same-workspace/);
 });
 
 // ---------------------------------------------------------------- stop hook
@@ -453,7 +580,7 @@ test("hook: abandoning everything allows stop but labels it a handoff, not succe
 
 test("hook: cosmetic edits do not reset the release counter; resolution progress does", () => {
   const dir = freshGated(
-    "# Gates: t\n\n- [ ] G1: a\n  CHECK: echo aaa\n  EXPECT: aaa\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n",
+    "# Gates: t\n\n- [ ] G1: a\n  CHECK: echo aaa\n  CONTROL: exempt fixture\n  EXPECT: aaa\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n",
   );
   gateCheck(dir, "freeze");
   stopHook(dir);

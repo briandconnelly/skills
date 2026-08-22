@@ -34,7 +34,7 @@ export function atomicWriteJSON(path, obj) {
 }
 
 const GATE_RE = /^- \[( |x|X)\] (.*)$/;
-const ATTR_RE = /^(\s+)(CHECK|EXPECT|EXIT|EVIDENCE|FOR):\s?(.*)$/;
+const ATTR_RE = /^(\s+)(CHECK|EXPECT|EXIT|EVIDENCE|FOR|CONTROL|CONTROL_EXPECT):\s?(.*)$/;
 const ABANDON_RE = /^ABANDON:\s*(\S+?):?(?:\s+(.*))?$/;
 const CRITERION_RE = /^- (\S+?):\s+(.*)$/;
 
@@ -80,6 +80,8 @@ export function parseGateFile(text, file) {
         check: null,
         expect: null,
         exit: null,
+        control: null,
+        control_expect: null,
         evidence: null,
         evidenceLine: -1,
         for: [],
@@ -146,6 +148,26 @@ export function validateForFreeze(parsedFiles) {
       }
       if (!gate.check && (gate.expect !== null || gate.exit !== null))
         errors.push(`${p.file}: gate ${gate.id} has EXPECT/EXIT but no CHECK`);
+      if (!gate.check && (gate.control !== null || gate.control_expect !== null))
+        errors.push(`${p.file}: gate ${gate.id} has CONTROL without a CHECK`);
+      if (gate.check) {
+        if (gate.control === null)
+          errors.push(`${p.file}: gate ${gate.id} has a CHECK but no CONTROL line (declare "required" or "exempt <reason>")`);
+        else if (gate.control === "exempt")
+          errors.push(`${p.file}: gate ${gate.id} CONTROL: exempt needs a reason`);
+        else if (gate.control !== "required" && !/^exempt\s+\S/.test(gate.control))
+          errors.push(`${p.file}: gate ${gate.id} CONTROL must be "required" or "exempt <reason>"`);
+      }
+      if (gate.control_expect !== null) {
+        const rx = gate.control_expect.match(/^\/(.+)\/([a-z]*)$/);
+        if (rx) {
+          try {
+            new RegExp(rx[1], rx[2]);
+          } catch (e) {
+            errors.push(`${p.file}: gate ${gate.id} CONTROL_EXPECT regex is invalid (${e.message})`);
+          }
+        }
+      }
       for (const f of gate.for) {
         const c = allCriteria.get(f);
         if (!c) errors.push(`${p.file}: gate ${gate.id} FOR references unknown criterion ${f}`);
@@ -204,16 +226,23 @@ export const specOf = (g) => ({
   check: g.check,
   expect: g.expect,
   exit: g.exit,
+  control: g.control,
+  control_expect: g.control_expect,
   for: [...g.for].sort(),
 });
+
+export const controlRequired = (spec) => spec.control === "required";
 
 // Identity of what a CHECK proves: the command, its expectation, and its exit
 // code. Run and control records carry this so evidence recorded under an old
 // spec cannot satisfy an amended one. FOR is excluded — retargeting a gate at
 // a criterion does not change what the command demonstrated.
+// CONTROL (required/exempt) is deliberately excluded: waiving a control must
+// not invalidate the passing run. CONTROL_EXPECT is included because it
+// changes what a control run demonstrates.
 export function specFingerprint(spec) {
   return createHash("sha256")
-    .update(JSON.stringify([spec.check, spec.expect, spec.exit ?? null]))
+    .update(JSON.stringify([spec.check, spec.expect, spec.exit ?? null, spec.control_expect ?? null]))
     .digest("hex")
     .slice(0, 16);
 }
@@ -224,6 +253,8 @@ export function specDrifted(a, b) {
     a.check !== b.check ||
     a.expect !== b.expect ||
     a.exit !== b.exit ||
+    (a.control ?? null) !== (b.control ?? null) ||
+    (a.control_expect ?? null) !== (b.control_expect ?? null) ||
     JSON.stringify([...(a.for || [])].sort()) !== JSON.stringify([...(b.for || [])].sort())
   );
 }
@@ -273,6 +304,26 @@ export function workspaceFingerprint(cwd, excludePaths = []) {
   }
 }
 
+// Latest control attempt for a gate, classified against the current spec.
+function controlState(st, fp) {
+  const attempts = st?.controls?.length ? st.controls : st?.control ? [st.control] : [];
+  const latest = attempts[attempts.length - 1] || null;
+  if (!latest) return { state: "none", latest: null, attempts: 0 };
+  const state = latest.specFp !== fp ? "stale" : latest.outcome || (latest.failedAsExpected ? "ok" : "insensitive");
+  return { state, latest, attempts: attempts.length };
+}
+
+// Revision number (1-based) in which a gate's CONTROL went from required to
+// exempt, or null. A waiver is legal; it must be visible on the gate's row.
+function waivedIn(manifest, id) {
+  const revs = manifest.revisions || [];
+  for (let i = revs.length - 1; i >= 0; i--)
+    for (const ch of revs[i].changes)
+      if (ch.op === "changed" && ch.id === id && ch.from?.control === "required" && ch.to?.control !== "required")
+        return i + 1;
+  return null;
+}
+
 // Resolves every manifest gate to exactly one state:
 //   proven     runnable gate with a recorded passing run that is still fresh
 //   attested   manual gate, checked with non-pending evidence (trust-based)
@@ -320,7 +371,16 @@ export function computeStatus(cwd) {
     } else if (spec.check) {
       const st = state.gates?.[spec.id];
       const fp = specFingerprint(spec);
-      if (!st || !st.status) {
+      const ctl = controlState(st, fp);
+      if (controlRequired(spec) && ctl.state !== "ok") {
+        resolution = "unmet";
+        detail =
+          ctl.state === "none"
+            ? "control required, none recorded — run `control <id>` on the pre-fix state"
+            : ctl.state === "stale"
+              ? "control required but stale — spec amended since the control; re-run it"
+              : `control required but ${ctl.state} — the CHECK has not been shown to fail`;
+      } else if (!st || !st.status) {
         resolution = "unmet";
         detail = "no recorded run";
       } else if (st.specFp !== fp) {
@@ -332,6 +392,9 @@ export function computeStatus(cwd) {
       } else if (fingerprint && st.fingerprint && st.fingerprint !== fingerprint) {
         resolution = "stale";
         detail = "workspace changed since the passing run — re-run";
+      } else if (controlRequired(spec) && ctl.latest.at > st.at) {
+        resolution = "unmet";
+        detail = "control recorded after the passing run — re-run";
       } else {
         resolution = "proven";
       }
@@ -345,15 +408,21 @@ export function computeStatus(cwd) {
       }
     }
     let control = null;
+    let waived = null;
     if (spec.check) {
-      const c = state.gates?.[spec.id]?.control;
-      control = !c
-        ? "none"
-        : c.specFp !== specFingerprint(spec)
-          ? "stale"
-          : c.outcome || (c.failedAsExpected ? "ok" : "insensitive");
+      const st = state.gates?.[spec.id];
+      const ctl = controlState(st, specFingerprint(spec));
+      const flags = [];
+      if (ctl.attempts > 1) flags.push(`${ctl.attempts} attempts`);
+      if (ctl.state === "ok" && st?.status === "pass" && st.fingerprint && ctl.latest.fingerprint === st.fingerprint)
+        flags.push("same-workspace");
+      control = flags.length ? `${ctl.state} (${flags.join(", ")})` : ctl.state;
+      if (!controlRequired(spec)) {
+        waived = waivedIn(manifest, spec.id);
+        if (waived) control = `waived rev ${waived}`;
+      }
     }
-    rows.push({ id: spec.id, title: spec.title, runnable: !!spec.check, resolution, detail, control });
+    rows.push({ id: spec.id, title: spec.title, runnable: !!spec.check, resolution, detail, control, waived: !!waived });
   }
 
   const count = (r) => rows.filter((x) => x.resolution === r).length;
@@ -363,6 +432,7 @@ export function computeStatus(cwd) {
     abandoned: count("abandoned"),
     stale: count("stale"),
     unmet: count("unmet"),
+    waived: rows.filter((x) => x.waived).length,
     total: rows.length,
   };
   const overall =
@@ -386,6 +456,7 @@ export function formatLedger(status) {
   const parts = [];
   if (c.proven) parts.push(`${c.proven} proven`);
   if (c.attested) parts.push(`${c.attested} attested`);
+  if (c.waived) parts.push(`${c.waived} waived`);
   if (c.abandoned) parts.push(`${c.abandoned} abandoned`);
   if (c.stale) parts.push(`${c.stale} stale`);
   if (c.unmet) parts.push(`${c.unmet} unmet`);

@@ -10,7 +10,7 @@ The failure this skill kills is the unverified completion claim: the done report
 
 **Honesty clause — read this first.** Every artifact here (gate files, manifest, hook state) is writable by you, the agent it constrains. This system is an auditable discipline, not enforcement: it cannot make cheating impossible, only visible. Deleting the manifest, weakening a CHECK, or hand-forging evidence all leave records a reviewer will see — and each is a worse outcome for your user than an honest INCOMPLETE.
 
-The parser enforces: pending evidence is unmet; a changed CHECK/EXPECT/EXIT/FOR, a reworded criterion, an added gate, or an ABANDON naming no gate blocks `run` and `status` until amended; evidence from a run under an old spec never satisfies the amended one. It does not judge the *content* of attested evidence or whether you ran a control — those are trust, and the ledger labels them.
+The parser enforces: pending evidence is unmet; a changed CHECK/EXPECT/EXIT/FOR/CONTROL, a reworded criterion, an added gate, or an ABANDON naming no gate blocks `run` and `status` until amended; evidence from a run under an old spec never satisfies the amended one; a `CONTROL: required` gate needs an `ok` control recorded before its passing run. It does not judge the *content* of attested evidence, whether a CHECK was truthfully declared new, or whether a control failed for the intended reason (add `CONTROL_EXPECT:` to pin the failure signature) — those are trust, and the ledger labels them.
 
 **Escape rule (the only permitted ways to change or drop a gate):**
 - `ABANDON: <id> <reason>` — the gate stays in the ledger as surrendered.
@@ -51,7 +51,7 @@ Four rules while working:
 
 - **When you feel finished, run `status` instead of concluding.** Composing a summary while gates are open is the failure this skill exists for.
 - **Do not simulate work you can do.** If an action is cheap and reversible, do it and observe, rather than reasoning about what it would probably print.
-- **When a gate's CHECK is new** (a new test, a bugfix probe), run `gate-check.mjs control <id>` after freezing and before implementing the fix, recording that the CHECK can fail — a check that cannot fail proves nothing. Controls are advisory: the ledger shows each runnable gate as `control: ok | insensitive | invalid | stale | none`, and nothing demotes a gate for a missing control. If the pre-fix state is already gone, say so in the report rather than skipping silently.
+- **Declare `CONTROL: required` on every gate whose CHECK did not exist before this work** (a new test, a bugfix probe); every other CHECK gate gets `CONTROL: exempt <reason>`. Freeze rejects a CHECK gate with neither. Run `gate-check.mjs control <id>` after freezing and before implementing the fix: a required gate is proven only with an `ok` control recorded before its passing run — a check that cannot fail proves nothing. If the pre-fix state is already gone, amend the gate to `exempt <reason>`; the ledger row then reads `control: waived rev N` and OVERALL counts it. Exempt gates may still run controls; the result is shown, not enforced.
 - **Manual gates need real evidence** on the `EVIDENCE:` line — a measurement, a quoted output line, a `file:line`. `pending` or a restated claim is unmet, whatever the checkbox says.
 
 ## Report rules
@@ -59,7 +59,7 @@ Four rules while working:
 - No final report until `status` says PROVEN or you are explicitly handing off. Paste the ledger into the report.
 - Re-measure every number you state at report time, or label it unverified. (A per-number gate with a CHECK that measures it is the reliable way to satisfy this.)
 - Label attested gates as attested — they are trust, not proof.
-- Label gates whose control is `none`, `insensitive`, `invalid`, or `stale` — their CHECK has not been shown to be able to fail.
+- Label gates whose control is `none`, `insensitive`, `invalid`, `stale`, or `waived` — their CHECK has not been shown to be able to fail. Say which gates are `exempt` and why.
 - Surface every ABANDON with its reason.
 - Surface every manifest revision (amend and reset) with its reason — `status` prints them under the ledger.
 

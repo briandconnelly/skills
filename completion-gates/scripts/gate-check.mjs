@@ -241,7 +241,7 @@ if (command === "run" || command === undefined) {
     const artifact = writeArtifact(spec.id, res.output);
     const at = new Date().toISOString();
     state.gates[spec.id] = {
-      ...(state.gates[spec.id] || {}), // preserve the control record — it is part of the audit trail
+      ...(state.gates[spec.id] || {}), // preserve control records — they are part of the audit trail
       status: res.pass ? "pass" : "fail",
       exit: res.exit,
       at,
@@ -316,7 +316,7 @@ if (command === "amend") {
   for (const c of changes) {
     let detail = "";
     if (c.op === "changed")
-      detail = `: CHECK/EXPECT/EXIT/FOR now ${JSON.stringify({ check: c.to.check, expect: c.to.expect, exit: c.to.exit, for: c.to.for })}`;
+      detail = `: spec now ${JSON.stringify({ check: c.to.check, expect: c.to.expect, exit: c.to.exit, control: c.to.control, control_expect: c.to.control_expect, for: c.to.for })}`;
     else if (c.op.startsWith("criterion") && c.to) detail = `: ${JSON.stringify(c.to)}`;
     console.log(`  ${c.op} ${c.id}${detail}`);
   }
@@ -337,26 +337,45 @@ if (command === "control") {
   const timeoutSec = flags.timeout ? Number(flags.timeout) : 120;
   const res = runCheck(spec, timeoutSec);
   const artifact = writeArtifact(`${id}.control`, res.output);
-  // Three outcomes, never collapsed to one boolean: a CHECK that could not
-  // even run (timeout, spawn error) demonstrates nothing about sensitivity.
-  const outcome = res.timedOut || res.exit === null ? "invalid" : res.pass ? "insensitive" : "ok";
+  // Outcomes, never collapsed to one boolean. "ok" means the CHECK did not
+  // pass (and, with CONTROL_EXPECT, failed with the expected signature) — it
+  // does not prove the failure was caused by the missing fix.
+  let outcome;
+  let why;
+  if (res.timedOut || res.exit === null) {
+    outcome = "invalid";
+    why = res.timedOut ? `timeout after ${timeoutSec}s` : "could not run";
+  } else if (res.exit === 126 || res.exit === 127) {
+    outcome = "invalid";
+    why = `exit=${res.exit} (command not found or not executable)`;
+  } else if (res.pass) {
+    outcome = "insensitive";
+  } else if (spec.control_expect && !expectMatches(spec.control_expect, res.output)) {
+    outcome = "invalid";
+    why = `exit=${res.exit} but output did not match CONTROL_EXPECT ${JSON.stringify(spec.control_expect)}`;
+  } else {
+    outcome = "ok";
+  }
   const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
-  state.gates[id] = {
-    ...(state.gates[id] || {}),
-    control: {
-      at: new Date().toISOString(),
-      outcome,
-      failedAsExpected: outcome === "ok",
-      exit: res.exit,
-      timedOut: res.timedOut,
-      artifact,
-      specFp: specFingerprint(spec),
-    },
+  const prior = state.gates[id] || {};
+  const record = {
+    at: new Date().toISOString(),
+    outcome,
+    failedAsExpected: outcome === "ok",
+    exit: res.exit,
+    timedOut: res.timedOut,
+    artifact,
+    specFp: specFingerprint(spec),
+    fingerprint: workspaceFingerprint(cwd, manifest.files),
   };
+  // A control invalidates any earlier run: evidence must be recorded in the
+  // order control -> fix -> run, or the control shows nothing about the fix.
+  const { status: _s, exit: _e, at: _a, artifact: _ar, fingerprint: _f, specFp: _sf, ...rest } = prior;
+  state.gates[id] = { ...rest, controls: [...(prior.controls || (prior.control ? [prior.control] : [])), record], control: record };
   atomicWriteJSON(statePath(cwd), state);
 
   if (outcome === "invalid") {
-    console.log(`CONTROL INVALID for ${id}: the CHECK did not complete (${res.timedOut ? `timeout after ${timeoutSec}s` : "could not run"}), so it shows nothing about sensitivity.`);
+    console.log(`CONTROL INVALID for ${id}: ${why} — this shows nothing about sensitivity.`);
     process.exit(1);
   }
   if (outcome === "insensitive") {
@@ -364,7 +383,7 @@ if (command === "control") {
     console.log("Run controls on the pre-fix state, or sharpen the CHECK until it fails without the work.");
     process.exit(1);
   }
-  console.log(`CONTROL OK for ${id}: the CHECK fails without the work (exit=${res.exit}). Recorded.`);
+  console.log(`CONTROL OK for ${id}: the CHECK fails without the work (exit=${res.exit}). Recorded; any earlier run is invalidated.`);
   process.exit(0);
 }
 
