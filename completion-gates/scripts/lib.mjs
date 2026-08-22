@@ -17,6 +17,14 @@ export const manifestPath = (cwd) => join(cwd, DIR, "manifest.json");
 export const statePath = (cwd) => join(cwd, DIR, "state.json");
 export const hookStatePath = (cwd) => join(cwd, DIR, "hook-state.json");
 export const artifactsDir = (cwd) => join(cwd, DIR, "artifacts");
+export const historyDir = (cwd) => join(cwd, DIR, "history");
+export const closeNoticePath = (cwd) => join(cwd, DIR, "last-close.json");
+
+// Pauses live in hook-state.json (the hook consumes the token and records the
+// pause in one atomic write). Consumed pauses only; a pending token is not a pause.
+export function recordedPauses(cwd) {
+  return readJSON(hookStatePath(cwd), {}).pauses || [];
+}
 
 export function readJSON(path, fallback = null) {
   try {
@@ -442,7 +450,8 @@ export function computeStatus(cwd) {
         ? "INCOMPLETE-HANDOFF"
         : "PROVEN";
 
-  return { manifest, state, rows, counts, overall, fingerprint, fingerprintAvailable: fingerprint !== null };
+  const pauses = recordedPauses(cwd);
+  return { manifest, state, rows, counts, overall, fingerprint, fingerprintAvailable: fingerprint !== null, pauses };
 }
 
 export function formatLedger(status) {
@@ -461,6 +470,7 @@ export function formatLedger(status) {
   if (c.stale) parts.push(`${c.stale} stale`);
   if (c.unmet) parts.push(`${c.unmet} unmet`);
   out.push(`OVERALL: ${status.overall} (${parts.join(", ") || "0 gates"} of ${c.total})`);
+  if (status.pauses?.length) out.push(`  ${status.pauses.length} pause${status.pauses.length === 1 ? "" : "s"} to ask the user: ${status.pauses.map((p) => JSON.stringify(p.reason)).join("; ")}`);
   (status.manifest.revisions || []).forEach((rev, i) => {
     const ops = rev.changes.map((ch) => `${ch.op}${ch.id ? " " + ch.id : ""}`).join(", ");
     out.push(`  revision ${i + 1} ${rev.at}: ${rev.reason} (${ops})`);

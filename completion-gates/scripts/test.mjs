@@ -38,11 +38,11 @@ function gitInit(dir) {
 
 const gateCheck = (dir, ...args) =>
   spawnSync("node", [join(SCRIPTS, "gate-check.mjs"), ...args], { cwd: dir, encoding: "utf8" });
-const stopHook = (dir) =>
+const stopHook = (dir, extra = {}) =>
   spawnSync("node", [join(SCRIPTS, "stop-hook.mjs")], {
     cwd: dir,
     encoding: "utf8",
-    input: JSON.stringify({ cwd: dir, stop_hook_active: false }),
+    input: JSON.stringify({ cwd: dir, stop_hook_active: false, ...extra }),
   });
 
 const SIMPLE_GATES = `# Gates: test
@@ -612,6 +612,164 @@ test("hook: broken gate state allows stop with a warning instead of trapping", (
   const res = JSON.parse(stopHook(dir).stdout);
   assert.equal(res.decision, undefined);
   assert.match(res.systemMessage, /allowing stop rather than trapping/);
+});
+
+// ---------------------------------------------------------------- close (end of life)
+
+test("close on PROVEN archives the epoch, exits 0, and leaves the hook inert", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  const r = gateCheck(dir, "close");
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /closed as PROVEN/);
+  assert.ok(!existsSync(join(dir, ".completion-gates/manifest.json")));
+  assert.ok(!existsSync(join(dir, ".completion-gates/state.json")));
+  const epochs = readdirSync(join(dir, ".completion-gates/history"));
+  assert.equal(epochs.length, 1);
+  const closure = JSON.parse(readFileSync(join(dir, ".completion-gates/history", epochs[0], "manifest.json"), "utf8"));
+  assert.equal(closure.closure.final_status, "PROVEN");
+  assert.match(closure.closure.final_ledger, /PROVEN +G1/);
+  assert.ok(existsSync(join(dir, ".completion-gates/history", epochs[0], "GATES.md")), "gate files archived");
+  assert.ok(existsSync(join(dir, ".completion-gates/history", epochs[0], "artifacts/G1.log")));
+  assert.equal(stopHook(dir).stdout.trim(), "", "hook inert after a PROVEN close");
+  assert.equal(gateCheck(dir, "freeze").status, 0, "a new contract can start without reset");
+});
+
+test("close on INCOMPLETE requires a reason, exits 1, and the hook labels exactly one stop", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "close").status, 2);
+  const r = gateCheck(dir, "close", "--reason", "user cancelled");
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /closed as INCOMPLETE/);
+  const first = JSON.parse(stopHook(dir).stdout);
+  assert.equal(first.decision, undefined);
+  assert.match(first.systemMessage, /closed as INCOMPLETE.*user cancelled.*do not report/i);
+  assert.equal(stopHook(dir).stdout.trim(), "", "second stop is silent");
+});
+
+test("close on INCOMPLETE-HANDOFF exits 3 without a reason", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  appendFileSync(join(dir, "GATES.md"), "\nABANDON: G1 tool missing\n");
+  assert.equal(gateCheck(dir, "close").status, 3);
+});
+
+test("status after close prints the final ledger with its exit code; a new contract inherits nothing", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  gateCheck(dir, "close");
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 0, st.stderr);
+  assert.match(st.stdout, /closed .* as PROVEN/);
+  assert.match(st.stdout, /PROVEN +G1/);
+  // same id, same CHECK, no workspace change: must not start proven
+  gateCheck(dir, "freeze");
+  const fresh = gateCheck(dir, "status");
+  assert.equal(fresh.status, 1, fresh.stdout);
+  assert.match(fresh.stdout, /no recorded run/);
+});
+
+test("close refuses when the ledger cannot be computed", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  rmSync(join(dir, "GATES.md"));
+  const r = gateCheck(dir, "close", "--reason", "x");
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /gate file missing/);
+});
+
+test("history artifacts and state are gitignored", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  const gi = readFileSync(join(dir, ".completion-gates/.gitignore"), "utf8");
+  assert.match(gi, /history\/\*\/artifacts\//);
+  assert.match(gi, /history\/\*\/state\.json/);
+});
+
+// ---------------------------------------------------------------- pause (ask the user)
+
+test("pause: refused unless INCOMPLETE, and only one pending at a time", () => {
+  const dir = freshGated();
+  assert.equal(gateCheck(dir, "pause", "--reason", "q").status, 2); // no manifest
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "pause").status, 2); // no reason
+  assert.equal(gateCheck(dir, "pause", "--reason", "Which DB should I target?").status, 0);
+  const dup = gateCheck(dir, "pause", "--reason", "another");
+  assert.equal(dup.status, 2);
+  assert.match(dup.stderr, /pause already pending/);
+  gateCheck(dir, "run");
+  const done = freshGated();
+  gateCheck(done, "freeze");
+  gateCheck(done, "run");
+  assert.equal(gateCheck(done, "pause", "--reason", "q").status, 2); // PROVEN: nothing to pause
+});
+
+test("pause: the hook allows one labeled stop, consumes the token, and does not touch the block counter", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  stopHook(dir); // blocks: 1
+  gateCheck(dir, "pause", "--reason", "Which DB should I target?");
+  const paused = JSON.parse(stopHook(dir).stdout);
+  assert.equal(paused.decision, undefined);
+  assert.match(paused.systemMessage, /paused, not done.*Which DB should I target\?.*1 gate\(s\) open/);
+  const hs = JSON.parse(readFileSync(join(dir, ".completion-gates/hook-state.json"), "utf8"));
+  assert.equal(hs.blocks, 1, "a paused stop must not increment the counter");
+  assert.equal(hs.pause, undefined, "token consumed");
+  assert.equal(hs.pauses.length, 1);
+  assert.equal(JSON.parse(stopHook(dir).stdout).decision, "block", "next stop blocks again");
+});
+
+test("pause: seven pauses never reach the release; the counter only moves on real blocks", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  for (let i = 0; i < 7; i++) {
+    gateCheck(dir, "pause", "--reason", `question ${i}`);
+    assert.equal(JSON.parse(stopHook(dir).stdout).decision, undefined);
+  }
+  assert.equal(JSON.parse(stopHook(dir).stdout).decision, "block");
+  assert.match(gateCheck(dir, "status").stdout, /7 pauses/);
+});
+
+test("pause: the reason must appear in last_assistant_message when the harness supplies it", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "pause", "--reason", "Which DB should I target?");
+  const wrong = JSON.parse(stopHook(dir, { last_assistant_message: "All done, shipping it." }).stdout);
+  assert.equal(wrong.decision, "block");
+  assert.match(wrong.reason, /present the question/);
+  const hs = JSON.parse(readFileSync(join(dir, ".completion-gates/hook-state.json"), "utf8"));
+  assert.ok(hs.pause, "token kept for the next stop");
+  const right = JSON.parse(stopHook(dir, { last_assistant_message: "Before I continue: which DB should I target?" }).stdout);
+  assert.equal(right.decision, undefined);
+});
+
+test("pause: a token minted under one gate state is dropped when the state changes", () => {
+  const dir = freshGated(
+    "# Gates: t\n\n- [ ] G1: a\n  CHECK: echo aaa\n  CONTROL: exempt fixture\n  EXPECT: aaa\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n",
+  );
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "pause", "--reason", "q");
+  gateCheck(dir, "run"); // G1 proven: resolved count changed
+  assert.equal(JSON.parse(stopHook(dir).stdout).decision, "block");
+});
+
+test("pauses survive reset and close in the audit trail", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "pause", "--reason", "q1");
+  stopHook(dir);
+  gateCheck(dir, "reset", "--reason", "new scope");
+  const m = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
+  assert.equal(m.revisions[0].changes[0].pauses[0].reason, "q1");
+  gateCheck(dir, "pause", "--reason", "q2");
+  stopHook(dir);
+  gateCheck(dir, "close", "--reason", "cancelled");
+  const epochs = readdirSync(join(dir, ".completion-gates/history"));
+  const closure = JSON.parse(readFileSync(join(dir, ".completion-gates/history", epochs[0], "manifest.json"), "utf8"));
+  assert.equal(closure.closure.pauses[0].reason, "q2");
 });
 
 // ----------------------------------------------------------------

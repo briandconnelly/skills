@@ -70,13 +70,31 @@ authorizes — review them; they will be executed as shell. After freezing:
   single change is `{op: "reset", previous: {frozen_at, files, criteria, gates}}`,
   keeps every prior revision, deletes `state.json` and `hook-state.json`, and
   moves `artifacts/` to `artifacts-reset-<timestamp>/`.
-- `status` prints every revision under the ledger.
+- `status` prints every revision under the ledger, and every consumed pause
+  with its question.
+- `pause --reason "<question>"` writes a single-use token into
+  `hook-state.json`, scoped to the current resolved/total count. The Stop hook
+  consumes it (allowing one stop, recording the pause) only if that count is
+  unchanged and, when `last_assistant_message` is supplied, the question
+  appears in it. A pending token is not a pause; a paused stop never moves the
+  block counter. `pause` refuses unless status is INCOMPLETE and no token is
+  pending.
+- `close [--reason]` archives the whole epoch to `history/<ts>/`: the
+  manifest with a `closure` block (`closed_at`, `final_status`, `reason`,
+  `counts`, `rows`, `pauses`, `final_ledger`, `workspace_fingerprint`), copies
+  of the gate files, and the moved `state.json`, `hook-state.json`, and
+  `artifacts/`. Nothing live remains. Exit code follows `final_status`
+  (0/3/1). A non-PROVEN close writes `last-close.json`, which the hook
+  consumes to label exactly one stop. `close` refuses when the ledger cannot
+  be computed. `reset` folds consumed pauses into its revision.
 - Which of these is allowed when is governed by the escape rule in SKILL.md;
   this file describes mechanics only.
 
-The manifest is auditable and safe to commit. `state.json`, `hook-state.json`,
-and `artifacts/` are machine-local (a `.gitignore` covering them is written
-into `.completion-gates/` at freeze).
+The manifest is auditable and safe to commit, as are the archived manifests
+and gate-file copies under `history/`. `state.json`, `hook-state.json`,
+`last-close.json`, `artifacts/`, and their copies under `history/*/` are
+machine-local (a `.gitignore` covering them is written into
+`.completion-gates/` at freeze).
 
 ## Evidence and staleness
 
@@ -139,3 +157,5 @@ claim; evidence is the proof.
 | 1 | INCOMPLETE — unmet or stale gates remain |
 | 2 | Usage, parse, validation, or spec-drift error |
 | 3 | INCOMPLETE-HANDOFF — abandons present, everything else proven |
+
+`close` and `status` on a closed contract use the same codes for the final status.

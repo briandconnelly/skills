@@ -10,11 +10,14 @@
 //   gate-check.mjs status                          report only, change nothing
 //   gate-check.mjs amend --reason "<why>"          record a visible spec revision after gate files change
 //   gate-check.mjs control <ID> [--timeout N]      negative control: verify the CHECK can fail (run pre-fix)
+//   gate-check.mjs pause --reason "<question>"     let the next turn end once (to ask the user) while gates are open
+//   gate-check.mjs close [--reason "<why>"]        end the contract: archive the epoch under history/; reason
+//                                                  required unless status is PROVEN or INCOMPLETE-HANDOFF
 //
 // Exit codes: 0 = PROVEN, 1 = INCOMPLETE, 2 = usage/parse/drift error, 3 = INCOMPLETE-HANDOFF
 // (abandoned gates present, everything else proven). An ABANDON line never produces exit 0.
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, rmSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, rmSync, renameSync, copyFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, relative, isAbsolute } from "node:path";
 import {
@@ -23,6 +26,9 @@ import {
   statePath,
   hookStatePath,
   artifactsDir,
+  historyDir,
+  closeNoticePath,
+  recordedPauses,
   readJSON,
   atomicWriteJSON,
   parseGateFile,
@@ -164,7 +170,10 @@ function writeManifest(contract, revisions) {
     revisions,
   });
   // state, hook state, and artifacts are machine-local; the manifest itself is auditable and committable
-  writeFileSync(join(cwd, DIR, ".gitignore"), "state.json\nhook-state.json\nartifacts/\nartifacts-reset-*/\n*.tmp\n");
+  writeFileSync(
+    join(cwd, DIR, ".gitignore"),
+    "state.json\nhook-state.json\nlast-close.json\nartifacts/\nartifacts-reset-*/\nhistory/*/artifacts/\nhistory/*/state.json\nhistory/*/hook-state.json\n*.tmp\n",
+  );
   console.log(`Frozen ${contract.gates.length} gates (${contract.criteria.length} criteria) from: ${contract.files.join(", ")}`);
   console.log("Review the commands this manifest authorizes for execution:");
   for (const g of contract.gates) if (g.check) console.log(`  ${g.id}: ${g.check}`);
@@ -197,7 +206,13 @@ if (command === "reset") {
     {
       at,
       reason: flags.reason.trim(),
-      changes: [{ op: "reset", previous: { frozen_at: prev.frozen_at, files: prev.files, criteria: prev.criteria, gates: prev.gates } }],
+      changes: [
+        {
+          op: "reset",
+          previous: { frozen_at: prev.frozen_at, files: prev.files, criteria: prev.criteria, gates: prev.gates },
+          pauses: recordedPauses(cwd),
+        },
+      ],
     },
   ];
   rmSync(statePath(cwd), { force: true });
@@ -267,10 +282,100 @@ if (command === "run" || command === undefined) {
 
 // ---------------------------------------------------------------- status
 if (command === "status") {
+  if (!existsSync(manifestPath(cwd))) {
+    const last = latestClosure();
+    if (!last) fail("no manifest — run `gate-check.mjs freeze` first");
+    console.log(`contract closed ${last.closure.closed_at} as ${last.closure.final_status}${last.closure.reason ? ` — ${last.closure.reason}` : ""} (epoch ${last.epoch})`);
+    console.log(last.closure.final_ledger);
+    process.exit(exitCodeFor(last.closure.final_status));
+  }
   const status = computeStatus(cwd);
   if (status.error) fail(status.error);
   exitForStatus(status);
 }
+
+function exitCodeFor(overall) {
+  return overall === "PROVEN" ? 0 : overall === "INCOMPLETE-HANDOFF" ? 3 : 1;
+}
+
+function latestClosure() {
+  if (!existsSync(historyDir(cwd))) return null;
+  const epochs = readdirSync(historyDir(cwd)).sort();
+  for (let i = epochs.length - 1; i >= 0; i--) {
+    const m = readJSON(join(historyDir(cwd), epochs[i], "manifest.json"));
+    if (m?.closure) return { epoch: epochs[i], closure: m.closure };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- pause
+// Single-use permission for the next turn end while gates are open, so the
+// agent can ask the user something. The hook consumes it and records the
+// pause; a pending token is not yet a pause.
+if (command === "pause") {
+  const { flags } = parseArgs(argv.slice(1), ["--reason"], []);
+  if (!flags.reason?.trim()) fail('pause requires --reason "<the question for the user>"');
+  loadManifestOrFail();
+  const status = computeStatus(cwd);
+  if (status.error) fail(status.error);
+  if (status.overall !== "INCOMPLETE") fail(`status is ${status.overall} — the hook already allows stopping; no pause needed`);
+  const hs = readJSON(hookStatePath(cwd), { key: "", blocks: 0 });
+  if (hs.pause) fail(`pause already pending: ${JSON.stringify(hs.pause.reason)} — end the turn with that question first`);
+  const resolved = status.counts.proven + status.counts.attested + status.counts.abandoned;
+  hs.pause = { reason: flags.reason.trim(), at: new Date().toISOString(), key: `resolved:${resolved}/${status.counts.total}` };
+  atomicWriteJSON(hookStatePath(cwd), hs);
+  console.log(`Pause recorded. End the turn with this question in your message: ${JSON.stringify(hs.pause.reason)}`);
+  console.log("The stop will be allowed once and labeled as paused, not done.");
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- close
+// End of life. The whole epoch (manifest with closure, gate files, state,
+// hook state, artifacts) moves under history/<ts>/; nothing live remains, so
+// every command and the hook see "no manifest". Exit code follows the final
+// status — closing INCOMPLETE is a visible surrender, never success.
+if (command === "close") {
+  const { flags } = parseArgs(argv.slice(1), ["--reason"], []);
+  const manifest = loadManifestOrFail();
+  const status = computeStatus(cwd);
+  if (status.error) fail(`${status.error} — fix the gate files (or reset --reason) before closing`);
+  const reason = flags.reason?.trim() || "";
+  if (status.overall === "INCOMPLETE" && !reason)
+    fail(`status is INCOMPLETE (${status.counts.unmet + status.counts.stale} open) — closing requires --reason "<why the work stops here>"`);
+
+  const at = new Date().toISOString();
+  const epoch = at.replace(/[:.]/g, "-");
+  const dest = join(historyDir(cwd), epoch);
+  mkdirSync(dest, { recursive: true });
+  manifest.closure = {
+    closed_at: at,
+    final_status: status.overall,
+    reason,
+    counts: status.counts,
+    rows: status.rows,
+    pauses: status.pauses,
+    final_ledger: formatLedger(status),
+    workspace_fingerprint: status.fingerprint,
+  };
+  atomicWriteJSON(join(dest, "manifest.json"), manifest);
+  for (const f of manifest.files) {
+    mkdirSync(join(dest, f, ".."), { recursive: true });
+    copyFileSync(join(cwd, f), join(dest, f));
+  }
+  for (const name of ["state.json", "hook-state.json", "artifacts"])
+    if (existsSync(join(cwd, DIR, name))) renameSync(join(cwd, DIR, name), join(dest, name));
+  rmSync(manifestPath(cwd));
+  if (status.overall !== "PROVEN") {
+    const open = status.rows.filter((r) => r.resolution !== "proven" && r.resolution !== "attested").map((r) => `${r.id} (${r.resolution})`);
+    atomicWriteJSON(closeNoticePath(cwd), { closed_at: at, final_status: status.overall, reason, open });
+  }
+  console.log(`Contract closed as ${status.overall}${reason ? ` — ${reason}` : ""}; epoch archived at ${DIR}/history/${epoch}/`);
+  console.log(manifest.closure.final_ledger);
+  if (status.overall !== "PROVEN") console.log("This is not success. Report it as such.");
+  process.exit(exitCodeFor(status.overall));
+}
+
+
 
 // ---------------------------------------------------------------- amend
 if (command === "amend") {
@@ -387,4 +492,4 @@ if (command === "control") {
   process.exit(0);
 }
 
-fail(`unknown command "${command}" (expected freeze | run | status | amend | reset | control)`);
+fail(`unknown command "${command}" (expected freeze | run | status | amend | reset | control | pause | close)`);
