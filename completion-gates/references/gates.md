@@ -42,7 +42,10 @@ Rules the parser enforces:
   criteria, and every criterion must be covered by at least one gate. An
   uncovered criterion is silent scope-narrowing — freeze rejects it.
 - `ABANDON: <id> <reason>` marks a visible surrender. It permits stopping as
-  INCOMPLETE-HANDOFF; it never contributes to PROVEN.
+  INCOMPLETE-HANDOFF; it never contributes to PROVEN. The id must name a
+  frozen gate (from any frozen file — a driver may abandon a leaf gate), and a
+  gate may be abandoned only once.
+- A regex EXPECT must compile; freeze and amend reject one that does not.
 
 ## The manifest (freeze / amend)
 
@@ -50,10 +53,20 @@ Rules the parser enforces:
 map into `.completion-gates/manifest.json` and prints the commands it
 authorizes — review them; they will be executed as shell. After freezing:
 
-- `run` executes only manifest gates, and refuses entirely on *spec drift*
-  (a gate file whose CHECK/EXPECT/EXIT/FOR no longer matches the manifest).
-- `amend --reason "<why>"` is the legitimate path for scope change: it appends
-  a revision (timestamp, reason, per-gate diff) that reports must surface.
+- `run` and `status` check the live files against the manifest as a whole and
+  refuse on any mismatch: a gate whose CHECK/EXPECT/EXIT/FOR changed, a gate
+  added or removed, a criterion added/removed/reworded, a duplicate id, or an
+  ABANDON that names no gate.
+- `amend --reason "<why>"` records a contract change as a revision
+  `{at, reason, changes}`; change ops are `added`, `changed`, `removed`,
+  `criterion-added`, `criterion-changed`, `criterion-removed`.
+- `reset --reason "<why>"` replaces the contract. It appends a revision whose
+  single change is `{op: "reset", previous: {frozen_at, files, criteria, gates}}`,
+  keeps every prior revision, deletes `state.json` and `hook-state.json`, and
+  moves `artifacts/` to `artifacts-reset-<timestamp>/`.
+- `status` prints every revision under the ledger.
+- Which of these is allowed when is governed by the escape rule in SKILL.md;
+  this file describes mechanics only.
 
 The manifest is auditable and safe to commit. `state.json`, `hook-state.json`,
 and `artifacts/` are machine-local (a `.gitignore` covering them is written
@@ -67,8 +80,10 @@ markdown `EVIDENCE:` line — check output routinely contains secrets, and
 tracked markdown plus pasted ledgers is how they leak. Quote from artifacts
 selectively.
 
-A passing run is stamped with a workspace fingerprint (git HEAD + dirty-file
-list). When the workspace changes afterward, the gate shows **stale** and must
+A passing run is stamped with a spec fingerprint (CHECK, EXPECT, EXIT) and a
+workspace fingerprint (git HEAD + dirty-file list). If the spec is amended,
+the old run resolves **unmet** ("spec amended since last run") — evidence
+produced by a different command never satisfies the new one. When the workspace changes afterward, the gate shows **stale** and must
 be re-run — evidence describes the workspace it was recorded against, not the
 one you are reporting on. Outside git the tripwire is unavailable and status
 says so.
@@ -88,8 +103,12 @@ claim; evidence is the proof.
 - **Make EXPECT decisive.** Match the line that only appears on success
   (`8/8 passed`), never one that appears either way (`done`).
 - **Prove sensitivity.** For a new CHECK, `control <id>` on the pre-fix state
-  records that it can fail. A trivially-green CHECK (`echo ok`) is the gamed
-  ledger this system exists to expose.
+  records that it can fail. Outcomes: `ok` (ran and failed, as a pre-fix check
+  should), `insensitive` (already passed — shows nothing), `invalid` (timed out
+  or could not run — shows nothing). The record carries the spec fingerprint;
+  after an amend it shows as `stale`. Output goes to
+  `artifacts/<id>.control.log`. A trivially-green CHECK (`echo ok`) is the
+  gamed ledger this system exists to expose.
 - **Numbers rule.** Any number destined for the final report gets its own gate
   with a CHECK that measures it. Reports written from memory get numbers wrong;
   measured runs of the ancestor project showed exactly this failure.
