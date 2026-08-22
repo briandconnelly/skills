@@ -240,6 +240,88 @@ test("run preserves a prior negative-control record in state", () => {
   assert.equal(state.gates.G1.control.failedAsExpected, true, "run must not erase the control record");
 });
 
+// ---------------------------------------------------------------- live-ledger integrity
+
+const CRIT_GATES = "# Gates: t\n\n## Criteria\n- C1: hello works\n\n## Gates\n- [ ] G1: hello\n  FOR: C1\n  CHECK: echo hello\n  EXPECT: hello\n  EVIDENCE: pending\n";
+
+test("ABANDON of an unknown gate id is rejected at freeze, amend, status, run, and hook", () => {
+  const dir = freshGated(SIMPLE_GATES + "\nABANDON: G99 typo\n");
+  const fr = gateCheck(dir, "freeze");
+  assert.equal(fr.status, 2);
+  assert.match(fr.stderr, /ABANDON G99 names no gate/);
+
+  const ok = freshGated();
+  gateCheck(ok, "freeze");
+  appendFileSync(join(ok, "GATES.md"), "\nABANDON: G99 typo\n");
+  for (const cmd of ["status", "run"]) {
+    const r = gateCheck(ok, cmd);
+    assert.equal(r.status, 2, `${cmd}: ${r.stdout}`);
+    assert.match(r.stderr, /ABANDON G99 names no gate/);
+  }
+  const am = gateCheck(ok, "amend", "--reason", "x");
+  assert.equal(am.status, 2);
+  assert.match(am.stderr, /ABANDON G99 names no gate/);
+  const hook = JSON.parse(stopHook(ok).stdout);
+  assert.equal(hook.decision, undefined);
+  assert.match(hook.systemMessage, /ABANDON G99 names no gate/);
+});
+
+test("duplicate ABANDON lines for one gate are rejected", () => {
+  const dir = freshGated(SIMPLE_GATES + "\nABANDON: G1 one\nABANDON: G1 two\n");
+  const r = gateCheck(dir, "freeze");
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /ABANDON G1 declared more than once/);
+});
+
+test("a gate added to the live file after freeze is spec drift, not invisible", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  appendFileSync(join(dir, "GATES.md"), "\n- [ ] G2: unfrozen\n  EVIDENCE: pending\n");
+  const r = gateCheck(dir, "status");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stderr, /gate G2 is not in the frozen manifest/);
+  assert.equal(gateCheck(dir, "amend", "--reason", "add G2").status, 0);
+  assert.equal(gateCheck(dir, "status").status, 1); // G2 is now a real unmet gate
+});
+
+test("duplicate live gate ids after freeze are rejected, not silently merged", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  appendFileSync(join(dir, "GATES.md"), "\n- [x] G1: impostor\n  EVIDENCE: looks done\n");
+  const r = gateCheck(dir, "status");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stderr, /duplicate gate id G1/);
+});
+
+test("criteria-only edits are drift and are amendable", () => {
+  const dir = freshGated(CRIT_GATES);
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  writeFileSync(join(dir, "GATES.md"), CRIT_GATES.replace("hello works", "hello works in French too"));
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 2, st.stdout);
+  assert.match(st.stderr, /criterion C1 changed since freeze/);
+  const am = gateCheck(dir, "amend", "--reason", "scope grew");
+  assert.equal(am.status, 0, am.stderr);
+  assert.match(am.stdout, /criterion-changed C1/);
+  const manifest = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
+  assert.equal(manifest.revisions[0].changes[0].op, "criterion-changed");
+  assert.equal(manifest.criteria[0].text, "hello works in French too");
+  assert.equal(gateCheck(dir, "status").status, 0);
+});
+
+test("ABANDON for a leaf gate may live in the driver's file", () => {
+  const dir = makeDir();
+  mkdirSync(join(dir, "gates"));
+  writeFileSync(join(dir, "GATES.md"), "# Gates: driver\n\n- [ ] D1: integrates\n  CHECK: echo ok\n  EXPECT: ok\n  EVIDENCE: pending\n\nABANDON: L1 tool missing\n");
+  writeFileSync(join(dir, "gates/leaf.md"), "# Gates: leaf\n\n- [ ] L1: leaf thing\n  CHECK: false\n  EVIDENCE: pending\n");
+  assert.equal(gateCheck(dir, "freeze").status, 0);
+  const r = gateCheck(dir, "run");
+  assert.equal(r.status, 3, r.stdout);
+  assert.match(r.stdout, /ABANDONED L1/);
+});
+
 // ---------------------------------------------------------------- stop hook
 
 test("hook: no manifest means allow, even with a bare GATES.md present", () => {

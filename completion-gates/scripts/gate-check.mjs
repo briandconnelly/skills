@@ -257,19 +257,30 @@ if (command === "amend") {
       changes.push({ op: "changed", id, from: prevById.get(id), to: g });
   for (const id of prevById.keys())
     if (!nextById.has(id)) changes.push({ op: "removed", id, spec: prevById.get(id) });
-  if (!changes.length) fail("nothing to amend — gate specs match the manifest");
+  const nextCriteria = parsed.flatMap((p) => p.criteria);
+  const prevCrit = new Map((manifest.criteria || []).map((c) => [c.id, c.text.trim()]));
+  const nextCrit = new Map(nextCriteria.map((c) => [c.id, c.text.trim()]));
+  for (const [id, text] of nextCrit)
+    if (!prevCrit.has(id)) changes.push({ op: "criterion-added", id, to: text });
+    else if (prevCrit.get(id) !== text) changes.push({ op: "criterion-changed", id, from: prevCrit.get(id), to: text });
+  for (const [id, text] of prevCrit)
+    if (!nextCrit.has(id)) changes.push({ op: "criterion-removed", id, from: text });
+  if (!changes.length) fail("nothing to amend — gate specs and criteria match the manifest");
 
   manifest.files = files;
-  manifest.criteria = parsed.flatMap((p) => p.criteria);
+  manifest.criteria = nextCriteria;
   manifest.gates = nextGates;
   manifest.revisions.push({ at: new Date().toISOString(), reason: flags.reason.trim(), changes });
   atomicWriteJSON(manifestPath(cwd), manifest);
 
   console.log(`Revision ${manifest.revisions.length} recorded: ${flags.reason.trim()}`);
-  for (const c of changes)
-    console.log(
-      `  ${c.op} ${c.id}${c.op === "changed" ? `: CHECK/EXPECT/EXIT/FOR now ${JSON.stringify({ check: c.to.check, expect: c.to.expect, exit: c.to.exit, for: c.to.for })}` : ""}`,
-    );
+  for (const c of changes) {
+    let detail = "";
+    if (c.op === "changed")
+      detail = `: CHECK/EXPECT/EXIT/FOR now ${JSON.stringify({ check: c.to.check, expect: c.to.expect, exit: c.to.exit, for: c.to.for })}`;
+    else if (c.op.startsWith("criterion") && c.to) detail = `: ${JSON.stringify(c.to)}`;
+    console.log(`  ${c.op} ${c.id}${detail}`);
+  }
   console.log("Surface this revision (and its reason) in your final report.");
   process.exit(0);
 }

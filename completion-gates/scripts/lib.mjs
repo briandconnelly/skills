@@ -57,6 +57,7 @@ export function parseGateFile(text, file) {
     if (ab) {
       const reason = (ab[2] || "").trim();
       if (!reason) errors.push(`${file}:${i + 1}: ABANDON ${ab[1]} has no reason`);
+      if (abandoned.has(ab[1])) errors.push(`${file}:${i + 1}: ABANDON ${ab[1]} declared more than once`);
       abandoned.set(ab[1], reason || "(no reason)");
       cur = null;
       return;
@@ -148,7 +149,41 @@ export function validateForFreeze(parsedFiles) {
   }
   for (const [id, c] of allCriteria)
     if (!c.covered) errors.push(`criterion ${id} is mapped to no gate (unmapped acceptance criterion)`);
+  for (const p of parsedFiles)
+    for (const id of p.abandoned.keys())
+      if (!ids.has(id)) errors.push(`${p.file}: ABANDON ${id} names no gate`);
   if (!gateCount) errors.push("no gates found");
+  return errors;
+}
+
+// Checks the live gate files as a whole against the frozen manifest. Anything
+// the per-gate resolution loop cannot see (a gate that exists only in the live
+// file, a duplicated id, an ABANDON for nothing, a reworded criterion) is an
+// error here, so status can never report on a ledger that differs from the
+// contract in ways the ledger does not show.
+export function validateLive(parsedFiles, manifest) {
+  const errors = [];
+  const manifestIds = new Set(manifest.gates.map((g) => g.id));
+  const seen = new Set();
+  for (const p of parsedFiles) {
+    errors.push(...p.errors);
+    for (const g of p.gates) {
+      if (seen.has(g.id)) errors.push(`${p.file}: duplicate gate id ${g.id}`);
+      seen.add(g.id);
+      if (!manifestIds.has(g.id))
+        errors.push(`${p.file}: gate ${g.id} is not in the frozen manifest (amend with a reason)`);
+    }
+    for (const id of p.abandoned.keys())
+      if (!manifestIds.has(id)) errors.push(`${p.file}: ABANDON ${id} names no gate`);
+  }
+  const liveCriteria = new Map(parsedFiles.flatMap((p) => p.criteria).map((c) => [c.id, c.text.trim()]));
+  const frozenCriteria = new Map((manifest.criteria || []).map((c) => [c.id, c.text.trim()]));
+  for (const [id, text] of liveCriteria) {
+    if (!frozenCriteria.has(id)) errors.push(`criterion ${id} added since freeze (amend with a reason)`);
+    else if (frozenCriteria.get(id) !== text) errors.push(`criterion ${id} changed since freeze (amend with a reason)`);
+  }
+  for (const id of frozenCriteria.keys())
+    if (!liveCriteria.has(id)) errors.push(`criterion ${id} removed since freeze (amend with a reason)`);
   return errors;
 }
 
@@ -231,7 +266,7 @@ export function computeStatus(cwd) {
 
   const abandoned = new Map();
   const currentById = new Map();
-  const parseErrors = [];
+  const parsedFiles = [];
   for (const f of manifest.files) {
     let text;
     try {
@@ -240,11 +275,12 @@ export function computeStatus(cwd) {
       return { error: `gate file missing or unreadable: ${f}` };
     }
     const p = parseGateFile(text, f);
-    parseErrors.push(...p.errors);
+    parsedFiles.push(p);
     for (const [id, r] of p.abandoned) abandoned.set(id, r);
     for (const g of p.gates) currentById.set(g.id, g);
   }
-  if (parseErrors.length) return { error: parseErrors.join("; ") };
+  const liveErrors = validateLive(parsedFiles, manifest);
+  if (liveErrors.length) return { error: liveErrors.join("; ") };
 
   const rows = [];
   for (const spec of manifest.gates) {
