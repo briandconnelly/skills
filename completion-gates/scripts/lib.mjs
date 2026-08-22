@@ -376,6 +376,10 @@ export function formatLedger(status) {
   if (c.stale) parts.push(`${c.stale} stale`);
   if (c.unmet) parts.push(`${c.unmet} unmet`);
   out.push(`OVERALL: ${status.overall} (${parts.join(", ") || "0 gates"} of ${c.total})`);
+  (status.manifest.revisions || []).forEach((rev, i) => {
+    const ops = rev.changes.map((ch) => `${ch.op}${ch.id ? " " + ch.id : ""}`).join(", ");
+    out.push(`  revision ${i + 1} ${rev.at}: ${rev.reason} (${ops})`);
+  });
   if (!status.fingerprintAvailable)
     out.push("note: not a git repository — staleness tripwire unavailable");
   return out.join("\n");

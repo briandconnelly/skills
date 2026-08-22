@@ -3,7 +3,9 @@
 // Zero dependencies. Node 18+. Part of the completion-gates skill.
 //
 // Usage:
-//   gate-check.mjs freeze [files...] [--force]     validate gate files, write the frozen manifest
+//   gate-check.mjs freeze [files...]               validate gate files, write the frozen manifest
+//   gate-check.mjs reset --reason "<why>" [files]  replace the contract; prior revisions and a
+//                                                  snapshot of the old contract stay in the manifest
 //   gate-check.mjs run [--gate ID] [--timeout N]   execute unproven/stale CHECK gates from the manifest
 //   gate-check.mjs status                          report only, change nothing
 //   gate-check.mjs amend --reason "<why>"          record a visible spec revision after gate files change
@@ -12,13 +14,14 @@
 // Exit codes: 0 = PROVEN, 1 = INCOMPLETE, 2 = usage/parse/drift error, 3 = INCOMPLETE-HANDOFF
 // (abandoned gates present, everything else proven). An ABANDON line never produces exit 0.
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, rmSync, renameSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, relative, isAbsolute } from "node:path";
 import {
   DIR,
   manifestPath,
   statePath,
+  hookStatePath,
   artifactsDir,
   readJSON,
   atomicWriteJSON,
@@ -137,38 +140,72 @@ function recordInMarkdown(file, gateId, pass, summary) {
   writeFileSync(path, lines.join("\n"));
 }
 
-// ---------------------------------------------------------------- freeze
-if (command === "freeze") {
-  const { flags, positional } = parseArgs(argv.slice(1), [], ["--force"]);
-  if (existsSync(manifestPath(cwd)) && !flags.force)
-    fail("manifest already exists — use `amend --reason` for spec changes, or --force to start over");
-
+// Validates the given (or discovered) gate files and returns the contract
+// they define. Shared by freeze and reset; both refuse on any validation error.
+function buildContract(positional) {
   const files = positional.length ? positional.map(relPath) : discoverDefaultFiles();
   if (!files.length) fail("no gate files found (GATES.md or gates/*.md) and none given");
-
   const parsed = parseFiles(files);
   const errors = validateForFreeze(parsed);
   if (errors.length) {
     for (const e of errors) console.error(`  ${e}`);
-    fail(`${errors.length} validation error(s) — fix the gate files, then freeze again`);
+    fail(`${errors.length} validation error(s) — fix the gate files, then try again`);
   }
+  return { files, criteria: parsed.flatMap((p) => p.criteria), gates: parsed.flatMap((p) => p.gates.map(specOf)) };
+}
 
-  const criteria = parsed.flatMap((p) => p.criteria);
-  const gates = parsed.flatMap((p) => p.gates.map(specOf));
+function writeManifest(contract, revisions) {
   atomicWriteJSON(manifestPath(cwd), {
     schema: 1,
     frozen_at: new Date().toISOString(),
-    files,
-    criteria,
-    gates,
-    revisions: [],
+    files: contract.files,
+    criteria: contract.criteria,
+    gates: contract.gates,
+    revisions,
   });
   // state, hook state, and artifacts are machine-local; the manifest itself is auditable and committable
-  writeFileSync(join(cwd, DIR, ".gitignore"), "state.json\nhook-state.json\nartifacts/\n*.tmp\n");
-
-  console.log(`Frozen ${gates.length} gates (${criteria.length} criteria) from: ${files.join(", ")}`);
+  writeFileSync(join(cwd, DIR, ".gitignore"), "state.json\nhook-state.json\nartifacts/\nartifacts-reset-*/\n*.tmp\n");
+  console.log(`Frozen ${contract.gates.length} gates (${contract.criteria.length} criteria) from: ${contract.files.join(", ")}`);
   console.log("Review the commands this manifest authorizes for execution:");
-  for (const g of gates) if (g.check) console.log(`  ${g.id}: ${g.check}`);
+  for (const g of contract.gates) if (g.check) console.log(`  ${g.id}: ${g.check}`);
+}
+
+// ---------------------------------------------------------------- freeze
+if (command === "freeze") {
+  const { positional } = parseArgs(argv.slice(1), [], []);
+  if (existsSync(manifestPath(cwd)))
+    fail("manifest already exists — use `amend --reason` to change the contract, or `reset --reason` to replace it");
+  writeManifest(buildContract(positional), []);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- reset
+// The only way to replace a contract wholesale. Nothing is erased: the old
+// contract is snapshotted into a revision, old artifacts are archived, and
+// only machine-local run/hook state (which described the old contract) goes.
+if (command === "reset") {
+  const { flags, positional } = parseArgs(argv.slice(1), ["--reason"], []);
+  if (!flags.reason?.trim()) fail('reset requires --reason "<why the contract is being replaced>"');
+  if (!existsSync(manifestPath(cwd))) fail("no manifest to reset — use `freeze`");
+  const prev = readJSON(manifestPath(cwd));
+  if (!prev) fail("existing manifest is unreadable — inspect or remove .completion-gates/manifest.json by hand; reset will not overwrite it blindly");
+
+  const contract = buildContract(positional);
+  const at = new Date().toISOString();
+  const revisions = [
+    ...(prev.revisions || []),
+    {
+      at,
+      reason: flags.reason.trim(),
+      changes: [{ op: "reset", previous: { frozen_at: prev.frozen_at, files: prev.files, criteria: prev.criteria, gates: prev.gates } }],
+    },
+  ];
+  rmSync(statePath(cwd), { force: true });
+  rmSync(hookStatePath(cwd), { force: true });
+  if (existsSync(artifactsDir(cwd)))
+    renameSync(artifactsDir(cwd), join(cwd, DIR, `artifacts-reset-${at.replace(/[:.]/g, "-")}`));
+  writeManifest(contract, revisions);
+  console.log(`Revision ${revisions.length} recorded (reset): ${flags.reason.trim()} — surface it in your final report.`);
   process.exit(0);
 }
 
@@ -314,4 +351,4 @@ if (command === "control") {
   process.exit(0);
 }
 
-fail(`unknown command "${command}" (expected freeze | run | status | amend | control)`);
+fail(`unknown command "${command}" (expected freeze | run | status | amend | reset | control)`);

@@ -9,7 +9,7 @@
 // by cosmetic edits.
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, appendFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, appendFileSync, rmSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -345,6 +345,46 @@ test("amending a CHECK invalidates its control record", () => {
   const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
   assert.ok(state.gates.G1.control.specFp, "control stores the spec fingerprint");
   assert.match(gateCheck(dir, "status").stdout, /control: stale/);
+});
+
+// ---------------------------------------------------------------- reset
+
+test("freeze refuses to overwrite a manifest; --force no longer exists", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  const again = gateCheck(dir, "freeze");
+  assert.equal(again.status, 2);
+  assert.match(again.stderr, /amend --reason.*reset --reason/);
+  const forced = gateCheck(dir, "freeze", "--force");
+  assert.equal(forced.status, 2);
+  assert.match(forced.stderr, /unknown flag --force/);
+});
+
+test("reset requires a reason and an existing manifest, and keeps the revision trail", () => {
+  const dir = freshGated();
+  assert.equal(gateCheck(dir, "reset", "--reason", "x").status, 2); // nothing to reset yet
+  gateCheck(dir, "freeze");
+  gateCheck(dir, "run");
+  writeFileSync(join(dir, "GATES.md"), SIMPLE_GATES.replace("echo hello", "echo hi").replace("EXPECT: hello", "EXPECT: hi"));
+  gateCheck(dir, "amend", "--reason", "first amend");
+  stopHook(dir);
+  assert.equal(gateCheck(dir, "reset").status, 2);
+
+  writeFileSync(join(dir, "GATES.md"), "# Gates: v2\n\n- [ ] G1: brand new contract\n  CHECK: echo new\n  EXPECT: new\n  EVIDENCE: pending\n");
+  const r = gateCheck(dir, "reset", "--reason", "start over after scope change");
+  assert.equal(r.status, 0, r.stderr);
+  const m = JSON.parse(readFileSync(join(dir, ".completion-gates/manifest.json"), "utf8"));
+  assert.equal(m.revisions.length, 2, "prior amend survives the reset");
+  assert.equal(m.revisions[0].reason, "first amend");
+  assert.equal(m.revisions[1].reason, "start over after scope change");
+  assert.equal(m.revisions[1].changes[0].op, "reset");
+  assert.equal(m.revisions[1].changes[0].previous.gates[0].check, "echo hi");
+  assert.ok(!existsSync(join(dir, ".completion-gates/state.json")), "old evidence cleared");
+  assert.ok(!existsSync(join(dir, ".completion-gates/hook-state.json")), "hook counter cleared");
+  assert.ok(!existsSync(join(dir, ".completion-gates/artifacts/G1.log")), "old artifacts archived");
+  assert.ok(readdirSync(join(dir, ".completion-gates")).some((f) => f.startsWith("artifacts-reset-")));
+  assert.equal(gateCheck(dir, "status").status, 1); // fresh contract, nothing proven
+  assert.match(gateCheck(dir, "status").stdout, /revision 2 .*start over/);
 });
 
 // ---------------------------------------------------------------- stop hook
