@@ -322,6 +322,31 @@ test("ABANDON for a leaf gate may live in the driver's file", () => {
   assert.match(r.stdout, /ABANDONED L1/);
 });
 
+// ---------------------------------------------------------------- evidence bound to spec
+
+test("amending a CHECK invalidates the old passing run — the new command must execute", () => {
+  const dir = freshGated();
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "run").status, 0);
+  writeFileSync(join(dir, "GATES.md"), SIMPLE_GATES.replace("CHECK: echo hello", "CHECK: false"));
+  assert.equal(gateCheck(dir, "amend", "--reason", "tighten").status, 0);
+  const st = gateCheck(dir, "status");
+  assert.equal(st.status, 1, st.stdout);
+  assert.match(st.stdout, /spec amended since last run/);
+  assert.equal(gateCheck(dir, "run").status, 1); // the new CHECK really runs and fails
+});
+
+test("amending a CHECK invalidates its control record", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  assert.equal(gateCheck(dir, "control", "G1").status, 0);
+  writeFileSync(join(dir, "GATES.md"), "# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f other.txt\n  EVIDENCE: pending\n");
+  gateCheck(dir, "amend", "--reason", "rename");
+  const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
+  assert.ok(state.gates.G1.control.specFp, "control stores the spec fingerprint");
+  assert.match(gateCheck(dir, "status").stdout, /control: stale/);
+});
+
 // ---------------------------------------------------------------- stop hook
 
 test("hook: no manifest means allow, even with a bare GATES.md present", () => {

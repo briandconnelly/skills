@@ -28,6 +28,7 @@ import {
   specDrifted,
   expectMatches,
   workspaceFingerprint,
+  specFingerprint,
   computeStatus,
   formatLedger,
 } from "./lib.mjs";
@@ -208,6 +209,7 @@ if (command === "run" || command === undefined) {
       exit: res.exit,
       at,
       artifact,
+      specFp: specFingerprint(spec),
     };
     const why = res.timedOut ? `timeout after ${timeoutSec}s` : `exit=${res.exit}`;
     recordInMarkdown(spec.file, spec.id, res.pass, `${res.pass ? "pass" : "FAIL"} ${why} ${at} artifact=${artifact}`);
@@ -297,7 +299,10 @@ if (command === "control") {
 
   const res = runCheck(spec, flags.timeout ? Number(flags.timeout) : 120);
   const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
-  state.gates[id] = { ...(state.gates[id] || {}), control: { at: new Date().toISOString(), failedAsExpected: !res.pass } };
+  state.gates[id] = {
+    ...(state.gates[id] || {}),
+    control: { at: new Date().toISOString(), failedAsExpected: !res.pass, specFp: specFingerprint(spec) },
+  };
   atomicWriteJSON(statePath(cwd), state);
 
   if (res.pass) {

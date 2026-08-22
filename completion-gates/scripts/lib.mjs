@@ -197,6 +197,17 @@ export const specOf = (g) => ({
   for: [...g.for].sort(),
 });
 
+// Identity of what a CHECK proves: the command, its expectation, and its exit
+// code. Run and control records carry this so evidence recorded under an old
+// spec cannot satisfy an amended one. FOR is excluded — retargeting a gate at
+// a criterion does not change what the command demonstrated.
+export function specFingerprint(spec) {
+  return createHash("sha256")
+    .update(JSON.stringify([spec.check, spec.expect, spec.exit ?? null]))
+    .digest("hex")
+    .slice(0, 16);
+}
+
 // Compares the enforceable parts of a spec (not the title, which is cosmetic).
 export function specDrifted(a, b) {
   return (
@@ -298,9 +309,16 @@ export function computeStatus(cwd) {
       detail = "spec drifted from frozen manifest (amend with a reason, then re-run)";
     } else if (spec.check) {
       const st = state.gates?.[spec.id];
-      if (!st || st.status !== "pass") {
+      const fp = specFingerprint(spec);
+      if (!st || !st.status) {
         resolution = "unmet";
-        detail = st?.status ? `last run failed (exit ${st.exit})` : "no recorded run";
+        detail = "no recorded run";
+      } else if (st.specFp !== fp) {
+        resolution = "unmet";
+        detail = "spec amended since last run — re-run";
+      } else if (st.status !== "pass") {
+        resolution = "unmet";
+        detail = `last run failed (exit ${st.exit})`;
       } else if (fingerprint && st.fingerprint && st.fingerprint !== fingerprint) {
         resolution = "stale";
         detail = "workspace changed since the passing run — re-run";
@@ -316,7 +334,12 @@ export function computeStatus(cwd) {
         detail = !cur.checked ? "unchecked" : "EVIDENCE still pending";
       }
     }
-    rows.push({ id: spec.id, title: spec.title, runnable: !!spec.check, resolution, detail });
+    let control = null;
+    if (spec.check) {
+      const c = state.gates?.[spec.id]?.control;
+      control = !c ? "none" : c.specFp !== specFingerprint(spec) ? "stale" : c.failedAsExpected ? "ok" : "insensitive";
+    }
+    rows.push({ id: spec.id, title: spec.title, runnable: !!spec.check, resolution, detail, control });
   }
 
   const count = (r) => rows.filter((x) => x.resolution === r).length;
@@ -342,7 +365,8 @@ export function formatLedger(status) {
   const out = [];
   for (const r of status.rows) {
     const label = r.resolution.toUpperCase().padEnd(9);
-    out.push(`  ${label} ${r.id}: ${r.title}${r.detail ? ` — ${r.detail}` : ""}`);
+    const ctl = r.control ? ` [control: ${r.control}]` : "";
+    out.push(`  ${label} ${r.id}: ${r.title}${ctl}${r.detail ? ` — ${r.detail}` : ""}`);
   }
   const c = status.counts;
   const parts = [];
