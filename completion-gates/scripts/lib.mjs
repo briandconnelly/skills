@@ -134,6 +134,16 @@ export function validateForFreeze(parsedFiles) {
         errors.push(`${p.file}: gate ${gate.id} has no EVIDENCE line`);
       if (gate.exit !== null && !/^\d+$/.test(gate.exit))
         errors.push(`${p.file}: gate ${gate.id} EXIT is not a non-negative integer`);
+      if (gate.expect !== null) {
+        const rx = gate.expect.match(/^\/(.+)\/([a-z]*)$/);
+        if (rx) {
+          try {
+            new RegExp(rx[1], rx[2]);
+          } catch (e) {
+            errors.push(`${p.file}: gate ${gate.id} EXPECT regex is invalid (${e.message})`);
+          }
+        }
+      }
       if (!gate.check && (gate.expect !== null || gate.exit !== null))
         errors.push(`${p.file}: gate ${gate.id} has EXPECT/EXIT but no CHECK`);
       for (const f of gate.for) {
@@ -337,7 +347,11 @@ export function computeStatus(cwd) {
     let control = null;
     if (spec.check) {
       const c = state.gates?.[spec.id]?.control;
-      control = !c ? "none" : c.specFp !== specFingerprint(spec) ? "stale" : c.failedAsExpected ? "ok" : "insensitive";
+      control = !c
+        ? "none"
+        : c.specFp !== specFingerprint(spec)
+          ? "stale"
+          : c.outcome || (c.failedAsExpected ? "ok" : "insensitive");
     }
     rows.push({ id: spec.id, title: spec.title, runnable: !!spec.check, resolution, detail, control });
   }

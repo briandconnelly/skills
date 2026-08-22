@@ -387,6 +387,41 @@ test("reset requires a reason and an existing manifest, and keeps the revision t
   assert.match(gateCheck(dir, "status").stdout, /revision 2 .*start over/);
 });
 
+// ---------------------------------------------------------------- control outcomes
+
+test("ledger shows control outcome per runnable gate: none, ok, insensitive", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: file exists\n  CHECK: test -f built.txt\n  EVIDENCE: pending\n\n- [ ] G2: manual\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  let out = gateCheck(dir, "status").stdout;
+  assert.match(out, /G1: file exists \[control: none\]/);
+  assert.doesNotMatch(out, /G2: manual \[control/);
+  gateCheck(dir, "control", "G1");
+  assert.match(gateCheck(dir, "status").stdout, /\[control: ok\]/);
+  writeFileSync(join(dir, "built.txt"), "x");
+  gateCheck(dir, "control", "G1");
+  out = gateCheck(dir, "status").stdout;
+  assert.match(out, /\[control: insensitive\]/);
+});
+
+test("a control that times out is invalid, not ok", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: slow\n  CHECK: sleep 5\n  EVIDENCE: pending\n");
+  gateCheck(dir, "freeze");
+  const r = gateCheck(dir, "control", "G1", "--timeout", "1");
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /CONTROL INVALID/);
+  const state = JSON.parse(readFileSync(join(dir, ".completion-gates/state.json"), "utf8"));
+  assert.equal(state.gates.G1.control.outcome, "invalid");
+  assert.equal(state.gates.G1.control.timedOut, true);
+  assert.match(gateCheck(dir, "status").stdout, /\[control: invalid\]/);
+});
+
+test("an invalid EXPECT regex is rejected at freeze instead of silently never matching", () => {
+  const dir = freshGated("# Gates: t\n\n- [ ] G1: bad\n  CHECK: echo x\n  EXPECT: /(unclosed/\n  EVIDENCE: pending\n");
+  const r = gateCheck(dir, "freeze");
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /EXPECT regex is invalid/);
+});
+
 // ---------------------------------------------------------------- stop hook
 
 test("hook: no manifest means allow, even with a bare GATES.md present", () => {

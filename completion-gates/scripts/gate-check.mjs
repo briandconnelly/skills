@@ -334,15 +334,32 @@ if (command === "control") {
   if (!spec) fail(`no gate named ${id} in the manifest`);
   if (!spec.check) fail(`${id} is a manual gate — negative controls apply to CHECK gates`);
 
-  const res = runCheck(spec, flags.timeout ? Number(flags.timeout) : 120);
+  const timeoutSec = flags.timeout ? Number(flags.timeout) : 120;
+  const res = runCheck(spec, timeoutSec);
+  const artifact = writeArtifact(`${id}.control`, res.output);
+  // Three outcomes, never collapsed to one boolean: a CHECK that could not
+  // even run (timeout, spawn error) demonstrates nothing about sensitivity.
+  const outcome = res.timedOut || res.exit === null ? "invalid" : res.pass ? "insensitive" : "ok";
   const state = readJSON(statePath(cwd), { schema: 1, gates: {} });
   state.gates[id] = {
     ...(state.gates[id] || {}),
-    control: { at: new Date().toISOString(), failedAsExpected: !res.pass, specFp: specFingerprint(spec) },
+    control: {
+      at: new Date().toISOString(),
+      outcome,
+      failedAsExpected: outcome === "ok",
+      exit: res.exit,
+      timedOut: res.timedOut,
+      artifact,
+      specFp: specFingerprint(spec),
+    },
   };
   atomicWriteJSON(statePath(cwd), state);
 
-  if (res.pass) {
+  if (outcome === "invalid") {
+    console.log(`CONTROL INVALID for ${id}: the CHECK did not complete (${res.timedOut ? `timeout after ${timeoutSec}s` : "could not run"}), so it shows nothing about sensitivity.`);
+    process.exit(1);
+  }
+  if (outcome === "insensitive") {
     console.log(`CONTROL FAILED for ${id}: the CHECK already passes, so it cannot demonstrate sensitivity.`);
     console.log("Run controls on the pre-fix state, or sharpen the CHECK until it fails without the work.");
     process.exit(1);
