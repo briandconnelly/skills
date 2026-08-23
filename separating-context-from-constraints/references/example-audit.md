@@ -85,12 +85,6 @@ The hotfix-wins reading is the natural specific-over-general interpretation, but
 Not flagged (false-positive guard): line 7, the migration-history sentence, is discretionary context — rationale and background that degrades gracefully if lost — and is correctly left out of `## Rules`.
 Not flagged (false-positive guard): line 21, the `DEPLOY_ENV` sentence, is a load-bearing fact about tool semantics — losing it would make output wrong, but it is not a directive, so it correctly belongs outside `## Rules`.
 
-## R5 Scope Guard
-
-The compact description `Accepts only a channel_id, never a channel name; also accepts confirmed: boolean.` does not create a precedence conflict between the locator and confirmation fields.
-It restricts the representation of `channel_id`, not the rest of the input object.
-An audit should treat unrelated fields as prohibited only when the document explicitly restricts the whole input object.
-
 ## Summary
 
 Counts per rule: R1 2, R2 1, R3 1, R4 1, R5 1.

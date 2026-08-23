@@ -39,7 +39,7 @@ Notes: <optional; anything about this run that is not one of the fields above>
 
 A hash alone does not establish that the scored output came from the arm it is filed under; the prompt and scorer fields are what make the artifact checkable by someone who was not there.
 
-The 2026-07-11 artifacts predate this requirement and none of these fields is recoverable for them.
+The 2026-07-11 artifacts predate this requirement; they record only `Date` and `Run`, and the remaining fields (blob hashes, model, harness, prompt, sampling, scorer) are not recoverable for them.
 They are retained as historical evidence and are not treated as establishing which wording they measured.
 
 ## How to run
@@ -354,5 +354,7 @@ They are not a measure of audit quality and must not be quoted as one.
 | 2026-07-11 | 8 (reachable conflict) | baseline | 1/4 | Silently selected the specific-over-general reading. |
 | 2026-07-11 | 8 (reachable conflict) | with skill | 4/4 | Passed. |
 | 2026-07-11 | 9 (trigger discrimination) | trigger | 3/3 | Selected this skill over three related distractors. |
-| 2026-08-06 | 1 (rules buried in prose) | with skill | 3/3 | Confirmation cell for the counting change. Produced a different finding set than the 2026-07-11 treatment of the same fixture. |
-| 2026-08-06 | 6 (unverifiable hedge and misplaced context) | with skill | 9/9 | Confirmation cell for the counting change, plus the scenario's six standing assertions. |
+| 2026-08-06 | 1 (rules buried in prose) | with skill | 3/3 confirmation questions; standing assertion 5 FAILED | Confirmation cell for the counting change; the 3/3 counts only the cell's three confirmation questions, not the scenario's five assertions. The run raised a minor R2 finding against the protected "People joke" sentence, failing assertion 5; whether that is a false positive or a legitimate R2 reading is open. Produced a different finding set than the 2026-07-11 treatment of the same fixture. |
+| 2026-08-06 | 6 (unverifiable hedge and misplaced context) | with skill | 3/3 confirmation questions; 6/6 standing assertions | Confirmation cell for the counting change, re-checked against the scenario's six standing assertions. |
+| 2026-08-23 | 2 (legitimate inline rules) | with skill | 2/2 confirmation questions; standing assertions 2 and 3 FAILED | Confirmation cell for the Non-Goals consolidation (cross-layer paraphrase). Raised a material R3 finding against the protected "MUST NOT archive" sentence — a false positive under E2, not reachable from the edited sentence; belongs to the R3-scope work. |
+| 2026-08-23 | 5 (clean document) | with skill | 2/2 confirmation questions; 4/4 standing assertions | Confirmation cell for the Non-Goals consolidation (numeric-scoring paraphrase). |

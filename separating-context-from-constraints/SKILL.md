@@ -101,12 +101,10 @@ Do not include a numeric score.
 
 ## Non-Goals
 
-- Cross-layer conflict analysis between a document and its parent instruction layers.
-- Numeric scoring or pass/fail grading of documents.
+- Cross-layer conflict analysis between a document and its parent instruction layers (a system prompt above a skill, CLAUDE.md above a tool description); inherited constraints may explain apparent local gaps.
+- Pass/fail grading of documents (see Summary Format).
 - Authoring workflow guidance (owned by skill-creator or superpowers:writing-skills).
 - General prose quality, tone, or brevity review beyond the context/constraints axis.
-
-This audit is standalone: conflicts with parent instruction layers (a system prompt above a skill, CLAUDE.md above a tool description) are out of scope, and inherited constraints may explain apparent local gaps.
 
 ## Worked Example
 

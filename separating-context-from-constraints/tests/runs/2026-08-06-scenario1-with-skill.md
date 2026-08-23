@@ -15,7 +15,7 @@ Notes: confirmation cell for the Summary Format counting change; see "Why this c
 ## Why this cell
 
 `SKILL.md` gained two sentences defining how per-rule and per-severity counts are computed.
-Under [`decisions/001`](../../../hypothesis-driven-analysis/decisions/001-rerun-obligation.md), the cells that owe arms are those whose decision point traverses the edited sentences — that is, audits that produce a finding carrying more than one rule id.
+Under [`decisions/001`](https://github.com/briandconnelly/data-reasoning/blob/main/skills/hypothesis-driven-analysis/decisions/001-rerun-obligation.md), the cells that owe arms are those whose decision point traverses the edited sentences — that is, audits that produce a finding carrying more than one rule id.
 Scenario 1's archived treatment did (`R1 3, R4 1` across three findings), so it owes this cell.
 Scenario 6 owes the other.
 
