@@ -15,7 +15,7 @@ Notes: after this arm ran, the Core Concept rationale sentence "Narrative placem
 ## Why this cell
 
 Four `SKILL.md` edits landed in one batch: the three R3 examples moved from the Rules section to Core Concept; R1's "one finding per misplaced statement, even when both directions of the defect are present" folded into Finding Format's consolidation rule; R3's and R5's author-decision sentences reduced to pointers at Finding Format; and the Core Concept rationale's untested long-context claim softened to the structural claim.
-Under the adopted protocol, removing a paraphrase while the authoritative statement stays owes one confirmation cell per rule removed, and cells whose decision point traverses an edited sentence owe arms.
+This cell is owed under the [measurement protocol](../scenarios.md#measurement-protocol) adopted in `tests/scenarios.md`: paraphrases were removed while their authoritative statements stayed, and the edited sentences sit on this cell's decision point.
 Scenario 7 is the R4 cell. R4 was not edited, but the batch changed how R3 and R5 reach the author-decision contract; this cell checks that a rule with no pointer still reaches it through Finding Format alone.
 
 ## Result on the edited decision point

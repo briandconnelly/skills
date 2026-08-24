@@ -15,7 +15,7 @@ Notes: Later commits on this branch edited `SKILL.md` after this arm read it; th
 ## Why this cell
 
 The Non-Goals section's closing paragraph — "This audit is standalone: conflicts with parent instruction layers … are out of scope, and inherited constraints may explain apparent local gaps." — was folded into the first Non-Goals bullet, which already stated the exclusion.
-Under the adopted protocol, removing a paraphrase while the authoritative statement stays owes one confirmation cell per rule removed.
+This cell is owed under the [measurement protocol](../scenarios.md#measurement-protocol) adopted in `tests/scenarios.md`: a paraphrase was removed while its authoritative statement stayed.
 Scenario 2 is the cell where cross-layer speculation is most tempting: a compact MCP tool description whose `confirmed` field invites reasoning about what the calling agent's parent instructions require.
 
 ## Result on the edited decision point

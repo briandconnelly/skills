@@ -16,7 +16,7 @@ Notes: Later commits on this branch edited `SKILL.md` after this arm read it; th
 
 The Non-Goals bullet "Numeric scoring or pass/fail grading of documents" duplicated Summary Format's "Do not include a numeric score."
 The bullet was reduced to "Pass/fail grading of documents (numeric scores are excluded by Summary Format)", leaving Summary Format as the only home.
-Under the adopted protocol, removing a paraphrase while the authoritative statement stays owes one confirmation cell per rule removed.
+This cell is owed under the [measurement protocol](../scenarios.md#measurement-protocol) adopted in `tests/scenarios.md`: a paraphrase was removed while its authoritative statement stayed.
 Scenario 5 is the cell where a score is most tempting: a clean document with nothing else to report.
 
 ## Result on the edited decision point

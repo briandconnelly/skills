@@ -28,7 +28,7 @@ Narrative placement does not itself signal that a rule binds.
 Interleaved rules are not individually checkable.
 Readers cannot distinguish negotiable flavor from requirements.
 
-Verifiability is judged against observable evidence.
+R3 judges verifiability against observable evidence; for example:
 "Be concise" cannot be checked.
 "Chat responses of four sentences or fewer unless asked" can be checked against output.
 "Never run destructive commands without confirmation" can be checked against tool traces.
@@ -103,7 +103,7 @@ Do not include a numeric score.
 ## Non-Goals
 
 - Cross-layer conflict analysis between a document and its parent instruction layers (a system prompt above a skill, CLAUDE.md above a tool description); inherited constraints may explain apparent local gaps.
-- Pass/fail grading of documents (see Summary Format).
+- Pass/fail grading of documents (numeric scores are separately excluded; see Summary Format).
 - Authoring workflow guidance (owned by skill-creator or superpowers:writing-skills).
 - General prose quality, tone, or brevity review beyond the context/constraints axis.
 
