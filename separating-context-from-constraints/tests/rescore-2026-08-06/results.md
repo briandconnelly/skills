@@ -49,9 +49,10 @@ Two substantive gaps are real and survive re-scoring:
 The skill's measured value is **discipline, not detection**: it stops an auditor from inventing problems and from silently rewriting policy.
 It does not help an auditor find defects in a twenty-line document, because nothing was stopping them.
 
-## Where this refines the plan's M1 narrowing
+## Where this refines the M1 narrowing
 
-The plan predicted the inflation held for scenarios 1, 4, 5, and 6 and not for 2, 3, 7, and 8.
+The M1 narrowing was the remediation plan's pre-re-score claim that the 2026-07-11 totals were inflated by rubric vocabulary only for some scenarios; the plan itself is not in this repository, and the sealed prediction below restates the relevant part.
+It predicted the inflation held for scenarios 1, 4, 5, and 6 and not for 2, 3, 7, and 8.
 Re-scoring says the split runs along a different axis than scenario identity.
 
 - On **detection**, the inflation is total and universal — all eight scenarios, both arms, no gap.
