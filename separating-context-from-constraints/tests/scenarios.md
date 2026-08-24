@@ -88,7 +88,7 @@ They are retained as historical evidence and are not treated as establishing whi
 - [ ] The "messages should always start with a lowercase conventional-commit type" clause gets an R1 finding: quoted text matches the sentence, location points to the opening paragraph, and the rewrite moves it into a dedicated `## Rules` section (there is none in the target).
 - [ ] The "subject line must never exceed 72 characters" clause gets an R1 finding with quoted text and the same kind of rewrite.
 - [ ] The "commit body must include a 'Test plan' section" clause gets an R1 finding with quoted text and the same kind of rewrite.
-- [ ] All three findings carry **material** severity, since each is a rule likely to be missed while buried in narrative paragraphs under long-context pressure.
+- [ ] All three findings carry **material** severity, since each is a rule whose narrative placement gives no signal that it binds, so it can plausibly be missed.
 - [ ] No finding is raised against the pure-background sentences: the repo-history sentence, the team-sentiment sentence, the changelog-generator rationale sentence, the "people joke" sentence, or the `CHANGELOG.md` tool-semantics sentence.
 
 **Expected baseline failures:** a skill-less run typically treats the whole document as ordinary prose and either misses one or more of the three buried requirements outright (especially the test-plan sentence tucked behind "By the way"), or lists them without quoting exact text or proposing a rewrite location.
@@ -358,3 +358,8 @@ They are not a measure of audit quality and must not be quoted as one.
 | 2026-08-06 | 6 (unverifiable hedge and misplaced context) | with skill | 3/3 confirmation questions; 6/6 standing assertions | Confirmation cell for the counting change, re-checked against the scenario's six standing assertions. |
 | 2026-08-23 | 2 (legitimate inline rules) | with skill | 2/2 confirmation questions; standing assertions 2 and 3 FAILED | Confirmation cell for the Non-Goals consolidation (cross-layer paraphrase). Raised a material R3 finding against the protected "MUST NOT archive" sentence — a false positive under E2, not reachable from the edited sentence; belongs to the R3-scope work. |
 | 2026-08-23 | 5 (clean document) | with skill | 2/2 confirmation questions; 4/4 standing assertions | Confirmation cell for the Non-Goals consolidation (numeric-scoring paraphrase). |
+| 2026-08-23 | 1 (rules buried in prose) | with skill | 2/2 confirmation questions; 5/5 standing assertions | Confirmation cell for the R1 consolidation-clause move and the R3 examples move. Left the "People joke" sentence unflagged, unlike the 2026-08-06 cell. |
+| 2026-08-23 | 6 (unverifiable hedge and misplaced context) | with skill | 2/2 confirmation questions; 6/6 standing assertions | Confirmation cell for the R3 author-decision pointer. |
+| 2026-08-23 | 7 (compound obligations) | with skill | 1/1 confirmation question; 4/4 standing assertions | Confirmation cell for the author-decision batch from an unedited rule (R4). |
+| 2026-08-23 | 8 (reachable conflict) | with skill | 2/2 confirmation questions; 4/4 standing assertions | Confirmation cell for the R5 author-decision pointer. |
+| 2026-08-23 | confirmation fixture, not a scenario (`runs/2026-08-23-confirmation-r1-both-directions.md`) | with skill | 3/3 confirmation questions | Confirmation cell for the R1 both-directions clause folded into Finding Format; no existing fixture has both directions. |

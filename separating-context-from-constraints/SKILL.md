@@ -24,9 +24,14 @@ Apply this two-question litmus test to each statement:
 2. If it were lost, would output be *wrong* (load-bearing fact) or just *less informed* (discretionary context)?
 
 Mixing these roles fails for three reasons.
-Rules camouflaged as narration are lost under long-context pressure.
+Narrative placement does not itself signal that a rule binds.
 Interleaved rules are not individually checkable.
 Readers cannot distinguish negotiable flavor from requirements.
+
+Verifiability is judged against observable evidence.
+"Be concise" cannot be checked.
+"Chat responses of four sentences or fewer unless asked" can be checked against output.
+"Never run destructive commands without confirmation" can be checked against tool traces.
 
 ## Rules
 
@@ -38,17 +43,13 @@ Each rule below has an id and is checkable by an auditing agent.
   Treat a single flat description without sections as compact, and mark its rules inline with imperative sentences, list items, or explicit mandatory wording.
   Keep rule sections free of discretionary context and load-bearing facts; place those statements in context, semantics, or similarly informative sections.
   A "rule" that cannot fail is context in disguise and belongs elsewhere.
-  One finding per misplaced statement, even when both directions of the defect are present.
 - **R2 Explicit strength.**
   Every rule signals whether it is mandatory (must/never) or a default with override conditions (prefer X unless Y).
   Defaults and defeasible guidance are legitimate rules, not failed constraints.
   Only ambiguous strength is a finding — a hedge ("generally", "try to") that leaves the reader unable to tell whether the statement binds.
 - **R3 Verifiability.**
   Each rule is checkable against some observable evidence: output, tool calls, repository state, or process artifacts.
-  When an unverifiable rule does not reveal the author's intended safeguard, request an author decision instead of inventing a definitive rewrite.
-  "Be concise" fails.
-  "Chat responses of four sentences or fewer unless asked" passes.
-  "Never run destructive commands without confirmation" passes via tool traces.
+  An unverifiable rule that does not reveal the author's intended safeguard is an author decision (see Finding Format).
 - **R4 Atomic obligations.**
   Independently checkable obligations are stated separately.
   Condition–action–exception clauses sharing one trigger may stay together as a single unit.
@@ -56,7 +57,7 @@ Each rule below has an id and is checkable by an auditing agent.
   Where two rules in the document can actually conflict on a realistic input, precedence is explicit.
   Two rules conflict only when they prescribe incompatible outcomes for the same decision; shared words or adjacent fields alone do not create a conflict.
   A restriction on the representation of one field does not restrict unrelated fields unless the document explicitly restricts the whole input object.
-  When the document does not determine which rule wins, present every plausible precedence choice and mark the choice as an author decision.
+  When the document does not determine which rule wins, the choice is an author decision (see Finding Format) and the labeled alternatives are every plausible precedence choice.
   Speculative pairwise precedence for unreachable conflicts is not required and is not a finding.
 
 ## Audit Procedure
@@ -87,7 +88,7 @@ Do not substitute a defeasible default for the demoted rewrite; add a default as
 When ambiguity or missing information prevents a semantic-preserving rewrite, the finding states what the author must decide and presents labeled alternatives without selecting one.
 The auditor never silently strengthens or weakens policy.
 
-Consolidation: one finding per statement.
+Consolidation: one finding per statement, including one per misplaced statement when a document both buries rules in context and keeps context inside its rule section.
 Secondary rule ids may be referenced within that finding.
 An R5 finding attaches to the conflicting pair of statements, not to either statement individually.
 

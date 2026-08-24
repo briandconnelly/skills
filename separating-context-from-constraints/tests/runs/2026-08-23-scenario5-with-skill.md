@@ -10,7 +10,7 @@ Harness: Claude Code 2.1.241, Agent tool, general-purpose subagent, single dispa
 Sampling: harness default
 Scorer: Claude (session model), 2026-08-23, unblinded
 Prompt: the scenario 5 prompt from `tests/scenarios.md`, verbatim, preceded by instructions to follow `SKILL.md`, to read no file under `tests/`, and to make no edits
-Notes: the committed `SKILL.md` (blob 9cbb6ef0d086ddff0580cd17923ccf83ae1e1fa4) differs from the blob this arm read by one edit only — the Non-Goals grading bullet's parenthetical changed from "numeric scores are excluded by Summary Format" to "see Summary Format", a pointer-only change that owes no arm under the adopted protocol. Confirmation cell for the Non-Goals consolidation (numeric-scoring paraphrase removed); see "Why this cell" below.
+Notes: Later commits on this branch edited `SKILL.md` after this arm read it; the results table in `tests/scenarios.md` lists the cells each of those edits owed and ran. Confirmation cell for the Non-Goals consolidation (numeric-scoring paraphrase removed); see "Why this cell" below.
 
 ## Why this cell
 

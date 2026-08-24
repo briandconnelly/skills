@@ -33,7 +33,7 @@ The deploy script reads the target environment from the `DEPLOY_ENV` variable se
 **R1 Distinguishability**
 Location: line 8.
 Quoted text: "And of course, you should never deploy on Fridays."
-Why it fails: this is a binding rule, but it is buried as the tail of a narrative paragraph about deploy history rather than placed in the `## Rules` section or otherwise marked as a directive; under long-context pressure it reads as color commentary and is easy to miss.
+Why it fails: this is a binding rule, but it is buried as the tail of a narrative paragraph about deploy history rather than placed in the `## Rules` section or otherwise marked as a directive; nothing in its placement signals that it binds, so it reads as color commentary.
 Severity: material.
 Suggested rewrite: move it into the `## Rules` section as its own item: "Never deploy on Fridays."
 
