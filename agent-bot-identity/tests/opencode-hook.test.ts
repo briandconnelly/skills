@@ -52,6 +52,8 @@ export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
 export GIT_CONFIG_VALUE_1='!/home/u/bin/git-credential-bot'
+export GIT_CONFIG_KEY_2='url.https://github.com/acme/.insteadOf'
+export GIT_CONFIG_VALUE_2='git@github.com:acme/'
 export GIT_CONFIG_KEY_3='commit.gpgsign'
 export GIT_CONFIG_VALUE_3='false'
 export BOT_INSTALL_ID='42'
@@ -78,6 +80,8 @@ describe("shell.env hook", () => {
     expect(env.GH_TOKEN).toBe("ghs_fixture")
     expect(env.BOT_INSTALL_ID).toBe("42")
     expect(env.GIT_CONFIG_VALUE_0).toBe("") // quoted empty survives
+    expect(env.GIT_CONFIG_KEY_2).toBe("url.https://github.com/acme/.insteadOf") // url rewrite pair survives
+    expect(env.GIT_CONFIG_VALUE_2).toBe("git@github.com:acme/")
     expect(env.GIT_CONFIG_COUNT).toBe("4") // bare scalar survives
   })
 
