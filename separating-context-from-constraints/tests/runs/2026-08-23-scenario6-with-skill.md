@@ -10,7 +10,7 @@ Harness: Claude Code 2.1.241, Agent tool, general-purpose subagent, single dispa
 Sampling: harness default
 Scorer: Claude (session model), 2026-08-23, unblinded
 Prompt: the scenario 6 prompt from `tests/scenarios.md`, verbatim, preceded by instructions to follow `SKILL.md`, to read no file under `tests/`, and to make no edits
-Notes: after this arm ran, the Core Concept rationale sentence "Narrative placement does not itself signal that a rule binds." replaced the wording this arm read; it is rationale, not a rule, and no decision point traverses it. Confirmation cell for the R3 author-decision pointer.
+Notes: later commits on this branch edited `SKILL.md` after this arm read it (a rationale sentence and pointer-only wording; no decision point traverses them); the results table in `tests/scenarios.md` lists the cells each edit owed. Confirmation cell for the R3 author-decision pointer.
 
 ## Why this cell
 
