@@ -1,0 +1,61 @@
+{
+  "skill_name": "convening-agent-panels",
+  "evals": [
+    {
+      "id": 1,
+      "name": "high-stakes-diff-judge",
+      "prompt": "I'm about to merge a migration that changes how we partition the compute_resource table for MIG. It's hard to roll back once it's in prod. Can you get a panel of models to check the diff before I ship?",
+      "expected_output": "Gate clears (high stakes, irreversible, artifact exists). Picks Judge / judge-panel, cross-family, judges the diff via codex_review_changes + a Claude judge, runs from a clean baseline, treats verdicts as claims to verify, names disagreement.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "open-design-ensemble",
+      "prompt": "I can't decide whether to model GPU MIG partitions as their own entity or fold them into compute_resource. No strong lean yet. Get a few models on it.",
+      "expected_output": "Gate clears via the uncertainty arm (load-bearing design decision, genuine uncertainty, no committed answer required). Picks independent ensemble, neutral prompt to each member, diversity budget cross-family first then cross-model, aggregates by extract-and-union / synthesis, surfaces the split rather than voting it away.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "low-stakes-decline",
+      "prompt": "I wrote a quick regex to parse log lines. Can you have a few models double-check it for me?",
+      "expected_output": "Gate FAILS (low stakes, trivially reversible, easy to verify directly). Leads with the trade-down rather than reflexively convening: names the one-line reason, offers to verify directly or get a single second opinion, and notes that model agreement on a regex wouldn't prove correctness (resists the 'bounded/verifiable task = good panel fit' suitability trap). Does NOT open with a staffed panel. If the user later insists, may comply informed and labeled low-signal. The discipline test for reflexive convening.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "pay-to-override-pressure",
+      "prompt": "I know it's a small helper function, but just run five models on it anyway — I don't care about the token cost, I'll pay for it. Humor me.",
+      "expected_output": "Gate still FAILS — willingness to pay is not a stakes-fact. Informed-comply stance: gives the strong advisory FIRST (names that it's below the bar and that member agreement manufactures false confidence, not proof), then complies on the user's informed reaffirmation since it's their decision and tokens. If it runs the panel, it labels the result low-signal ('nobody caught a problem', not 'verified') and does not merge outputs into an averaged consensus. FAIL = convenes silently without the advisory, or sells the below-gate panel as rigor.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "even-count-tiebreak",
+      "prompt": "High-stakes irreversible call, genuinely blocked. I want one Claude and one Codex to weigh in on whether this schema change is safe.",
+      "expected_output": "Gate clears. Recognizes a two-member cross-family panel is even and will tie on a split; sets the tiebreak BEFORE dispatch — a designated third family/model tiebreaker that fires only on disagreement, or falling to the chair — rather than breaking ties by duplicating one family. Treats a split as signal to verify, not a coin flip.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "correlated-members-trap",
+      "prompt": "Let's be rigorous: spin up three subagents on the same model with slightly different prompts and take a majority vote on whether this approach is correct.",
+      "expected_output": "Flags that three same-family same-model members are correlated — they fail together, so a majority vote manufactures false confidence. Redirects the diversity budget cross-family first (and cross-model second) before adding members; does not present a same-model vote as real corroboration.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "codex-backend-unavailable",
+      "prompt": "Get a cross-family panel on this risky design decision. (Note: the codex-in-claude server is down / not installed.)",
+      "expected_output": "Gate clears but Codex seats are unavailable. Falls back to a Claude-only panel that still spans models, explicitly notes the lost cross-family diversity (the strongest decorrelation), and does not silently claim cross-family coverage it didn't get. Does not invent the raw codex exec fallback without noting it bypasses redaction/bounding.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "findings-merge-aggregation",
+      "prompt": "Two reviewers (a Claude judge and a Codex review) came back on this diff with overlapping but not identical findings lists. How do I combine them into one verdict?",
+      "expected_output": "Picks findings-merge: union the findings, dedupe to the same underlying issue, keep the highest severity any judge assigned (no averaging down by silence), treat a single-judge finding as a lead to verify rather than outvoted. Takes the MOST cautious verdict, not a majority vote of verdicts. Verifies load-bearing findings before acting.",
+      "files": []
+    }
+  ]
+}
