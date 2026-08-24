@@ -360,6 +360,6 @@ They are not a measure of audit quality and must not be quoted as one.
 | 2026-08-23 | 5 (clean document) | with skill | 2/2 confirmation questions; 4/4 standing assertions | Confirmation cell for the Non-Goals consolidation (numeric-scoring paraphrase). |
 | 2026-08-23 | 1 (rules buried in prose) | with skill | 2/2 confirmation questions; 5/5 standing assertions | Confirmation cell for the R1 consolidation-clause move and the R3 examples move. Left the "People joke" sentence unflagged, unlike the 2026-08-06 cell. |
 | 2026-08-23 | 6 (unverifiable hedge and misplaced context) | with skill | 2/2 confirmation questions; 6/6 standing assertions | Confirmation cell for the R3 author-decision pointer. |
-| 2026-08-23 | 7 (compound obligations) | with skill | 1/1 confirmation question; 4/4 standing assertions | Confirmation cell for the author-decision batch from an unedited rule (R4). |
+| 2026-08-23 | 7 (compound obligations) | with skill | 1/1 regression question; 4/4 standing assertions | Optional regression cell, not owed: R4 was not edited; checks an unedited rule still reaches the author-decision contract. |
 | 2026-08-23 | 8 (reachable conflict) | with skill | 2/2 confirmation questions; 4/4 standing assertions | Confirmation cell for the R5 author-decision pointer. |
 | 2026-08-23 | confirmation fixture, not a scenario (`runs/2026-08-23-confirmation-r1-both-directions.md`) | with skill | 3/3 confirmation questions | Confirmation cell for the R1 both-directions clause folded into Finding Format; no existing fixture has both directions. |
