@@ -170,6 +170,7 @@ Every statement in every fixture belongs to exactly one of: planted defect, adju
 
 - **D15.8** — "Avoid promising a fix date in the first reply."
 - **B13.1** — "Read the linked design document in full before proposing an approach."
+- **A16.1** — "Reviewers should reject a pull request that force-pushes over `main`." (scenario 16, Notes section). **Added 2026-08-24.** B2 named this statement specifically: it is itself a hedged rule ("should") sitting in a Notes section, so an arm raising an R2 or R1 finding against it is arguably right, and B2 says it should score as "neither recall nor a false positive". The complement definition alone would have made it protected by default and scored such a finding as a false positive — reintroducing the defect B2 raised, in the fix for B2. It is an adjudication item: recorded verbatim, counted under neither endpoint.
 
 Scenario 10's adjudication list is empty (B1). No other scenario has adjudication items.
 
@@ -280,6 +281,8 @@ Every directive outside `## Rules` in the fixture, enumerated in document order 
 | "Adding a currency: update `fx/currencies.go` and the `currency_code` enum migration together." | yes — "together" forecloses updating one alone | yes | **D10.11** planted |
 | "By the way, before adding a currency you must open an issue tagged `finance-review`…" | yes | yes | **D10.3** planted |
 | "Backfilling: use `cmd/backfill`, never a direct SQL update against `postings`." | yes | yes | **D10.8** planted |
+
+**The enumeration above was checked mechanically, not by eye.** Every line of the scenario-10 fixture outside `## Rules` was extracted and filtered for directive shape (a modal, a mandatory word, or a sentence-initial imperative verb). That returned exactly ten statements, matching the ten rows above in document order. Two near-misses were inspected and are correctly protected as load-bearing facts rather than directives: the no-`Add`-method sentence ("conversion goes through `fx.Convert`, which **requires** an explicit rate source") and the release-job sentence ("promotes to production **only if** the smoke suite passes"). Both constrain what the system does, not what the reader must do.
 
 Statements inside `## Rules` are outside this criterion's reach: it governs placement of rules that sit elsewhere. "Never commit directly to `main`." is inside `## Rules` and is protected, as are the other statements B2 named as omitted from the enumerated list — the Go/three-clusters sentence, the core obligation of the table-driven-tests bullet, and the integration-tests-are-slow sentence.
 
@@ -496,6 +499,8 @@ Neither is counted under E1 or E2. Both are recorded verbatim, with the rule id 
 - D16.2 — the worked example omits the `Test plan:` line its own Rules section requires. A rule contradicted by the document's own example.
 
 Correctly placed, must not be criticized: the conventional-commit-prefix rule, which the example satisfies; the example's body text.
+
+**Adjudication item (added 2026-08-24):** A16.1 — "Reviewers should reject a pull request that force-pushes over `main`." See the registry above.
 
 Both defects may be reported under R5, under a new id, or with no id.
 A run that reports neither is evidence of the gap, not a failure of the arm — no rule in R1–R5 clearly reaches either.

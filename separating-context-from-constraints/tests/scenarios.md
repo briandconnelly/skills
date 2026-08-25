@@ -748,7 +748,10 @@ That outcome refutes the plan's premise and W11 closes with no wording change.
 ## Scenario 16: Duplicated and self-contradicted rules in the target
 
 Covers W13.
-No rule in R1–R5 currently detects either defect, so a run that reports neither is evidence of the gap rather than a failure of the arm.
+No rule in R1–R5 *clearly* reaches either defect, so a run that reports neither is evidence of the gap rather than a failure of the arm.
+(**Amended 2026-08-24:** "currently detects either" overstated it. D16.1 is arguably already reachable under R5's "two rules prescribe incompatible outcomes for the same decision"; the design review accepted that point. D16.2 is the half no rule reaches, since R5 is scoped to rule-versus-rule and an example is not a rule.)
+
+**Adjudication item:** "Reviewers should reject a pull request that force-pushes over `main`." is itself a hedged rule in a Notes section. A finding against it is counted under neither endpoint; record it verbatim.
 
 **Prompt:**
 
