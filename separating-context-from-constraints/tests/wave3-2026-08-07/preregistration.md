@@ -568,7 +568,13 @@ This does not invalidate the cells, but it **caps what they can attribute to R1�
 It also raises the value of E9: an arm imitating the example's structure is the same mechanism that would make it imitate the example's after-document.
 
 **N12 — the synthetic credential and push protection.**
-`sk_live_4Kd82hRnQm1PzVx7` is checked against GitHub push protection before the PR opens rather than at push time. The result is recorded in the PR description.
+`sk_live_4Kd82hRnQm1PzVx7` (scenario 17's fixture) was pushed to `origin/separating-context-wave3` on 2026-08-24 and **was not blocked**.
+
+That is a weak negative, and is recorded as one rather than as a clean result.
+`GET /repos/briandconnelly/skills` reports `secret_scanning: null` and `secret_scanning_push_protection: null` — not `enabled` — so it is not established that push protection was armed for this push. A disabled scanner and a non-matching token produce the same outcome, which is the failure mode this file keeps flagging elsewhere.
+What is known independently: the token body is 16 characters where Stripe's live-key pattern is longer, so a pattern miss is the likely explanation.
+The practical question N12 raised — will the PR be blocked at push time — is answered: it was not.
+The stronger claim, that the string cannot trip a secret scanner anywhere, is **not** established and should not be quoted from this.
 
 **B6 and B7 — the fixture instrument.**
 [`../fixtures/scenario11/regenerate.sh`](../fixtures/scenario11/regenerate.sh) was rewritten on 2026-08-24 and recalibrated.
