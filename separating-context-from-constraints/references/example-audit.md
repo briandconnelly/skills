@@ -33,7 +33,7 @@ The deploy script reads the target environment from the `DEPLOY_ENV` variable se
 **R1 Distinguishability**
 Location: line 8.
 Quoted text: "And of course, you should never deploy on Fridays."
-Why it fails: this is a binding rule, but it is buried as the tail of a narrative paragraph about deploy history rather than placed in the `## Rules` section or otherwise marked as a directive; under long-context pressure it reads as color commentary and is easy to miss.
+Why it fails: this is a binding rule, but it is buried as the tail of a narrative paragraph about deploy history rather than placed in the `## Rules` section or otherwise marked as a directive; nothing in its placement signals that it binds, so it reads as color commentary.
 Severity: material.
 Suggested rewrite: move it into the `## Rules` section as its own item: "Never deploy on Fridays."
 
@@ -84,12 +84,6 @@ The hotfix-wins reading is the natural specific-over-general interpretation, but
 
 Not flagged (false-positive guard): line 7, the migration-history sentence, is discretionary context — rationale and background that degrades gracefully if lost — and is correctly left out of `## Rules`.
 Not flagged (false-positive guard): line 21, the `DEPLOY_ENV` sentence, is a load-bearing fact about tool semantics — losing it would make output wrong, but it is not a directive, so it correctly belongs outside `## Rules`.
-
-## R5 Scope Guard
-
-The compact description `Accepts only a channel_id, never a channel name; also accepts confirmed: boolean.` does not create a precedence conflict between the locator and confirmation fields.
-It restricts the representation of `channel_id`, not the rest of the input object.
-An audit should treat unrelated fields as prohibited only when the document explicitly restricts the whole input object.
 
 ## Summary
 

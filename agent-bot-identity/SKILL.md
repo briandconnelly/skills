@@ -1,11 +1,11 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral; adapters — Claude Code (tested), Codex CLI (Variant A partially verified, GitHub write path not exercised; Variant B pending).
+description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral; adapters — Claude Code (tested), Codex CLI (Variant A partially verified, GitHub write path not exercised; Variant B pending), OpenCode (Variant A tested end-to-end including the GitHub write path; Variant B is the same artifact relocated).
 ---
 
 # Agent Bot Identity
 
-Core is harness-neutral; adapters ship for Claude Code (tested) and Codex CLI — Variant A partially verified with its GitHub write path not exercised and a documented `as-me` limitation, Variant B pending — see Phase 4.
+Core is harness-neutral; adapters ship for Claude Code (tested), Codex CLI — Variant A partially verified with its GitHub write path not exercised and a documented `as-me` limitation, Variant B pending — and OpenCode (Variant A tested end-to-end including the GitHub write path; Variant B is the same plugin file installed at user level) — see Phase 4.
 
 ## Overview
 
@@ -81,7 +81,7 @@ Never present this setup as a sandbox.
 
 The helper scripts are bundled under `scripts/`; copy the needed files into a single flat directory, customize their placeholders, and `chmod +x` each copied file.
 `~/.config/acme-agent/bin/` is the recommended neutral location.
-Install everything flat in that one directory — including each harness adapter's glue scripts, which live under `scripts/claude/` (and `scripts/codex/`) in this repo but sit next to the shared scripts once installed.
+Install everything flat in that one directory — including each harness adapter's glue scripts, which live under `scripts/claude/`, `scripts/codex/`, and `scripts/opencode/` in this repo but sit next to the shared scripts once installed.
 Install only the glue for the adapter(s) you actually use; an unused adapter's scripts are extra attack surface with no benefit.
 **Never put the install directory on your personal `PATH`.**
 It contains a `gh` shim (the Codex adapter's) that would route your own terminal through the bot token, and the whole design rests on your personal shells never resolving it.
@@ -144,17 +144,18 @@ Implemented adapters:
 
 - [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision). Tested.
 - [Codex CLI](references/adapters/codex.md) — Variant A partially verified, with the GitHub write path not exercised and a documented `as-me` limitation; Variant B pending. Core routing probes were run against Codex 0.143.0, with activation behavior re-probed on 0.144.1.
+- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path on 1.18.22; Variant B is the same plugin file installed at user level, and its global-install location is untested live.
 
-| Capability | Claude Code | Codex CLI |
-| --- | --- | --- |
-| Static identity env | ✅ settings/env or guard | ✅ `shell_environment_policy.set` via named profile |
-| Dynamic `GH_TOKEN` | ✅ SessionStart hook, per command | ✅ PATH-shimmed `gh`, minted per invocation |
-| Per-command redecision | ✅ Variant B guard | ❌ pending |
-| Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) |
-| Automatic user-level routing | ✅ Variant B | ❌ pending |
-| `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) |
-| Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) |
-| Verification status | Scenarios 1–5 tested | Partially verified; GitHub write path not exercised; scenarios C1–C2 tested |
+| Capability | Claude Code | Codex CLI | OpenCode |
+| --- | --- | --- | --- |
+| Static identity env | ✅ settings/env or guard | ✅ `shell_environment_policy.set` via named profile | ✅ per-command `shell.env` hook |
+| Dynamic `GH_TOKEN` | ✅ SessionStart hook, per command | ✅ PATH-shimmed `gh`, minted per invocation | ✅ minted per command by `bot-env` |
+| Per-command redecision | ✅ Variant B guard | ❌ pending | ✅ hook fires per command with cwd |
+| Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) | ✅ hook throw aborts command / sentinel token |
+| Automatic user-level routing | ✅ Variant B | ❌ pending | ✅ global plugin dir |
+| `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) | ✅ |
+| Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) | ✅ delegated to `bot-env` |
+| Verification status | Scenarios 1–5 tested | Partially verified; GitHub write path not exercised; scenarios C1–C2 tested | Variant A tested including write path; Variant B location untested |
 
 ("Fail-closed" is scoped to routing, never containment.)
 

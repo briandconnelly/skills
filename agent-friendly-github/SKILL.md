@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-github
-description: Use when configuring a GitHub repository so AI agents can work it safely — tracking issues, opening and managing pull requests — while humans keep confidence in code quality and security. Covers repo configuration (rulesets, branch protection, CODEOWNERS, Actions permissions, identity) and the operating conventions agents follow (branching, commits, PRs, review). Use to set up or harden a repo, audit an existing one, or guide how an agent operates in it. Applies to public and private, monorepo and traditional repos.
+description: Use when configuring a GitHub repository so AI agents can work it safely — tracking issues, opening and managing pull requests — while humans keep confidence in code quality and security. Covers repo configuration (rulesets, branch protection, CODEOWNERS, Actions permissions, identity), instruction-file strategy (one canonical AGENTS.md, thin per-harness adapter files such as CLAUDE.md that point at it, nesting in a monorepo), and the operating conventions agents follow (branching, commits, PRs, review). Use to set up or harden a repo, audit an existing one, or guide how an agent operates in it. Applies to public and private, monorepo and traditional repos.
 ---
 
 # Agent-Friendly GitHub
@@ -63,6 +63,7 @@ Treat the canonical file as a first-class repository artifact, not an afterthoug
 - Self-hosted runner hardening — runner OS configuration and network isolation are out of scope.
 - At-scale repo provisioning or template instantiation — that is infrastructure-as-code territory.
 - GitHub Projects, Milestones, and Wikis except where they directly affect PR or issue traceability.
+- Layout of the repo's wider documentation surface — where README, docs/, ADRs, and per-directory context files sit, how an agent routes between them, and how they stay fresh — use agent-friendly-docs. This skill owns what an instruction file is and how harnesses read it; that skill owns where every other doc lives around it.
 - GitHub Enterprise Server specifics — flagged untested; the concepts likely apply but the exact field names and API paths have not been validated against GHES.
 
 ## Vocabulary

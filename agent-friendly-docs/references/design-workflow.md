@@ -4,23 +4,26 @@ Use this workflow when creating a new documentation surface, redesigning an exis
 
 ## 1. Inventory
 
-List every doc an agent can encounter while working in the repo.
+List the tracked docs that can change what an agent does on a task.
 
 - Instruction files, wherever the harness in use looks for them.
 - README and any docs/ directory content.
+- Contribution, testing, and release guides.
 - ADRs and other decision-history material.
 - Per-directory context files, if the repo uses that pattern.
-- Prominent doc-comments and docstrings that carry repo-wide claims, not just code-adjacent ones.
+- Doc-comments and docstrings that carry repo-wide claims, not just code-adjacent ones.
 
+Record what you excluded and why: vendored trees, generated internals, dependency docs, and code comments that carry only file-local constraints.
+An inventory with no stated boundary reads as complete when it is not.
 Walk the repo tree rather than trusting memory or a stale index.
 A doc that isn't in the inventory can't be assigned a layer, linked from an entry point, or checked for staleness later.
 
 ## 2. Assign Layers
 
-Place each inventoried doc in exactly one layer: instruction, orientation, reference, decision history, or code-adjacent context.
+Give each inventoried doc one primary layer: instruction, orientation, reference, decision history, or code-adjacent context.
 Layer definitions live in SKILL.md Vocabulary; this stage only places docs, it doesn't redefine the layers.
 
-- A doc that reads as two layers at once — most often an instruction file carrying reference-depth material — is a signal to split it, not to leave it ambiguous.
+- A doc that reads as two layers at once — most often an instruction file carrying reference-depth material — gets its straddling section named here, and split only against the tests in docs-checklist.md Layer Placement.
 - Reference-depth material found in the instruction layer is a Token Economy problem: flag it now, move it behind a pointer when you consolidate authority.
 - A repo-wide claim sitting only in a code comment is a Comment-Vs-Doc Placement problem: give the fact a doc-level authoritative home and reduce the comment to a pointer to that doc, or to a narrowly code-local note — not a retained repo-wide copy.
 
@@ -28,7 +31,10 @@ Record every straddling or misplaced doc as you go; later stages resolve the spl
 
 ## 3. Define Read Paths
 
-For the repo's three to five most common tasks — add a feature, fix a bug, run tests, cut a release, or whatever the repo's own recurring tasks are — write the ordered list of docs an agent should load to complete each one.
+For the repo's three to five most common tasks, write the ordered list of docs an agent should load to complete each one.
+
+Derive the task list from the repo rather than assuming it: CI job names, Makefile or justfile targets, the section headings in a contribution guide, and the titles of recent pull requests.
+Where none of those sources gives a task list, state the three tasks you assumed and mark them as an assumption the repo owner should confirm.
 
 - Name each read path explicitly; "the agent will find it" is not a read path.
 - Wire every entry point (README, instruction file) to link to the first doc in each read path.
@@ -38,7 +44,10 @@ This stage produces Discoverability And Read Path and Task-To-Doc Routing: an en
 
 ## 4. Consolidate Authority
 
-For each fact that appears in more than one doc, pick one authoritative home and replace every other copy with a link to it.
+For each in-scope claim (see docs-checklist.md Authority And Precedence) that appears in more than one doc, pick one authoritative home and replace every other copy with a link to it.
+
+Find the copies rather than recalling them: search the doc set for the distinctive strings that carry claims — command names, version numbers, thresholds, directory paths — instead of comparing docs sentence by sentence.
+State the scope you searched; mark docs you did not search `not-checked` with the reason.
 
 - Where two docs could plausibly conflict despite consolidation, record a stated precedence order that resolves which one wins.
 - Decision history is never itself the authoritative home for current policy: if an ADR's content is still binding, promote it into a current-policy doc and link the ADR forward to that doc.
@@ -49,17 +58,15 @@ This stage produces Authority And Precedence.
 
 Freshness is a mechanism, not a claim, so give each doc one.
 
-- Assign an owner or owning team to each doc, or to the section of the repo it covers.
-- Add a PR expectation: changes to behavior a doc describes carry a stated expectation to update that doc.
-- Mark every generated doc with its source and regeneration command.
-- Give every ADR a status (proposed, accepted, superseded, rejected) and a forward link from any superseded ADR to what replaced it.
-- Do not rely on a timestamp or "last updated" date alone; see Freshness Mechanisms for why that isn't sufficient on its own.
+Apply the checks in docs-checklist.md Freshness Mechanisms, Generated-Doc Provenance, and ADR Status And Supersession, and record the mechanism you chose for each doc.
+This stage adds no rules of its own; read them from the checklist so that a later change to the standard reaches this stage as well.
 
-This stage produces Freshness Mechanisms, Generated-Doc Provenance, and ADR Status And Supersession.
+Pick mechanisms that someone or something enforces.
+A mechanism nobody runs and no gate checks is a claim wearing a mechanism's clothes.
 
 ## 6. Checklist Walk
 
-Walk every section of docs-checklist.md against the structure you designed: Layer Placement, Discoverability And Read Path, Task-To-Doc Routing, Authority And Precedence, Token Economy, Freshness Mechanisms, Runnable Examples And Commands, Comment-Vs-Doc Placement, Generated-Doc Provenance, and ADR Status And Supersession.
+Walk every section of docs-checklist.md against the structure you designed: Layer Placement, Discoverability And Read Path, Task-To-Doc Routing, Authority And Precedence, Canonical Claim Validation, Token Economy, Freshness Mechanisms, Runnable Examples And Commands, Comment-Vs-Doc Placement, Generated-Doc Provenance, and ADR Status And Supersession.
 
 Design Done Criteria: every section is answered in the produced structure, or is explicitly marked not applicable with a one-line justification.
 A section with no answer and no justification is unfinished work, not a pass.

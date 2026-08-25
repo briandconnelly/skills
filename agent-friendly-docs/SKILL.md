@@ -9,12 +9,18 @@ Use this skill to make a repo's documentation surface cheap for agents to naviga
 
 ## Core Standard
 
-- Structure docs by layer and route by task: an agent reaches the doc that answers its question without reading everything.
-- Give every fact exactly one authoritative home; everything else links to it.
-- Label historical material (ADRs, postmortems) as historical, not current policy.
-- Spend agent tokens deliberately: keep the instruction layer minimal and always-loaded; put heavier material behind explicit pointers.
-- Treat freshness as a mechanism, not an intention: ownership, PR doc-update expectations, generated-doc provenance, and verifiable links and commands.
-- Make every embedded command or example runnable as written from the repo root, or state its preconditions.
+The checks that decide a pass or a finding live in [docs-checklist.md](references/docs-checklist.md), one per section.
+This list names what each section is about so you can pick one; it is a map, not a second copy of the rules.
+Read the section before you apply it, and where this list and the checklist read differently, the checklist wins.
+
+- **Layer Placement** — which layer each doc belongs to, and when a straddling section is split out.
+- **Discoverability And Read Path**, **Task-To-Doc Routing** — whether an agent reaches the right doc by following links, per task.
+- **Authority And Precedence** — one home per claim that could diverge, and what resolves a conflict.
+- **Canonical Claim Validation** — whether the authoritative doc is true, checked against the code rather than against another doc.
+- **Token Economy** — what earns a place in the always-loaded layer.
+- **Freshness Mechanisms**, **Generated-Doc Provenance**, **ADR Status And Supersession** — what keeps a doc correct, marks a generated one, and separates a live decision from a superseded one.
+- **Runnable Examples And Commands** — whether an embedded command runs as written.
+- **Comment-Vs-Doc Placement** — which constraints travel with the code and which need a doc.
 
 ## When To Use
 
@@ -54,17 +60,22 @@ Use this skill to make a repo's documentation surface cheap for agents to naviga
 
 1. Identify the audience: repo owner, who can restructure, versus contributor or agent operator, who works within what exists.
    Audience decides what to lead with.
+   Where the user does not say and the repo gives no ownership signal, assume the repo owner, state that assumption, and mark each owner-only remediation as such.
 2. Classify the task: design/restructure, audit of an existing surface, or diagnosis of a concrete failure.
 3. For design or restructure, follow [design-workflow.md](references/design-workflow.md); for audit or diagnosis, follow [review-workflow.md](references/review-workflow.md).
-4. Both workflows walk [docs-checklist.md](references/docs-checklist.md) as the shared standard.
+4. Design tasks and audits walk [docs-checklist.md](references/docs-checklist.md) as the shared standard; a diagnosis names only the sections its failure touches and produces no coverage table.
 5. Delegate instruction-file strategy questions to agent-friendly-github.
-   Delegate rules-vs-context content audits of instruction-layer docs to separating-context-from-constraints when available; otherwise apply a one-line inline check: does this sentence bind behavior or just inform it?
+   Delegate rules-vs-context content audits of instruction-layer docs to separating-context-from-constraints.
+   That skill counts as available when it is loaded in the current session.
+   When it is not loaded, apply one screening question — does this sentence bind behavior or just inform it? — label the result provisional, and recommend a full audit with that skill.
 6. Use [examples.md](references/examples.md) for concrete shapes.
 
 ## Done Criteria
 
-Before declaring done, read the relevant workflow and walk [docs-checklist.md](references/docs-checklist.md) against your output.
+Before declaring done, read the relevant workflow, then apply the criteria for your task type below.
+Only design tasks and audits walk [docs-checklist.md](references/docs-checklist.md) section by section.
 
 - **Design tasks**: every checklist section is answered in the produced structure or explicitly marked not-applicable with a one-line justification.
 - **Review tasks**: every checklist section is covered by a finding, marked OK with brief evidence, or noted not-checked with reason.
-- **Diagnosis tasks**: response names the most likely failure path and separates immediate mitigation from owner-side restructuring.
+- **Diagnosis tasks**: the response names the most likely failure path, leads with the immediate mitigation, and separates it from owner-side restructuring.
+  No checklist walk and no coverage table — naming the one or two sections the failure falls under is the whole of the checklist's role here.
