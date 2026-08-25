@@ -25,6 +25,40 @@ set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target_dir="${SCENARIO11_TARGET_DIR:-${TMPDIR:-/tmp}/scenario11-fixture}"
+
+# Enforce the outside-the-repository invariant rather than trusting the caller.
+# SCENARIO11_TARGET_DIR accepts any path, so a harness misconfiguration could
+# point the target back inside the repo and silently recreate the exact B7
+# contamination this script exists to prevent -- the arm would be handed a path
+# that names the skill, one directory from scenarios.md and the preregistration.
+# A blinding failure that looks like a normal run is worth failing closed for.
+# Resolve a path that may not exist yet, WITHOUT creating it. Creating the
+# directory before the containment check would leave an empty directory inside
+# the repository on the very path the check just refused.
+resolve_path() {
+  local existing="$1" suffix=""
+  while [ ! -e "$existing" ]; do
+    suffix="/$(basename "$existing")$suffix"
+    existing="$(dirname "$existing")"
+    [ "$existing" = "/" ] && break
+  done
+  existing="$(cd "$existing" 2>/dev/null && pwd -P)" || existing="/"
+  printf '%s' "$existing$suffix"
+}
+
+repo_root="$(cd "$dir" && git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$repo_root" ]; then
+  resolved_target="$(resolve_path "$target_dir")"
+  resolved_repo="$(cd "$repo_root" && pwd -P)"
+  case "$resolved_target/" in
+    "$resolved_repo"/*)
+      echo "refusing: target dir is inside the repository ($resolved_target)" >&2
+      echo "scenario 11 requires a target outside $resolved_repo (design review B7)." >&2
+      exit 3
+      ;;
+  esac
+fi
+
 target="$target_dir/AGENTS.md"
 
 case "${1:-hash}" in

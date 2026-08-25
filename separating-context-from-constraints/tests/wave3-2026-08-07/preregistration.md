@@ -26,7 +26,7 @@ The measurable differences were 9 false positives against 0, and 2 silent policy
 
 So wave 3 is not built to show that the skill finds more defects.
 Every fixture below carries an explicit correctly-placed list, and every scenario is scored on false positives as a first-class endpoint rather than as a footnote to recall.
-(**Amended 2026-08-24, B2:** those lists are emphasis, not the definition. E2 is the complement of the planted-defect and adjudication lists, so a statement is protected whether or not a list enumerates it.)
+(**Amended 2026-08-24, B2:** those lists are emphasis, not the definition. E2 is the complement of the E2 exclusion registry below, so a scoring unit is protected whether or not a list enumerates it.)
 Two scenarios (12 and 14) have no planted defect at all and exist only to measure false positives.
 
 ## Citation repin (Amended 2026-08-24)
@@ -91,14 +91,17 @@ The candidate wording is recorded as a W10 input, not applied: *"Each rule state
 The re-score's endpoints carry forward unchanged and apply to every scenario below.
 
 - **E1 — Defect recall.** Of the planted defects listed per fixture, how many does the output identify? Identified means the specific statement is named or quoted and a problem with it is stated. Naming the general area without the statement does not count.
-- **E2 — False positives.** How many statements **not on this file's planted-defect or adjudication list** does the output criticize, flag, or propose changing? A statement discussed and then explicitly resolved as acceptable is not a false positive; a statement listed as a problem is, regardless of hedging.
+- **E2 — False positives.** How many **scoring units not excluded by the E2 exclusion registry** does the output criticize, flag, or propose changing? A statement discussed and then explicitly resolved as acceptable is not a false positive; a statement listed as a problem is, regardless of hedging.
 
   **Amended 2026-08-24 (B2).** Superseded text: "How many statements from the correctly-placed list does the output criticize, flag, or propose changing?"
   E2 was defined as an allowlist over each fixture's enumerated correctly-placed list, and those lists are not exhaustive — scenario 10's omits four statements outright, and scenario 16's omits a hedged rule in a Notes section that an arm is arguably right to flag.
   False positives are the endpoint wave 3 exists to measure, and a lower bound of unknown size cannot carry that weight.
-  E2 is now the **complement** of the planted-defect and adjudication lists: every statement in the fixture that is neither planted nor adjudicated is protected, whether or not it is enumerated.
+  E2 is now the **complement of the E2 exclusion registry** — the single normative definition, stated once below. Every scoring unit in the fixture that the registry does not exclude is protected, whether or not any list enumerates it.
   The enumerated correctly-placed lists stay, as emphasis and as a scoring aid, not as the definition.
-  Where a scenario below names a specific false-positive probe, that is a statement worth extra attention, never a limit on what counts.
+  Where a scenario below names a specific false-positive probe, that is a scoring unit worth extra attention, never a limit on what counts.
+
+  **Amended again 2026-08-24 (round-2 review).** The first version of this amendment said "the complement of the planted-defect and adjudication lists" and was written *before* the registry added a third excluded category. It then contradicted the registry: D13.2, D15.6, D16.1, D16.2, and the scenario-12 observations were excluded by the registry and counted as false positives by this endpoint, so two scorers could produce different E2 totals from the same output.
+  This endpoint now **defers to the registry and does not paraphrase it**. Any passage in this file that restates E2's exclusions in its own words is a defect in this file; score under the registry.
 - **E3 — Rewrite safety.** For each ambiguous statement listed per fixture, classify the treatment as `preserved`, `assumption-labelled`, `silent-selection`, or `not-addressed`, with the definitions in the 2026-08-06 preregistration.
 - **E5 — Sensitive-text handling.** Where a fixture contains sensitive text, record whether the output quotes it, and if so whether the value is redacted. `not-quoted` is recorded as not-exercised, never as a pass.
 
@@ -148,7 +151,22 @@ Contract adherence (C1–C6 in the 2026-08-06 preregistration) is recorded per o
 
 ## The E2 exclusion registry (Amended 2026-08-24, B2)
 
-E2 counts a finding against **every** statement in a fixture except those in one of the three categories below.
+**The scoring unit is the clause, not the sentence or the bullet.**
+Some fixture bullets carry a planted defect and protected content in one sentence: scenario 10's `make test` bullet plants its trailing rationale (D10.6) while its obligation is correctly placed, and the table-driven-tests bullet does the same (D10.7).
+If the unit were the whole statement, a finding wrongly criticizing the *protected obligation* would attach to a statement on the planted list and escape E2 entirely — silently exempting exactly the false positives this wave exists to count.
+So each fixture's units are named clauses, and a finding is scored against the clause it actually criticizes:
+
+| Bullet | Planted clause | Protected clause |
+| --- | --- | --- |
+| `make test` | the trailing rationale, "this is the same suite CI runs, so catching failures locally saves a round trip…" (**D10.6**) | the obligation, "Run `make test` before opening a pull request" |
+| table-driven tests | the rationale clauses, "which the team has found easier to extend…, and which match the style of…" (**D10.7**) | the preference, "Prefer table-driven tests" |
+| `account_number` | the whole obligation (**D10.9**) | — (its trailing rationale is part of the planted statement, not a separate protected unit) |
+
+A finding that criticizes the *placement of the rationale* scores as recall on D10.6/D10.7.
+A finding that criticizes the *obligation itself* — its strength, its verifiability, its placement — scores as an E2 false positive, even though it lands on the same bullet.
+A finding that names the bullet without distinguishing the two is recorded verbatim and scored on what its quoted text and stated defect actually target; if that cannot be determined, it is an adjudication item for that cell, recorded as such.
+
+E2 counts a finding against **every** scoring unit in a fixture except those in one of the three categories below.
 This is the single, exhaustive exclusion list. A scorer who finds an exclusion asserted anywhere else in this file should treat that as a defect in this file and score under the registry.
 
 | Category | Effect on E1 | Effect on E2 | Effect on totals |
@@ -165,11 +183,13 @@ Every statement in every fixture belongs to exactly one of: planted defect, adju
 - **D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.)
 - **D16.1** and **D16.2** — the force-push contradiction and the worked example omitting its own `Test plan:` line. R5 is scoped to rule-versus-rule, and an example is not a rule. (W13 gap.)
 - **Scenario 12a and 12c R1-section findings** — a finding demanding a dedicated rules section, which the shipped R1 text licenses. (W9 verdict; see B3.)
+- **Scenario 12b, an R1 finding grounded in retrieval pressure** — the number of distinct obligations packed into one unbroken block, rather than the absence of a section. A legitimate different answer to W9's question, which the scenario text already said; it was exempted there but not registered. **Added 2026-08-24 (round-2 review).**
+- **Scenario 12b, R4 findings against the seat-count sentences.** The fixture genuinely contains compound obligations there, so an R4 finding is correct and is evidence about neither R1's compact/long criterion nor false-positive discipline. Exempted in the scenario text but not registered. **Added 2026-08-24 (round-2 review).**
 
 **Adjudication items, in full:**
 
 - **D15.8** — "Avoid promising a fix date in the first reply."
-- **B13.1** — "Read the linked design document in full before proposing an approach."
+- **B13.1** — "Read the linked design document in full before proposing an approach." **Registered by treatment, not unconditionally (amended 2026-08-24, round-2 review):** leaving it alone, or escalating it to the author, is adjudicated and counted under neither endpoint. A **definitive rewrite inventing an artifact the author never asked for is an E2 false positive.** The earlier entry excluded the statement globally while scenario 13 said one treatment of it counts as a false positive, so registry and scenario disagreed; the split is by treatment because that is where the two documents actually differed.
 - **A16.1** — "Reviewers should reject a pull request that force-pushes over `main`." (scenario 16, Notes section). **Added 2026-08-24.** B2 named this statement specifically: it is itself a hedged rule ("should") sitting in a Notes section, so an arm raising an R2 or R1 finding against it is arguably right, and B2 says it should score as "neither recall nor a false positive". The complement definition alone would have made it protected by default and scored such a finding as a false positive — reintroducing the defect B2 raised, in the fix for B2. It is an adjudication item: recorded verbatim, counted under neither endpoint.
 
 Scenario 10's adjudication list is empty (B1). No other scenario has adjudication items.
@@ -265,6 +285,8 @@ The first draft said "(a) mandatory in force and (b) not dependent on the surrou
 A statement outside the Rules section is a **planted defect** when **both** prongs hold:
 
 - **(a) Binding in force.** It forecloses an option the reader could otherwise take — a prohibition, or an obligation whose omission is an error in itself. A statement that only answers *how do I do X* for a reader already committed to X is **procedural**, not binding, however imperative its grammar.
+  **Operational test, added 2026-08-24 (round-2 review):** ask *what happens if a reader ignores this?* If the answer is "they have violated a policy", it is binding. If the answer is "they fail to accomplish the thing they were already trying to do, and find out immediately", it is procedural. A remedy for a failure the document itself describes is procedural under this test, because the failure is its own enforcement.
+  Prong (a) was applied inconsistently without this test: the port-5432 remedy was marked *binding* and then protected via prong (b), which happened to reach the right category by the wrong route. A criterion whose ten rows a second scorer cannot reproduce is the defect B1 raised, so the route matters even where the verdict does not.
 - **(b) Liftable.** Applying it does not require semantics stated only in the surrounding passage. A statement that cannot be obeyed without its neighbours stays where it is.
 
 Every directive outside `## Rules` in the fixture, enumerated in document order — not a sample:
@@ -273,7 +295,7 @@ Every directive outside `## Rules` in the fixture, enumerated in document order 
 | --- | --- | --- | --- |
 | "…must be accompanied by a migration plan reviewed by the data team…" | yes | yes | **D10.1** planted |
 | "Clone the repository and run `make bootstrap`." | **no** — procedural how-to | — | protected |
-| "If Postgres is already listening on port 5432 … stop the other instance first." | yes | **no** — a remedy for a failure the passage describes | protected |
+| "If Postgres is already listening on port 5432 … stop the other instance first." | **no** — procedural: it tells a reader already committed to bootstrapping how to get past a stated failure | (not reached) | protected |
 | "Never construct a `Money` value from a floating-point literal." | yes | **yes** | **D10.10** planted *(was A10.1)* |
 | "…any test touching the `postings` package must run inside a transaction…" | yes | yes | **D10.2** planted |
 | "Log lines must never include the raw `account_number` field…" | yes | yes | **D10.9** planted *(was A10.2)* |
@@ -288,7 +310,7 @@ Statements inside `## Rules` are outside this criterion's reach: it governs plac
 
 **A10.1's protection is withdrawn.** The draft claimed it "cannot be lifted into the Rules section without the `Money` representation sentence it sits beside". That claim does not survive contact with the fixture: "Never construct a `Money` value from a floating-point literal." is a complete prohibition in one sentence, and a reader can obey it without knowing how `Money` is represented internally. B1's original observation — that A10.1 and A10.2 are deliberately parallel — was right, and the draft's split between them was the error. Both are now planted defects, and the criterion no longer has to carry a distinction the fixture does not support.
 
-**The adjudication list for this fixture is now empty**, and E2 is the complement of the planted-defect list per B2.
+**The adjudication list for this fixture is now empty**, and E2 is the complement of the E2 exclusion registry per B2.
 This costs the fixture its "record how the arm treats a deliberately undecided pair" observation. That observation was worth less than a coherent E2, which is the endpoint the whole wave rests on.
 
 **W9 can still fail this criterion, and that outcome is preregistered as reachable.** The live W9 probes are now the two procedural how-tos — "Clone the repository and run `make bootstrap`." and "Regenerating fixtures: `make fixtures`." — and the port-5432 remedy. An arm that flags any of them has applied "imperative sentences belong in the Rules section, full stop", ignoring prong (a) or prong (b). Under E2 that is a false positive, and it is simultaneously evidence for W9 that R1's compact/long sentence needs both prongs written into it. Record both readings; do not let the E2 count silently stand in for the W9 verdict.
