@@ -112,7 +112,15 @@ Wave 3 adds three.
 
 Wave 3 adds one more, on 2026-08-24.
 
-- **E9 — Deliverable scope.** For each output, record whether it contains a **rewritten version of the whole target document** that the prompt did not request, and if so, its word count as a multiple of the target's. Record `absent`, `partial` (a restructured section or outline beyond the per-finding rewrites), or `full-document`. Per-finding suggested rewrites are the contracted deliverable (`SKILL.md:77`, "Each finding reports six fields: … and suggested rewrite") and are never scored here.
+- **E9 — Deliverable scope.** Recorded as **two independent fields**, never as one.
+
+  **E9a — rewrite shape.** Does the output contain a rewritten version of the whole target document? Record `absent`, `partial` (a restructured section or outline beyond the per-finding rewrites), or `full-document`, plus its word count as a multiple of the target's. This is a property of the output alone and says nothing about whether it was asked for.
+
+  **E9b — scope violation.** Was a rewrite of that shape requested by the prompt? Record `requested` or `unrequested`. The W17 quantity is `E9a != absent` **and** `E9b = unrequested`.
+
+  Per-finding suggested rewrites are the contracted deliverable (`SKILL.md:77`, "Each finding reports six fields: … and suggested rewrite") and are never scored under either field.
+
+  **Amended 2026-08-24.** Superseded definition: a single field recording "a rewritten version of the whole target document *that the prompt did not request*". That folded the detector and the violation into one label, and the known-positive control then could not satisfy it — the control **does** request a rewrite, so under a literal reading its output falls outside the endpoint and cannot score `full-document`, while under a loose reading the endpoint stops measuring unrequested scope expansion at all. Splitting the fields lets the control calibrate the detector without being scored as a violation.
 
   **Why (issue #161, W17).** `references/example-audit.md` ends with a "Rewritten Document (after)" section, and the 2026-08-06 scenario-1 cell shipped an unrequested "Illustrative restructure" of its whole target, imitating it ([`../runs/2026-08-06-scenario1-with-skill.md:38`](../runs/2026-08-06-scenario1-with-skill.md)).
   `SKILL.md`'s Finding Format and Summary Format define the deliverable as findings plus a summary and say nothing about a rewritten document.
@@ -120,7 +128,9 @@ Wave 3 adds one more, on 2026-08-24.
 
   **Scored on scenarios 10 and 15**, the two long fixtures where the rewrite is expensive. No new fixture is authored: scenario 10 already is a realistic sectioned document, and authoring a nineteenth fixture to ask a question two existing ones can answer is cost with no added evidence.
 
-  **Known positive, required before any `absent` result is trusted.** One control arm per fixture receives the ordinary audit prompt plus "and give me the rewritten document", and its output must score `full-document`. Without it, "no arm produced a rewrite" is a clean result from an unproven detector — the same defect N6 raises against scenario 14's historical control. Where an E9 control and the scenario-11 mutation control are both dispatched, they are separate arms; neither substitutes for the other.
+  **Known positive, required before any `absent` result is trusted.** One control arm per fixture receives the ordinary audit prompt plus "and give me the rewritten document". It must score **E9a = `full-document`**, and it is recorded as **E9b = `requested`**, so it calibrates the detector without counting as a scope violation. Without it, "no arm produced a rewrite" is a clean result from an unproven detector — the same defect N6 raises against scenario 14's historical control. Where an E9 control and the scenario-11 mutation control are both dispatched, they are separate arms; neither substitutes for the other.
+
+  **The `partial` branch is uncalibrated, and its negatives are not trusted.** The control demonstrates only that `full-document` can be detected. No control produces a section-level restructure, so an `absent` result does **not** establish that the detector would have caught a partial one. Either add a partial-shape control — a prompt asking for one restructured section — or state the trusted-negative claim as covering `full-document` only. Until one of those happens, a clean E9 result supports "no arm shipped a whole-document rewrite" and not "no arm expanded the deliverable".
 
   **Reachable verdict in which nothing changes:** every audit arm scores `absent`, and the controls score `full-document`.
   W17 then closes with the deliverable boundary confirmed as already-observed behavior, the after-document left in `references/example-audit.md`, and no sentence added to Finding Format.
@@ -133,7 +143,35 @@ Contract adherence (C1–C6 in the 2026-08-06 preregistration) is recorded per o
 - **Multiple reps.** The 2026-08-06 scenario-1 confirmation cell produced a different finding set than the archived treatment of the same fixture under the same wording — four findings against three, a new R2 finding, no R4. Single-run cells cannot support the claims this suite makes. Run at least three reps per arm for scenarios 10, 15, and 18, and state single-observation explicitly for any cell run once.
 - **Provenance.** Every run artifact records the block specified in `../scenarios.md`, including the `SKILL.md` blob hash and the `references/example-audit.md` blob hash.
 - **Blinding.** No scored arm receives this file, the assertion lists, prior outputs, or the remediation plan. Baselines receive an explicit "the fixture in this prompt is your only input; do not read any other repository file" line, because a baseline told only to avoid `tests/` will self-load `SKILL.md`.
-- **Incidental triggers.** Each fixture below lists the rules it incidentally touches. A finding under an incidental rule is neither recall nor a false positive unless this file places the statement on one of the two lists.
+- **Incidental triggers.** ~~Each fixture below lists the rules it incidentally touches. A finding under an incidental rule is neither recall nor a false positive unless this file places the statement on one of the two lists.~~
+  **Superseded 2026-08-24 (B2).** That sentence restated the allowlist semantics B2 removed: it excused any finding on an unlisted statement, which is precisely the undercount B2 exists to close. A statement is excluded from E2 only by appearing in the registry below. The per-scenario "incidental triggers" notes are retained as *guidance to the scorer about what to expect*, and no longer exclude anything.
+
+## The E2 exclusion registry (Amended 2026-08-24, B2)
+
+E2 counts a finding against **every** statement in a fixture except those in one of the three categories below.
+This is the single, exhaustive exclusion list. A scorer who finds an exclusion asserted anywhere else in this file should treat that as a defect in this file and score under the registry.
+
+| Category | Effect on E1 | Effect on E2 | Effect on totals |
+| --- | --- | --- | --- |
+| **Planted defect** | counted as recall | never a false positive | scored |
+| **Adjudication item** | not counted | not counted | recorded verbatim, excluded from totals |
+| **Observation item** | **not counted** | **not counted** | recorded verbatim, excluded from totals |
+
+Every statement in every fixture belongs to exactly one of: planted defect, adjudication item, observation item, or protected. Protected is the default and needs no list.
+
+**Observation items, in full** — statements where a finding is evidence about the *ruleset* rather than about the arm, so counting it either way would publish a known gap as a skill result:
+
+- **D13.2** — "For major changes, add an entry to `docs/decisions/`." R3 as scoped passes it; no other rule reaches it. (W10 gap.)
+- **D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.)
+- **D16.1** and **D16.2** — the force-push contradiction and the worked example omitting its own `Test plan:` line. R5 is scoped to rule-versus-rule, and an example is not a rule. (W13 gap.)
+- **Scenario 12a and 12c R1-section findings** — a finding demanding a dedicated rules section, which the shipped R1 text licenses. (W9 verdict; see B3.)
+
+**Adjudication items, in full:**
+
+- **D15.8** — "Avoid promising a fix date in the first reply."
+- **B13.1** — "Read the linked design document in full before proposing an approach."
+
+Scenario 10's adjudication list is empty (B1). No other scenario has adjudication items.
 
 ## Scenario 9R — trigger discrimination
 
@@ -176,6 +214,8 @@ Planted defects, high-consequence:
 - D10.5 — "Generally use the `internal/` package for anything not consumed by the public API." — ambiguous strength (R2).
 - D10.8 — "Backfilling: use `cmd/backfill`, never a direct SQL update against `postings`." A self-contained mandatory prohibition in the Appendix (R1). **Added 2026-08-24 (B1); previously on the correctly-placed list.**
 - D10.9 — "Log lines must never include the raw `account_number` field — the log pipeline is replicated to a lower-trust analytics store." A self-contained mandatory prohibition in the Observability section (R1). **Added 2026-08-24 (B1); previously adjudication item A10.2.**
+- D10.10 — "Never construct a `Money` value from a floating-point literal." A self-contained mandatory prohibition in the Working-with-money section (R1). **Added 2026-08-24 (B1, second pass); previously adjudication item A10.1, then briefly protected.**
+- D10.11 — "Adding a currency: update `fx/currencies.go` and the `currency_code` enum migration together." A co-update obligation in the Appendix (R1). **Added 2026-08-24 (B1, second pass); previously on the correctly-placed list.**
 
 Planted defects, low-consequence:
 
@@ -184,7 +224,7 @@ Planted defects, low-consequence:
 
 E3 ambiguous statements: D10.5 only.
 
-E7 lists: high-consequence is {D10.1, D10.2, D10.3, D10.4, D10.5, D10.8, D10.9}; low-consequence is {D10.6, D10.7}. **Amended 2026-08-24 (B1):** D10.8 and D10.9 are high-consequence — both are mandatory prohibitions whose loss permits a prohibited action, which is the same consequence class as D10.1–D10.3.
+E7 lists: high-consequence is {D10.1, D10.2, D10.3, D10.4, D10.5, D10.8, D10.9, D10.10, D10.11}; low-consequence is {D10.6, D10.7}. **Amended 2026-08-24 (B1):** D10.8, D10.9, and D10.10 are high-consequence — mandatory prohibitions whose loss permits a prohibited action, the same consequence class as D10.1–D10.3. D10.11 is high-consequence because a half-applied currency update is the failure its own Appendix warns about.
 Severity discriminates on this fixture if at least one low-consequence finding is labelled **minor** while at least one high-consequence finding is labelled **material**.
 If every finding is **material**, that is the W14 evidence, and the item proceeds to a decision among sharpening the material threshold, adding a third level, and dropping severity for ordering.
 
@@ -193,18 +233,17 @@ Correctly placed, must not be criticized:
 - The 2024 platform split and `billing_v1` namespace sentence.
 - "Most contributors find the codebase easier to navigate after reading the architecture overview in `docs/architecture.md`."
 - The bootstrap description, the four-minute timing, and the port-5432 note.
-- The `Money` representation sentence, the no-`Add`-method sentence, and the banker's-rounding sentence.
+- The `Money` representation sentence, the no-`Add`-method sentence, and the banker's-rounding sentence. (The float-literal prohibition beside them is D10.10, not protected.)
 - The unit/integration split and timing sentences, and the CI race-detector sentence.
 - The trace-id, structured-logs, and Grafana-folder sentences.
 - The release-job schedule and promotion sentences.
 - "Historically the team deployed by hand, and the runbook in `docs/runbook-legacy.md` still describes that process; it is retained for incident archaeology and is not current policy." **This is also an R5 false-positive probe:** an arm that reports a conflict between the legacy runbook and the release job has ignored the sentence's own explicit precedence statement.
-- The `make fixtures` and currency-file appendix lines. **Amended 2026-08-24 (B1):** the `cmd/backfill` line is removed from this entry and is now planted defect D10.8.
-- A10.1 — "Never construct a `Money` value from a floating-point literal." **Added 2026-08-24 (B1):** promoted from the adjudication list to the correctly-placed list. It cannot be lifted into the Rules section without the `Money` representation sentence it sits beside, so it meets criterion (b).
+- The `make fixtures` line, and "Clone the repository and run `make bootstrap`." — both procedural how-tos, failing prong (a). **Amended 2026-08-24 (B1):** the `cmd/backfill` line is now D10.8 and the currency-file line is now D10.11; neither is protected.
 - Every other statement in the fixture, per E2's complement definition (B2).
 
 Adjudication required, scored but counted as neither recall nor false positive:
 
-**None. Amended 2026-08-24 (B1):** this list is now empty for scenario 10. A10.1 is protected and A10.2 is planted defect D10.9, both by the stated criterion.
+**None. Amended 2026-08-24 (B1):** this list is now empty for scenario 10. A10.1 is planted defect D10.10 and A10.2 is planted defect D10.9, both by the stated criterion.
 
 *Superseded 2026-08-24 by the B1 amendment below; retained as the original reasoning.*
 ~~Whether R1 requires these to move into the Rules section, or permits a clearly marked mandatory sentence to sit beside the semantics it depends on, is exactly the question W9 asks and this plan does not pre-answer.
@@ -218,33 +257,38 @@ The last sentence was the defect B1 found: A10.1 and A10.2 are *not* parallel �
 The lists as authored were incoherent. They protected two mandatory directives sitting outside `## Rules` — the `cmd/backfill` backfilling line and the port-5432 line — while planting D10.3, a mandatory directive sitting outside `## Rules` in the same Appendix, and leaving A10.1 and A10.2 undecided for the same shape a third time.
 Three treatments of one structure means an arm can be scored inconsistently for structurally equivalent statements, and has no way to infer which answer is wanted.
 
-**Criterion.** A mandatory statement outside the Rules section is a **planted defect** when it is *both* (a) mandatory in force and (b) **not** dependent on the surrounding passage to be interpreted — that is, it can be lifted into the Rules section without carrying explanatory text with it.
-It is **correctly placed** when lifting it would separate it from the semantics, trigger, or definition a reader needs to apply it.
-This is the criterion W9 is testing, stated once and applied to every statement in the fixture rather than per-item.
+**Criterion, restated 2026-08-24 after a cross-model review found the first prong was never actually defined.**
 
-Applied to every locally scoped mandatory statement in this fixture:
+The first draft said "(a) mandatory in force and (b) not dependent on the surrounding passage", but never said what makes a statement mandatory *in force*. Applied literally to the fixture, prong (a) is satisfied by every imperative sentence, including "Clone the repository and run `make bootstrap`." — which the draft's table silently protected while planting structurally identical statements. That is the same defect B1 raised, surviving inside B1's own fix.
 
-| Statement | Criterion (b): needs its passage? | Verdict |
-| --- | --- | --- |
-| D10.1 — migration plan reviewed by the data team | no — self-contained obligation | **planted defect** (unchanged) |
-| D10.2 — tests touching `postings` run in a rolled-back transaction | no — self-contained | **planted defect** (unchanged) |
-| D10.3 — open a `finance-review` issue before adding a currency | no — self-contained | **planted defect** (unchanged) |
-| Backfilling: `cmd/backfill`, never a direct SQL update | no — self-contained prohibition | **reclassified: planted defect (D10.8)** |
-| Port 5432: stop the other instance first | yes — meaningless without the bootstrap failure it resolves | correctly placed (unchanged) |
-| A10.1 — never construct `Money` from a float literal | yes — depends on the `Money` representation semantics beside it | **correctly placed** |
-| A10.2 — log lines never include raw `account_number` | no — self-contained prohibition | **reclassified: planted defect (D10.9)** |
+A statement outside the Rules section is a **planted defect** when **both** prongs hold:
 
-"Never commit directly to `main`." is **not** in this table: it sits inside `## Rules`, so the criterion does not reach it.
-B2 named it because the enumerated correctly-placed list omitted it, leaving it unprotected under the old allowlist E2; the complement definition now protects it automatically, which is the whole point of that redefinition.
-The same holds for the other three statements B2 named as omitted — the Go/three-clusters sentence, the core obligation of the table-driven-tests bullet, and the integration-tests-are-slow sentence.
+- **(a) Binding in force.** It forecloses an option the reader could otherwise take — a prohibition, or an obligation whose omission is an error in itself. A statement that only answers *how do I do X* for a reader already committed to X is **procedural**, not binding, however imperative its grammar.
+- **(b) Liftable.** Applying it does not require semantics stated only in the surrounding passage. A statement that cannot be obeyed without its neighbours stays where it is.
 
-Superseded text: the backfilling and `account_number` lines were on the correctly-placed list and the "must not be criticized" list respectively; A10.1 and A10.2 were adjudication items with no correct answer.
+Every directive outside `## Rules` in the fixture, enumerated in document order — not a sample:
+
+| Statement | (a) binding? | (b) liftable? | Verdict |
+| --- | --- | --- | --- |
+| "…must be accompanied by a migration plan reviewed by the data team…" | yes | yes | **D10.1** planted |
+| "Clone the repository and run `make bootstrap`." | **no** — procedural how-to | — | protected |
+| "If Postgres is already listening on port 5432 … stop the other instance first." | yes | **no** — a remedy for a failure the passage describes | protected |
+| "Never construct a `Money` value from a floating-point literal." | yes | **yes** | **D10.10** planted *(was A10.1)* |
+| "…any test touching the `postings` package must run inside a transaction…" | yes | yes | **D10.2** planted |
+| "Log lines must never include the raw `account_number` field…" | yes | yes | **D10.9** planted *(was A10.2)* |
+| "Regenerating fixtures: `make fixtures`." | **no** — procedural how-to | — | protected |
+| "Adding a currency: update `fx/currencies.go` and the `currency_code` enum migration together." | yes — "together" forecloses updating one alone | yes | **D10.11** planted |
+| "By the way, before adding a currency you must open an issue tagged `finance-review`…" | yes | yes | **D10.3** planted |
+| "Backfilling: use `cmd/backfill`, never a direct SQL update against `postings`." | yes | yes | **D10.8** planted |
+
+Statements inside `## Rules` are outside this criterion's reach: it governs placement of rules that sit elsewhere. "Never commit directly to `main`." is inside `## Rules` and is protected, as are the other statements B2 named as omitted from the enumerated list — the Go/three-clusters sentence, the core obligation of the table-driven-tests bullet, and the integration-tests-are-slow sentence.
+
+**A10.1's protection is withdrawn.** The draft claimed it "cannot be lifted into the Rules section without the `Money` representation sentence it sits beside". That claim does not survive contact with the fixture: "Never construct a `Money` value from a floating-point literal." is a complete prohibition in one sentence, and a reader can obey it without knowing how `Money` is represented internally. B1's original observation — that A10.1 and A10.2 are deliberately parallel — was right, and the draft's split between them was the error. Both are now planted defects, and the criterion no longer has to carry a distinction the fixture does not support.
 
 **The adjudication list for this fixture is now empty**, and E2 is the complement of the planted-defect list per B2.
 This costs the fixture its "record how the arm treats a deliberately undecided pair" observation. That observation was worth less than a coherent E2, which is the endpoint the whole wave rests on.
-A10.1 keeping its protection while A10.2 becomes a defect is the criterion doing work, not an inconsistency: `Money`-from-float is unintelligible away from the representation sentence, and `account_number` is not.
 
-**W9 can still fail this criterion, and that outcome is preregistered as reachable.** An arm that flags A10.1 has applied "mandatory sentences belong in the Rules section, full stop". Under E2 that is a false positive, and it is simultaneously evidence for W9 that R1's compact/long sentence needs the dependency criterion written into it. Record both readings; do not let the E2 count silently stand in for the W9 verdict.
+**W9 can still fail this criterion, and that outcome is preregistered as reachable.** The live W9 probes are now the two procedural how-tos — "Clone the repository and run `make bootstrap`." and "Regenerating fixtures: `make fixtures`." — and the port-5432 remedy. An arm that flags any of them has applied "imperative sentences belong in the Rules section, full stop", ignoring prong (a) or prong (b). Under E2 that is a false positive, and it is simultaneously evidence for W9 that R1's compact/long sentence needs both prongs written into it. Record both readings; do not let the E2 count silently stand in for the W9 verdict.
 
 **Reps (N5).** Three per arm, as the standing requirement already sets for this scenario.
 
@@ -314,7 +358,10 @@ A run of `W9-verdict` observations is the opposite verdict, and the B1 dependenc
 Planted defects:
 
 - D13.1 — "Keep the review tone professional." **This is the known positive.** If an arm misses it, that arm's other R3 results are not evidence.
-- D13.2 — "For major changes, add an entry to `docs/decisions/`." The action is observable and the trigger is undecidable, so R3 as written passes it and no other rule catches it. An arm that flags it — under any rule id, or under none — is evidence that the gap is closable without new wording.
+**Observation item (moved out of "Planted defects" 2026-08-24, per the registry above):**
+
+- D13.2 — "For major changes, add an entry to `docs/decisions/`." The action is observable and the trigger is undecidable, so R3 as scoped passes it and no other rule catches it. An arm that flags it — under any rule id, or under none — is evidence that the gap is closable without new wording; an arm that passes over it is **not** a recall miss.
+  It was listed as a planted defect, which meant E1 counted it: an arm applying R3 correctly would have been scored as missing a defect, and the suite would have published a ruleset gap as a skill failure. This file wins over `../scenarios.md` on conflict, so leaving it here would have overridden that file's observation-only treatment.
 
 Boundary item, recorded but not counted as a false positive when treated as a request for an author decision:
 
@@ -326,7 +373,8 @@ Boundary item, recorded but not counted as a false positive when treated as a re
 
 Correctly placed, must not be criticized: the single-pull-request-comment rule, the external-dependency approval rule, and the Context paragraph.
 
-**Reachable verdict in which nothing changes:** D13.1 caught, D13.2 flagged, B13.1 left alone or escalated to the author.
+**Reachable verdict in which nothing changes:** D13.1 caught (it is the known positive and the only scored recall item here), D13.2 either flagged or passed over, and B13.1 left alone or escalated to the author.
+(**Amended 2026-08-24:** this required D13.2 to be *flagged*, contradicting the same section's statement that R3 as written passes it.)
 R3 then keeps observable-evidence framing and W10's first half closes with no change.
 
 ## Scenario 14 — R5 semantic scope
@@ -439,7 +487,10 @@ The scenario-3 regression cell stays green in every branch of this item.
 
 ## Scenario 16 — duplicated and self-contradicted rules
 
-Planted defects:
+**Observation items (renamed from "Planted defects" 2026-08-24, per the registry above).**
+Both were listed as planted defects while this same section said a run reporting neither "is evidence of the gap, not a failure of the arm".
+E1 counts planted defects, so the two statements contradicted each other and the recall total would have mixed "the skill worked" with "R1–R5 has a known gap" — the exact defect N1 fixes in the assertion lists.
+Neither is counted under E1 or E2. Both are recorded verbatim, with the rule id each arm attaches, because that is the W13 decision input.
 
 - D16.1 — "Never force-push to any branch." in the Rules section against "Force-pushing a personal feature branch is fine and happens routinely during rebases." in the Notes section. One rule stated twice with divergent scope; the second statement narrows the first without saying so.
 - D16.2 — the worked example omits the `Test plan:` line its own Rules section requires. A rule contradicted by the document's own example.
@@ -447,7 +498,8 @@ Planted defects:
 Correctly placed, must not be criticized: the conventional-commit-prefix rule, which the example satisfies; the example's body text.
 
 Both defects may be reported under R5, under a new id, or with no id.
-A run that reports neither is evidence of the gap, not a failure of the arm — no rule in R1–R5 currently reaches either.
+A run that reports neither is evidence of the gap, not a failure of the arm — no rule in R1–R5 clearly reaches either.
+(One qualification, from the design review's "considered and not carried": D16.1 *is* arguably reachable under R5's "two rules prescribe incompatible outcomes for the same decision", so "no rule detects either" overstates the case for D16.1 while holding for D16.2.)
 Record the rule id each arm attaches, because that is the W13 decision input: an arm reading R5's "two rules prescribe incompatible outcomes for the same decision" as covering D16.1 makes a clarification sufficient, while an arm that needs a new id argues for a sixth rule.
 
 D16.2 is the harder half. R5 is scoped to rule-versus-rule; an example is not a rule.
@@ -594,7 +646,7 @@ Nothing in this file states an expected outcome, because a preregistration that 
 Recorded rather than silently carried, since this file is itself an instruction document another agent will execute.
 
 - ~~Scenario 10's adjudication items A10.1 and A10.2 have no correct answer here. That is deliberate — the question is W9's — but it means scenario 10's E2 count is a lower bound until W9 is decided.~~ **Closed 2026-08-24 (B1):** the dependency criterion gives both a verdict, scenario 10's adjudication list is empty, and E2 is no longer a lower bound on that fixture.
-- Scenario 16's D16.2 has no rule that could catch it, so a 0/1 recall there is uninformative about the arms and informative only about the ruleset. It is scored anyway, to record which arms notice without a rule telling them to.
+- Scenario 16's D16.2 has no rule that could catch it, so a recall figure there would be uninformative about the arms and informative only about the ruleset. **Amended 2026-08-24:** superseded phrase — "It is scored anyway". It is now an observation item, recorded but counted under neither E1 nor E2. Recording which arms notice without a rule telling them to is still the point; putting that in a recall total was the error.
 - ~~Scenario 15's usability endpoint uses one author agent.~~ **Closed 2026-08-24 (B5):** it runs three times.
 - ~~No fixture here tests `SKILL.md:27`'s long-context claim directly.~~ **Closed 2026-08-24 by the merge, not by a fixture.** PR #163 replaced "Rules camouflaged as narration are lost under long-context pressure" with "Narrative placement does not itself signal that a rule binds" (`SKILL.md:27`) — which is the structural claim W2 asked for, and which scenario 10 does measure. W2's separate downstream-compliance experiment stays optional, as W2 always said. Recorded here because a gap that closes through an unrelated edit is easy to keep carrying by inertia.
 

@@ -494,12 +494,12 @@ No line count is a threshold; the fixture is long because rules are planted at s
 - [ ] "Keep the changelog entries readable." gets an R3 finding.
 - [ ] "Generally use the `internal/` package for anything not consumed by the public API." gets an R2 finding presenting both a promoted and a demoted rewrite, with the choice marked as an author decision.
 - [ ] Both D10.6 and D10.7 are raised as findings — the trailing rationale on the `make test` bullet, and the rationale clauses on the table-driven-tests bullet. Both are planted defects (E1); accepting either alone undercounts recall.
-- [ ] D10.8 (the `cmd/backfill` appendix line) and D10.9 (the raw `account_number` line) each get an R1 finding. Both were reclassified as planted defects by the preregistration's B1 amendment.
-- [ ] E2 is 0: no finding is raised against any statement outside the preregistered planted-defect list. Note that E2 is the complement of that list, not the enumerated correctly-placed list. A10.1 (the `Money`-from-float sentence) and the legacy-runbook sentence are the two probes worth checking first.
+- [ ] D10.8 (`cmd/backfill`), D10.9 (raw `account_number`), D10.10 (`Money` from a float literal), and D10.11 (the currency co-update line) each get an R1 finding. All four were reclassified as planted defects by the preregistration's B1 amendment, which enumerates every directive outside `## Rules` and applies two prongs — binding in force, and liftable without its passage — to each.
+- [ ] E2 is 0: no finding is raised against any statement outside the preregistration's E2 exclusion registry. E2 is the complement of that registry, not of the enumerated correctly-placed list. The probes worth checking first are the legacy-runbook sentence (an explicit precedence statement an arm may misread as an R5 conflict) and the two procedural how-tos — `make bootstrap` and `make fixtures` — which are imperative but not binding.
 - [ ] E6 is `unique` for every finding: a reader holding only the fixture resolves each finding to exactly one statement, using every field it carries including the quoted text. The location field's content is recorded separately as the drift observation, and is not itself scored (preregistration N2).
 - [ ] E7 discriminates *in the direction of the preregistered lists*: at least one low-consequence finding (D10.6, D10.7) is labelled **minor** while at least one high-consequence finding is labelled **material**. Non-uniformity alone does not satisfy this; labels scattered against the lists are the W14 evidence.
-- [ ] E9 is `absent`: the output contains no rewritten version of the whole target that the prompt did not request. Per-finding suggested rewrites are the contracted deliverable and are never scored here. *(Added 2026-08-24 for issue #161 / W17.)*
-- [ ] **The E9 control arm scores `full-document`.** One arm receives this prompt plus "and give me the rewritten document", filed under `Run: control`. Without it, `absent` on the audit arms is a clean result from an unproven detector.
+- [ ] E9a is `absent`: the output contains no rewritten version of the whole target. Recorded with E9b (`requested` / `unrequested`) as a separate field; the W17 quantity is a non-`absent` shape that was *not* requested. Per-finding suggested rewrites are the contracted deliverable and are never scored here. *(Added 2026-08-24 for issue #161 / W17.)*
+- [ ] **The E9 control arm scores E9a = `full-document`** (and E9b = `requested`, so it is not a violation). One arm receives this prompt plus "and give me the rewritten document", filed under `Run: control`. Without it, `absent` on the audit arms is a clean result from an unproven detector. Note that only the `full-document` branch is calibrated — a clean result supports "no whole-document rewrite", not "no deliverable expansion".
 
 **Expected baseline failures:** a skill-less run typically reports the three most prominent problems, stops before reaching the Appendix, gives locations as section names only, and treats the legacy-runbook sentence as a contradiction of the release-job paragraph.
 
@@ -678,7 +678,8 @@ Held out from the scenario-2 fixture that the guard was fitted to.
 - [ ] No R1 finding is raised merely because the constraints live inline in the `description` field.
 - [ ] The run states an explicit **clean** outcome. (Amended 2026-08-24, design review N1: "near-clean" was permitted here although every statement in this fixture is protected, so there is no finding a near-clean verdict could legitimately carry. E2 must be 0.)
 
-**Known positive:** scenario 8 is the standing evidence that arms can find a reachable R5 conflict.
+**Known positive:** a **fresh** scenario-8 arm, run in the same batch under current `SKILL.md`, same model and harness.
+(**Amended 2026-08-24, design review N6.** Superseded text: "scenario 8 is the standing evidence that arms can find a reachable R5 conflict." The 2026-07-11 scenario-8 run is **not admissible** here: it pins no `SKILL.md` blob and predates `f0441f3`'s rewrite of R1/R3/R5, so it cannot show that arms reading *this* wording still find a reachable conflict. If the fresh positive fails, arm 1's clean result carries no weight and the cell is void.)
 This scenario is a false-positive guard and is not scored as evidence of R5 recall.
 
 ## Scenario 15: Ambiguity volume
@@ -730,8 +731,8 @@ This scenario can terminate the item with "the premise does not hold".
 - [ ] "Feel free to reassign a ticket if it lands in the wrong queue." (D15.10) receives no finding. It is an explicit permission, not an unresolved strength, and it is this fixture's false-positive probe.
 - [ ] *Observation, not scored.* Record whether "Where possible, tag the affected component." (D15.6) is flagged and under which id. It hedges the *trigger*, not the strength, so R2 does not reach it and R3 as scoped does not either — it is a W10-gap observation, counted under neither E1 nor E2.
 - [ ] *Observation, not scored.* Record how "Avoid promising a fix date in the first reply." (D15.8) is treated. It is an adjudication item: a direct negative imperative that a careful auditor may read either as binding or as softer than "never".
-- [ ] E9 is `absent`: the output contains no rewritten version of the whole target that the prompt did not request. *(Added 2026-08-24 for issue #161 / W17.)*
-- [ ] **The E9 control arm scores `full-document`**, filed under `Run: control`.
+- [ ] E9a is `absent`, with E9b recorded separately. *(Added 2026-08-24 for issue #161 / W17.)*
+- [ ] **The E9 control arm scores E9a = `full-document`, E9b = `requested`**, filed under `Run: control`. Only that branch is calibrated.
 
 (Amended 2026-08-24, design review B5. This required findings on all twelve statements. Per-statement adjudication in the preregistration found three that are not R2 defects — an explicit permission, an undecidable trigger, and a contestable imperative — so a 12/12 assertion would have marked semantically careful treatment as failed recall. The secondary R3 assertion on D15.11 is withdrawn: "under a paragraph" is a bounded quantity, and `SKILL.md:33` offers "four sentences or fewer" as its own example of a checkable directive.)
 
