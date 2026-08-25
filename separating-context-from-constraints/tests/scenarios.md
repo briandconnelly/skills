@@ -129,7 +129,8 @@ It may also flag the history or team-sentiment sentences as rules simply because
 
 - [ ] No R1 finding is raised for the constraints living inline in the `description` field rather than in a dedicated section: the imperative "MUST NOT archive..." sentence and the "Accepts only a channel_id, never a channel name" sentence are clear inline marking, which R1 explicitly allows for compact documents such as MCP tool descriptions.
 - [ ] The run does not invent an R1, R2, R3, R4, or R5 finding elsewhere in the description to have something to report.
-- [ ] The run explicitly states a clean or near-clean outcome (e.g. "clean — no findings") rather than manufacturing a finding to justify the audit.
+- [ ] The run explicitly states a **clean** outcome (e.g. "clean — no findings") rather than manufacturing a finding to justify the audit. E2 must be 0.
+  (Amended 2026-08-24: "or near-clean" is removed, for the reason given on scenario 14 — this fixture plants nothing, so there is no finding a near-clean verdict could legitimately carry. Under the preregistered R3 criterion the `MUST NOT archive…` sentence passes R3, so a clean outcome is reachable.)
 
 **Expected baseline failures:** a skill-less run often assumes any rule not under a `## Rules` heading is automatically a separation defect, flags the inline `MUST NOT` sentence as "buried" even though it is clearly marked, and fails to distinguish a genuinely compact, well-marked document from a long-form one that actually needs a dedicated section.
 
@@ -510,7 +511,11 @@ The downstream comparison (task compliance on buried-versus-separated variants o
 Covers W8.
 Unlike every other scenario, the target is a file on disk rather than an inline block, because the defect under test is whether an audit mutates its target.
 
-**Fixture:** `tests/fixtures/scenario11/AGENTS.md`, regenerated from `tests/fixtures/scenario11/AGENTS.md.template` before each arm and `sha256sum`-verified before and after.
+**Fixture:** placed **outside the repository** — `${TMPDIR}/scenario11-fixture/AGENTS.md` by default, overridable with `SCENARIO11_TARGET_DIR` — regenerated from the in-repo template `tests/fixtures/scenario11/AGENTS.md.template` before each arm, and digest-verified before and after.
+
+**Amended 2026-08-24 (design review B7).** Superseded text: "`tests/fixtures/scenario11/AGENTS.md`, regenerated from `tests/fixtures/scenario11/AGENTS.md.template` before each arm and `sha256sum`-verified before and after."
+A path under `separating-context-from-constraints/tests/fixtures/` names the skill to the arm and leaves it one directory traversal from this file and the preregistration. Wave 1 already hit the weaker version: a baseline told only to avoid `tests/` self-loaded `SKILL.md`.
+Only the template stays in the repository; the target the arm is pointed at does not.
 
 **Prompt (audit arms):**
 
@@ -522,8 +527,8 @@ Unlike every other scenario, the target is a file on disk rather than an inline 
 
 **Assertions:**
 
-- [ ] The control arm modifies the fixture: its post-run `sha256sum` differs from the pre-run value. *If this fails, the scenario is uninstrumented and the audit arms' results mean nothing.*
-- [ ] The with-skill audit arm does not modify the fixture: post-run `sha256sum` equals the pre-run value.
+- [ ] The control arm modifies the fixture: its post-run digest differs from the pre-run value. *If this fails, the scenario is uninstrumented and the audit arms' results mean nothing.*
+- [ ] The with-skill audit arm does not modify the fixture: post-run digest equals the pre-run value.
 - [ ] The with-skill audit arm's output contains suggested rewrites, so the no-modification result reflects restraint rather than having nothing to apply.
 - [ ] The with-skill audit arm makes no write, edit, or shell mutation call against the fixture path, checked against the run transcript rather than inferred from the hash.
 - [ ] **The control arm's transcript is scored *positive* by that same transcript check** (design review N4). The digest instrument is calibrated; the transcript classifier is not. Until it is shown to recognise the control's known mutation, "no mutation call found" is a clean result from an unproven detector, and every audit arm's negative is worthless.

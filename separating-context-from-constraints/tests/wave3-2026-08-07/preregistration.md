@@ -26,6 +26,7 @@ The measurable differences were 9 false positives against 0, and 2 silent policy
 
 So wave 3 is not built to show that the skill finds more defects.
 Every fixture below carries an explicit correctly-placed list, and every scenario is scored on false positives as a first-class endpoint rather than as a footnote to recall.
+(**Amended 2026-08-24, B2:** those lists are emphasis, not the definition. E2 is the complement of the planted-defect and adjudication lists, so a statement is protected whether or not a list enumerates it.)
 Two scenarios (12 and 14) have no planted defect at all and exist only to measure false positives.
 
 ## Citation repin (Amended 2026-08-24)
