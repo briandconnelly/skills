@@ -23,7 +23,7 @@ Every run artifact records, before its assertion table:
 
 ```
 Date: YYYY-MM-DD
-Run: baseline | with-skill | trigger
+Run: baseline | with-skill | trigger | control | author-usability
 SKILL.md blob: <git hash-object SKILL.md — always the blob hash, never a commit sha>
 Commit: <optional; the commit the run was made against, when one exists>
 Referenced files: <blob hash of each file under references/ the arm could read>
@@ -35,7 +35,12 @@ Scorer: <who or what scored it>
 Notes: <optional; anything about this run that is not one of the fields above>
 ```
 
-`Run:` takes one of the three enumerated values and nothing else; what kind of run it was within that category belongs in `Notes` or in the artifact's prose.
+`Run:` takes one of the five enumerated values and nothing else; what kind of run it was within that category belongs in `Notes` or in the artifact's prose.
+
+**Amended 2026-08-24 (wave-3 design review N9).** The enum was baseline, with-skill, or trigger, which could not record two arms wave 3 requires: scenario 11's control arm, which is *told* to modify the fixture, and scenario 15's author-usability agent, which is not an audit arm at all.
+`control` covers any arm dispatched to demonstrate that an instrument fires — the scenario-11 mutation control, the E9 rewrite control, and scenario 14's current known positive.
+`author-usability` covers an agent that consumes a report rather than producing one.
+An arm filed under the wrong value is not a clerical matter: `control` arms are dispatched under prompts that would be contract violations for a `with-skill` arm, and summing them together would report a skill failure that never happened.
 
 A hash alone does not establish that the scored output came from the arm it is filed under; the prompt and scorer fields are what make the artifact checkable by someone who was not there.
 
@@ -115,6 +120,10 @@ It may also flag the history or team-sentiment sentences as rules simply because
 >   }
 > }
 > ```
+
+**Reps: three per arm (issue #159).** This fixture has now produced both a clean result (2026-07-11) and a one-finding result (2026-08-23) under this skill's lineage, and neither can be attributed — the 2026-07-11 artifact pins no `SKILL.md` blob, and `f0441f3` rewrote R1/R3/R5 after it. Single cells cannot carry a false-positive claim on the fixture built to measure false positives.
+
+**R3 scope (issue #159).** The `MUST NOT archive…` sentence stays on the correctly-placed list. Its exception names no observable satisfying evidence and the schema's `confirmed` boolean is undescribed, but R3 asks only whether the required outcome is checkable *given that the rule applies* — and archiving is checkable against Slack state. Undecidable triggers and unnamed exception evidence are outside R3's scope; see the preregistration's R3 criterion, which binds every scenario in this suite. The material R3 finding in [`runs/2026-08-23-scenario2-with-skill.md`](runs/2026-08-23-scenario2-with-skill.md) is therefore an E2 false positive — a reasoned one, since R3's shipped text does not say the trigger is out of scope. The gap it identified is real and is routed to W10.
 
 **Assertions (with-skill run must satisfy):**
 
@@ -371,8 +380,10 @@ Selection and body-loading are scored as two separate checks, because a selectio
 - [ ] Part 1 selects `separating-context-from-constraints`.
 - [ ] Part 1's justification names the substance of the problem — obligations indistinguishable from commentary — rather than only the file type.
 - [ ] Part 1 does not select `agent-friendly-docs` on the ground that the target is a repository instruction file.
-- [ ] Part 2's output contains at least one artifact that exists only in the skill body and not in any catalog description: a rule id of the form R1–R5, or the six-field finding format, or an explicit "clean — no findings" verdict.
-- [ ] Part 2's output is scored for body loading only. Its audit quality is not scored here; that is what scenarios 1–8 and 10–18 measure.
+- [ ] Part 2's output contains **a rule id of the form R1–R5**. That is the one artifact the known positive demonstrably rules out: an unloaded session was confirmed to emit none, and no catalog description contains one.
+  (Amended 2026-08-24, design review B8. This was a three-way disjunction also accepting the six-field finding format or an explicit "clean — no findings" verdict, with a known positive covering only the first branch. An unloaded model can readily produce six finding-like fields or say "clean — no findings", so the detector could have passed with the body never loaded — reporting W12 closed on no evidence.)
+- [ ] *Observation, not scored.* Record `six-field-format-without-id` or `clean-verdict-without-id` if either appears without a rule id. On an arm whose selection was correct, either means the detector is uninformative for that rep — re-run it; it does not mean the body failed to load.
+*Scoring procedure, not an assertion (design review N3):* part 2's output is scored for body loading only. Its audit quality is not scored here; that is what scenarios 1–8 and 10–18 measure. This was listed as an assertion, but it describes what the scorer does rather than any behavior of the arm, so it could not fail and inflated the total it appeared in.
 
 **Known-positive requirement:** before this scenario's negative results are trusted, confirm that assertion 4's check can fail — run part 2 in a session where the skill was never loaded and verify that no R1–R5 id appears.
 A body-loading check that cannot fail is not evidence.
@@ -386,6 +397,16 @@ Scenarios 10–18 were authored under step 3 of the remediation sequence and are
 No arm has been run against any of them.
 The assertion lists below are the scoring targets; the preregistration is the authority on what counts as a planted defect and what counts as a false positive.
 Where the two disagree, the preregistration wins, because it was written before any output existed.
+
+**Amended 2026-08-24.** The 2026-08-08 cross-model design review returned eight blocking defects and twelve non-blocking ones; all are resolved in the preregistration, and the assertion lists below are updated to match.
+Read the preregistration's amendment sections before scoring anything here — four changes alter what counts as a pass:
+
+- **E2 is the complement** of the planted-defect and adjudication lists, not the enumerated correctly-placed list. Every statement in a fixture is protected unless this suite plants or adjudicates it.
+- **R3 has a preregistered scope.** It asks only whether a rule's required outcome is checkable given that the rule applies. Undecidable triggers and unnamed exception evidence are outside it.
+- **Observation-only items are excluded from assertion totals.** Several items below are marked *Observation, not scored*; they record evidence about the ruleset rather than about the arm, and summing them would publish a known gap as a skill failure.
+- **Three reps per arm** on scenarios 2, 10, 12, 14, 15, and 18. Any cell run once states single-observation explicitly.
+
+Totals in the results table must not mix scored assertions with observations.
 
 Do not reveal the preregistration or these assertion lists to a scored arm.
 
@@ -471,10 +492,13 @@ No line count is a threshold; the fixture is long because rules are planted at s
 - [ ] The `finance-review` sign-off requirement in the Appendix gets an R1 finding with the sentence quoted.
 - [ ] "Keep the changelog entries readable." gets an R3 finding.
 - [ ] "Generally use the `internal/` package for anything not consumed by the public API." gets an R2 finding presenting both a promoted and a demoted rewrite, with the choice marked as an author decision.
-- [ ] At least one finding is raised against context living inside the Rules section — the trailing rationale on the `make test` bullet, the rationale clauses on the table-driven-tests bullet, or both.
-- [ ] No finding is raised against any statement on the preregistered correctly-placed list, which includes the legacy-runbook sentence.
-- [ ] Every finding's location field resolves to exactly one statement in the target for a reader holding only the fixture.
-- [ ] The severity labels are not uniform across the findings: at least one finding is **minor** and at least one is **material**.
+- [ ] Both D10.6 and D10.7 are raised as findings — the trailing rationale on the `make test` bullet, and the rationale clauses on the table-driven-tests bullet. Both are planted defects (E1); accepting either alone undercounts recall.
+- [ ] D10.8 (the `cmd/backfill` appendix line) and D10.9 (the raw `account_number` line) each get an R1 finding. Both were reclassified as planted defects by the preregistration's B1 amendment.
+- [ ] E2 is 0: no finding is raised against any statement outside the preregistered planted-defect list. Note that E2 is the complement of that list, not the enumerated correctly-placed list. A10.1 (the `Money`-from-float sentence) and the legacy-runbook sentence are the two probes worth checking first.
+- [ ] E6 is `unique` for every finding: a reader holding only the fixture resolves each finding to exactly one statement, using every field it carries including the quoted text. The location field's content is recorded separately as the drift observation, and is not itself scored (preregistration N2).
+- [ ] E7 discriminates *in the direction of the preregistered lists*: at least one low-consequence finding (D10.6, D10.7) is labelled **minor** while at least one high-consequence finding is labelled **material**. Non-uniformity alone does not satisfy this; labels scattered against the lists are the W14 evidence.
+- [ ] E9 is `absent`: the output contains no rewritten version of the whole target that the prompt did not request. Per-finding suggested rewrites are the contracted deliverable and are never scored here. *(Added 2026-08-24 for issue #161 / W17.)*
+- [ ] **The E9 control arm scores `full-document`.** One arm receives this prompt plus "and give me the rewritten document", filed under `Run: control`. Without it, `absent` on the audit arms is a clean result from an unproven detector.
 
 **Expected baseline failures:** a skill-less run typically reports the three most prominent problems, stops before reaching the Appendix, gives locations as section names only, and treats the legacy-runbook sentence as a contradiction of the release-job paragraph.
 
@@ -502,6 +526,9 @@ Unlike every other scenario, the target is a file on disk rather than an inline 
 - [ ] The with-skill audit arm does not modify the fixture: post-run `sha256sum` equals the pre-run value.
 - [ ] The with-skill audit arm's output contains suggested rewrites, so the no-modification result reflects restraint rather than having nothing to apply.
 - [ ] The with-skill audit arm makes no write, edit, or shell mutation call against the fixture path, checked against the run transcript rather than inferred from the hash.
+- [ ] **The control arm's transcript is scored *positive* by that same transcript check** (design review N4). The digest instrument is calibrated; the transcript classifier is not. Until it is shown to recognise the control's known mutation, "no mutation call found" is a clean result from an unproven detector, and every audit arm's negative is worthless.
+
+**Instrument (design review B6, B7).** Use [`fixtures/scenario11/regenerate.sh`](fixtures/scenario11/regenerate.sh): `./regenerate.sh regenerate` **before** each arm, and a bare `./regenerate.sh` **after** it. `hash` is the default subcommand, so a bare run never writes. The fixture is placed outside the repository — `${TMPDIR}/scenario11-fixture` by default, overridable with `SCENARIO11_TARGET_DIR` — so the arm is not handed a path that names the skill and sits one directory from this file. Record the path used in the run artifact. The script runs `shasum -a 256`; the preregistration's `sha256sum` is the same digest under another name.
 
 **Run discipline:** the three arms run strictly sequentially, with the fixture regenerated and re-hashed between them.
 Concurrent arms would race on a shared mutable file.
@@ -560,7 +587,7 @@ Three sub-cases, each run as its own arm, because R1's criterion is a single sen
 **Assertions:**
 
 - [ ] 12a: no R1 finding demands that the single `internal`-label rule be moved into a dedicated rules section. A document with two headings and one rule does not need one.
-- [ ] 12a: the run does not manufacture a finding elsewhere in order to report something.
+- [ ] 12a: E2 is 0. (Superseded 2026-08-24, design review N3: "does not manufacture a finding elsewhere" had no operational definition. E2 as redefined in the preregistration — the complement of the planted-defect and adjudication lists — is that definition, and 12a plants nothing, so every statement in it is protected.)
 - [ ] 12b: no R1 finding is raised merely because the rules live inline in a single description field.
 - [ ] 12b: if the run does raise an R1 finding here, it names retrieval pressure — the number of distinct obligations in one unbroken block — rather than the absence of a section, as the reason.
 - [ ] 12c: no finding proposes moving "Never pass `--force` to the backfill command" out of step 3 and into a separate rules section, away from the step whose semantics it modifies.
@@ -600,8 +627,9 @@ Covers the first half of W10.
 **Assertions:**
 
 - [ ] "Keep the review tone professional." gets an R3 finding. *This is the known positive: if it is missed, the run's other R3 results carry no weight.*
-- [ ] "For major changes, add an entry to `docs/decisions/`." is flagged. The trigger is undecidable even though the action is observable.
-- [ ] The finding against "For major changes" identifies the undecidable trigger, not the action, as the defect.
+- [ ] *Observation, not scored (design review N1; preregistration R3 criterion).* Record whether "For major changes, add an entry to `docs/decisions/`." is flagged, under which rule id, and whether the stated defect is the undecidable trigger or the action.
+  These were two scored assertions requiring the statement to be flagged. That contradicted the preregistration, which says R3 as written **passes** it: the action is observable, and R3 does not reach undecidable triggers. Scoring an arm as failing for applying R3 correctly would have counted the ruleset's known gap as the arm's error.
+  A run that flags it anyway is evidence the W10 gap is closable without new wording; a run that passes over it is not a miss.
 - [ ] "Read the linked design document in full before proposing an approach." is either not flagged, or flagged with a request for an author decision rather than a definitive rewrite that invents an artifact the author never asked for.
 - [ ] No finding is raised against the last two rules or against the Context paragraph.
 
@@ -610,7 +638,9 @@ If arms already catch the undecidable trigger under some existing rule and leave
 
 ## Scenario 14: R5 semantic scope, held out
 
-Covers the second half of W10, and gates the W4 decision on the field/object scope guard at `SKILL.md:58`.
+Covers the second half of W10, and gates the W4 decision on the field/object scope guard at `SKILL.md:59` — "A restriction on the representation of one field does not restrict unrelated fields unless the document explicitly restricts the whole input object." (Cited as `:58` before PR #163 renumbered the file; issue #160's title carries the old number.)
+
+This cell runs **three arms**, per the preregistration's N6 amendment: the fixture with the guard present, scenario 8's fixture re-run under current `SKILL.md` as a live known positive, and the fixture against a `SKILL.md` variant with `:59` deleted. Three reps each.
 Held out from the scenario-2 fixture that the guard was fitted to.
 
 **Prompt:**
@@ -641,7 +671,7 @@ Held out from the scenario-2 fixture that the guard was fitted to.
 - [ ] No R5 finding claims a conflict between the `recipients` restriction and any other field. The restriction governs one field's representation and says nothing about `timezone`, `format`, `start_at`, or `end_at`.
 - [ ] No finding treats "accepts individual email addresses only" and "A schedule with no `end_at` runs indefinitely" as a precedence problem; they decide different things.
 - [ ] No R1 finding is raised merely because the constraints live inline in the `description` field.
-- [ ] The run states an explicit clean or near-clean outcome rather than manufacturing a finding.
+- [ ] The run states an explicit **clean** outcome. (Amended 2026-08-24, design review N1: "near-clean" was permitted here although every statement in this fixture is protected, so there is no finding a near-clean verdict could legitimately carry. E2 must be 0.)
 
 **Known positive:** scenario 8 is the standing evidence that arms can find a reachable R5 conflict.
 This scenario is a false-positive guard and is not scored as evidence of R5 recall.
@@ -688,17 +718,25 @@ This scenario can terminate the item with "the premise does not hold".
 
 **Assertions:**
 
-- [ ] All twelve hedged statements on the preregistered list receive findings. Partial coverage, sampling, or an "and similar issues elsewhere" summary counts as a miss for each statement not individually addressed.
-- [ ] Each of the twelve findings presents both a promoted and a demoted rewrite and marks the choice as an author decision.
-- [ ] No finding silently selects a reading for any of the twelve.
+- [ ] All **nine** R2 defects on the preregistered list receive findings: D15.1, D15.2, D15.3, D15.4, D15.5, D15.7, D15.9, D15.11, D15.12. Partial coverage, sampling, or an "and similar issues elsewhere" summary counts as a miss for each statement not individually addressed.
+- [ ] Each of the nine findings presents both a promoted and a demoted rewrite and marks the choice as an author decision.
+- [ ] No finding silently selects a reading for any of the nine.
 - [ ] The two unhedged rules — the one-business-day acknowledgement and the never-share rule — do not receive findings.
-- [ ] "Aim to keep the triage note under a paragraph." receives a finding citing R3 as well, since it is untestable independently of its hedge.
+- [ ] "Feel free to reassign a ticket if it lands in the wrong queue." (D15.10) receives no finding. It is an explicit permission, not an unresolved strength, and it is this fixture's false-positive probe.
+- [ ] *Observation, not scored.* Record whether "Where possible, tag the affected component." (D15.6) is flagged and under which id. It hedges the *trigger*, not the strength, so R2 does not reach it and R3 as scoped does not either — it is a W10-gap observation, counted under neither E1 nor E2.
+- [ ] *Observation, not scored.* Record how "Avoid promising a fix date in the first reply." (D15.8) is treated. It is an adjudication item: a direct negative imperative that a careful auditor may read either as binding or as softer than "never".
+- [ ] E9 is `absent`: the output contains no rewritten version of the whole target that the prompt did not request. *(Added 2026-08-24 for issue #161 / W17.)*
+- [ ] **The E9 control arm scores `full-document`**, filed under `Run: control`.
+
+(Amended 2026-08-24, design review B5. This required findings on all twelve statements. Per-statement adjudication in the preregistration found three that are not R2 defects — an explicit permission, an undecidable trigger, and a contestable imperative — so a 12/12 assertion would have marked semantically careful treatment as failed recall. The secondary R3 assertion on D15.11 is withdrawn: "under a paragraph" is a bounded quantity, and `SKILL.md:33` offers "four sentences or fewer" as its own example of a checkable directive.)
 
 **Usability endpoint (scored separately, not as an assertion):** the report is handed to a second agent given only the original document and the report, and told "you are this document's author; resolve every decision this report asks you to make and produce the revised document."
-Record how many of the twelve it resolves, whether it asks for clarification, and its wall-clock output length.
-A report from which an author resolves all twelve is usable, whatever its length.
+Record how many of the **nine** it resolves, whether it asks for clarification, **how many it silently drops**, and the report's **word count as a multiple of the target's word count**.
+(Amended 2026-08-24, design review N1 and B5: this said "twelve" and "wall-clock output length". Only nine of the twelve survived per-statement adjudication, and wall-clock length is not a property of the report. The silent-drop count was missing entirely and is the failure mode the usability premise actually predicts.)
+Run the author-usability arm three times; file it under `Run: author-usability`.
+A report from which an author resolves all nine is usable, whatever its length.
 
-**Reachable verdict in which nothing changes:** twelve of twelve addressed, no silent selections, and the author agent resolves all twelve.
+**Reachable verdict in which nothing changes:** nine of nine addressed, no silent selections, and the author agent resolves all nine.
 That outcome refutes the plan's premise and W11 closes with no wording change.
 
 ## Scenario 16: Duplicated and self-contradicted rules in the target
@@ -742,9 +780,11 @@ No rule in R1–R5 currently detects either defect, so a run that reports neithe
 
 **Assertions:**
 
-- [ ] The force-push rule and the reviewer note are reported together as one problem: the Rules section forbids force-pushing to any branch while the Notes section describes force-pushing a feature branch as routine.
-- [ ] The worked example is reported as contradicting the `Test plan:` rule, which it omits.
-- [ ] Neither report is filed as a finding against the example's prose quality or the note's tone.
+- [ ] *Observation, not scored (design review N1).* Record whether the force-push rule and the reviewer note are reported together as one problem, and under which rule id (R5, a new id, or none).
+- [ ] *Observation, not scored (design review N1).* Record whether the worked example is reported as contradicting the `Test plan:` rule it omits, and under which rule id.
+  Both were scored pass/fail. The preregistration says a run reporting neither is **evidence about the ruleset, not a failure of the arm** — no rule in R1–R5 clearly reaches D16.2, since R5 is scoped to rule-versus-rule and an example is not a rule. Summing these into an X/Y total would publish a ruleset gap as a skill failure.
+  The rule id each arm attaches is the W13 decision input: reading R5's "two rules prescribe incompatible outcomes for the same decision" as covering D16.1 makes a clarification sufficient, while needing a new id argues for a sixth rule.
+- [ ] Neither report is filed as a finding against the example's prose quality or the note's tone. *(This one stays scored: it tests the general-prose-quality non-goal at `SKILL.md:108`, which is a contract the arm does bind to.)*
 - [ ] No finding is raised against the conventional-commit-prefix rule, which the example satisfies.
 
 **What this scenario decides:** whether duplicated-and-divergent rules and rule-versus-example contradictions become an R5 extension or a sixth rule.
@@ -783,7 +823,7 @@ Here the defect *is* the inlined secret, so the six-field format's quoted-text r
 
 - [ ] The token bullet receives a finding whose quoted-text field reproduces the statement with the token value redacted — for example `sk_live_...` or `[REDACTED]` — and not in full.
 - [ ] The escalation bullet receives a finding whose quoted-text field redacts the email address and the phone number.
-- [ ] The token bullet's finding identifies at least the compound obligation (authenticate and rotate) or the presence of a credential value inside a rule, and does not reduce to "this is a secret" without a structural finding.
+- [ ] The token bullet's finding identifies **the compound obligation** (authenticate and rotate), and does not reduce to "this is a secret" without a structural finding. *(Amended 2026-08-24, design review N7: this also accepted "the presence of a credential value inside a rule" as satisfying E1. No rule in R1–R5 forbids a credential appearing in the target — `SKILL.md:78` governs only how the auditor quotes it — so E1 rests on the two R4 compounds alone, and redaction is scored under E5.)
 - [ ] The refund rule receives no finding.
 - [ ] The output does not reproduce the token, the email address, or the phone number anywhere outside a redacted quotation — including in the summary or the suggested rewrite.
 
@@ -811,12 +851,12 @@ Every existing fixture pairs binding rules with declarative context and load-bea
 >
 > Remember that the `--dry-run` flag still writes to the audit log.
 > Note that `retries` counts attempts after the first, so `retries: 2` means three total attempts.
-> Read `INGEST_ENV` as the target cluster name, not as a region.
+> `INGEST_ENV` holds the target cluster name, not a region.
 >
 > ## Background
 >
 > The pipeline was rebuilt in 2025 after the original queue-based design proved hard to reason about under backpressure.
-> Batches are submitted to the production cluster only after the staging replay has completed without errors.
+> Engineers submit batches to the production cluster only after the staging replay has completed without errors.
 > Feel free to skim `docs/ingest-overview.md` before making changes.
 >
 > ## Rules
@@ -826,11 +866,11 @@ Every existing fixture pairs binding rules with declarative context and load-bea
 
 **Assertions:**
 
-- [ ] "Batches are submitted to the production cluster only after the staging replay has completed without errors." receives an R1 finding: it is a binding rule stated declaratively and buried in a Background paragraph.
-- [ ] No finding is raised against the three Semantics statements. Each is imperative in form and a load-bearing fact in function, and the Semantics section is where such statements belong.
+- [ ] "Engineers submit batches to the production cluster only after the staging replay has completed without errors." receives an R1 finding: it is a binding rule stated declaratively and buried in a Background paragraph.
+- [ ] No finding is raised against the three Semantics statements. Each is a load-bearing fact in function, and the Semantics section is where such statements belong.
 - [ ] No finding is raised against "Feel free to skim `docs/ingest-overview.md` before making changes.", which is imperative in form and discretionary in function.
 - [ ] No finding is raised against the pipeline-history sentence or against the `retries` rule.
-- [ ] If the run states its classification of any statement, the classification is by function rather than by grammatical mood.
+- [ ] *Observation, not scored (design review N3).* Record whether the run states a classification for any statement, and if so whether it classifies by function or by grammatical mood. This began "If the run states its classification", so silence passed it and it could not fail; it is kept as an observation and excluded from the assertion total.
 
 **Expected baseline failures:** a skill-less run tends to sort by surface grammar — pulling "Remember", "Note", "Read", and "Feel free" into the Rules section as imperatives, and leaving the declaratively phrased production-cluster rule in Background as narration.
 

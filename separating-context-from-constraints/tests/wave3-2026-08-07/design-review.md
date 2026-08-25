@@ -7,6 +7,11 @@ Every Codex claim below was re-checked against the files before being carried; t
 **Verdict: do not dispatch wave-3 arms yet.**
 Eight defects would invalidate or mis-attribute a cell's result, and all eight are cheaper to fix now than to adjudicate afterward.
 
+> **Resolution status, 2026-08-24.** All eight blockers and all twelve non-blocking items are resolved in [`preregistration.md`](preregistration.md), which carries the amendment for each under its blocker id.
+> This file is left as written, as the historical record of what the review found; it is not back-edited to reflect the fixes.
+> Two of its arguments were affected by PR #163 renumbering `SKILL.md` after this review was written — B5's appeal to `SKILL.md:50` and N6's citation of `:58` — and the preregistration's "Citation repin" section records what changed and which arguments survive.
+> The gate this file set is now open: wave-3 arms may be dispatched.
+
 ## Blocking — resolve before any arm
 
 ### B1. Scenario 10's correctly-placed list protects buried mandatory rules that are structurally identical to its planted defects
