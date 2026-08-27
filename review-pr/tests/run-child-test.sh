@@ -41,6 +41,11 @@ for f in --output-format json --no-session-persistence --permission-mode dontAsk
 done
 grep -qxF -- 'Bash(git diff:*)' <<<"$argv" || { echo "FAIL: git diff allow missing"; FAIL=1; }
 grep -qw 'gh' <<<"$argv" && { echo "FAIL: gh appears in child argv"; FAIL=1; }
+# R4.3: pin every disallow and allow entry, not just a couple of representative ones.
+for f in Edit Write NotebookEdit WebFetch WebSearch \
+         'Bash(git log:*)' 'Bash(git show:*)' 'Bash(git merge-base:*)' Read Grep Glob Skill Agent; do
+  grep -qxF -- "$f" <<<"$argv" || { echo "FAIL: R4.3 argv missing '$f'"; FAIL=1; }
+done
 [ "$(cat "$FAKE_CWD")" = "$expected_cwd" ] || { echo "FAIL: child cwd not repo"; FAIL=1; }
 [ "$(jq -r .exit <<<"$out")" = 0 ] || { echo "FAIL: exit field"; FAIL=1; }
 [ "$(jq -r .kept <<<"$out")" = false ] || { echo "FAIL: kept should be false"; FAIL=1; }
@@ -75,15 +80,24 @@ start=$(date +%s)
 out="$(printf '%s' "$J" | FAKE_SLEEP=20 REVIEW_PR_TIMEOUT=2 "$SRC/run-child.sh")"
 elapsed=$(( $(date +%s) - start ))
 [ "$elapsed" -lt 15 ] || { echo "FAIL: watchdog did not fire (took ${elapsed}s)"; FAIL=1; }
-[ "$(jq -r .exit <<<"$out")" != 0 ] || { echo "FAIL: timed-out child reported exit 0"; FAIL=1; }
+[ "$(jq -r .exit <<<"$out")" -gt 128 ] || { echo "FAIL: timed-out child exit not > 128: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: job dir not removed after timeout"; FAIL=1; }
 
-# 6. R6.3 guard: a dir without the marker is never deleted.
+# 6. R6.3 guard: a dir without the marker is never deleted, and the reason is reported.
 bad="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"; mkdir -p "$bad/repo"; git -C "$bad/repo" init -q
 J="$(jq -n --arg d "$bad" '{dir:$d, base_sha:"b", head_sha:"h", head_repo:"o/r", policy_changes:[], diff_path:"", meta_path:""}')"
-rc=0; printf '%s' "$J" | "$SRC/run-child.sh" >/dev/null 2>&1 || rc=$?
+rc=0; err="$(printf '%s' "$J" | "$SRC/run-child.sh" 2>&1 >/dev/null)" || rc=$?
 [ -d "$bad" ] || { echo "FAIL: unmarked dir was deleted"; FAIL=1; }
-[ "$rc" != 0 ] || { echo "FAIL: missing marker should fail"; FAIL=1; }
+[ "$rc" = 1 ] || { echo "FAIL: missing marker should exit 1, got $rc"; FAIL=1; }
+grep -qF 'no .review-pr marker' <<<"$err" || { echo "FAIL: stderr missing marker reason: $err"; FAIL=1; }
+
+# 7. REVIEW_PR_TIMEOUT=0: regression for the unguarded `kill "$WATCHDOG"` bug -- the watchdog
+#    can already have exited by the time the script tries to kill it, which must not abort the
+#    script before cleanup/output.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=0 "$SRC/run-child.sh")"
+jq -e . >/dev/null 2>&1 <<<"$out" || { echo "FAIL: TIMEOUT=0 produced no/invalid JSON: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed with TIMEOUT=0"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "run-child-test: OK"
 exit "$FAIL"
