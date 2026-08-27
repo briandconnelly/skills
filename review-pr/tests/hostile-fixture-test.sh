@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Hostile fixture: PR-head hooks/MCP must not run; base CLAUDE.md and skills must load (R3 end-to-end).
-# Uses the real `claude` for a one-turn probe. Skips when claude is not authenticated.
+# Uses the real `claude` for a one-turn probe. Skips when `claude --version` fails to run.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
+# shellcheck disable=SC1091
+. "$SRC/child-flags.sh"
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
 Q="Answer briefly with no tool calls: (1) quote any project sentinel code from CLAUDE.md; (2) list skill names containing 'zebra' available to you, or 'none'; (3) list skill names equal to 'code-review' that come from this project's .claude/skills, or 'none'."
 
@@ -32,8 +34,10 @@ EOF
 }
 
 probe() { # probe DIR [extra claude flags...] -> prints model answer
+  # --max-turns and --output-format are forced last so they win over any
+  # conflicting values in the caller's flags (e.g. CHILD_FLAGS' --output-format json).
   local d="$1"; shift
-  (cd "$d" && claude -p "$Q" --no-session-persistence --max-turns 1 --output-format text "$@" < /dev/null 2>/dev/null)
+  (cd "$d" && claude -p "$Q" --no-session-persistence "$@" --max-turns 1 --output-format text < /dev/null 2>/dev/null)
 }
 
 claude --version >/dev/null 2>&1 || { echo "hostile-fixture-test: SKIP (claude not runnable)"; exit 0; }
@@ -44,10 +48,17 @@ probe "$OPEN" >/dev/null || true
 [ -e "$OPEN/HOOK-FIRED" ] || { echo "FAIL: known positive — hook did not fire under plain -p; the instrument cannot detect the failure"; FAIL=1; }
 [ -e "$OPEN/MCP-STARTED" ] || echo "NOTE: known positive — MCP server did not start under plain -p (CLI behavior changed?)"
 
-# Under test: isolate-policy.sh + run-child flags (R3.1, R3.2, R4.2, R4.3).
+# Under test: isolate-policy.sh + run-child's actual flag set (R3.1, R3.2, R4.2, R4.3).
+# CHILD_FLAGS (sourced from scripts/child-flags.sh) is the same array run-child.sh passes to
+# claude, so this test exercises the real allow/disallow list rather than a hand-rolled one.
+# The probe question asks for no tool calls, so it needs no additional Bash restriction.
 LOCK="$S/lock"; mkdir -p "$LOCK"; read -r BASE HEAD < <(build "$LOCK")
-changes="$("$SRC/isolate-policy.sh" "$LOCK" "$BASE" "$HEAD")"
-ans="$(probe "$LOCK" --strict-mcp-config --permission-mode dontAsk --disallowedTools Edit Write NotebookEdit WebFetch WebSearch Bash)"
+if ! changes="$("$SRC/isolate-policy.sh" "$LOCK" "$BASE" "$HEAD")"; then
+  echo "FAIL: isolate-policy.sh failed for LOCK"; FAIL=1; changes='[]'
+fi
+if ! ans="$(probe "$LOCK" "${CHILD_FLAGS[@]}")"; then
+  echo "FAIL: probe failed for LOCK"; FAIL=1; ans=''
+fi
 [ ! -e "$LOCK/HOOK-FIRED" ] || { echo "FAIL: hook fired despite isolation"; FAIL=1; }
 [ ! -e "$LOCK/MCP-STARTED" ] || { echo "FAIL: MCP server started despite isolation"; FAIL=1; }
 grep -q 'PLATYPUS-7741' <<<"$ans" || { echo "FAIL: base CLAUDE.md sentinel not loaded: $ans"; FAIL=1; }

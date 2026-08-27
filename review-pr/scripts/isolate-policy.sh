@@ -6,6 +6,7 @@ set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
 . "$HERE/lib.sh"
+need_cmd jq
 
 [ "$#" -eq 3 ] || die 2 "usage: isolate-policy.sh DIR BASE_SHA HEAD_SHA"
 DIR="$1"; BASE="$2"; HEAD="$3"

@@ -6,11 +6,9 @@ set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
 . "$HERE/lib.sh"
+# shellcheck disable=SC1091
+. "$HERE/child-flags.sh"
 
-LEVEL="${1:-}"
-if [ -n "$LEVEL" ]; then
-  case "$LEVEL" in low|medium|high|xhigh|max) ;; *) die 2 "LEVEL must be one of low|medium|high|xhigh|max, got '$LEVEL'";; esac
-fi
 for c in jq claude; do need_cmd "$c"; done
 [ -n "${REVIEW_PR_SCRATCH:-}" ] || die 2 "REVIEW_PR_SCRATCH must be set"
 
@@ -20,23 +18,9 @@ CLONE="$DIR/repo"
 [ -d "$CLONE" ] || die 2 "clone not found at $CLONE"
 scratch_guard "$DIR"                                   # R6.3, before anything that might delete
 
-# R6.1/R5: purge any previous run's leftovers now, before this run can fail or
-# be interrupted. Once claude has been launched below, finish() copies
-# child.json/child.stderr here; if that copy never happens or fails, the
-# paths must point at nothing rather than a stale prior review.
-rm -f "$REVIEW_PR_SCRATCH/review-pr-last.json" "$REVIEW_PR_SCRATCH/review-pr-last.stderr"
-
-BUDGET="${REVIEW_PR_BUDGET:-5}"
-TURNS="${REVIEW_PR_MAX_TURNS:-60}"
-TIMEOUT="${REVIEW_PR_TIMEOUT:-900}"
-KEEP="${REVIEW_PR_KEEP:-}"
-[[ "$BUDGET" =~ ^[0-9]+([.][0-9]+)?$ ]] || die 2 "REVIEW_PR_BUDGET must be a non-negative number, got '$BUDGET'"
-[[ "$TURNS" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_TURNS must be a non-negative integer, got '$TURNS'"
-[[ "$TIMEOUT" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_TIMEOUT must be a non-negative integer, got '$TIMEOUT'"
-
 CHILD_PID=""
 WATCHDOG=""
-CHILD_EXIT=1
+CHILD_EXIT=2                                            # honest default: die-before-launch means usage/prereq failure
 FINISHED=""
 TMP_JSON="$DIR/child.json.tmp"
 
@@ -82,21 +66,42 @@ on_signal() {
 }
 trap on_signal INT TERM
 
+# LEVEL and the numeric env vars are validated only now, with the EXIT trap
+# already installed: a `die 2` here still removes the job dir (or emits the
+# kept-JSON) via finish(), instead of leaking it as it did when this
+# validation ran before the trap was in place.
+LEVEL="${1:-}"
+if [ -n "$LEVEL" ]; then
+  case "$LEVEL" in low|medium|high|xhigh|max) ;; *) die 2 "LEVEL must be one of low|medium|high|xhigh|max, got '$LEVEL'";; esac
+fi
+
+# R6.1/R5: purge any previous run's leftovers now, before this run can fail or
+# be interrupted. Once claude has been launched below, finish() copies
+# child.json/child.stderr here; if that copy never happens or fails, the
+# paths must point at nothing rather than a stale prior review.
+rm -f "$REVIEW_PR_SCRATCH/review-pr-last.json" "$REVIEW_PR_SCRATCH/review-pr-last.stderr"
+
+BUDGET="${REVIEW_PR_BUDGET:-5}"
+TURNS="${REVIEW_PR_MAX_TURNS:-60}"
+TIMEOUT="${REVIEW_PR_TIMEOUT:-900}"
+KEEP="${REVIEW_PR_KEEP:-}"
+[[ "$BUDGET" =~ ^[0-9]+([.][0-9]+)?$ ]] || die 2 "REVIEW_PR_BUDGET must be a non-negative number, got '$BUDGET'"
+[[ "$TURNS" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_TURNS must be a non-negative integer, got '$TURNS'"
+[[ "$TIMEOUT" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_TIMEOUT must be a non-negative integer, got '$TIMEOUT'"
+
 N="$(jq -r '.number // empty' "$DIR/pr.json" 2>/dev/null || true)"
 if [ -z "$N" ]; then
-  N="$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/pr-*' | grep -E '^pr-[0-9]+$' | head -1 | sed 's/^pr-//')"
+  # grep exits 1 with no match; under `set -e` that would abort the script
+  # before the `die 1` below ever runs, so the failure must be tolerated here.
+  N="$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/pr-*' | grep -E '^pr-[0-9]+$' | head -1 | sed 's/^pr-//')" || true
 fi
 [ -n "$N" ] || die 1 "cannot determine PR number from $DIR/pr.json or pr-N branch"
 
 PROMPT="/code-review pr-$N"
 [ -n "$LEVEL" ] && PROMPT="$PROMPT $LEVEL"
-PROMPT="$PROMPT — the PR head is local branch pr-$N and its base is pr-$N-base; use git diff pr-$N-base...pr-$N; the pre-fetched diff is also at ../pr.diff"
-ARGS=(-p "$PROMPT" --output-format json --no-session-persistence
-      --permission-mode dontAsk --strict-mcp-config
-      --max-budget-usd "$BUDGET" --max-turns "$TURNS")
+PROMPT="$PROMPT — the PR head is local branch pr-$N and its base is pr-$N-base; use git diff pr-$N-base...pr-$N"
+ARGS=(-p "$PROMPT" "${CHILD_FLAGS[@]}" --max-budget-usd "$BUDGET" --max-turns "$TURNS")
 [ -n "$LEVEL" ] && ARGS+=(--effort "$LEVEL")
-ARGS+=(--disallowedTools Edit Write NotebookEdit WebFetch WebSearch
-       --allowedTools 'Bash(git diff:*)' 'Bash(git log:*)' 'Bash(git show:*)' 'Bash(git merge-base:*)' Read Grep Glob Skill Agent)
 
 # R4.5 atomic write of child.json; R4.6 stdin from /dev/null.
 ( cd "$CLONE" && exec claude "${ARGS[@]}" < /dev/null > "$TMP_JSON" 2> "$DIR/child.stderr" ) &

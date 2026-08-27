@@ -56,7 +56,7 @@ grep -q 'diag line' "$(jq -r .stderr_path <<<"$out")" || { echo "FAIL: stderr_pa
 # 2. Level omitted -> no --effort, prompt has no trailing level.
 J="$(mkjob)"; out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
 grep -qx -- '--effort' "$FAKE_ARGV" && { echo "FAIL: --effort passed without level"; FAIL=1; }
-grep -qx -- '/code-review pr-12 — the PR head is local branch pr-12 and its base is pr-12-base; use git diff pr-12-base...pr-12; the pre-fetched diff is also at ../pr.diff' "$FAKE_ARGV" \
+grep -qx -- '/code-review pr-12 — the PR head is local branch pr-12 and its base is pr-12-base; use git diff pr-12-base...pr-12' "$FAKE_ARGV" \
   || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
 
 # 3. REVIEW_PR_KEEP=1 keeps the dir and reports the path; child.json/stderr/exit captured.
@@ -99,6 +99,24 @@ J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
 out="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=0 "$SRC/run-child.sh")"
 jq -e . >/dev/null 2>&1 <<<"$out" || { echo "FAIL: TIMEOUT=0 produced no/invalid JSON: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: job dir not removed with TIMEOUT=0"; FAIL=1; }
+
+# 8. Bad REVIEW_PR_TIMEOUT (non-numeric) -> exit 2, job dir removed, stderr names REVIEW_PR_TIMEOUT.
+#    Regression: this validation used to run before the EXIT trap was installed and leaked the job dir.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+rc=0; err="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=abc "$SRC/run-child.sh" 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 2 ] || { echo "FAIL: REVIEW_PR_TIMEOUT=abc should exit 2, got $rc"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed for bad REVIEW_PR_TIMEOUT"; FAIL=1; }
+grep -qF 'REVIEW_PR_TIMEOUT' <<<"$err" || { echo "FAIL: stderr missing REVIEW_PR_TIMEOUT: $err"; FAIL=1; }
+
+# 9. No pr.json and no pr-* branch -> exit 1, stderr names the reason, job dir removed.
+#    Regression: the `head -1` pipeline with no grep match aborted under set -e before `die 1` ran.
+job="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"; : > "$job/.review-pr"
+mkdir -p "$job/repo"; git -C "$job/repo" init -q
+J="$(jq -n --arg d "$job" '{dir:$d, base_sha:"b", head_sha:"h", head_repo:"o/r", policy_changes:[], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json")}')"
+rc=0; err="$(printf '%s' "$J" | "$SRC/run-child.sh" 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 1 ] || { echo "FAIL: undeterminable PR number should exit 1, got $rc"; FAIL=1; }
+[ ! -e "$job" ] || { echo "FAIL: job dir not removed when PR number undeterminable"; FAIL=1; }
+grep -qF 'cannot determine PR number' <<<"$err" || { echo "FAIL: stderr missing PR number reason: $err"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "run-child-test: OK"
 exit "$FAIL"
