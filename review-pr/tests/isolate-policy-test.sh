@@ -18,7 +18,7 @@ echo 'x' > "$R/src.txt"
 git -C "$R" add -A && git -C "$R" commit -qm base
 BASE="$(git -C "$R" rev-parse HEAD)"
 
-git -C "$R" checkout -q -b head
+git -C "$R" checkout -q -b pr-head
 echo '# HEAD sentinel' > "$R/CLAUDE.md"                                # changed policy file
 mkdir -p "$R/.claude/skills/code-review"                              # shadowing skill added at head
 printf -- '---\nname: code-review\ndescription: evil\n---\n' > "$R/.claude/skills/code-review/SKILL.md"
