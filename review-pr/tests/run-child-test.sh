@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Offline: run-child.sh flags, capture, watchdog, cleanup, using a fake `claude` (R4, R6).
+set -euo pipefail
+FAIL=0
+SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
+export REVIEW_PR_SCRATCH; REVIEW_PR_SCRATCH="$(mktemp -d)"; trap 'rm -rf "$REVIEW_PR_SCRATCH"' EXIT
+FAKEBIN="$REVIEW_PR_SCRATCH/bin"; mkdir -p "$FAKEBIN"
+for c in jq git bash; do ln -sf "$(command -v $c)" "$FAKEBIN/$c"; done
+export PATH="$FAKEBIN:/usr/bin:/bin"
+
+mkjob() { # mkjob -> prints checkout JSON for a fresh job dir
+  local job; job="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"
+  : > "$job/.review-pr"; mkdir -p "$job/repo"; git -C "$job/repo" init -q
+  echo '{"number":12}' > "$job/pr.json"
+  jq -n --arg d "$job" '{dir:$d, base_sha:"b", head_sha:"h", head_repo:"o/r", policy_changes:[".claude/x"], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json")}'
+}
+
+# Fake claude: record argv and cwd, emit a result envelope.
+cat > "$FAKEBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_ARGV"; pwd -P > "$FAKE_CWD"
+[ -t 0 ] && echo "stdin is a tty" >&2
+if [ -n "${FAKE_SLEEP:-}" ]; then exec sleep "$FAKE_SLEEP"; fi
+echo "diag line" >&2
+printf '{"type":"result","is_error":false,"result":"REVIEW TEXT","total_cost_usd":1.5,"duration_ms":60000}\n'
+exit "${FAKE_EXIT:-0}"
+EOF
+chmod +x "$FAKEBIN/claude"
+
+# 1. Happy path: flags, cwd, capture, cleanup.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+expected_cwd="$(cd "$dir/repo" && pwd -P)"  # captured before run-child.sh removes $dir (R6.1)
+export FAKE_ARGV="$REVIEW_PR_SCRATCH/argv" FAKE_CWD="$REVIEW_PR_SCRATCH/cwd"
+out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
+argv="$(cat "$FAKE_ARGV")"
+grep -qx -- '-p' <<<"$argv" || { echo "FAIL: -p missing"; FAIL=1; }
+grep -qx -- '/code-review pr-12 high' <<<"$argv" || { echo "FAIL: prompt line: $(grep code-review <<<"$argv")"; FAIL=1; }
+for f in --output-format json --no-session-persistence --permission-mode dontAsk --strict-mcp-config \
+         --max-budget-usd 5 --max-turns 60 --effort high --disallowedTools --allowedTools; do
+  grep -qx -- "$f" <<<"$argv" || { echo "FAIL: flag/value $f missing"; FAIL=1; }
+done
+grep -qxF -- 'Bash(git diff:*)' <<<"$argv" || { echo "FAIL: git diff allow missing"; FAIL=1; }
+grep -qw 'gh' <<<"$argv" && { echo "FAIL: gh appears in child argv"; FAIL=1; }
+[ "$(cat "$FAKE_CWD")" = "$expected_cwd" ] || { echo "FAIL: child cwd not repo"; FAIL=1; }
+[ "$(jq -r .exit <<<"$out")" = 0 ] || { echo "FAIL: exit field"; FAIL=1; }
+[ "$(jq -r .kept <<<"$out")" = false ] || { echo "FAIL: kept should be false"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed on success"; FAIL=1; }
+[ "$(jq -r .result "$(jq -r .child_json_path <<<"$out")")" = "REVIEW TEXT" ] || { echo "FAIL: child_json_path unreadable after cleanup"; FAIL=1; }
+grep -q 'diag line' "$(jq -r .stderr_path <<<"$out")" || { echo "FAIL: stderr_path unreadable after cleanup"; FAIL=1; }
+
+# 2. Level omitted -> no --effort, prompt has no trailing level.
+J="$(mkjob)"; out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
+grep -qx -- '--effort' "$FAKE_ARGV" && { echo "FAIL: --effort passed without level"; FAIL=1; }
+grep -qx -- '/code-review pr-12' "$FAKE_ARGV" || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
+
+# 3. REVIEW_PR_KEEP=1 keeps the dir and reports the path; child.json/stderr/exit captured.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | REVIEW_PR_KEEP=1 "$SRC/run-child.sh")"
+[ "$(jq -r .kept <<<"$out")" = true ] || { echo "FAIL: kept should be true"; FAIL=1; }
+[ -d "$dir" ] || { echo "FAIL: job dir removed despite KEEP"; FAIL=1; }
+[ "$(jq -r .result "$dir/child.json")" = "REVIEW TEXT" ] || { echo "FAIL: child.json"; FAIL=1; }
+grep -q 'diag line' "$dir/child.stderr" || { echo "FAIL: child.stderr"; FAIL=1; }
+grep -q 'stdin is a tty' "$dir/child.stderr" && { echo "FAIL: stdin was a tty (R4.6)"; FAIL=1; }
+[ "$(cat "$dir/child.exit")" = 0 ] || { echo "FAIL: child.exit"; FAIL=1; }
+
+# 4. Non-zero child exit is reported, not masked; dir kept for inspection only with KEEP (R6.1 says removed).
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | FAKE_EXIT=7 "$SRC/run-child.sh")"
+[ "$(jq -r .exit <<<"$out")" = 7 ] || { echo "FAIL: exit 7 not reported: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed after child failure"; FAIL=1; }
+
+# 5. Watchdog: child sleeps longer than REVIEW_PR_TIMEOUT -> killed, exit reported non-zero, dir removed.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+start=$(date +%s)
+out="$(printf '%s' "$J" | FAKE_SLEEP=20 REVIEW_PR_TIMEOUT=2 "$SRC/run-child.sh")"
+elapsed=$(( $(date +%s) - start ))
+[ "$elapsed" -lt 15 ] || { echo "FAIL: watchdog did not fire (took ${elapsed}s)"; FAIL=1; }
+[ "$(jq -r .exit <<<"$out")" != 0 ] || { echo "FAIL: timed-out child reported exit 0"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed after timeout"; FAIL=1; }
+
+# 6. R6.3 guard: a dir without the marker is never deleted.
+bad="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"; mkdir -p "$bad/repo"; git -C "$bad/repo" init -q
+J="$(jq -n --arg d "$bad" '{dir:$d, base_sha:"b", head_sha:"h", head_repo:"o/r", policy_changes:[], diff_path:"", meta_path:""}')"
+rc=0; printf '%s' "$J" | "$SRC/run-child.sh" >/dev/null 2>&1 || rc=$?
+[ -d "$bad" ] || { echo "FAIL: unmarked dir was deleted"; FAIL=1; }
+[ "$rc" != 0 ] || { echo "FAIL: missing marker should fail"; FAIL=1; }
+
+[ "$FAIL" = 0 ] && echo "run-child-test: OK"
+exit "$FAIL"
