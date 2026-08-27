@@ -23,6 +23,7 @@ WATCHDOG=""
 CHILD_EXIT=2                                            # honest default: die-before-launch means usage/prereq failure
 FINISHED=""
 TMP_JSON="$DIR/child.json.tmp"
+KEEP="${REVIEW_PR_KEEP:-}"                              # finish() reads this; must be set before the EXIT trap below
 
 finish() {
   # R6.1 removes the job dir on every outcome, so the results are copied out first (R5 needs them).
@@ -84,7 +85,6 @@ rm -f "$REVIEW_PR_SCRATCH/review-pr-last.json" "$REVIEW_PR_SCRATCH/review-pr-las
 BUDGET="${REVIEW_PR_BUDGET:-5}"
 TURNS="${REVIEW_PR_MAX_TURNS:-60}"
 TIMEOUT="${REVIEW_PR_TIMEOUT:-900}"
-KEEP="${REVIEW_PR_KEEP:-}"
 [[ "$BUDGET" =~ ^[0-9]+([.][0-9]+)?$ ]] || die 2 "REVIEW_PR_BUDGET must be a non-negative number, got '$BUDGET'"
 [[ "$TURNS" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_TURNS must be a non-negative integer, got '$TURNS'"
 [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_TIMEOUT must be a non-negative integer, got '$TIMEOUT'"

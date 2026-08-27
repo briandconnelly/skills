@@ -108,6 +108,17 @@ rc=0; err="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=abc "$SRC/run-child.sh" 2>&1 >
 [ ! -e "$dir" ] || { echo "FAIL: job dir not removed for bad REVIEW_PR_TIMEOUT"; FAIL=1; }
 grep -qF 'REVIEW_PR_TIMEOUT' <<<"$err" || { echo "FAIL: stderr missing REVIEW_PR_TIMEOUT: $err"; FAIL=1; }
 
+# 8b. Bad LEVEL -> exit 2, stderr names the allowed values, stdout is valid JSON with .exit == 2, job
+#     dir removed. Regression: LEVEL validation runs after KEEP is read by finish(); if KEEP is assigned
+#     after the EXIT trap is installed, a bad LEVEL trips `KEEP: unbound variable` inside the trap instead.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | "$SRC/run-child.sh" bogus 2>"$REVIEW_PR_SCRATCH/badlevel.stderr")" || true
+err="$(cat "$REVIEW_PR_SCRATCH/badlevel.stderr")"
+grep -qF 'LEVEL must be one of' <<<"$err" || { echo "FAIL: stderr missing LEVEL message: $err"; FAIL=1; }
+jq -e . >/dev/null 2>&1 <<<"$out" || { echo "FAIL: bad LEVEL produced no/invalid JSON: $out"; FAIL=1; }
+[ "$(jq -r .exit <<<"$out")" = 2 ] || { echo "FAIL: bad LEVEL exit field not 2: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir not removed for bad LEVEL"; FAIL=1; }
+
 # 9. No pr.json and no pr-* branch -> exit 1, stderr names the reason, job dir removed.
 #    Regression: the `head -1` pipeline with no grep match aborted under set -e before `die 1` ran.
 job="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"; : > "$job/.review-pr"
