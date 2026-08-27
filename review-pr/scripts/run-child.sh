@@ -90,6 +90,7 @@ fi
 
 PROMPT="/code-review pr-$N"
 [ -n "$LEVEL" ] && PROMPT="$PROMPT $LEVEL"
+PROMPT="$PROMPT — the PR head is local branch pr-$N and its base is pr-$N-base; use git diff pr-$N-base...pr-$N; the pre-fetched diff is also at ../pr.diff"
 ARGS=(-p "$PROMPT" --output-format json --no-session-persistence
       --permission-mode dontAsk --strict-mcp-config
       --max-budget-usd "$BUDGET" --max-turns "$TURNS")

@@ -35,6 +35,8 @@ git -C "$clone" merge-base "$base" "$head" >/dev/null || { echo "FAIL: merge-bas
 # R6.3 marker
 [ -f "$dir/.review-pr" ] || { echo "FAIL: .review-pr marker missing"; FAIL=1; }
 jq -e '.policy_changes | type == "array"' <<<"$out" >/dev/null || { echo "FAIL: policy_changes not array"; FAIL=1; }
+# R2.1 head_repo names OWNER/REPO, not a malformed "/REPO"
+[ "$(jq -r .head_repo <<<"$out")" = "$SLUG" ] || { echo "FAIL: head_repo != $SLUG: $(jq -r .head_repo <<<"$out")"; FAIL=1; }
 
 # Non-existent PR -> exit 1 with gh stderr
 rc=0; err="$("$SRC/checkout-pr.sh" "$SLUG" 999999 2>&1 >/dev/null)" || rc=$?

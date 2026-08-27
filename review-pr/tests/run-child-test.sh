@@ -34,7 +34,7 @@ export FAKE_ARGV="$REVIEW_PR_SCRATCH/argv" FAKE_CWD="$REVIEW_PR_SCRATCH/cwd"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
 argv="$(cat "$FAKE_ARGV")"
 grep -qx -- '-p' <<<"$argv" || { echo "FAIL: -p missing"; FAIL=1; }
-grep -qx -- '/code-review pr-12 high' <<<"$argv" || { echo "FAIL: prompt line: $(grep code-review <<<"$argv")"; FAIL=1; }
+grep -q '^/code-review pr-12 high' <<<"$argv" || { echo "FAIL: prompt line: $(grep code-review <<<"$argv")"; FAIL=1; }
 for f in --output-format json --no-session-persistence --permission-mode dontAsk --strict-mcp-config \
          --max-budget-usd 5 --max-turns 60 --effort high --disallowedTools --allowedTools; do
   grep -qx -- "$f" <<<"$argv" || { echo "FAIL: flag/value $f missing"; FAIL=1; }
@@ -56,7 +56,8 @@ grep -q 'diag line' "$(jq -r .stderr_path <<<"$out")" || { echo "FAIL: stderr_pa
 # 2. Level omitted -> no --effort, prompt has no trailing level.
 J="$(mkjob)"; out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
 grep -qx -- '--effort' "$FAKE_ARGV" && { echo "FAIL: --effort passed without level"; FAIL=1; }
-grep -qx -- '/code-review pr-12' "$FAKE_ARGV" || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
+grep -qx -- '/code-review pr-12 — the PR head is local branch pr-12 and its base is pr-12-base; use git diff pr-12-base...pr-12; the pre-fetched diff is also at ../pr.diff' "$FAKE_ARGV" \
+  || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
 
 # 3. REVIEW_PR_KEEP=1 keeps the dir and reports the path; child.json/stderr/exit captured.
 J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"

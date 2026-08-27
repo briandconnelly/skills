@@ -27,7 +27,8 @@ This file tells the calling session how to run it and does not restate those rul
 
    On non-zero exit, show the script's stderr to the user and stop.
    The JSON's `policy_changes` array lists reviewer-policy paths this PR modifies.
-   Keep `<scratchpad>/review-pr-checkout.json`; Step 4 reads `head_sha`, `base_sha`, and `policy_changes` from it.
+   Keep `<scratchpad>/review-pr-checkout.json`.
+   Step 4 reads `head_sha`, `base_sha`, and `policy_changes` from it.
 3. Run the child:
 
    ```bash

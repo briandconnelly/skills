@@ -22,7 +22,7 @@ META="$(gh pr view "$N" -R "$SLUG" --json number,baseRefOid,headRefOid,headRepos
   || die 1 "gh pr view failed: $META"
 BASE_SHA="$(jq -r .baseRefOid <<<"$META")"
 HEAD_SHA="$(jq -r .headRefOid <<<"$META")"
-HEAD_REPO="$(jq -r '.headRepository.owner.login + "/" + .headRepository.name' <<<"$META")"
+HEAD_REPO="$(jq -r '.headRepository.nameWithOwner' <<<"$META")"
 [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || die 1 "could not resolve base/head SHAs from gh: $META"
 
 # Job directory (R2.2, R6.3).
