@@ -22,7 +22,12 @@ printf '%s\n' "$@" > "$FAKE_ARGV"; pwd -P > "$FAKE_CWD"
 [ -t 0 ] && echo "stdin is a tty" >&2
 if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCHILD"; wait; exit 0; fi
 echo "diag line" >&2
-printf '{"type":"result","is_error":false,"result":"REVIEW TEXT","total_cost_usd":1.5,"duration_ms":60000}\n'
+[ -n "${FAKE_EMPTY:-}" ] && exit 0
+if [ -n "${FAKE_RESULT:-}" ]; then
+  jq -n --arg r "$(printf "$FAKE_RESULT")" '{type:"result",is_error:false,result:$r,total_cost_usd:1.5,duration_ms:60000}'
+else
+  printf '{"type":"result","is_error":false,"result":"REVIEW TEXT","total_cost_usd":1.5,"duration_ms":60000}\n'
+fi
 exit "${FAKE_EXIT:-0}"
 EOF
 chmod +x "$FAKEBIN/claude"
@@ -34,7 +39,18 @@ export FAKE_ARGV="$REVIEW_PR_SCRATCH/argv" FAKE_CWD="$REVIEW_PR_SCRATCH/cwd" FAK
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
 argv="$(cat "$FAKE_ARGV")"
 grep -qx -- '-p' <<<"$argv" || { echo "FAIL: -p missing"; FAIL=1; }
-grep -q '^/code-review pr-12 high' <<<"$argv" || { echo "FAIL: prompt line: $(grep code-review <<<"$argv")"; FAIL=1; }
+# R4.1: the prompt is the lens with branches substituted; it carries the R5.6 headings and no placeholder.
+prompt="$(awk '/^-p$/{p=1;next} /^--output-format$/{exit} p' "$FAKE_ARGV")"
+for h in '## Summary' '## Critical' '## Important' '## Suggestions' '## Strengths' '## Not reviewed'; do
+  grep -qF -- "$h" <<<"$prompt" || { echo "FAIL: prompt lacks heading $h"; FAIL=1; }
+done
+grep -qF -- 'git diff pr-12-base...pr-12' <<<"$prompt" || { echo "FAIL: prompt lacks substituted diff command"; FAIL=1; }
+grep -q '{{' <<<"$prompt" && { echo "FAIL: unsubstituted placeholder in prompt"; FAIL=1; }
+grep -q '/code-review' <<<"$prompt" && { echo "FAIL: prompt still invokes /code-review"; FAIL=1; }
+# R5.7 fields on a malformed (fake) result
+[ "$(jq -r .schema_valid <<<"$out")" = false ] || { echo "FAIL: fake REVIEW TEXT should be schema_valid=false: $out"; FAIL=1; }
+[ "$(jq -r '.schema_errors | length' <<<"$out")" -gt 0 ] || { echo "FAIL: schema_errors empty for malformed result"; FAIL=1; }
+[ "$(jq -r .diff_unavailable <<<"$out")" = false ] || { echo "FAIL: diff_unavailable should be false"; FAIL=1; }
 for f in --output-format json --no-session-persistence --permission-mode dontAsk --strict-mcp-config \
          --max-budget-usd 5 --max-turns 60 --effort high --disallowedTools --allowedTools; do
   grep -qx -- "$f" <<<"$argv" || { echo "FAIL: flag/value $f missing"; FAIL=1; }
@@ -62,8 +78,7 @@ first_json="$(jq -r .child_json_path <<<"$out")"
 # 2. Level omitted -> no --effort, prompt has no trailing level.
 J="$(mkjob)"; out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
 grep -qx -- '--effort' "$FAKE_ARGV" && { echo "FAIL: --effort passed without level"; FAIL=1; }
-grep -qx -- '/code-review pr-12 — the PR head is local branch pr-12 and its base is pr-12-base; use git diff pr-12-base...pr-12' "$FAKE_ARGV" \
-  || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
+grep -qF -- 'git diff pr-12-base...pr-12' "$FAKE_ARGV" || { echo "FAIL: prompt without level lacks substituted diff command"; FAIL=1; }
 
 [ "$(jq -r .result "$first_json")" = "REVIEW TEXT" ] || { echo "FAIL: first run's result was clobbered by the second run"; FAIL=1; }
 
@@ -145,6 +160,25 @@ rc=0; err="$(printf '%s' "$J" | "$SRC/run-child.sh" 2>&1 >/dev/null)" || rc=$?
 [ "$rc" = 1 ] || { echo "FAIL: undeterminable PR number should exit 1, got $rc"; FAIL=1; }
 [ ! -e "$job" ] || { echo "FAIL: job dir not removed when PR number undeterminable"; FAIL=1; }
 grep -qF 'cannot determine PR number' <<<"$err" || { echo "FAIL: stderr missing PR number reason: $err"; FAIL=1; }
+
+# 10. R5.7: a contract-valid result reports schema_valid=true; a sentinel reports diff_unavailable=true.
+VALID_RESULT='## Summary\nx\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n(none)\n'
+J="$(mkjob)"; out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" "$SRC/run-child.sh")"
+[ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: valid result not schema_valid: $out"; FAIL=1; }
+SENT_RESULT='## Summary\nx\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n- DIFF-UNAVAILABLE: denied\n'
+J="$(mkjob)"; out="$(printf '%s' "$J" | FAKE_RESULT="$SENT_RESULT" "$SRC/run-child.sh")"
+[ "$(jq -r .diff_unavailable <<<"$out")" = true ] || { echo "FAIL: sentinel not detected: $out"; FAIL=1; }
+[ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: sentinel result should still be schema_valid: $out"; FAIL=1; }
+
+# 11. R5.7: when the child produces no JSON at all, the fields are false/["no result"]/false and the JSON is still emitted.
+J="$(mkjob)"; out="$(printf '%s' "$J" | FAKE_EMPTY=1 "$SRC/run-child.sh")"
+jq -e . >/dev/null 2>&1 <<<"$out" || { echo "FAIL: empty child output produced no/invalid JSON: $out"; FAIL=1; }
+[ "$(jq -c '[.schema_valid, .schema_errors, .diff_unavailable]' <<<"$out")" = '[false,["no result"],false]' ] || { echo "FAIL: R5.7 fields for missing result: $out"; FAIL=1; }
+
+# 12. The lens file is the single home: run-child.sh must fail loudly if it is missing, not send an empty prompt.
+J="$(mkjob)"; rc=0; err="$(printf '%s' "$J" | REVIEW_PR_LENS=/nonexistent "$SRC/run-child.sh" 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 3 ] || { echo "FAIL: missing lens should exit 3, got $rc"; FAIL=1; }
+grep -qF 'review-lens.md' <<<"$err" || { echo "FAIL: missing lens stderr: $err"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "run-child-test: OK"
 exit "$FAIL"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-child.sh [LEVEL]  < checkout JSON
 # Launches the locked-down `claude -p` child in the clone, captures its output, cleans up.
-# Spec R4, R6.1, R6.3.
+# Spec R4, R5.7, R6.1, R6.3.
 set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
@@ -29,6 +29,12 @@ JOBNAME="$(basename "$DIR")"                            # per-job result names: 
 finish() {
   # R6.1 removes the job dir on every outcome, so the results are copied out first (R5 needs them).
   local kept=false cj="$DIR/child.json" se="$DIR/child.stderr"
+  # R5.7: validate the contract before the job dir can be removed; a missing or invalid
+  # child.json yields false/["no result"]/false.
+  local v='{"schema_valid":false,"schema_errors":["no result"],"diff_unavailable":false}'
+  if [ -s "$DIR/child.json" ] && jq -e . "$DIR/child.json" >/dev/null 2>&1; then
+    v="$(jq -r '.result // ""' "$DIR/child.json" | "$HERE/validate-result.sh")"
+  fi
   if [ -n "$KEEP" ]; then
     kept=true
   else
@@ -39,9 +45,10 @@ finish() {
   fi
   # head_sha, base_sha, and policy_changes are passed through from the checkout JSON so the relay
   # step reads one file.
-  jq -n --arg cj "$cj" --arg se "$se" --argjson ex "${CHILD_EXIT:-1}" --argjson k "$kept" --arg d "$DIR" --argjson in "$IN" \
+  jq -n --arg cj "$cj" --arg se "$se" --argjson ex "${CHILD_EXIT:-1}" --argjson k "$kept" --arg d "$DIR" --argjson in "$IN" --argjson v "$v" \
     '{child_json_path:$cj, stderr_path:$se, exit:$ex, kept:$k, dir:$d,
-      head_sha:$in.head_sha, base_sha:$in.base_sha, policy_changes:($in.policy_changes // [])}'
+      head_sha:$in.head_sha, base_sha:$in.base_sha, policy_changes:($in.policy_changes // []),
+      schema_valid:$v.schema_valid, schema_errors:$v.schema_errors, diff_unavailable:$v.diff_unavailable}'
 }
 
 # R6.1 binding: the job dir must be removed (or the JSON emitted, if kept) on
@@ -100,9 +107,10 @@ if [ -z "$N" ]; then
 fi
 [ -n "$N" ] || die 1 "cannot determine PR number from $DIR/pr.json or pr-N branch"
 
-PROMPT="/code-review pr-$N"
-[ -n "$LEVEL" ] && PROMPT="$PROMPT $LEVEL"
-PROMPT="$PROMPT — the PR head is local branch pr-$N and its base is pr-$N-base; use git diff pr-$N-base...pr-$N"
+# R4.1/R4.7: the prompt is the skill-owned lens with the local branch names substituted.
+LENS="${REVIEW_PR_LENS:-$HERE/../references/review-lens.md}"
+[ -r "$LENS" ] || die 3 "review lens not found: $LENS (expected review-pr/references/review-lens.md)"
+PROMPT="$(sed -e "s/{{PR_BRANCH}}/pr-$N/g" -e "s/{{BASE_BRANCH}}/pr-$N-base/g" "$LENS")"
 ARGS=(-p "$PROMPT" "${CHILD_FLAGS[@]}" --max-budget-usd "$BUDGET" --max-turns "$TURNS")
 [ -n "$LEVEL" ] && ARGS+=(--effort "$LEVEL")
 
