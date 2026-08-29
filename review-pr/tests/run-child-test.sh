@@ -20,7 +20,7 @@ cat > "$FAKEBIN/claude" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_ARGV"; pwd -P > "$FAKE_CWD"
 [ -t 0 ] && echo "stdin is a tty" >&2
-if [ -n "${FAKE_SLEEP:-}" ]; then exec sleep "$FAKE_SLEEP"; fi
+if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCHILD"; wait; exit 0; fi
 echo "diag line" >&2
 printf '{"type":"result","is_error":false,"result":"REVIEW TEXT","total_cost_usd":1.5,"duration_ms":60000}\n'
 exit "${FAKE_EXIT:-0}"
@@ -30,7 +30,7 @@ chmod +x "$FAKEBIN/claude"
 # 1. Happy path: flags, cwd, capture, cleanup.
 J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
 expected_cwd="$(cd "$dir/repo" && pwd -P)"  # captured before run-child.sh removes $dir (R6.1)
-export FAKE_ARGV="$REVIEW_PR_SCRATCH/argv" FAKE_CWD="$REVIEW_PR_SCRATCH/cwd"
+export FAKE_ARGV="$REVIEW_PR_SCRATCH/argv" FAKE_CWD="$REVIEW_PR_SCRATCH/cwd" FAKE_GRANDCHILD="$REVIEW_PR_SCRATCH/grandchild"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
 argv="$(cat "$FAKE_ARGV")"
 grep -qx -- '-p' <<<"$argv" || { echo "FAIL: -p missing"; FAIL=1; }
@@ -40,24 +40,38 @@ for f in --output-format json --no-session-persistence --permission-mode dontAsk
   grep -qx -- "$f" <<<"$argv" || { echo "FAIL: flag/value $f missing"; FAIL=1; }
 done
 grep -qxF -- 'Bash(git diff:*)' <<<"$argv" || { echo "FAIL: git diff allow missing"; FAIL=1; }
-grep -qw 'gh' <<<"$argv" && { echo "FAIL: gh appears in child argv"; FAIL=1; }
+# gh may appear only as a deny entry, never after --allowedTools.
+sed -n '/^--allowedTools$/,$p' <<<"$argv" | grep -qw 'gh' && { echo "FAIL: gh appears in the allow list"; FAIL=1; }
 # R4.3: pin every disallow and allow entry, not just a couple of representative ones.
 for f in Edit Write NotebookEdit WebFetch WebSearch \
+         'Bash(gh:*)' 'Bash(curl:*)' 'Bash(wget:*)' 'Bash(ssh:*)' 'Bash(git push:*)' 'Bash(git fetch:*)' 'Bash(git pull:*)' 'Bash(git remote:*)' \
          'Bash(git log:*)' 'Bash(git show:*)' 'Bash(git merge-base:*)' Read Grep Glob Skill Agent; do
   grep -qxF -- "$f" <<<"$argv" || { echo "FAIL: R4.3 argv missing '$f'"; FAIL=1; }
 done
 [ "$(cat "$FAKE_CWD")" = "$expected_cwd" ] || { echo "FAIL: child cwd not repo"; FAIL=1; }
 [ "$(jq -r .exit <<<"$out")" = 0 ] || { echo "FAIL: exit field"; FAIL=1; }
 [ "$(jq -r .kept <<<"$out")" = false ] || { echo "FAIL: kept should be false"; FAIL=1; }
+[ "$(jq -c '[.head_sha, .base_sha, .policy_changes]' <<<"$out")" = '["h","b",[".claude/x"]]' ] || { echo "FAIL: checkout facts not passed through: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: job dir not removed on success"; FAIL=1; }
 [ "$(jq -r .result "$(jq -r .child_json_path <<<"$out")")" = "REVIEW TEXT" ] || { echo "FAIL: child_json_path unreadable after cleanup"; FAIL=1; }
 grep -q 'diag line' "$(jq -r .stderr_path <<<"$out")" || { echo "FAIL: stderr_path unreadable after cleanup"; FAIL=1; }
+# Result copies are named per job, not a single fixed slot (two reviews in one scratchpad must not clobber each other).
+case "$(jq -r .child_json_path <<<"$out")" in *"$(basename "$dir")"*) ;; *) echo "FAIL: child_json_path is not job-specific: $(jq -r .child_json_path <<<"$out")"; FAIL=1;; esac
+first_json="$(jq -r .child_json_path <<<"$out")"
 
 # 2. Level omitted -> no --effort, prompt has no trailing level.
 J="$(mkjob)"; out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
 grep -qx -- '--effort' "$FAKE_ARGV" && { echo "FAIL: --effort passed without level"; FAIL=1; }
 grep -qx -- '/code-review pr-12 — the PR head is local branch pr-12 and its base is pr-12-base; use git diff pr-12-base...pr-12' "$FAKE_ARGV" \
   || { echo "FAIL: prompt without level: $(grep code-review "$FAKE_ARGV")"; FAIL=1; }
+
+[ "$(jq -r .result "$first_json")" = "REVIEW TEXT" ] || { echo "FAIL: first run's result was clobbered by the second run"; FAIL=1; }
+
+# 2b. REVIEW_PR_KEEP=0 is not KEEP (R6.1 says =1): dir removed, kept=false.
+J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | REVIEW_PR_KEEP=0 "$SRC/run-child.sh")"
+[ "$(jq -r .kept <<<"$out")" = false ] || { echo "FAIL: REVIEW_PR_KEEP=0 reported kept=true"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: job dir kept with REVIEW_PR_KEEP=0"; FAIL=1; }
 
 # 3. REVIEW_PR_KEEP=1 keeps the dir and reports the path; child.json/stderr/exit captured.
 J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"
@@ -83,6 +97,9 @@ elapsed=$(( $(date +%s) - start ))
 [ "$elapsed" -lt 15 ] || { echo "FAIL: watchdog did not fire (took ${elapsed}s)"; FAIL=1; }
 [ "$(jq -r .exit <<<"$out")" -gt 128 ] || { echo "FAIL: timed-out child exit not > 128: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: job dir not removed after timeout"; FAIL=1; }
+# R4.4: the whole process group dies, not just the claude PID — a grandchild must not outlive the timeout.
+gc="$(cat "$FAKE_GRANDCHILD")"
+if kill -0 "$gc" 2>/dev/null; then echo "FAIL: grandchild $gc survived the watchdog"; FAIL=1; kill "$gc" 2>/dev/null || true; fi
 
 # 6. R6.3 guard: a dir without the marker is never deleted, and the reason is reported.
 bad="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"; mkdir -p "$bad/repo"; git -C "$bad/repo" init -q

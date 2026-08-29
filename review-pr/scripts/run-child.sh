@@ -23,7 +23,8 @@ WATCHDOG=""
 CHILD_EXIT=2                                            # honest default: die-before-launch means usage/prereq failure
 FINISHED=""
 TMP_JSON="$DIR/child.json.tmp"
-KEEP="${REVIEW_PR_KEEP:-}"                              # finish() reads this; must be set before the EXIT trap below
+KEEP=""; keep_requested && KEEP=1                       # finish() reads this; must be set before the EXIT trap below
+JOBNAME="$(basename "$DIR")"                            # per-job result names: two reviews in one scratchpad never clobber each other
 
 finish() {
   # R6.1 removes the job dir on every outcome, so the results are copied out first (R5 needs them).
@@ -31,13 +32,16 @@ finish() {
   if [ -n "$KEEP" ]; then
     kept=true
   else
-    cp -f "$DIR/child.json" "$REVIEW_PR_SCRATCH/review-pr-last.json" 2>/dev/null || true
-    cp -f "$DIR/child.stderr" "$REVIEW_PR_SCRATCH/review-pr-last.stderr" 2>/dev/null || true
-    cj="$REVIEW_PR_SCRATCH/review-pr-last.json"; se="$REVIEW_PR_SCRATCH/review-pr-last.stderr"
+    cp -f "$DIR/child.json" "$REVIEW_PR_SCRATCH/$JOBNAME.child.json" 2>/dev/null || true
+    cp -f "$DIR/child.stderr" "$REVIEW_PR_SCRATCH/$JOBNAME.child.stderr" 2>/dev/null || true
+    cj="$REVIEW_PR_SCRATCH/$JOBNAME.child.json"; se="$REVIEW_PR_SCRATCH/$JOBNAME.child.stderr"
     scratch_guard "$DIR" && rm -rf "$DIR"
   fi
-  jq -n --arg cj "$cj" --arg se "$se" --argjson ex "${CHILD_EXIT:-1}" --argjson k "$kept" --arg d "$DIR" \
-    '{child_json_path:$cj, stderr_path:$se, exit:$ex, kept:$k, dir:$d}'
+  # head_sha, base_sha, and policy_changes are passed through from the checkout JSON so the relay
+  # step reads one file.
+  jq -n --arg cj "$cj" --arg se "$se" --argjson ex "${CHILD_EXIT:-1}" --argjson k "$kept" --arg d "$DIR" --argjson in "$IN" \
+    '{child_json_path:$cj, stderr_path:$se, exit:$ex, kept:$k, dir:$d,
+      head_sha:$in.head_sha, base_sha:$in.base_sha, policy_changes:($in.policy_changes // [])}'
 }
 
 # R6.1 binding: the job dir must be removed (or the JSON emitted, if kept) on
@@ -58,7 +62,7 @@ trap on_exit EXIT
 on_signal() {
   trap - INT TERM                                     # re-entrancy: a second signal just kills us
   kill "${WATCHDOG:-}" 2>/dev/null || true
-  [ -n "${CHILD_PID:-}" ] && kill -TERM "$CHILD_PID" 2>/dev/null
+  [ -n "${CHILD_PID:-}" ] && kill -TERM -- "-$CHILD_PID" 2>/dev/null
   CHILD_EXIT=130
   # R4.5: salvage whatever the child wrote so far, best-effort, before finish() runs via the EXIT trap.
   mv -f "$TMP_JSON" "$DIR/child.json" 2>/dev/null || true
@@ -76,11 +80,10 @@ if [ -n "$LEVEL" ]; then
   case "$LEVEL" in low|medium|high|xhigh|max) ;; *) die 2 "LEVEL must be one of low|medium|high|xhigh|max, got '$LEVEL'";; esac
 fi
 
-# R6.1/R5: purge any previous run's leftovers now, before this run can fail or
-# be interrupted. Once claude has been launched below, finish() copies
-# child.json/child.stderr here; if that copy never happens or fails, the
-# paths must point at nothing rather than a stale prior review.
-rm -f "$REVIEW_PR_SCRATCH/review-pr-last.json" "$REVIEW_PR_SCRATCH/review-pr-last.stderr"
+# R6.1/R5: the result copies are named after this job's unique mktemp directory, so a
+# copy that never happens leaves the reported paths pointing at nothing rather than at a
+# stale prior review; no purge of earlier runs is needed or wanted.
+rm -f "$REVIEW_PR_SCRATCH/$JOBNAME.child.json" "$REVIEW_PR_SCRATCH/$JOBNAME.child.stderr"
 
 BUDGET="${REVIEW_PR_BUDGET:-5}"
 TURNS="${REVIEW_PR_MAX_TURNS:-60}"
@@ -104,8 +107,12 @@ ARGS=(-p "$PROMPT" "${CHILD_FLAGS[@]}" --max-budget-usd "$BUDGET" --max-turns "$
 [ -n "$LEVEL" ] && ARGS+=(--effort "$LEVEL")
 
 # R4.5 atomic write of child.json; R4.6 stdin from /dev/null.
+# R4.4: job control (set -m) puts the background job in its own process group whose id is
+# CHILD_PID, so TERM/KILL below reach every descendant claude spawns, not only the claude PID.
+set -m
 ( cd "$CLONE" && exec claude "${ARGS[@]}" < /dev/null > "$TMP_JSON" 2> "$DIR/child.stderr" ) &
 CHILD_PID=$!
+set +m
 
 # R4.4 watchdog: TERM at deadline, KILL 30s later.
 # Polls in 1s steps (rather than one long `sleep "$TIMEOUT"`) so the watchdog
@@ -124,12 +131,12 @@ CHILD_PID=$!
     sleep 1; elapsed=$((elapsed + 1))
   done
   if kill -0 "$CHILD_PID" 2>/dev/null; then
-    kill -TERM "$CHILD_PID" 2>/dev/null
+    kill -TERM -- "-$CHILD_PID" 2>/dev/null
     grace=0
     while kill -0 "$CHILD_PID" 2>/dev/null && [ "$grace" -lt 30 ]; do
       sleep 1; grace=$((grace + 1))
     done
-    kill -KILL "$CHILD_PID" 2>/dev/null
+    kill -KILL -- "-$CHILD_PID" 2>/dev/null
   fi
 ) >/dev/null 2>&1 &
 WATCHDOG=$!
