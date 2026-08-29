@@ -23,6 +23,8 @@ git -C "$U" config uploadpack.allowReachableSHA1InWant true
 
 C="$S/clone"
 git clone -q --depth 50 "file://$U" "$C"
+git -C "$C" config maintenance.auto false
+git -C "$C" config gc.auto 0
 git -C "$C" fetch -q --depth 50 origin refs/pull/7/head
 git -C "$C" merge-base "$BASE" "$HEAD" >/dev/null 2>&1 && { echo "FAIL: known positive — merge base already reachable at depth 50; the fixture does not exercise deepening"; FAIL=1; }
 
