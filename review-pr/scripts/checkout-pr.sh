@@ -59,7 +59,7 @@ NOW_HEAD="$(gh pr view "$N" -R "$SLUG" --json headRefOid -q .headRefOid 2>&1)" \
 [ "$NOW_HEAD" = "$HEAD_SHA" ] || die 1 "PR head changed during checkout ($HEAD_SHA -> $NOW_HEAD); re-run"
 
 # R3 — policy isolation.
-CHANGES="$("$HERE/isolate-policy.sh" "$CLONE" "$BASE_SHA" "$HEAD_SHA")"
+CHANGES="$("$HERE/isolate-policy.sh" "$CLONE" "$BASE_SHA" "$HEAD_SHA")" || die 1 "isolate-policy.sh failed (exit $?)"
 
 jq -n --arg dir "$JOB" --arg base "$BASE_SHA" --arg head "$HEAD_SHA" --arg hr "$HEAD_REPO" \
   --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --argjson changes "$CHANGES" \

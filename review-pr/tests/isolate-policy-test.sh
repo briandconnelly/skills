@@ -40,6 +40,7 @@ NL_DIR="$R/"$'evil\nx'; TAB_DIR="$R/"$'tab\ty'; mkdir -p "$NL_DIR" "$TAB_DIR"  #
 echo '# HEAD newline-dir' > "$NL_DIR/CLAUDE.md"
 echo '# HEAD tab-dir' > "$TAB_DIR/AGENTS.md"
 echo 'y' > "$R/src.txt"                                                # non-policy change
+echo 'z' > "$R/zzz-last.txt"                                          # non-policy path that sorts LAST in the diff (regression: pipefail on the final loop iteration)
 git -C "$R" add -A && git -C "$R" commit -qm head
 HEAD="$(git -C "$R" rev-parse HEAD)"
 git -C "$R" checkout -q --detach "$HEAD"
@@ -52,7 +53,7 @@ GIT_CONFIG_GLOBAL="$CFG" git -C "$R" checkout -q "$BASE" -- src.txt   # content 
 [ -e "$MARK" ] || { echo "FAIL: known positive — filter did not fire under a plain checkout; the instrument cannot detect the failure"; FAIL=1; }
 rm -f "$MARK"; git -C "$R" checkout -q "$HEAD" -- src.txt; rm -f "$MARK"
 
-out="$(GIT_CONFIG_GLOBAL="$CFG" "$SRC/isolate-policy.sh" "$R" "$BASE" "$HEAD")"
+out="$(GIT_CONFIG_GLOBAL="$CFG" "$SRC/isolate-policy.sh" "$R" "$BASE" "$HEAD")" || { echo "FAIL: isolate-policy.sh exited $? (a silent set -e abort is a bug, not a skip)"; exit 1; }
 [ ! -e "$MARK" ] || { echo "FAIL: head .gitattributes filter ran during policy restore"; FAIL=1; }
 
 # R3.1 base versions restored, head-only policy removed, head deletions undone

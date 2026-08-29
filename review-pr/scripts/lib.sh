@@ -54,7 +54,8 @@ is_policy_path() { [[ "$1" =~ $POLICY_RE ]]; }
 # neither split nor quoted.
 policy_paths() {
   local p
-  while IFS= read -r -d '' p; do is_policy_path "$p" && printf '%s\0' "$p"; done \
+  # if/fi, not `&&`: under pipefail a non-matching final path would otherwise fail the whole loop.
+  while IFS= read -r -d '' p; do if is_policy_path "$p"; then printf '%s\0' "$p"; fi; done \
     < <(git -C "$1" ls-tree -r -z --name-only "$2")
 }
 

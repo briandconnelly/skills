@@ -15,7 +15,7 @@ g() { git -C "$DIR" "$@"; }
 
 # R3.3 — computed before any change so the report reflects the PR, not our edits.
 changes="$(
-  while IFS= read -r -d '' p; do is_policy_path "$p" && printf '%s\0' "$p"; done < <(g diff -z --name-only "$BASE" "$HEAD") \
+  while IFS= read -r -d '' p; do if is_policy_path "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only "$BASE" "$HEAD") \
     | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
 )"
 
