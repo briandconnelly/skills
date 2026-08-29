@@ -40,6 +40,7 @@ hooks = [
   { id = "check-github-authority", name = "agent-friendly-github: one home per rule, no refuted claims, refs resolve", language = "python", language_version = "python3", entry = "python agent-friendly-github/tests/check_authority.py", files = "^agent-friendly-github/(SKILL\\.md|references/.*\\.md|decisions/.*\\.md|tests/(scenarios\\.md|check_authority\\.py))$", pass_filenames = false },
   { id = "review-pr-validate", name = "review-pr: input and prerequisite validation", language = "system", entry = "bash review-pr/tests/validate-test.sh", files = "^review-pr/(scripts/.*|tests/validate-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-isolate-policy", name = "review-pr: policy restored from base, hooks stripped", language = "system", entry = "bash review-pr/tests/isolate-policy-test.sh", files = "^review-pr/(scripts/.*|tests/isolate-policy-test\\.sh)$", pass_filenames = false },
+  { id = "review-pr-deepen", name = "review-pr: deepen reaches the merge base of a >50-commit PR", language = "system", entry = "bash review-pr/tests/deepen-test.sh", files = "^review-pr/(scripts/.*|tests/deepen-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-run-child", name = "review-pr: child flags, watchdog, cleanup", language = "system", entry = "bash review-pr/tests/run-child-test.sh", files = "^review-pr/(scripts/.*|tests/run-child-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-shellcheck", name = "review-pr: shellcheck", language = "system", entry = "shellcheck", files = "^review-pr/.*\\.sh$", pass_filenames = true },
 ]
