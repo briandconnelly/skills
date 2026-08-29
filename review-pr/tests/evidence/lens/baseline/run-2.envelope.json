@@ -1,0 +1,10 @@
+{
+  "child_json_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CUuDR0QjNI/review-pr.N7mOXX/child.json",
+  "stderr_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CUuDR0QjNI/review-pr.N7mOXX/child.stderr",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CUuDR0QjNI/review-pr.N7mOXX",
+  "head_sha": "498f1518409f543093c1538f5f1889cc92a5e578",
+  "base_sha": "15dad55b46f97bf81a907be5ff23730cbdfeaab3",
+  "policy_changes": []
+}
