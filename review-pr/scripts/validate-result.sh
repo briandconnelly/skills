@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 # validate-result.sh < result.md
-# Checks the child's .result against the R5.6 contract and prints one JSON object:
+# Checks the child result against references/review-lens.md and prints one JSON object:
 #   {"schema_valid": bool, "schema_errors": [..], "diff_unavailable": bool}
-# Exit status is always 0: validity is data for run-child.sh (R5.7), not a failure of this script.
+# Exit status is always 0 because validity is data for run-child.sh rather than a script failure.
 set -euo pipefail
+HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+LENS="${REVIEW_PR_LENS:-$HERE/../references/review-lens.md}"
+COVERAGE="$(sed -n '/^Lenses checked:/{p;q;}' "$LENS" 2>/dev/null || true)"
+if [ -z "$COVERAGE" ]; then
+  printf '%s\n' '{"schema_valid":false,"schema_errors":["review lens has no lenses-checked line"],"diff_unavailable":false}'
+  exit 0
+fi
 
-awk '
+awk -v coverage="$COVERAGE" '
 BEGIN {
   want[1]="Summary"; want[2]="Critical"; want[3]="Important"; want[4]="Suggestions"; want[5]="Strengths"; want[6]="Not reviewed"
   n=0; cur=""; nerr=0; du=0; seen_text_before=0
-  finding_re = "^- [^ ]+:[0-9]+ — (correctness|silent-failure|tests|comments) — .+ — .+$"
+  finding_re = "^- .+:[0-9]+ — (correctness|silent-failure|tests|comments) — .+ — .+$"
 }
 function err(m) { errs[++nerr]=m }
 /^## / {
@@ -25,8 +32,14 @@ function err(m) { errs[++nerr]=m }
 END {
   if (n<6) err("only " n " of 6 headings present")
   if (seen_text_before) err("text before ## Summary")
-  # Summary: non-empty prose
+  # Summary: required observable coverage marker plus non-empty prose.
   if (n>=1 && body["Summary"] ~ /^[[:space:]]*$/) err("Summary is empty")
+  sl=split(body["Summary"], summary_lines, "\n"); first_summary=""; coverage_count=0
+  for (i=1;i<=sl;i++) {
+    if (summary_lines[i]==coverage) coverage_count++
+    if (first_summary=="" && summary_lines[i] !~ /^[[:space:]]*$/) first_summary=summary_lines[i]
+  }
+  if (coverage_count!=1 || first_summary!=coverage) err("Summary must begin with the exact lenses-checked line")
   # Findings sections: (none) or finding bullets only
   split("Critical Important Suggestions", fs, " ")
   for (i=1;i<=3;i++) check_section(fs[i], 1)

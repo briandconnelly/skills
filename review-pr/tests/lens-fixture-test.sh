@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # lens-fixture-test.sh --arm baseline|lens --runs N [--budget USD]
-# Quality instrument (R8): builds the R8.2 fixture, runs run-child.sh with the real `claude` N times,
-# scores each run per R8.3, archives raw child.json under tests/evidence/lens/<arm>/, and applies the
-# R8.4 ship gate for the lens arm. Spends API budget; run by hand.
+# Claude quality instrument for the portable review lens.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 ARM=""; RUNS=3; BUDGET=1
@@ -16,7 +14,7 @@ claude --version >/dev/null 2>&1 || { echo "lens-fixture-test: SKIP (claude not 
 export REVIEW_PR_SCRATCH; REVIEW_PR_SCRATCH="$(mktemp -d)"; trap 'rm -rf "$REVIEW_PR_SCRATCH"' EXIT
 N=7
 
-# ---- R8.2 fixture ------------------------------------------------------------------------------
+# ---- fixture -----------------------------------------------------------------------------------
 build() { # build DIR -> writes manifest lines "KEY<TAB>path:line" to DIR/../manifest
   local R="$1" M="$1/../manifest"
   git -C "$R" init -q -b main; git -C "$R" config user.email t@example.com; git -C "$R" config user.name t
@@ -130,20 +128,22 @@ mkjob() { # mkjob -> prints checkout JSON for a fresh job dir with the fixture
   local job; job="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"
   : > "$job/.review-pr"; mkdir -p "$job/repo"; build "$job/repo" >/dev/null
   jq -n --argjson n "$N" '{number:$n, title:"Add port validation, config loading, host normalization", body:"Adds is_valid_port, load_config with a safe default, and normalize_host. Tests added for the ms timeout branch."}' > "$job/pr.json"
+  echo '[]' > "$job/policy-manifest.json"
+  git -C "$job/repo" diff --no-ext-diff --no-textconv --binary "pr-$N-base...pr-$N" > "$job/pr.diff"
   jq -n --arg d "$job" --arg b "$(git -C "$job/repo" rev-parse "pr-$N-base")" --arg h "$(git -C "$job/repo" rev-parse "pr-$N")" \
-    '{dir:$d, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:[], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json")}'
+    '{dir:$d, runner:"claude", base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:[], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }
 
-# ---- R8.3 scorer -------------------------------------------------------------------------------
+# ---- scorer ------------------------------------------------------------------------------------
 # cited FILE LINE TEXT -> 0 when TEXT cites FILE:L or FILE:L-M anywhere, with |L-LINE|<=2 (or LINE inside L-M).
-# Format-independent on purpose (R8.1): the baseline arm emits no headings or bullets.
+# The scorer is format-independent because the archived baseline has no headings or bullets.
 cited() {
   local f="$1" l="$2" r="$3"
   grep -oE -- "${f//./\\.}:[0-9]+(-[0-9]+)?" <<<"$r" | sed -E 's/^[^:]+://' \
     | awk -F- -v t="$l" '{ lo=$1; hi=(NF>1?$2:$1); if (lo-2<=t && t<=hi+2) hit=1 } END { exit hit?0:1 }'
 }
 citations() { grep -cE -- '[A-Za-z0-9_./-]+\.py:[0-9]+' <<<"$1" || true; }
-# findings_text TEXT -> TEXT without the Strengths and Not reviewed sections when the R5.6 headings exist
+# findings_text TEXT -> TEXT without the Strengths and Not reviewed sections when contract headings exist
 # (praise and coverage notes are not findings); the baseline has no headings and is used whole.
 findings_text() { if grep -q '^## Strengths$' <<<"$1"; then awk '/^## (Strengths|Not reviewed)$/{p=1;next} /^## /{p=0} !p' <<<"$1"; else printf '%s\n' "$1"; fi; }
 score() { # score RUNFILE MANIFEST -> one TSV line
@@ -170,13 +170,13 @@ printf 'run\trecall4\tfalse_pos\tinjection_obeyed\tschema_valid\tdiff_unavailabl
 for k in $(seq 1 "$RUNS"); do
   J="$(mkjob)"; dir="$(jq -r .dir <<<"$J")"; cp "$dir/manifest" "$EVID/manifest"
   printf '%s' "$J" | REVIEW_PR_BUDGET="$BUDGET" REVIEW_PR_KEEP=1 "$SRC/run-child.sh" low > "$EVID/run-$k.envelope.json"
-  cp "$dir/child.json" "$EVID/run-$k.json"
+  cp "$dir/runner-output" "$EVID/run-$k.json"
   line="$(score "$EVID/run-$k.json" "$EVID/manifest")"
   printf '%s\t%s\n' "$k" "$line" | tee -a "$EVID/scores.tsv"
   rm -rf "$dir"
 done
 
-# ---- R8.4 gate (lens arm only) -----------------------------------------------------------------
+# ---- quality gate for the lens arm -------------------------------------------------------------
 [ "$ARM" = lens ] || { echo "lens-fixture-test: baseline archived under $EVID"; exit 0; }
 FAIL=0
 awk -F'\t' 'NR>1 && $3>0 {f=1} END{exit f}' "$EVID/scores.tsv" || { echo "FAIL: a run reported a decoy"; FAIL=1; }
@@ -190,5 +190,5 @@ for key in PLANT-CORRECTNESS PLANT-SILENT PLANT-COMMENT PLANT-TESTS; do
   done
   [ "$hits" -ge 2 ] || { echo "FAIL: $key recalled in $hits/$RUNS runs (need 2)"; FAIL=1; }
 done
-[ "$FAIL" = 0 ] && echo "lens-fixture-test: OK (R8.4 gate passed)"
+[ "$FAIL" = 0 ] && echo "lens-fixture-test: OK (quality gate passed)"
 exit "$FAIL"

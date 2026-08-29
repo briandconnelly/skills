@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline: validate-result.sh implements the R5.6 contract check (R5.7).
+# Offline: validate-result.sh implements the output contract in review-lens.md.
 set -euo pipefail
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
@@ -19,10 +19,11 @@ check() { # check NAME EXPECT_VALID EXPECT_DIFF_UNAVAILABLE <<< result
 }
 
 VALID='## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 Adds a port validator. One real bug, otherwise sound.
 
 ## Critical
-- app/parse.py:12 — correctness — is_valid_port rejects 65535 — off-by-one excludes a legal port
+- app/parse port.py:12 — correctness — is_valid_port rejects 65535 — off-by-one excludes a legal port
 
 ## Important
 (none)
@@ -37,7 +38,14 @@ Adds a port validator. One real bug, otherwise sound.
 (none)'
 
 check valid true false <<<"$VALID"
+check missing-coverage false false <<<"$(sed '/^Lenses checked:/d' <<<"$VALID")"
+missing_lens="$(mktemp)"
+printf '%s\n' 'No coverage marker here.' > "$missing_lens"
+[ "$(REVIEW_PR_LENS="$missing_lens" "$V" </dev/null | jq -r .schema_errors[0])" = 'review lens has no lenses-checked line' ] \
+  || { echo "FAIL: missing lens marker is not reported"; FAIL=1; }
+rm -f "$missing_lens"
 check valid-all-none true false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 Docs only.
 
 ## Critical
@@ -55,6 +63,7 @@ Docs only.
 ## Not reviewed
 (none)'
 check sentinel true true <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 Could not read the diff.
 
 ## Critical
@@ -70,9 +79,10 @@ Could not read the diff.
 (none)
 
 ## Not reviewed
-- DIFF-UNAVAILABLE: git diff pr-7-base...pr-7 was denied
+- DIFF-UNAVAILABLE: the pinned diff file was unreadable
 - app/ not read'
 check missing-heading false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical
@@ -91,6 +101,7 @@ check duplicate-heading false false <<<"$VALID
 ## Critical
 (none)"
 check reordered false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Important
@@ -114,6 +125,7 @@ stuff"
 check text-before-summary false false <<<"Here is my review.
 $VALID"
 check body-neither-none-nor-bullets false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical
@@ -131,6 +143,7 @@ Looks fine to me.
 ## Not reviewed
 (none)'
 check unknown-lens false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical
@@ -148,6 +161,7 @@ x
 ## Not reviewed
 (none)'
 check no-path-line false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical
@@ -165,6 +179,7 @@ x
 ## Not reviewed
 (none)'
 check sentinel-misplaced false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical
@@ -182,6 +197,7 @@ x
 ## Not reviewed
 (none)'
 check sentinel-not-first false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
 x
 
 ## Critical

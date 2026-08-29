@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline: ensure_merge_base reaches the merge base of a PR with more than --depth commits (R2.3).
+# Offline: ensure_merge_base reaches the merge base of a PR with more commits than the initial depth.
 # The deepen fetches must name refs/pull/N/head: a plain `git fetch --deepen origin` follows only the
 # clone's refs/heads/* refspec and never deepens the PR-only lineage, so only --unshallow would recover.
 set -euo pipefail

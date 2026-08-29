@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline: isolate-policy.sh restores policy from base and strips hooks/MCP (R3.1-R3.3).
+# Offline: the Claude adapter restores base policy and strips executable configuration.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
@@ -53,10 +53,10 @@ GIT_CONFIG_GLOBAL="$CFG" git -C "$R" checkout -q "$BASE" -- src.txt   # content 
 [ -e "$MARK" ] || { echo "FAIL: known positive — filter did not fire under a plain checkout; the instrument cannot detect the failure"; FAIL=1; }
 rm -f "$MARK"; git -C "$R" checkout -q "$HEAD" -- src.txt; rm -f "$MARK"
 
-out="$(GIT_CONFIG_GLOBAL="$CFG" "$SRC/isolate-policy.sh" "$R" "$BASE" "$HEAD")" || { echo "FAIL: isolate-policy.sh exited $? (a silent set -e abort is a bug, not a skip)"; exit 1; }
+out="$(GIT_CONFIG_GLOBAL="$CFG" "$SRC/isolate-policy.sh" claude "$R" "$BASE" "$HEAD")" || { echo "FAIL: isolate-policy.sh exited $? (a silent set -e abort is a bug, not a skip)"; exit 1; }
 [ ! -e "$MARK" ] || { echo "FAIL: head .gitattributes filter ran during policy restore"; FAIL=1; }
 
-# R3.1 base versions restored, head-only policy removed, head deletions undone
+# Base versions are restored, head-only policy is removed, and head deletions are undone.
 grep -q 'base sentinel' "$R/CLAUDE.md" || { echo "FAIL: CLAUDE.md not restored from base"; FAIL=1; }
 [ -f "$R/AGENTS.md" ] || { echo "FAIL: AGENTS.md deleted at head was not restored"; FAIL=1; }
 [ ! -e "$R/.claude/skills/code-review" ] || { echo "FAIL: head-only shadow skill survived"; FAIL=1; }
@@ -70,14 +70,23 @@ grep -q 'base nested' "$R/sub/CLAUDE.md" || { echo "FAIL: sub/CLAUDE.md not rest
 [ ! -e "$NL_DIR/CLAUDE.md" ] || { echo "FAIL: head-only CLAUDE.md under a newline-named directory survived"; FAIL=1; }
 [ ! -e "$TAB_DIR/AGENTS.md" ] || { echo "FAIL: head-only AGENTS.md under a tab-named directory survived"; FAIL=1; }
 grep -q '^plain$' "$R/sub/file.txt" || { echo "FAIL: non-policy sub/file.txt touched"; FAIL=1; }
-# R3.2 unconditional deletions
+# Executable runner configuration is removed unconditionally.
 [ ! -e "$R/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }
 [ ! -e "$R/.mcp.json" ] || { echo "FAIL: .mcp.json present"; FAIL=1; }
 # non-policy head content untouched
 grep -q '^y$' "$R/src.txt" || { echo "FAIL: src.txt reverted"; FAIL=1; }
-# R3.3 changed policy paths reported, exactly
+# Changed policy paths are reported exactly.
 want="$(jq -nc '[".claude/settings.json",".claude/skills/code-review/SKILL.md",".mcp.json","AGENTS.md","CLAUDE.local.md","CLAUDE.md","deep/x/CLAUDE.local.md","docs/AGENTS.md","evil\nx/CLAUDE.md","pkg/CLAUDE.md","sub/CLAUDE.md","tab\ty/AGENTS.md"] | sort')"
 [ "$(jq -c 'sort' <<<"$out")" = "$want" ] || { echo "FAIL: policy_changes=$out"; FAIL=1; }
+
+# The manifest selector includes passive base policy and excludes executable configuration.
+# shellcheck disable=SC1091
+. "$SRC/lib.sh"
+load_adapter claude
+manifest="$(context_paths_json "$R" "$BASE")"
+manifest_want="$(jq -nc '[".claude/skills/zebra-review/SKILL.md","AGENTS.md","CLAUDE.md","docs/AGENTS.md","sub/CLAUDE.md"] | sort')"
+[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] \
+  || { echo "FAIL: passive policy manifest=$manifest"; FAIL=1; }
 
 # Config injected through the environment (GIT_CONFIG_COUNT / GIT_CONFIG_PARAMETERS) must not reach the
 # restore checkout either. Known positive: a plain checkout under each channel fires the filter.
@@ -88,14 +97,14 @@ git -C "$R" checkout -q -f --detach "$HEAD"; rm -f "$MARK"
 GIT_CONFIG_PARAMETERS="'filter.evil.smudge=touch $MARK'" git -C "$R" checkout -q "$BASE" -- src.txt
 [ -e "$MARK" ] || { echo "FAIL: known positive — GIT_CONFIG_PARAMETERS filter did not fire under a plain checkout"; FAIL=1; }
 git -C "$R" checkout -q -f --detach "$HEAD"; rm -f "$MARK"
-GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=filter.evil.smudge GIT_CONFIG_VALUE_0="touch $MARK" "$SRC/isolate-policy.sh" "$R" "$BASE" "$HEAD" >/dev/null
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=filter.evil.smudge GIT_CONFIG_VALUE_0="touch $MARK" "$SRC/isolate-policy.sh" claude "$R" "$BASE" "$HEAD" >/dev/null
 [ ! -e "$MARK" ] || { echo "FAIL: GIT_CONFIG_COUNT filter ran during policy restore"; FAIL=1; }
 git -C "$R" checkout -q -f --detach "$HEAD"; rm -f "$MARK"
-GIT_CONFIG_PARAMETERS="'filter.evil.smudge=touch $MARK'" "$SRC/isolate-policy.sh" "$R" "$BASE" "$HEAD" >/dev/null
+GIT_CONFIG_PARAMETERS="'filter.evil.smudge=touch $MARK'" "$SRC/isolate-policy.sh" claude "$R" "$BASE" "$HEAD" >/dev/null
 [ ! -e "$MARK" ] || { echo "FAIL: GIT_CONFIG_PARAMETERS filter ran during policy restore"; FAIL=1; }
 
 # Known positive: identical SHAs report no changes
-out2="$("$SRC/isolate-policy.sh" "$R" "$BASE" "$BASE")"
+out2="$("$SRC/isolate-policy.sh" claude "$R" "$BASE" "$BASE")"
 [ "$(jq -c . <<<"$out2")" = "[]" ] || { echo "FAIL: expected [] for identical SHAs, got $out2"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "isolate-policy-test: OK"
