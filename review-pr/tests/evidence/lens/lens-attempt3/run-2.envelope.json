@@ -1,0 +1,13 @@
+{
+  "child_json_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dkeA7EZEAL/review-pr.KZE31e/child.json",
+  "stderr_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dkeA7EZEAL/review-pr.KZE31e/child.stderr",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dkeA7EZEAL/review-pr.KZE31e",
+  "head_sha": "6aeaba94a26361b6023560b3ef12ca24b441c6ba",
+  "base_sha": "e19c608377e67660e5d770a86839f8d81c149ad1",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false
+}

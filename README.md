@@ -15,7 +15,7 @@ Agent harnesses load a skill when its description matches the task at hand.
 | [agent-friendly-github](agent-friendly-github/) | Configure GitHub repos so AI agents can track issues and manage PRs while humans keep confidence through enforced guardrails and auditability. |
 | [agent-friendly-mcp](agent-friendly-mcp/) | Best practices for designing MCP (Model Context Protocol) servers that AI agents invoke directly. |
 | [bundle-uv-mcp-server](bundle-uv-mcp-server/) | Package an existing uv + Python MCP server as an MCPB bundle (.mcpb) using the uv runtime. |
-| [review-pr](review-pr/) | Review a GitHub PR from any directory with the target project's own Claude Code context loaded, while PR-supplied hooks and MCP servers never run. |
+| [review-pr](review-pr/) | Review a GitHub PR from any directory with the target project's own Claude Code context loaded and a fixed four-lens review contract, while PR-supplied hooks and MCP servers never run. |
 | [separating-context-from-constraints](separating-context-from-constraints/) | Audit skills, prompts, and agent instruction documents for separation of binding rules from context, with findings and semantic-preserving rewrites. |
 | [vega-lite](vega-lite/) | Author, repair, and review correct, idiomatic static Vega-Lite v6 JSON specs, gated by a parse-schema-compile-render-inspect loop run through bundled vl-convert. |
 
