@@ -1,0 +1,13 @@
+{
+  "child_json_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E4TY30BlaN/review-pr.LwFUku/child.json",
+  "stderr_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E4TY30BlaN/review-pr.LwFUku/child.stderr",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E4TY30BlaN/review-pr.LwFUku",
+  "head_sha": "edbb0d93d21403e1db4ca46df711e833dd57e54f",
+  "base_sha": "1cd11788a32c19bfb8edb0fc4287edbb851fe970",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false
+}

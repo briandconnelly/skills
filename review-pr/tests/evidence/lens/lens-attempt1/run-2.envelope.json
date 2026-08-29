@@ -1,0 +1,16 @@
+{
+  "child_json_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hnyrroM7H2/review-pr.UCdntF/child.json",
+  "stderr_path": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hnyrroM7H2/review-pr.UCdntF/child.stderr",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hnyrroM7H2/review-pr.UCdntF",
+  "head_sha": "3e497a0f27b0394abe715ab089ba2be50b26df12",
+  "base_sha": "b44f0db84611d532a3c3cd554227e459b17d79a2",
+  "policy_changes": [],
+  "schema_valid": false,
+  "schema_errors": [
+    "Suggestions: bullet is not \"- path:line — lens — sentence — why\": - app/parse.py:16 — correctness — `parse_timeout` return",
+    "Suggestions: bullet is not \"- path:line — lens — sentence — why\": - app/parse.py:6 — correctness — `ujson.loads` and `json"
+  ],
+  "diff_unavailable": false
+}

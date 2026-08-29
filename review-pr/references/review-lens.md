@@ -38,6 +38,7 @@ Apply all four, in this order, to the changed code only.
 - An error logged and execution continued into code that assumes success.
 - An error message a user cannot act on.
 Not a finding: a fallback whose adjacent comment or docstring states the reason and the caller-visible behaviour.
+Not a finding, under any lens: an optional-dependency import with a stated fallback (an accelerator such as `ujson` or `orjson` falling back to the standard library); differences between the two implementations are out of scope unless the diff relies on behaviour only one of them has.
 
 ### tests
 - Changed or new logic with a branch, boundary, or error path that no existing or added test exercises (name the branch; check existing tests first).
@@ -55,6 +56,7 @@ Report a finding only when all of these hold: the diff introduces or exposes it;
 Do not report defects in files the diff does not touch; mention at most one such observation under `## Suggestions` only when it directly affects the changed code.
 Do not report what a linter, type checker, or formatter would catch.
 One finding per defect, filed under the strongest applicable lens; no minimum and no quota per lens; an empty section is a correct section.
+`Suggestions` are findings too and pass the same gates: "consider", "may differ", or "in some environments" without a named input that fails is padding, not a suggestion.
 
 ## Output contract
 
@@ -80,6 +82,8 @@ Emit exactly these six second-level headings, in this order, each once, with not
 <(none) or plain bullets naming what you could not read or run; DIFF-UNAVAILABLE first if the diff was unreadable>
 ```
 
-A finding bullet is one line: `- path:line — <lens> — <one sentence stating the defect> — <why it matters>`, where `<lens>` is exactly one of `correctness`, `silent-failure`, `tests`, `comments`.
+A finding bullet is one line with exactly three ` — ` separators: `- path:line — <lens> — <one sentence stating the defect> — <why it matters>`, where `<lens>` is exactly one of `correctness`, `silent-failure`, `tests`, `comments`.
+Keep the defect sentence and the why as two segments; do not merge them with a semicolon or drop the why.
+Example: `- app/net.py:41 — correctness — retry_count is compared with <= MAX_RETRIES so the loop runs one extra time — the last attempt hits the backend after the caller has already timed out`.
 Write `(none)` alone on its line when a section has no entries.
 The sentinel `DIFF-UNAVAILABLE` appears only as the first bullet of `## Not reviewed`, and only when the diff was unreadable.
