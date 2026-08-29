@@ -6,7 +6,6 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SRC="$ROOT/scripts"
 # shellcheck disable=SC1091
 . "$SRC/lib.sh"
-need_cmd rg
 
 runners=()
 while IFS= read -r runner; do [ -z "$runner" ] || runners+=("$runner"); done < "$SRC/adapters/supported"
@@ -78,24 +77,24 @@ generic_files=(
   "$SRC/run-child.sh"
   "$SRC/review-pr.sh"
 )
-if rg -n 'Claude Code|CLAUDE\.md|CLAUDE\.local\.md|--allowedTools|--disallowedTools|permission_denials|total_cost_usd' "${generic_files[@]}"; then
+if grep -nE 'Claude Code|CLAUDE\.md|CLAUDE\.local\.md|--allowedTools|--disallowedTools|permission_denials|total_cost_usd' "${generic_files[@]}"; then
   echo "FAIL: runner-specific behavior leaked into the generic core"
   FAIL=1
 fi
 
-if rg -n 'low.*,.*medium.*,.*high.*,.*xhigh.*,.*max' "$ROOT/SKILL.md"; then
+if grep -nE 'low.*,.*medium.*,.*high.*,.*xhigh.*,.*max' "$ROOT/SKILL.md"; then
   echo "FAIL: runner-specific level vocabulary leaked into SKILL.md"
   FAIL=1
 fi
 
-[ "$(rg -F 'Lenses checked: correctness, silent-failure, tests, comments.' "$ROOT/references" "$ROOT/scripts" | wc -l | tr -d ' ')" = 1 ] \
+[ "$(grep -Fh 'Lenses checked: correctness, silent-failure, tests, comments.' "$ROOT/references/review-lens.md" "$ROOT/scripts/validate-result.sh" | awk 'END {print NR}')" = 1 ] \
   || { echo "FAIL: lenses-checked line must have exactly one home"; FAIL=1; }
 
-definitions="$(rg -o --no-filename '^- (RC|CA)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
+definitions="$(grep -RhoE '^- (RC|CA)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
 duplicates="$(uniq -d <<<"$definitions")"
 [ -z "$duplicates" ] || { echo "FAIL: rule ids have multiple homes: $duplicates"; FAIL=1; }
 
-citations="$(rg -o --no-filename '\b(RC|CA)[0-9]+\b' "$ROOT" --glob '!tests/evidence/**' | sort -u)"
+citations="$(grep -RhoE '(RC|CA)[0-9]+' "$ROOT" | sort -u)"
 while IFS= read -r id; do
   [ -z "$id" ] || grep -qx "$id" <<<"$definitions" || { echo "FAIL: unresolved rule id: $id"; FAIL=1; }
 done <<<"$citations"

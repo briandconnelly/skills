@@ -6,7 +6,9 @@ HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
 . "$HERE/lib.sh"
 
-[ "$#" -ge 2 ] && [ "$#" -le 3 ] || die 2 "usage: review-pr.sh OWNER/REPO N [LEVEL]"
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+  die 2 "usage: review-pr.sh OWNER/REPO N [LEVEL]"
+fi
 SLUG="$1"
 N="$2"
 LEVEL="${3:-}"

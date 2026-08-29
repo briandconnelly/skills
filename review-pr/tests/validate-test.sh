@@ -28,8 +28,8 @@ expect_exit 2 'OWNER/REPO' "$SRC/checkout-pr.sh" 'https://gitlab.com/o/r' 12
 
 # Missing generic prerequisites have distinct errors.
 FAKEBIN="$S/bin"; mkdir -p "$FAKEBIN"
-for c in git jq; do ln -s "$(command -v $c)" "$FAKEBIN/$c"; done
-expect_exit 3 'missing required command: gh' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
+for c in git jq bash dirname grep; do ln -s "$(command -v "$c")" "$FAKEBIN/$c"; done
+expect_exit 3 'missing required command: gh' env PATH="$FAKEBIN" "$SRC/checkout-pr.sh" 'owner/repo' 12
 
 # Unsupported adapters fail before network access.
 expect_exit 3 'unsupported review runner: missing' env REVIEW_PR_RUNNER=missing PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12

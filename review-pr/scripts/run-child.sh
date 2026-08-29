@@ -77,7 +77,9 @@ trap on_exit EXIT
 on_signal() {
   trap - INT TERM
   kill "${WATCHDOG:-}" 2>/dev/null || true
-  [ -n "${CHILD_PID:-}" ] && kill -TERM -- "-$CHILD_PID" 2>/dev/null || true
+  if [ -n "${CHILD_PID:-}" ]; then
+    kill -TERM -- "-$CHILD_PID" 2>/dev/null || true
+  fi
   CHILD_EXIT=130
   mv -f "$NATIVE_TMP" "$NATIVE" 2>/dev/null || true
   normalize_native || true
