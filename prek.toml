@@ -45,5 +45,6 @@ hooks = [
   { id = "review-pr-run-child", name = "review-pr: runner lifecycle, watchdog, cleanup", language = "system", entry = "bash review-pr/tests/run-child-test.sh", files = "^review-pr/(scripts/.*|tests/run-child-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-wrapper", name = "review-pr: public wrapper and scratch ownership", language = "system", entry = "bash review-pr/tests/review-pr-test.sh", files = "^review-pr/(SKILL\\.md|scripts/.*|tests/review-pr-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-adapter-contract", name = "review-pr: adapter interface and generic-core boundary", language = "system", entry = "bash review-pr/tests/adapter-contract-test.sh", files = "^review-pr/(SKILL\\.md|references/.*|scripts/.*|tests/adapter-contract-test\\.sh)$", pass_filenames = false },
+  { id = "review-pr-codex-adapter", name = "review-pr: Codex adapter flags and normalization", language = "system", entry = "bash review-pr/tests/codex-adapter-test.sh", files = "^review-pr/(references/runner-contract\\.md|references/runners/codex\\.md|scripts/adapters/codex\\.sh|scripts/adapters/supported|scripts/lib\\.sh|tests/codex-adapter-test\\.sh)$", pass_filenames = false },
   { id = "review-pr-shellcheck", name = "review-pr: shellcheck", language = "system", entry = "shellcheck", files = "^review-pr/.*\\.sh$", pass_filenames = true },
 ]

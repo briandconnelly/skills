@@ -6,31 +6,24 @@ ADAPTER_POLICY_ROOTS=(.claude .mcp.json)
 # shellcheck disable=SC2034 # Consumed by isolate-policy.sh after this adapter is sourced.
 ADAPTER_ALWAYS_REMOVE=(.claude/settings.json .claude/settings.local.json .mcp.json)
 
-claude_version_at_least() {
-  awk -v have="$1" -v want="$2" 'BEGIN {
-    nh=split(have, h, "."); nw=split(want, w, "."); n=(nh>nw?nh:nw)
-    for (i=1; i<=n; i++) {
-      hv=h[i]+0; wv=w[i]+0
-      if (hv>wv) exit 0
-      if (hv<wv) exit 1
-    }
-    exit 0
-  }'
-}
-
 adapter_check() {
   need_cmd claude
   local version want=2.1.251
   version="$(claude --version 2>/dev/null | awk '{print $1}')" || die 3 "cannot run 'claude --version'"
-  claude_version_at_least "$version" "$want" || die 3 "Claude Code $want or newer is required, found $version"
+  semver_at_least "$version" "$want" || die 3 "Claude Code $want or newer is required, found $version"
 }
 
 adapter_is_policy_path() {
   [[ "$1" =~ (^|/)(CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md)$|^\.claude/|^\.mcp\.json$ ]]
 }
 
-adapter_is_context_path() {
-  [[ "$1" =~ (^|/)(CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md)$|^\.claude/(skills/.*/SKILL\.md|agents/.*\.md)$ ]]
+adapter_context_paths() {
+  local p
+  while IFS= read -r -d '' p; do
+    if [[ "$p" =~ (^|/)(CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md)$|^\.claude/(skills/.*/SKILL\.md|agents/.*\.md)$ ]]; then
+      printf '%s\0' "$p"
+    fi
+  done < <(policy_paths "$1" "$2")
 }
 
 adapter_build_command() {

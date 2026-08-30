@@ -18,16 +18,6 @@ for runner in "${runners[@]}"; do
   load_adapter "$runner"
 done
 
-load_adapter claude
-accepted=(CLAUDE.md nested/CLAUDE.local.md docs/AGENTS.md .claude/skills/a/SKILL.md .claude/agents/reviewer.md $'odd\nname/CLAUDE.md')
-rejected=(README.md .claude/settings.json .claude/skills/a/reference.md .mcp.json nested/.claude/agents/reviewer.md)
-for path in "${accepted[@]}"; do
-  adapter_is_context_path "$path" || { echo "FAIL: Claude context selector rejected: $path"; FAIL=1; }
-done
-for path in "${rejected[@]}"; do
-  adapter_is_context_path "$path" && { echo "FAIL: Claude context selector accepted: $path"; FAIL=1; }
-done
-
 # Loading an incomplete adapter cannot inherit functions from the previous adapter.
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
@@ -50,7 +40,7 @@ printf '%s\n' \
   'ADAPTER_ALWAYS_REMOVE=()' \
   'adapter_check() { :; }' \
   'adapter_is_policy_path() { return 1; }' \
-  'adapter_is_context_path() { return 1; }' \
+  'adapter_context_paths() { return 0; }' \
   'adapter_build_command() { ADAPTER_COMMAND=(true); }' \
   'adapter_normalize() { :; }' > "$fake_adapter"
 repo="$fixture/repo"
@@ -66,6 +56,39 @@ sha="$(git -C "$repo" rev-parse HEAD)"
 # Restore the production helper definitions for the remaining assertions.
 # shellcheck disable=SC1091
 . "$SRC/lib.sh"
+
+claude_repo="$fixture/claude-repo"
+git -C "$fixture" init -q claude-repo
+git -C "$claude_repo" config user.email t@example.com
+git -C "$claude_repo" config user.name t
+newline_dir=$'odd\nname'
+mkdir -p "$claude_repo/nested" "$claude_repo/docs" "$claude_repo/.claude/skills/a" \
+  "$claude_repo/.claude/agents" "$claude_repo/nested/.claude/agents" "$claude_repo/.agents/skills/a" \
+  "$claude_repo/nested/.agents/skills/ignored" "$claude_repo/$newline_dir"
+for p in CLAUDE.md nested/CLAUDE.local.md docs/AGENTS.md .claude/skills/a/SKILL.md .claude/agents/reviewer.md "$newline_dir/CLAUDE.md"; do
+  printf '%s\n' context > "$claude_repo/$p"
+done
+printf '%s\n' context > "$claude_repo/.agents/skills/a/SKILL.md"
+printf '%s\n' excluded > "$claude_repo/nested/.agents/skills/ignored/SKILL.md"
+for p in README.md .claude/settings.json .claude/skills/a/reference.md .mcp.json nested/.claude/agents/reviewer.md; do
+  printf '%s\n' excluded > "$claude_repo/$p"
+done
+git -C "$claude_repo" add -A
+git -C "$claude_repo" commit -qm base
+claude_sha="$(git -C "$claude_repo" rev-parse HEAD)"
+load_adapter claude
+claude_got="$(context_paths_json "$claude_repo" "$claude_sha" | jq -c sort)"
+claude_want="$(jq -nc --arg newline "$newline_dir/CLAUDE.md" \
+  '[".claude/agents/reviewer.md",".claude/skills/a/SKILL.md","CLAUDE.md","docs/AGENTS.md","nested/CLAUDE.local.md",$newline] | sort')"
+[ "$claude_got" = "$claude_want" ] || { echo "FAIL: Claude context selection is wrong: $claude_got"; FAIL=1; }
+
+for runner in "${runners[@]}"; do
+  load_adapter "$runner"
+  while IFS= read -r -d '' context_path; do
+    adapter_is_policy_path "$context_path" \
+      || { echo "FAIL: $runner context is not restored policy: $context_path"; FAIL=1; }
+  done < <(context_paths_json "$claude_repo" "$claude_sha" | jq -j '.[] + "\u0000"')
+done
 
 generic_files=(
   "$ROOT/SKILL.md"
@@ -90,11 +113,11 @@ fi
 [ "$(grep -Fh 'Lenses checked: correctness, silent-failure, tests, comments.' "$ROOT/references/review-lens.md" "$ROOT/scripts/validate-result.sh" | awk 'END {print NR}')" = 1 ] \
   || { echo "FAIL: lenses-checked line must have exactly one home"; FAIL=1; }
 
-definitions="$(grep -RhoE '^- (RC|CA)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
+definitions="$(grep -RhoE '^- (RC|CA|CO)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
 duplicates="$(uniq -d <<<"$definitions")"
 [ -z "$duplicates" ] || { echo "FAIL: rule ids have multiple homes: $duplicates"; FAIL=1; }
 
-citations="$(grep -RhoE '(RC|CA)[0-9]+' "$ROOT" | sort -u)"
+citations="$(grep -RhoE '(RC|CA|CO)[0-9]+' "$ROOT" | sort -u)"
 while IFS= read -r id; do
   [ -z "$id" ] || grep -qx "$id" <<<"$definitions" || { echo "FAIL: unresolved rule id: $id"; FAIL=1; }
 done <<<"$citations"

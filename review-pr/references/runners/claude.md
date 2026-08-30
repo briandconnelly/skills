@@ -1,6 +1,8 @@
 # Claude runner adapter
 
-The Claude adapter is the only currently supported runner.
+The Claude adapter runs the shared review workflow through Claude Code.
+
+The generic security and result requirements have their only normative definitions in [the runner adapter contract](../runner-contract.md).
 
 ## Prerequisites
 
@@ -30,6 +32,6 @@ Run `bash review-pr/tests/adapter-contract-test.sh` for the offline adapter inte
 
 Run `bash review-pr/tests/hostile-fixture-test.sh` for the runner-backed tool and policy isolation gate.
 
-Run `bash review-pr/tests/lens-fixture-test.sh` for the runner-backed review-quality gate.
+Run `bash review-pr/tests/lens-fixture-test.sh --runner claude --arm lens --runs 3` for the runner-backed review-quality gate.
 
 Run `bash review-pr/tests/checkout-pr-test.sh` for the authenticated GitHub checkout gate.

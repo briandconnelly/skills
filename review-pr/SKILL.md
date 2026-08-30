@@ -7,7 +7,7 @@ description: Use when asked to review a GitHub pull request from any directory t
 
 Review a GitHub pull request from any working directory through a supported runner adapter.
 
-The workflow checks out pinned base and head commits, reviews a precomputed diff without child shell or network access, and returns the report without posting comments or applying fixes.
+The workflow checks out pinned base and head commits, reviews a precomputed diff without child write or network access, and returns the report without posting comments or applying fixes.
 
 ## Inputs
 
@@ -21,6 +21,8 @@ Only `github.com` is supported.
 `REVIEW_PR_RUNNER` selects an adapter and defaults to `claude`.
 
 The supported adapters are listed in `scripts/adapters/supported`.
+
+Runner confinement is adapter-specific and has its only definition in the selected runner reference's `Child controls` section.
 
 Read [references/runner-contract.md](references/runner-contract.md) only when adding or diagnosing an adapter.
 
@@ -76,6 +78,8 @@ Use `scratch kept <dir>` instead of `scratch removed` when `kept` is true.
 `REVIEW_PR_RUNNER` selects the adapter.
 
 `REVIEW_PR_BUDGET`, `REVIEW_PR_MAX_TURNS`, and `REVIEW_PR_TIMEOUT` default to `5`, `60`, and `900` seconds respectively.
+
+Runner references state whether the selected adapter can enforce the budget and turn settings.
 
 `REVIEW_PR_KEEP=1` keeps the private checkout for inspection.
 

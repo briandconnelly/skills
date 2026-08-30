@@ -14,7 +14,8 @@ out="$("$SRC/checkout-pr.sh" "$SLUG" "$N")"
 echo "$out" | jq -e . >/dev/null || { echo "FAIL: stdout is not one JSON object: $out"; exit 1; }
 dir="$(jq -r .dir <<<"$out")"; head="$(jq -r .head_sha <<<"$out")"; base="$(jq -r .base_sha <<<"$out")"
 clone="$dir/repo"
-[ "$(jq -r .runner <<<"$out")" = claude ] || { echo "FAIL: default runner is not claude"; FAIL=1; }
+want_runner="${REVIEW_PR_RUNNER:-claude}"
+[ "$(jq -r .runner <<<"$out")" = "$want_runner" ] || { echo "FAIL: checkout runner is not $want_runner"; FAIL=1; }
 
 # The clone is detached at the pinned head.
 [ "$(git -C "$clone" rev-parse HEAD)" = "$head" ] || { echo "FAIL: HEAD != head_sha"; FAIL=1; }
@@ -38,11 +39,23 @@ jq -e 'has("title") and (.title | type == "string") and has("body") and (.body |
   || { echo "FAIL: pr.json lacks string title/body evidence"; FAIL=1; }
 jq -e 'type == "array" and all(.[]; type == "string")' "$(jq -r .policy_manifest_path <<<"$out")" >/dev/null \
   || { echo "FAIL: policy manifest is not a string array"; FAIL=1; }
-# Executable Claude configuration is stripped.
-[ ! -e "$clone/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }
-[ ! -e "$clone/.mcp.json" ] || { echo "FAIL: .mcp.json present"; FAIL=1; }
-# Passive base skills remain available.
-[ -d "$clone/.claude/skills" ] || { echo "FAIL: project skills missing"; FAIL=1; }
+case "$want_runner" in
+  claude)
+    [ ! -e "$clone/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }
+    [ ! -e "$clone/.mcp.json" ] || { echo "FAIL: .mcp.json present"; FAIL=1; }
+    [ -d "$clone/.claude/skills" ] || { echo "FAIL: project skills missing"; FAIL=1; }
+    ;;
+  codex)
+    [ ! -e "$clone/.codex" ] || { echo "FAIL: .codex executable configuration present"; FAIL=1; }
+    [ -f "$clone/AGENTS.md" ] || { echo "FAIL: base AGENTS.md missing"; FAIL=1; }
+    find "$clone/.agents/skills" -name SKILL.md -type f -print -quit | grep -q . \
+      || { echo "FAIL: base Codex skills missing"; FAIL=1; }
+    ;;
+  *)
+    echo "FAIL: no policy assertions for runner $want_runner"
+    FAIL=1
+    ;;
+esac
 # The cleanup ownership marker exists.
 [ -f "$dir/.review-pr" ] || { echo "FAIL: .review-pr marker missing"; FAIL=1; }
 jq -e '.policy_changes | type == "array"' <<<"$out" >/dev/null || { echo "FAIL: policy_changes not array"; FAIL=1; }

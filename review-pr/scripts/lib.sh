@@ -25,14 +25,26 @@ load_adapter() { # load_adapter NAME
     die 3 "unsupported review runner: $name"
   fi
   [ -f "$adapter_dir/$name.sh" ] || die 3 "supported review runner is missing its adapter: $name"
-  unset -f adapter_check adapter_is_policy_path adapter_is_context_path adapter_build_command adapter_normalize 2>/dev/null || true
+  unset -f adapter_check adapter_is_policy_path adapter_context_paths adapter_build_command adapter_normalize 2>/dev/null || true
   unset ADAPTER_POLICY_ROOTS ADAPTER_ALWAYS_REMOVE
   # shellcheck disable=SC1090
   . "$adapter_dir/$name.sh"
-  declare -F adapter_check adapter_is_policy_path adapter_is_context_path adapter_build_command adapter_normalize >/dev/null \
+  declare -F adapter_check adapter_is_policy_path adapter_context_paths adapter_build_command adapter_normalize >/dev/null \
     || die 3 "runner adapter '$name' does not implement the required interface"
   declare -p ADAPTER_POLICY_ROOTS ADAPTER_ALWAYS_REMOVE >/dev/null 2>&1 \
     || die 3 "runner adapter '$name' does not declare its policy paths"
+}
+
+semver_at_least() { # semver_at_least HAVE WANT
+  awk -v have="$1" -v want="$2" 'BEGIN {
+    nh=split(have, h, "."); nw=split(want, w, "."); n=(nh>nw?nh:nw)
+    for (i=1; i<=n; i++) {
+      hv=h[i]+0; wv=w[i]+0
+      if (hv>wv) exit 0
+      if (hv<wv) exit 1
+    }
+    exit 0
+  }'
 }
 
 validate_normalized_result() { # validate_normalized_result FILE
@@ -74,9 +86,7 @@ policy_paths() {
 
 # context_paths_json DIR TREEISH -> JSON array of adapter-selected passive policy paths.
 context_paths_json() {
-  local p
-  while IFS= read -r -d '' p; do if adapter_is_context_path "$p"; then printf '%s\0' "$p"; fi; done \
-    < <(policy_paths "$1" "$2") \
+  adapter_context_paths "$1" "$2" \
     | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
 }
 

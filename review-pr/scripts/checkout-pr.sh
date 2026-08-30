@@ -48,7 +48,7 @@ ensure_merge_base "$CLONE" "$BASE_SHA" "$HEAD_SHA" "refs/pull/$N/head" \
 g branch -q -f "pr-$N" "$HEAD_SHA" || die 1 "git branch pr-$N failed"
 g branch -q -f "pr-$N-base" "$BASE_SHA" || die 1 "git branch pr-$N-base failed"
 
-# The child reads this pinned diff as data and receives no shell capability.
+# The child reads this pinned diff as data and receives no capability to modify it.
 git_wt -C "$CLONE" diff --no-ext-diff --no-textconv --binary "$BASE_SHA...$HEAD_SHA" > "$JOB/pr.diff" \
   || die 1 "git diff failed for pinned base/head"
 printf '%s\n' "$META" > "$JOB/pr.json"
