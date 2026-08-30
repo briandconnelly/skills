@@ -39,6 +39,10 @@ printf '#!/usr/bin/env bash\necho "2.1.250 (Claude Code)"\n' > "$FAKEBIN/claude"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$FAKEBIN/gh"; chmod +x "$FAKEBIN/gh"
 expect_exit 3 'Claude Code 2.1.251 or newer' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12
 
+# Malformed version output cannot pass through numeric coercion.
+printf '#!/usr/bin/env bash\necho "999.invalid (Claude Code)"\n' > "$FAKEBIN/claude"
+expect_exit 3 'cannot parse Claude Code version' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12
+
 # A passing version gets past the adapter gate.
 printf '#!/usr/bin/env bash\necho "2.1.251 (Claude Code)"\n' > "$FAKEBIN/claude"
 rc=0; out="$(env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12 2>&1 >/dev/null)" || rc=$?

@@ -34,12 +34,14 @@ END {
   if (seen_text_before) err("text before ## Summary")
   # Summary: required observable coverage marker plus non-empty prose.
   if (n>=1 && body["Summary"] ~ /^[[:space:]]*$/) err("Summary is empty")
-  sl=split(body["Summary"], summary_lines, "\n"); first_summary=""; coverage_count=0
+  sl=split(body["Summary"], summary_lines, "\n"); first_summary=""; coverage_count=0; summary_prose=0
   for (i=1;i<=sl;i++) {
     if (summary_lines[i]==coverage) coverage_count++
     if (first_summary=="" && summary_lines[i] !~ /^[[:space:]]*$/) first_summary=summary_lines[i]
+    if (summary_lines[i] !~ /^[[:space:]]*$/ && summary_lines[i]!=coverage) summary_prose=1
   }
   if (coverage_count!=1 || first_summary!=coverage) err("Summary must begin with the exact lenses-checked line")
+  if (!summary_prose) err("Summary must include prose after the lenses-checked line")
   # Findings sections: (none) or finding bullets only
   split("Critical Important Suggestions", fs, " ")
   for (i=1;i<=3;i++) check_section(fs[i], 1)

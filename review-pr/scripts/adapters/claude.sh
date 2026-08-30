@@ -10,6 +10,7 @@ adapter_check() {
   need_cmd claude
   local version want=2.1.251
   version="$(claude --version 2>/dev/null | awk '{print $1}')" || die 3 "cannot run 'claude --version'"
+  valid_semver "$version" || die 3 "cannot parse Claude Code version: ${version:-empty}"
   semver_at_least "$version" "$want" || die 3 "Claude Code $want or newer is required, found $version"
 }
 
@@ -48,8 +49,8 @@ adapter_normalize() {
     {
       engine: "claude",
       engine_version: (if ($version | length) > 0 then $version else null end),
-      status: (if $child_exit != 0 or (.is_error // false) then "error" else "completed" end),
-      result: (.result // ""),
+      status: (if $child_exit != 0 or (.is_error // false) or .type != "result" or (.result | type) != "string" then "error" else "completed" end),
+      result: (if (.result | type) == "string" then .result else "" end),
       duration_ms: (.duration_ms // null),
       cost_usd: (.total_cost_usd // null),
       subtype: (.subtype // null),

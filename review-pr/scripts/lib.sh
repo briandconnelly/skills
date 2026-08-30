@@ -47,6 +47,8 @@ semver_at_least() { # semver_at_least HAVE WANT
   }'
 }
 
+valid_semver() { [[ "$1" =~ ^[0-9]+([.][0-9]+){2}$ ]]; }
+
 validate_normalized_result() { # validate_normalized_result FILE
   jq -e '
     type == "object" and

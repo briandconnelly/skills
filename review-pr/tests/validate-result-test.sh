@@ -39,6 +39,23 @@ Adds a port validator. One real bug, otherwise sound.
 
 check valid true false <<<"$VALID"
 check missing-coverage false false <<<"$(sed '/^Lenses checked:/d' <<<"$VALID")"
+check marker-only-summary false false <<<'## Summary
+Lenses checked: correctness, silent-failure, tests, comments.
+
+## Critical
+(none)
+
+## Important
+(none)
+
+## Suggestions
+(none)
+
+## Strengths
+(none)
+
+## Not reviewed
+(none)'
 missing_lens="$(mktemp)"
 printf '%s\n' 'No coverage marker here.' > "$missing_lens"
 [ "$(REVIEW_PR_LENS="$missing_lens" "$V" </dev/null | jq -r .schema_errors[0])" = 'review lens has no lenses-checked line' ] \

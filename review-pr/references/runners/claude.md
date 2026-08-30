@@ -18,7 +18,7 @@ The generic security and result requirements have their only normative definitio
 ## Child controls
 
 - CA6: The child runs through `claude -p` with restricted mode, JSON output, no session persistence, noninteractive permission handling, and strict MCP configuration.
-- CA7: Claude tools that write, execute shell commands, access the network, or start subagents are denied.
+- CA7: The capability prohibition has its only normative definition in RC3 of [the runner adapter contract](../runner-contract.md).
 - CA8: The exact child tool set is `Read`, `Grep`, and `Glob`, and file access is confined to the clone and its private evidence directory.
 - CA9: `REVIEW_PR_BUDGET`, `REVIEW_PR_MAX_TURNS`, and an optional review level map to Claude's budget, turn, and effort flags.
 

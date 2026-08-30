@@ -32,6 +32,7 @@ pwd -P > "$FAKE_CWD"
 if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCHILD"; wait; exit 0; fi
 echo "diag line" >&2
 [ -n "${FAKE_EMPTY:-}" ] && exit 0
+if [ -n "${FAKE_NATIVE:-}" ]; then printf '%s\n' "$FAKE_NATIVE"; exit "${FAKE_EXIT:-0}"; fi
 if [ -n "${FAKE_RESULT:-}" ]; then
   jq -n --arg r "$(printf "$FAKE_RESULT")" '{type:"result",is_error:false,result:$r,total_cost_usd:1.5,duration_ms:60000,permission_denials:[]}'
 else
@@ -170,6 +171,12 @@ out="$(printf '%s' "$J" | FAKE_RESULT="$SENT_RESULT" "$SRC/run-child.sh")"
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_EMPTY=1 "$SRC/run-child.sh")"
 [ "$(jq -c '[.review,.schema_valid,.schema_errors]' <<<"$out")" = '[null,false,["no result"]]' ] || { echo "FAIL: missing native result envelope is wrong: $out"; FAIL=1; }
+for malformed in '{}' '{"type":"result","is_error":false,"result":17}'; do
+  J="$(mkjob)"
+  out="$(printf '%s' "$J" | FAKE_NATIVE="$malformed" "$SRC/run-child.sh")"
+  [ "$(jq -r .review.status <<<"$out")" = error ] \
+    || { echo "FAIL: malformed Claude native result completed: $out"; FAIL=1; }
+done
 
 # The lens remains the sole review-behavior source.
 J="$(mkjob)"

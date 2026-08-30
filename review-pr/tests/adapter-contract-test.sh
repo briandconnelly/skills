@@ -110,6 +110,9 @@ if grep -nE 'low.*,.*medium.*,.*high.*,.*xhigh.*,.*max' "$ROOT/SKILL.md"; then
   FAIL=1
 fi
 
+[ "$(grep -Fc "\`REVIEW_PR_RUNNER\` selects" "$ROOT/SKILL.md")" = 1 ] \
+  || { echo "FAIL: runner-selection rule must have exactly one home"; FAIL=1; }
+
 [ "$(grep -Fh 'Lenses checked: correctness, silent-failure, tests, comments.' "$ROOT/references/review-lens.md" "$ROOT/scripts/validate-result.sh" | awk 'END {print NR}')" = 1 ] \
   || { echo "FAIL: lenses-checked line must have exactly one home"; FAIL=1; }
 

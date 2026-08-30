@@ -10,8 +10,7 @@ adapter_check() {
   need_cmd codex
   local version want=0.151.0
   version="$(codex --version 2>/dev/null | awk '{print $2}')" || die 3 "cannot run 'codex --version'"
-  [[ "$version" =~ ^[0-9]+([.][0-9]+){2}$ ]] \
-    || die 3 "cannot parse Codex CLI version: ${version:-empty}"
+  valid_semver "$version" || die 3 "cannot parse Codex CLI version: ${version:-empty}"
   semver_at_least "$version" "$want" || die 3 "Codex CLI $want or newer is required, found $version"
 }
 

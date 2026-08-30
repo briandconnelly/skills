@@ -75,7 +75,7 @@ Use `scratch kept <dir>` instead of `scratch removed` when `kept` is true.
 
 ## Environment
 
-`REVIEW_PR_RUNNER` selects the adapter.
+See [Runner selection](#runner-selection) for adapter selection.
 
 `REVIEW_PR_BUDGET`, `REVIEW_PR_MAX_TURNS`, and `REVIEW_PR_TIMEOUT` default to `5`, `60`, and `900` seconds respectively.
 
