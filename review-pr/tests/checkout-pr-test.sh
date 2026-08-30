@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Live (needs gh auth): checkout-pr.sh pins and clones a real PR (R2, R3, R6.3).
+# Live: checkout-pr.sh pins and clones a real PR for the selected adapter.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 if ! gh auth status >/dev/null 2>&1; then echo "checkout-pr-test: SKIP (gh not authenticated)"; exit 0; fi
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
+# shellcheck disable=SC1091
+. "$SRC/lib.sh"
 export REVIEW_PR_SCRATCH; REVIEW_PR_SCRATCH="$(mktemp -d)"; trap 'rm -rf "$REVIEW_PR_SCRATCH"' EXIT
 SLUG=briandconnelly/cwms-tools; N=112
 
@@ -12,30 +14,52 @@ out="$("$SRC/checkout-pr.sh" "$SLUG" "$N")"
 echo "$out" | jq -e . >/dev/null || { echo "FAIL: stdout is not one JSON object: $out"; exit 1; }
 dir="$(jq -r .dir <<<"$out")"; head="$(jq -r .head_sha <<<"$out")"; base="$(jq -r .base_sha <<<"$out")"
 clone="$dir/repo"
+want_runner="${REVIEW_PR_RUNNER:-claude}"
+[ "$(jq -r .runner <<<"$out")" = "$want_runner" ] || { echo "FAIL: checkout runner is not $want_runner"; FAIL=1; }
 
-# R2.1/R2.2 pinned detached head
+# The clone is detached at the pinned head.
 [ "$(git -C "$clone" rev-parse HEAD)" = "$head" ] || { echo "FAIL: HEAD != head_sha"; FAIL=1; }
 git -C "$clone" symbolic-ref -q HEAD >/dev/null && { echo "FAIL: HEAD is not detached"; FAIL=1; }
-# R2.1 the pinned SHA is what GitHub reports now (tolerates a push between: prints, does not fail)
+# A later push is reported without making this live probe flaky.
 gh_head="$(gh pr view "$N" -R "$SLUG" --json headRefOid -q .headRefOid)"
 [ "$gh_head" = "$head" ] || echo "NOTE: PR head moved during test ($gh_head vs $head)"
-# R2.3 merge base present
+# The merge base is available locally.
 git -C "$clone" merge-base "$base" "$head" >/dev/null || { echo "FAIL: merge-base missing"; FAIL=1; }
-# R2.5 local branches
+# Stable local branch names point at the pinned commits.
 [ "$(git -C "$clone" rev-parse "pr-$N")" = "$head" ] || { echo "FAIL: pr-$N branch"; FAIL=1; }
 [ "$(git -C "$clone" rev-parse "pr-$N-base")" = "$base" ] || { echo "FAIL: pr-$N-base branch"; FAIL=1; }
-# R2.4 pre-fetched artifacts
+# The child diff is pinned, local, and generated without external diff helpers.
 [ -s "$(jq -r .diff_path <<<"$out")" ] || { echo "FAIL: pr.diff empty"; FAIL=1; }
+expected_diff="$REVIEW_PR_SCRATCH/expected.diff"
+git_wt -C "$clone" diff --no-ext-diff --no-textconv --binary "$base...$head" > "$expected_diff"
+cmp -s "$expected_diff" "$(jq -r .diff_path <<<"$out")" \
+  || { echo "FAIL: pr.diff does not match pinned base/head byte-for-byte"; FAIL=1; }
 [ "$(jq -r .headRefOid "$(jq -r .meta_path <<<"$out")")" = "$head" ] || { echo "FAIL: pr.json head mismatch"; FAIL=1; }
-# R3.2 stripped
-[ ! -e "$clone/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }
-[ ! -e "$clone/.mcp.json" ] || { echo "FAIL: .mcp.json present"; FAIL=1; }
-# R3 base skills still present (cwms-tools ships tracked skills)
-[ -d "$clone/.claude/skills" ] || { echo "FAIL: project skills missing"; FAIL=1; }
-# R6.3 marker
+jq -e 'has("title") and (.title | type == "string") and has("body") and (.body | type == "string")' "$(jq -r .meta_path <<<"$out")" >/dev/null \
+  || { echo "FAIL: pr.json lacks string title/body evidence"; FAIL=1; }
+jq -e 'type == "array" and all(.[]; type == "string")' "$(jq -r .policy_manifest_path <<<"$out")" >/dev/null \
+  || { echo "FAIL: policy manifest is not a string array"; FAIL=1; }
+case "$want_runner" in
+  claude)
+    [ ! -e "$clone/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }
+    [ ! -e "$clone/.mcp.json" ] || { echo "FAIL: .mcp.json present"; FAIL=1; }
+    [ -d "$clone/.claude/skills" ] || { echo "FAIL: project skills missing"; FAIL=1; }
+    ;;
+  codex)
+    [ ! -e "$clone/.codex" ] || { echo "FAIL: .codex executable configuration present"; FAIL=1; }
+    [ -f "$clone/AGENTS.md" ] || { echo "FAIL: base AGENTS.md missing"; FAIL=1; }
+    find "$clone/.agents/skills" -name SKILL.md -type f -print -quit | grep -q . \
+      || { echo "FAIL: base Codex skills missing"; FAIL=1; }
+    ;;
+  *)
+    echo "FAIL: no policy assertions for runner $want_runner"
+    FAIL=1
+    ;;
+esac
+# The cleanup ownership marker exists.
 [ -f "$dir/.review-pr" ] || { echo "FAIL: .review-pr marker missing"; FAIL=1; }
 jq -e '.policy_changes | type == "array"' <<<"$out" >/dev/null || { echo "FAIL: policy_changes not array"; FAIL=1; }
-# R2.1 head_repo names OWNER/REPO, not a malformed "/REPO"
+# The head repository is a complete owner/name slug.
 [ "$(jq -r .head_repo <<<"$out")" = "$SLUG" ] || { echo "FAIL: head_repo != $SLUG: $(jq -r .head_repo <<<"$out")"; FAIL=1; }
 
 # Non-existent PR -> exit 1 with gh stderr

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline: input validation and prerequisite errors for checkout-pr.sh (R1.2, R1.3, R7.1, R7.2).
+# Offline: input validation, adapter selection, and prerequisite errors.
 set -euo pipefail
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
@@ -14,7 +14,7 @@ expect_exit() { # expect_exit CODE PATTERN -- cmd...
   grep -q -- "$pat" <<<"$out" || { echo "FAIL: '$*' stderr lacks '$pat': $out"; FAIL=1; }
 }
 
-# R1.2 usage errors
+# Input errors.
 expect_exit 2 'usage' "$SRC/checkout-pr.sh"
 expect_exit 2 'usage' "$SRC/checkout-pr.sh" 'owner/repo'
 expect_exit 2 'OWNER/REPO' "$SRC/checkout-pr.sh" 'not-a-slug' 12
@@ -22,23 +22,31 @@ expect_exit 2 'OWNER/REPO' "$SRC/checkout-pr.sh" 'own er/repo' 12
 expect_exit 2 'positive integer' "$SRC/checkout-pr.sh" 'owner/repo' 0
 expect_exit 2 'positive integer' "$SRC/checkout-pr.sh" 'owner/repo' 12x
 expect_exit 2 'REVIEW_PR_SCRATCH' env -u REVIEW_PR_SCRATCH "$SRC/checkout-pr.sh" 'owner/repo' 12
-# R1.3 host check happens in SKILL.md parsing, but a URL passed through must be rejected
+expect_exit 2 'REVIEW_PR_MAX_POLICY_FILES' env REVIEW_PR_SCRATCH="$S" REVIEW_PR_MAX_POLICY_FILES=bad "$SRC/checkout-pr.sh" 'owner/repo' 12
+# Host validation also rejects a URL passed directly to the script.
 expect_exit 2 'OWNER/REPO' "$SRC/checkout-pr.sh" 'https://gitlab.com/o/r' 12
 
-# R7.1 missing command -> exit 3, distinct message
+# Missing generic prerequisites have distinct errors.
 FAKEBIN="$S/bin"; mkdir -p "$FAKEBIN"
-for c in git jq; do ln -s "$(command -v $c)" "$FAKEBIN/$c"; done
-expect_exit 3 'missing required command: gh' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
+for c in git jq bash dirname grep; do ln -s "$(command -v "$c")" "$FAKEBIN/$c"; done
+expect_exit 3 'missing required command: gh' env PATH="$FAKEBIN" "$SRC/checkout-pr.sh" 'owner/repo' 12
 
-# R7.2 old claude -> exit 3
-printf '#!/usr/bin/env bash\necho "2.1.200 (Claude Code)"\n' > "$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
+# Unsupported adapters fail before network access.
+expect_exit 3 'unsupported review runner: missing' env REVIEW_PR_RUNNER=missing PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
+
+# Claude prerequisites belong to the Claude adapter and are checked by the wrapper.
+printf '#!/usr/bin/env bash\necho "2.1.250 (Claude Code)"\n' > "$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$FAKEBIN/gh"; chmod +x "$FAKEBIN/gh"
-expect_exit 3 'Claude Code 2.1.247 or newer' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
+expect_exit 3 'Claude Code 2.1.251 or newer' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12
 
-# Known positive for the instrument: a passing version must get past the version gate.
-printf '#!/usr/bin/env bash\necho "2.1.247 (Claude Code)"\n' > "$FAKEBIN/claude"
-rc=0; out="$(env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12 2>&1 >/dev/null)" || rc=$?
-grep -q 'Claude Code 2.1.247 or newer' <<<"$out" && { echo "FAIL: version gate rejected 2.1.247"; FAIL=1; }
+# Malformed version output cannot pass through numeric coercion.
+printf '#!/usr/bin/env bash\necho "999.invalid (Claude Code)"\n' > "$FAKEBIN/claude"
+expect_exit 3 'cannot parse Claude Code version' env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12
+
+# A passing version gets past the adapter gate.
+printf '#!/usr/bin/env bash\necho "2.1.251 (Claude Code)"\n' > "$FAKEBIN/claude"
+rc=0; out="$(env PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/review-pr.sh" 'owner/repo' 12 2>&1 >/dev/null)" || rc=$?
+grep -q 'Claude Code 2.1.251 or newer' <<<"$out" && { echo "FAIL: version gate rejected 2.1.251"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "validate-test: OK"
 exit "$FAIL"

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Hostile fixture: PR-head hooks/MCP must not run; base CLAUDE.md and skills must load (R3 end-to-end).
+# Runner-backed fixture for the Claude adapter's policy and tool isolation.
 # Uses the real `claude` for a one-turn probe. Skips when `claude --version` fails to run.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 # shellcheck disable=SC1091
-. "$SRC/child-flags.sh"
+. "$SRC/lib.sh"
+load_adapter claude
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
-# The Read of sub/file.txt makes Claude Code load sub/CLAUDE.md (nested policy files load on demand).
-Q="First use the Read tool on sub/file.txt. Then answer briefly with no further tool calls: (1) quote every project sentinel code (format WORD-NNNN) from any CLAUDE.md you have seen; (2) list skill names containing 'zebra' available to you, or 'none'; (3) list skill names equal to 'code-review' that come from this project's .claude/skills, or 'none'."
+Q="Read ../policy-manifest.json and then read every repository-relative file it lists. Answer briefly with no further tool calls: (1) quote every project sentinel code in those files; (2) list listed skill names containing 'zebra', or 'none'; (3) list listed skill names equal to 'code-review', or 'none'."
 
 build() { # build DIR -> prints "BASE HEAD"
   local R="$1"
@@ -38,35 +38,37 @@ EOF
   echo "$base $head"
 }
 
-probe() { # probe DIR [extra claude flags...] -> prints model answer
-  # --max-turns and --output-format are forced last so they win over any
-  # conflicting values in the caller's flags (e.g. CHILD_FLAGS' --output-format json).
-  local d="$1"; shift
-  (cd "$d" && claude -p "$Q" --no-session-persistence "$@" --max-turns 3 --output-format text < /dev/null 2>/dev/null)
+locked_probe() { # locked_probe DIR -> prints model answer
+  local d="$1" envelope evidence
+  evidence="$(dirname "$d")"
+  adapter_build_command "$Q" "" 1 3 "$evidence"
+  envelope="$(cd "$d" && "${ADAPTER_COMMAND[@]}" < /dev/null 2>/dev/null)"
+  jq -r .result <<<"$envelope"
 }
 
 claude --version >/dev/null 2>&1 || { echo "hostile-fixture-test: SKIP (claude not runnable)"; exit 0; }
+help="$(claude --help)"
+for flag in --restricted --tools --add-dir --strict-mcp-config --permission-mode --no-session-persistence; do
+  grep -qF -- "$flag" <<<"$help" || { echo "FAIL: Claude CLI help lacks required flag $flag"; FAIL=1; }
+done
 
-# Known positive: unstripped head under plain -p must fire the hook and start the MCP server.
-OPEN="$S/open"; mkdir -p "$OPEN"; build "$OPEN" >/dev/null
-probe "$OPEN" >/dev/null || true
-[ -e "$OPEN/HOOK-FIRED" ] || { echo "FAIL: known positive — hook did not fire under plain -p; the instrument cannot detect the failure"; FAIL=1; }
-MCP_POSITIVE=1
-[ -e "$OPEN/MCP-STARTED" ] || { MCP_POSITIVE=0; echo "SKIP: known positive — MCP server did not start under plain -p, so the MCP-absent assertion below cannot be trusted and is skipped"; }
-
-# Under test: isolate-policy.sh + run-child's actual flag set (R3.1, R3.2, R4.2, R4.3).
-# CHILD_FLAGS (sourced from scripts/child-flags.sh) is the same array run-child.sh passes to
-# claude, so this test exercises the real allow/disallow list rather than a hand-rolled one.
-# The probe question asks for no tool calls, so it needs no additional Bash restriction.
+# Under test: the Claude adapter's policy isolation and actual child command.
 LOCK="$S/lock"; mkdir -p "$LOCK"; read -r BASE HEAD < <(build "$LOCK")
-if ! changes="$("$SRC/isolate-policy.sh" "$LOCK" "$BASE" "$HEAD")"; then
+if ! changes="$("$SRC/isolate-policy.sh" claude "$LOCK" "$BASE" "$HEAD")"; then
   echo "FAIL: isolate-policy.sh failed for LOCK"; FAIL=1; changes='[]'
 fi
-if ! ans="$(probe "$LOCK" "${CHILD_FLAGS[@]}")"; then
+context_paths_json "$LOCK" "$BASE" > "$S/policy-manifest.json"
+manifest="$(cat "$S/policy-manifest.json")"
+manifest_want="$(jq -nc '[".claude/skills/zebra-review/SKILL.md","CLAUDE.md","sub/CLAUDE.md"] | sort')"
+[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] \
+  || { echo "FAIL: generated policy manifest is wrong: $manifest"; FAIL=1; }
+if ! ans="$(locked_probe "$LOCK")"; then
   echo "FAIL: probe failed for LOCK"; FAIL=1; ans=''
 fi
+[ ! -e "$LOCK/.claude/settings.json" ] || { echo "FAIL: executable hook configuration remains on disk"; FAIL=1; }
+[ ! -e "$LOCK/.mcp.json" ] || { echo "FAIL: executable MCP configuration remains on disk"; FAIL=1; }
 [ ! -e "$LOCK/HOOK-FIRED" ] || { echo "FAIL: hook fired despite isolation"; FAIL=1; }
-[ "$MCP_POSITIVE" = 0 ] || [ ! -e "$LOCK/MCP-STARTED" ] || { echo "FAIL: MCP server started despite isolation"; FAIL=1; }
+[ ! -e "$LOCK/MCP-STARTED" ] || { echo "FAIL: MCP server started despite isolation"; FAIL=1; }
 grep -q 'PLATYPUS-7741' <<<"$ans" || { echo "FAIL: base CLAUDE.md sentinel not loaded: $ans"; FAIL=1; }
 grep -q 'EVIL-0000' <<<"$ans" && { echo "FAIL: head CLAUDE.md sentinel leaked: $ans"; FAIL=1; }
 grep -q 'BASENEST-2211' <<<"$ans" || { echo "FAIL: base nested sub/CLAUDE.md not loaded (instrument cannot show nested loading): $ans"; FAIL=1; }
@@ -78,24 +80,23 @@ for p in .claude/settings.json .claude/skills/code-review/SKILL.md .mcp.json CLA
   jq -e --arg p "$p" 'index($p) != null' <<<"$changes" >/dev/null || { echo "FAIL: policy_changes lacks $p: $changes"; FAIL=1; }
 done
 
-# Precedence probe (R4.3): a user-level permissions.allow for gh must lose to the deny list.
-# --settings injects the allow rule the way a user's ~/.claude/settings.json would supply it, and a
-# PATH shim named gh leaves a marker when it actually runs, so "ran" is observed, not inferred.
-# Known positive first: with the deny entry removed, the same allow rule lets gh run.
-ALLOW="$S/allow.json"; echo '{"permissions":{"allow":["Bash(gh:*)"]}}' > "$ALLOW"
-SHIM="$S/bin"; mkdir -p "$SHIM"; GH_MARK="$S/GH-RAN"
-printf '#!/usr/bin/env bash\ntouch "%s"\necho "gh shim"\n' "$GH_MARK" > "$SHIM/gh"; chmod +x "$SHIM/gh"
-PQ="Use Bash to run exactly: gh --version . Then answer in one line: did it run (yes/no)."
-NODENY=(); for f in "${CHILD_FLAGS[@]}"; do case "$f" in 'Bash(gh:*)') ;; *) NODENY+=("$f");; esac; done
-pos="$(cd "$LOCK" && PATH="$SHIM:$PATH" claude -p "$PQ" "${NODENY[@]}" --settings "$ALLOW" --max-turns 3 --max-budget-usd 1 < /dev/null 2>/dev/null)" || pos=''
-jq -e '.type == "result"' <<<"$pos" >/dev/null 2>&1 || { echo "FAIL: known positive — claude did not return a result envelope: $pos"; FAIL=1; }
-[ -e "$GH_MARK" ] || { echo "FAIL: known positive — gh did not run under a settings allow rule without the deny entry; the precedence probe cannot show an allow leak"; FAIL=1; }
-rm -f "$GH_MARK"
-neg="$(cd "$LOCK" && PATH="$SHIM:$PATH" claude -p "$PQ" "${CHILD_FLAGS[@]}" --settings "$ALLOW" --max-turns 3 --max-budget-usd 1 < /dev/null 2>/dev/null)" || neg=''
-jq -e '.type == "result"' <<<"$neg" >/dev/null 2>&1 || { echo "FAIL: precedence probe — claude did not return a result envelope: $neg"; FAIL=1; }
-[ ! -e "$GH_MARK" ] || { echo "FAIL: gh ran despite Bash(gh:*) in --disallowedTools when a settings allow rule matched"; FAIL=1; }
-jq -e '[.permission_denials[]? | .tool_input.command] | any(startswith("gh"))' <<<"$neg" >/dev/null 2>&1 \
-  || { echo "FAIL: no gh denial recorded under the deny list: $(jq -c '{result, permission_denials}' <<<"$neg")"; FAIL=1; }
+# A permissive known positive proves the model follows this command and the marker detects execution.
+ALLOW="$S/allow.json"
+jq -n '{permissions:{allow:["Bash(/usr/bin/touch:*)"]}}' > "$ALLOW"
+BASH_MARK="$S/BASH-RAN"
+PQ="You must use Bash to run exactly: /usr/bin/touch $BASH_MARK . Do not simulate the command. Then answer in one line: did it run (yes/no)."
+pos="$(cd "$LOCK" && claude -p "$PQ" --output-format json --no-session-persistence \
+  --permission-mode bypassPermissions --tools Bash --max-budget-usd 1 --max-turns 3 < /dev/null 2>/dev/null)" || pos=''
+jq -e '.type == "result"' <<<"$pos" >/dev/null 2>&1 \
+  || { echo "FAIL: permissive known-positive probe did not return a result: $pos"; FAIL=1; }
+[ -e "$BASH_MARK" ] || { echo "FAIL: permissive known positive did not execute Bash; negative probe would be insensitive: $(jq -c '{result,permission_denials}' <<<"$pos")"; FAIL=1; }
+rm -f "$BASH_MARK"
+
+# The adapter's exact restricted tool set must prevent the same prompt and a user-level allow from executing.
+adapter_build_command "$PQ" "" 1 3 "$S"
+neg="$(cd "$LOCK" && "${ADAPTER_COMMAND[@]}" --settings "$ALLOW" < /dev/null 2>/dev/null)" || neg=''
+jq -e '.type == "result"' <<<"$neg" >/dev/null 2>&1 || { echo "FAIL: restricted-tool probe did not return a result envelope: $neg"; FAIL=1; }
+[ ! -e "$BASH_MARK" ] || { echo "FAIL: Bash ran despite the restricted exact tool set"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "hostile-fixture-test: OK"
 exit "$FAIL"

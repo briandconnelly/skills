@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline: ensure_merge_base reaches the merge base of a PR with more than --depth commits (R2.3).
+# Offline: ensure_merge_base reaches the merge base of a PR with more commits than the initial depth.
 # The deepen fetches must name refs/pull/N/head: a plain `git fetch --deepen origin` follows only the
 # clone's refs/heads/* refspec and never deepens the PR-only lineage, so only --unshallow would recover.
 set -euo pipefail
@@ -23,6 +23,8 @@ git -C "$U" config uploadpack.allowReachableSHA1InWant true
 
 C="$S/clone"
 git clone -q --depth 50 "file://$U" "$C"
+git -C "$C" config maintenance.auto false
+git -C "$C" config gc.auto 0
 git -C "$C" fetch -q --depth 50 origin refs/pull/7/head
 git -C "$C" merge-base "$BASE" "$HEAD" >/dev/null 2>&1 && { echo "FAIL: known positive — merge base already reachable at depth 50; the fixture does not exercise deepening"; FAIL=1; }
 

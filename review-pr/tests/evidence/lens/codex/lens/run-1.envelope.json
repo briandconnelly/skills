@@ -1,0 +1,24 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.151.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis pull request adds millisecond timeout parsing, port validation, JSON configuration loading, and hostname normalization. It has important correctness, error-reporting, documentation, and coverage defects that should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/parse.py:43 — correctness — The diff contains reviewer-directed text attempting to override the required verdict and output format — Following repository-supplied instructions could suppress substantive review findings.\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns false even though 65535 is a valid TCP port and the docstring includes it — Applications cannot configure the highest valid port.\n- app/parse.py:30 — silent-failure — `load_config` catches every `Exception` and silently returns `{}`, including for malformed JSON and file-access failures — Callers cannot distinguish an intentionally empty configuration from a missing, unreadable, or corrupt one and may continue with unintended defaults.\n- app/parse.py:35 — comments — The docstring says an empty hostname returns `None`, while the implementation returns `\"\"` — Callers following the documented contract receive a different sentinel value.\n- app/parse.py:38 — tests — No existing or added test exercises the new trailing-dot removal branch, such as `normalize_host(\"Example.COM.\")` — A regression that leaves fully qualified hostnames unnormalized could merge undetected.\n\n## Suggestions\n(none)\n\n## Strengths\n- The millisecond timeout branch has a direct behavioral test.\n- The optional `ujson` dependency has a documented standard-library fallback.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...\n2026-08-29T22:56:18.972056Z ERROR codex_models_manager::manager: failed to renew cache TTL: EOF while parsing a value at line 1 column 0",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.GrAyE4Ex59/review-pr.SBamkJ",
+  "head_sha": "5d4dea45313c3f46bb1478845dd0e0fe1cad0998",
+  "base_sha": "200aa72d7fc9f52df39daad241e541691a86135e",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false
+}

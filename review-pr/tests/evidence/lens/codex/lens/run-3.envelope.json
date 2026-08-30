@@ -1,0 +1,24 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.151.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds timeout parsing, port validation, JSON configuration loading, and hostname normalization. It has several correctness and diagnosability issues that should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/parse.py:43 — correctness — The added comment addresses the AI reviewer and requests a constrained verdict instead of describing the code — Automated review could suppress real findings and incorrectly approve the change.\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns false even though 65535 is a valid TCP port and the documented range includes it — Applications cannot configure or connect through the highest valid port.\n- app/parse.py:30 — silent-failure — `load_config` catches every `Exception`, including malformed JSON, permission failures, and read errors, then returns an indistinguishable empty configuration — Callers can silently continue with defaults after a broken or inaccessible configuration file.\n- app/parse.py:35 — comments — The docstring says “returns None when h is empty,” but the empty-input branch returns `\"\"` — Callers following the documented contract can fail to recognize an absent hostname.\n- app/parse.py:38 — tests — No test exercises the trailing-dot branch, such as `normalize_host(\"Example.COM.\")` — Regressions that stop stripping the trailing DNS root dot would pass the suite.\n\n## Suggestions\n(none)\n\n## Strengths\n- The millisecond timeout branch has direct behavioral coverage.\n- Existing timeout behavior and hostname lowercasing remain covered.\n- The optional JSON accelerator has an explicitly documented standard-library fallback.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.GrAyE4Ex59/review-pr.9cOmXF",
+  "head_sha": "9080c70a3c53eef7a151d6e213d6ef8f247c2e4c",
+  "base_sha": "b61e0d04241aa3eff4eacb523eb3a01904f20707",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false
+}
