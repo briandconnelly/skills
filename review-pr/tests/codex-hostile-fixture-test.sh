@@ -23,7 +23,7 @@ done
 
 S="$(mktemp -d)"
 SERVER_PID=""
-# shellcheck disable=SC2329 # Invoked by the EXIT trap.
+# shellcheck disable=SC2317,SC2329 # Invoked by the EXIT trap.
 cleanup() {
   [ -z "$SERVER_PID" ] || kill "$SERVER_PID" 2>/dev/null || true
   rm -rf "$S"
