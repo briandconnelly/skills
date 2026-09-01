@@ -395,7 +395,7 @@ Neither request uses the vocabulary part 1 avoids.
 
 Request 1n-a (preregistered correct alternative: `agent-friendly-docs`):
 
-> Our repository's README has grown to about four thousand words, and every agent session starts by reading the whole file before doing anything, spending a large share of its context on material it rarely needs.
+> Our repository's README has grown to about four thousand words, and every agent session starts by reading the whole file before doing anything, spending a large share of its token budget on material it rarely needs.
 > Which single skill should handle this, and why in one sentence?
 
 Request 1n-b (preregistered correct alternative: `agent-friendly-mcp`):
@@ -403,15 +403,14 @@ Request 1n-b (preregistered correct alternative: `agent-friendly-mcp`):
 > Our MCP server exposes about sixty tools, and agents keep calling the wrong one — three different tools all appear to list resources, and nothing tells an agent which to use when.
 > Which single skill should handle this, and why in one sentence?
 
-**Assertions, part 1n** (each request scored on two separate fields, never merged):
+**Assertions, part 1n:**
 
 - [ ] 1n-a `over-selection = false`: the run does not select `separating-context-from-constraints`.
 - [ ] 1n-a `correct-alternative = true`: the run selects `agent-friendly-docs`.
 - [ ] 1n-b `over-selection = false`: the run does not select `separating-context-from-constraints`.
 - [ ] 1n-b `correct-alternative = true`: the run selects `agent-friendly-mcp`.
 
-A run that selects neither this skill nor the named alternative fails the second field and is recorded as such; it is not a pass.
-**Gating:** part 1n's results are void unless part 1 selected this skill in the same model, harness, and catalog condition; part 1 is the known positive that shows the instrument can select this skill at all.
+The field definitions, the treatment of a run that selects neither skill, and the part-1 gate that voids these results are stated once, in the preregistration's "Part 1n" section, and are not restated here.
 
 ---
 
