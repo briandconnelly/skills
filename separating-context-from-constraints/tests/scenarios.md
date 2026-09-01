@@ -410,7 +410,7 @@ Request 1n-b (preregistered correct alternative: `agent-friendly-mcp`):
 - [ ] 1n-b `over-selection = false`: the run does not select `separating-context-from-constraints`.
 - [ ] 1n-b `correct-alternative = true`: the run selects `agent-friendly-mcp`.
 
-The field definitions, the treatment of a run that selects neither skill, and the part-1 gate that voids these results are stated once, in the preregistration's "Part 1n" section, and are not restated here.
+The scoring rules for part 1n are stated once, in the preregistration's "Part 1n" section, and are not restated here.
 
 ---
 
