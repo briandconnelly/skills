@@ -86,6 +86,11 @@ The candidate wording is recorded as a W10 input, not applied: *"Each rule state
 
 **Reps.** Scenario 2 joins wave 3 as a scored cell at **three reps minimum** per arm (issue #159 step 3). Single cells have now diverged on this fixture — clean on 2026-07-11, one material finding on 2026-08-23 — and neither run can be attributed, because the 2026-07-11 artifact pins no `SKILL.md` blob and `f0441f3` rewrote R1/R3/R5 after it.
 
+**Report obligation (added 2026-09-01).** This criterion binds the scorer and is absent from `SKILL.md`: the arm reads only R3's shipped sentence, "Each rule is checkable against some observable evidence: output, tool calls, repository state, or process artifacts." (`SKILL.md:51`).
+Every wave-3 results document that reports an E2 count for scenario 2 or scenario 13 must state, next to that count, that the cell was scored on a criterion the arm could not read, and must report separately how many of that cell's E2 false positives are R3 findings on an undecidable trigger or on unnamed exception evidence.
+A report that presents those counts without that sentence attributes a gap in the text to the arm.
+The gap itself, and the observation that R3 is the only R1–R5 rule carrying neither a not-a-finding clause (R2 `:48-49`, R4 `:55`, R5 `:58,:61`) nor operational pass cases (R1 `:42-43,:45`), are W10 inputs, not wave-3 findings; the 2026-09-01 review records both.
+
 ## Endpoints
 
 The re-score's endpoints carry forward unchanged and apply to every scenario below.
@@ -138,6 +143,19 @@ Wave 3 adds one more, on 2026-08-24.
   **Reachable verdict in which nothing changes:** every audit arm scores `absent`, and the controls score `full-document`.
   W17 then closes with the deliverable boundary confirmed as already-observed behavior, the after-document left in `references/example-audit.md`, and no sentence added to Finding Format.
   A `full-document` or `partial` result on an audit arm is the evidence for W17 option 1 — a positive-shape sentence stating that a rewritten document is produced only on request.
+
+Wave 3 adds three observation fields, on 2026-09-01.
+
+- **E9c — report components present.** Recorded on **every wave-3 audit arm** — never on a control arm, never on scenario 15's author-usability agent — as three separate booleans. Each is an **observation, never a scored endpoint, and never summed** with E1–E9 or with contract adherence.
+  - `guard-lines`: `true` when the output names at least one specific statement and explicitly declares it *not* flagged or correctly placed — a line beginning "Not flagged", a section headed "Not flagged" or "False-positive guard", or a per-statement "no finding" declaration that quotes or locates the statement. A general sentence such as "the remaining statements are fine" that names no statement is `false`.
+  - `classification-table`: `true` when the output contains a table or list, apart from the findings, that assigns statements to the three Core Concept classes (binding rule, load-bearing fact, discretionary context). Class labels that appear only inside a finding's "why it fails" field are `false`.
+  - `negative-safety-note`: `true` when the output contains an explicit statement that there is nothing to report under the safety note ("Safety note: none", "no auditor-directed instructions", or equivalent). Silence about the safety note is `false`. When the fixture contains an injection and the output reports it, record `n/a`.
+
+  Each field is read by a human scorer from the output text. No known positive is required beyond the recognition rules above, because each field records visible structure rather than a judgment about the target. Record `E9a` on the same line so the four unspecified report components sit together.
+
+  **Why (W17, widened 2026-09-01).** `SKILL.md`'s Finding Format specifies the six fields, the summary, and the safety note (`SKILL.md:77-101`). It specifies none of these four components, yet archived arms produce them unevenly: guard lines in 0/8 July 2026 arms and 8/9 August arms, classification tables in 0/8 and 4/9, the after-document in 0/8 and 1/9 (grep over `../runs/`, 2026-09-01). The guard lines and the after-document are in `references/example-audit.md` (`:85-86`, `:98-126`); the classification table and the negative safety note are not, so arms generalized those on their own. Whether reference loading explains the July/August split is unproven — the July artifacts pin no blob — and E9c does not depend on the mechanism. W17 now decides all four components in one place, Finding Format, on this data rather than on the single 2026-08-06 observation.
+
+  **Reachable verdict in which nothing changes:** the three fields are consistent across reps of the same scenario. W17 then records the observed convention as the de facto report shape and adds no Finding Format sentence. Inconsistency across reps is the evidence for a Finding Format sentence; which components such a sentence names is the author's decision, made at step 6, and this endpoint does not make it.
 
 Contract adherence (C1–C6 in the 2026-08-06 preregistration) is recorded per output and never summed with the endpoints above.
 
@@ -217,12 +235,44 @@ The other two branches are still **recorded**, as observations, and never as evi
 Either observation on an arm whose selection was correct means the detector is uninformative for that arm, not that the body failed to load; record it and re-run that rep.
 If a future cell wants those branches as evidence, each needs its own known positive: an unloaded session that produces the artifact, demonstrating the branch can fire without the body.
 
-**Reachable verdict in which nothing changes:** selection correct and body loading confirmed by an R1–R5 id. W12 then closes with the catalog rebuilt and `m12` — the `openai.yaml` short-description deviation — left alone, since it is only changed if this test shows a selection failure.
+**Reachable verdict in which nothing changes:** selection correct and body loading confirmed by an R1–R5 id. W12 then closes with the catalog rebuilt.
+~~W12 then closes with the catalog rebuilt and `m12` — the `openai.yaml` short-description deviation — left alone, since it is only changed if this test shows a selection failure.~~
+**Superseded 2026-09-01** — `m12` is no longer conditional on 9R in either direction; see the amended sequencing below.
 
-**Sequencing (issue #162).** `agents/openai.yaml`'s `short_description` ("Audit agent instructions for ambiguous rules") covers R2 only, while the skill also audits buried (R1), unverifiable (R3), compound (R4), and conflicting (R5) rules; under-triggering is the plausible effect.
-It is not edited until 9R has run, because 9R is the only valid trigger instrument this skill has — scenario 9 measured a hand-written catalog line that is not the shipped frontmatter, so its 3/3 result measured a string no agent will ever see.
-Revising routing metadata before a valid trigger test exists is the untested-edit pattern this skill's history keeps punishing.
-Order: run 9R, record the arm, then revise the yaml, then re-run 9R against the revised catalog and record that arm separately.
+**Sequencing (issue #162). Amended 2026-09-01.**
+Superseded text, retained in full because it stated the sequence this file was executing:
+
+> `agents/openai.yaml`'s `short_description` ("Audit agent instructions for ambiguous rules") covers R2 only, while the skill also audits buried (R1), unverifiable (R3), compound (R4), and conflicting (R5) rules; under-triggering is the plausible effect.
+> It is not edited until 9R has run, because 9R is the only valid trigger instrument this skill has — scenario 9 measured a hand-written catalog line that is not the shipped frontmatter, so its 3/3 result measured a string no agent will ever see.
+> Revising routing metadata before a valid trigger test exists is the untested-edit pattern this skill's history keeps punishing.
+> Order: run 9R, record the arm, then revise the yaml, then re-run 9R against the revised catalog and record that arm separately.
+
+Two facts retire that sequence, and the second retires its premise.
+First, 9R's catalog is the five verbatim frontmatter descriptions (`../scenarios.md`, "Scenario 9R", and `../bin/check-9r-catalog.py`); `agents/openai.yaml` is not in it, so a yaml edit changes nothing 9R reads, and the planned re-run would have validated the edit with an instrument that never traverses it (found by Codex, 2026-09-01, job `ac8bcdbe5d364458b59cd93f648dad79`).
+Second, `short_description` is not a model-visible trigger surface in either harness.
+OpenAI's skill documentation (learn.chatgpt.com/docs/build-skills, fetched 2026-09-01) lists it under `interface` as "Optional user-facing description" and states that "ChatGPT and Codex start with each skill's name and description, then load the full `SKILL.md` instructions when they decide to use that skill"; Codex's own bundled `skill-creator` calls `agents/openai.yaml` "UI-facing metadata such as `display_name`, `short_description`, and `default_prompt`".
+Claude Code's documentation (code.claude.com/docs/en/skills, fetched 2026-09-01) says of the frontmatter `description`: "Claude uses this to decide when to apply the skill", and "skill descriptions are loaded into context so Claude knows what's available, but full skill content only loads when invoked".
+So the frontmatter description is the selection surface in both harnesses, 9R measures the one surface that exists, and `agents/openai.yaml` is a human-facing label.
+
+Consequences: `m12` is reclassified **text-only** — a UI-label wording choice that owes no arm and supports no trigger claim in either direction; the "re-run 9R against the revised catalog" step is struck; issue #162 keeps its first half (retire scenario 9, run 9R) and loses its second (re-measure triggering after the yaml edit).
+`../bin/check-9r-catalog.py` needs no change: frontmatter is the right surface.
+
+**Part 1n — negative control (added 2026-09-01, review finding F5).**
+Scenario 9 and 9R test only that this skill is selected when it should be.
+Nothing tests that it is *not* selected when it should not be, and the frontmatter's opening clause — "Use when auditing or reviewing a skill" — fires on any skill review.
+Two requests are added to `../scenarios.md`'s 9R section, each against the same verbatim catalog and each with a preregistered correct alternative: **1n-a**, a README that has grown to thousands of words and is re-read by every agent session → `agent-friendly-docs`; **1n-b**, an MCP server whose agents keep calling the wrong tool among many → `agent-friendly-mcp`.
+Both are deliberately easy: the point is a calibrated over-selection detector, not a hard discrimination.
+
+Each request is scored on **two separate fields**, never merged: `over-selection` — `true` when `separating-context-from-constraints` is selected — and `correct-alternative` — `true` when the preregistered alternative is selected.
+A run that selects neither this skill nor the alternative is recorded as `over-selection = false, correct-alternative = false`; it is not a pass, because it shows nothing about routing.
+
+**Gating.** Part 1n's results are void unless part 1 selected this skill in the same model, harness, and catalog condition.
+Part 1 is the known positive: it demonstrates that the instrument can select this skill at all, so a `false` on `over-selection` comes from an instrument that can fire.
+Part 1 has not run, so 1n has no known positive until it does.
+
+**Reachable verdict in which nothing changes:** `over-selection = false` on both requests.
+W21 then has no over-triggering evidence, and its description decision rests on part 1 and body loading alone.
+That verdict closes review finding F5; it does not close W21.
 
 ## Scenario 10 — ledger-service (long sectioned document)
 
