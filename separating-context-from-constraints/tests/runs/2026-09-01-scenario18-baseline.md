@@ -16,6 +16,9 @@ Notes: all three arms made zero tool calls (script); every arm's system prompt a
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Planted: D18.1 (declarative production gate in Background). Protected probes: the three Semantics statements ("Remember that…", "Note that…", `INGEST_ENV`), "Feel free to skim…", the 2025 sentence, the `retries` rule.
 
 | Rep | D18.1 | Probes criticized | E2 | Classification stated? by |

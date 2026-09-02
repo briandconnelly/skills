@@ -16,6 +16,9 @@ Notes: every arm made exactly two tool calls (script): Read SKILL.md, then cat r
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Same units and exclusions as the baseline artifact.
 
 ### 12a — `release-notes-helper`

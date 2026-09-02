@@ -16,6 +16,9 @@ Notes: all nine arms made zero tool calls (script check); every arm's system pro
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Nothing is planted; E2 counts every protected unit criticized. Registry exclusions: on 12a and 12c a finding demanding a dedicated rules section is `W9-verdict` (observation, excluded by name); on 12b an R1 finding grounded in retrieval pressure and R4 findings against the seat-count sentences are observations.
 Units are clauses. A criticism of the document's overall structure that names no clause is recorded as `structure` and counted once, except where the registry routes it (12a/12c section demands → `W9-verdict`; 12b interleaving → retrieval-pressure observation).
 

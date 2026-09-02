@@ -16,6 +16,9 @@ Notes: all three arms made zero tool calls (script); every arm's system prompt a
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Planted: D13.1 (known positive). Observation item: D13.2. Adjudication item by treatment: B13.1 (left alone or escalated → neither; definitive rewrite inventing an artifact → false positive). Protected: rule 4, rule 5, Context.
 
 | Rep | D13.1 | E3 on D13.1 | D13.2 (observation) | B13.1 treatment | Protected units criticized | E2 |

@@ -16,6 +16,9 @@ Notes: all three arms made zero tool calls (script check); every arm's system pr
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Scoring units (registry: the clause, protected by default; nothing planted, nothing adjudicated): the four description sentences — purpose, `MUST NOT archive…`, `Accepts only a channel_id…`, `Returns …` — and the schema (`confirmed` property, `required`).
 A document-level structural criticism ("rules and context interleaved in one paragraph") names no clause; it is recorded as a separate unit, `structure`, and counted, because it proposes changing every sentence's placement.
 

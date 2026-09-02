@@ -16,6 +16,9 @@ Notes: tool calls per rep (script): rep 1 Read SKILL.md + cat example-audit.md; 
 
 ## Scoring
 
+> **Rescored 2026-09-02.** E2 in this artifact was scored by sentence or bullet; the preregistration's unit is the clause. See `../wave3-2026-08-07/rescore-2026-09-02.md` for the unit inventory and corrected counts; that file wins where they differ.
+
+
 Same units as the baseline artifact.
 
 | Rep | Findings | Units criticized | E2 | Of which R3 on unnamed exception evidence | E3 (MUST NOT sentence) | E9c guard / class / safety |
