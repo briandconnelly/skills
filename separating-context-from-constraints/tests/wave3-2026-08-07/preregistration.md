@@ -86,6 +86,8 @@ The candidate wording is recorded as a W10 input, not applied: *"Each rule state
 
 **Reps.** Scenario 2 joins wave 3 as a scored cell at **three reps minimum** per arm (issue #159 step 3). Single cells have now diverged on this fixture — clean on 2026-07-11, one material finding on 2026-08-23 — and neither run can be attributed, because the 2026-07-11 artifact pins no `SKILL.md` blob and `f0441f3` rewrote R1/R3/R5 after it.
 
+**Amended 2026-09-02 (Wave B, author decision, review finding F2 / W10).** `SKILL.md`'s R3 now states a decidable trigger and a checkable result, with named exception evidence, and a bounded-judgment not-a-finding clause. For every rerun against the new blob, the criterion above is superseded: scenario 2's `MUST NOT` sentence is **planted defect D2.1** (R3, unnamed exception evidence — "explicit confirmation from the caller" is tied to no observable input; the `confirmed` property is undescribed); the 2026-08-23 and 2026-09-01 findings on it are recall under the new criterion and remain false positives under the old, which the archived cells keep. D13.2 and D15.6 move from observation items to planted defects (R3, undecidable trigger). Scenario 12b's retry-condition and seat-cap R3 findings move from E2 to observation items, because 12b is an R1 probe and its registry is not re-planted. The archived wave-3 cells are the pre-edit baseline; nothing in them is rescored.
+
 **Report obligation (added 2026-09-01).** This criterion binds the scorer and is absent from `SKILL.md`: the arm reads only R3's shipped sentence, "Each rule is checkable against some observable evidence: output, tool calls, repository state, or process artifacts." (`SKILL.md:51`).
 Every wave-3 results document that reports an E2 count for scenario 2 or scenario 13 must state, next to that count, that the cell was scored on a criterion the arm could not read, and must report separately how many of that cell's E2 false positives are R3 findings on an undecidable trigger or on unnamed exception evidence.
 A report that presents those counts without that sentence attributes a gap in the text to the arm.
@@ -202,8 +204,9 @@ Every statement in every fixture belongs to exactly one of: planted defect, adju
 
 **Observation items, in full** — statements where a finding is evidence about the *ruleset* rather than about the arm, so counting it either way would publish a known gap as a skill result:
 
-- **D13.2** — "For major changes, add an entry to `docs/decisions/`." R3 as scoped passes it; no other rule reaches it. (W10 gap.)
-- **D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.)
+- ~~**D13.2** — "For major changes, add an entry to `docs/decisions/`." R3 as scoped passes it; no other rule reaches it. (W10 gap.)~~ **Planted defect from 2026-09-02** (R3, undecidable trigger) for reruns against the widened R3; observation item for the archived cells.
+- ~~**D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.)~~ **Planted defect from 2026-09-02** (R3, undecidable exception) for reruns against the widened R3; observation item for the archived cells.
+- **Scenario 12b, R3 findings on the duplicate-call retry condition and the seat-cap source (added 2026-09-02).** Reachable under the widened R3; recorded, counted under neither endpoint, because 12b's registry is not re-planted.
 - **D16.1** and **D16.2** — the force-push contradiction and the worked example omitting its own `Test plan:` line. R5 is scoped to rule-versus-rule, and an example is not a rule. (W13 gap.)
 - **Scenario 12a and 12c R1-section findings** — a finding demanding a dedicated rules section, which the shipped R1 text licenses. (W9 verdict; see B3.)
 - **Scenario 12b, an R1 finding grounded in retrieval pressure** — the number of distinct obligations packed into one unbroken block, rather than the absence of a section. A legitimate different answer to W9's question, which the scenario text already said; it was exempted there but not registered. **Added 2026-08-24 (round-2 review).**
@@ -421,6 +424,7 @@ Both therefore have labeled sections, so under the shipped wording an arm that d
 Scoring it as a false positive would punish a faithful application of the rule and corrupt E2, the endpoint the wave rests on.
 
 - A finding on 12a or 12c grounded in **the absence of a dedicated rules section** is recorded as **`W9-verdict`** — neither recall nor a false positive, and excluded from the E2 count by name.
+  **Amended 2026-09-02 (Wave B):** R1 now says a document whose rules are already marked and grouped does not owe a rule section, whatever its headings. For reruns against the new blob, a section demand on 12a or 12c is an ordinary E2 false positive; `W9-verdict` applies only to the archived cells.
 - Every `W9-verdict` observation is direct evidence that R1's compact/long sentence needs rewording, because it shows the shipped text producing the outcome this fixture was built to call wrong.
 - A finding on 12a or 12c grounded in **anything else** — a manufactured R2/R3/R4/R5 defect in the prose — remains an ordinary E2 false positive.
 - 12c's `--force` prohibition keeps its own treatment: a finding proposing to move it out of step 3, away from the step whose semantics it modifies, is an E2 false positive under the same dependency criterion B1 states for scenario 10.
@@ -467,6 +471,8 @@ An R5 finding pairing the `recipients` restriction with any other field is the s
 An R1 finding raised because the constraints live inline in a description field is a second.
 
 Known positive: scenario 8 stands as the evidence that arms can find a reachable R5 conflict. This scenario is not scored as R5 recall.
+
+**Amended 2026-09-02 (Wave B, issue #160 decided).** The 2026-09-01 three-arm cell read "clean / clean" and `SKILL.md:59` was demoted to a Core Concept illustration. For reruns, arm 1 (guard present) is the current `SKILL.md`, which now equals the former ablation; arm 3 is not rerun; arm 2 (the scenario-8 known positive) reruns with it.
 
 **Amended 2026-08-24 (N6, issue #160) — the historical control is replaced, and the ablation runs in the same batch.**
 

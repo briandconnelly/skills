@@ -33,14 +33,18 @@ R3 judges verifiability against observable evidence; for example:
 "Chat responses of four sentences or fewer unless asked" can be checked against output.
 "Never run destructive commands without confirmation" can be checked against tool traces.
 
-## Rules
+R5 judges conflicts by incompatible outcomes on one decision; for example, a restriction on how one field is represented does not restrict unrelated fields unless the document restricts the whole input object.
 
-Each rule below has an id and is checkable by an auditing agent.
+The five rules that follow each carry an id, R1–R5, which findings cite.
+
+## Rules
 
 - **R1 Distinguishability.**
   Make every binding rule structurally distinguishable from context.
-  Treat a document with labeled sections or rules distributed across multiple paragraphs as long-form, and place its rules in a dedicated labeled section.
-  Treat a single flat description without sections as compact, and mark its rules inline with imperative sentences, list items, or explicit mandatory wording.
+  A rule is distinguishable when it is marked — an imperative sentence, a list item, or explicit mandatory wording — and is not embedded in a paragraph of context; a rule so embedded is a finding.
+  In a compact document, a single flat description without sections, inline marking is all a rule owes.
+  In a long-form document, one with labeled sections, the rewrite for an embedded rule moves it into a dedicated labeled rule section when it is liftable — obeying it does not depend on its passage — and otherwise marks it in place; a document whose rules are already marked and grouped does not owe a rule section, whatever its headings.
+  A statement binds when ignoring it violates a policy; a step that only tells a reader already committed to a task how to carry it out is procedural, not binding, however imperative its grammar.
   Keep rule sections free of discretionary context and load-bearing facts; place those statements in context, semantics, or similarly informative sections.
   A "rule" that cannot fail is context in disguise and belongs elsewhere.
 - **R2 Explicit strength.**
@@ -48,7 +52,9 @@ Each rule below has an id and is checkable by an auditing agent.
   Defaults and defeasible guidance are legitimate rules, not failed constraints.
   Only ambiguous strength is a finding — a hedge ("generally", "try to") that leaves the reader unable to tell whether the statement binds.
 - **R3 Verifiability.**
-  Each rule is checkable against some observable evidence: output, tool calls, repository state, or process artifacts.
+  Each rule states a decidable trigger and a result checkable against some observable evidence: output, tool calls, repository state, or process artifacts.
+  A trigger is decidable when the document and the situation together tell the reader whether the rule applies; an exception is decidable when the evidence that satisfies it is named.
+  A rule is not a finding merely because checking it takes judgment, when the document bounds that judgment with a quantity, a named artifact, or a named party.
   An unverifiable rule that does not reveal the author's intended safeguard is an author decision (see Finding Format).
 - **R4 Atomic obligations.**
   Independently checkable obligations are stated separately.
@@ -56,7 +62,6 @@ Each rule below has an id and is checkable by an auditing agent.
 - **R5 Reachable precedence.**
   Where two rules in the document can actually conflict on a realistic input, precedence is explicit.
   Two rules conflict only when they prescribe incompatible outcomes for the same decision; shared words or adjacent fields alone do not create a conflict.
-  A restriction on the representation of one field does not restrict unrelated fields unless the document explicitly restricts the whole input object.
   When the document does not determine which rule wins, the choice is an author decision (see Finding Format) and the labeled alternatives are every plausible precedence choice.
   Speculative pairwise precedence for unreachable conflicts is not required and is not a finding.
 
@@ -82,6 +87,7 @@ Severity is two-level.
 **Minor** — intended behavior remains clear and checkable, but structural separation could be improved.
 
 Rewrites preserve semantics.
+The deliverable is the findings, the summary, and any safety note; produce a rewritten version of the whole document only when the request asks for one.
 When a statement's intended strength is ambiguous, the finding presents both the promoted and demoted rewrite and marks the choice as an author decision.
 The promoted rewrite is a binding rule, while the demoted rewrite is explicitly nonbinding context placed outside the rule section.
 Do not substitute a defeasible default for the demoted rewrite; add a default as a separate alternative only when the target indicates that some binding preference is intended.
