@@ -86,7 +86,9 @@ The candidate wording is recorded as a W10 input, not applied: *"Each rule state
 
 **Reps.** Scenario 2 joins wave 3 as a scored cell at **three reps minimum** per arm (issue #159 step 3). Single cells have now diverged on this fixture — clean on 2026-07-11, one material finding on 2026-08-23 — and neither run can be attributed, because the 2026-07-11 artifact pins no `SKILL.md` blob and `f0441f3` rewrote R1/R3/R5 after it.
 
-**Amended 2026-09-02 (Wave B, author decision, review finding F2 / W10).** `SKILL.md`'s R3 now states a decidable trigger and a checkable result, with named exception evidence, and a bounded-judgment not-a-finding clause. For every rerun against the new blob, the criterion above is superseded: scenario 2's `MUST NOT` sentence is **planted defect D2.1** (R3, unnamed exception evidence — "explicit confirmation from the caller" is tied to no observable input; the `confirmed` property is undescribed); the 2026-08-23 and 2026-09-01 findings on it are recall under the new criterion and remain false positives under the old, which the archived cells keep. D13.2 and D15.6 move from observation items to planted defects (R3, undecidable trigger). Scenario 12b's retry-condition and seat-cap R3 findings move from E2 to observation items, because 12b is an R1 probe and its registry is not re-planted. The archived wave-3 cells are the pre-edit baseline; nothing in them is rescored.
+**Amended 2026-09-02 (Wave B).**
+`SKILL.md`'s R3 was widened; for reruns against the new blob the criterion above is superseded by the rerun classification in the E2 exclusion registry below, which is the only home for what changed.
+The archived wave-3 cells keep the criterion above and are not rescored.
 
 **Report obligation (added 2026-09-01).** This criterion binds the scorer and is absent from `SKILL.md`: the arm reads only R3's shipped sentence, "Each rule is checkable against some observable evidence: output, tool calls, repository state, or process artifacts." (`SKILL.md:51`).
 Every wave-3 results document that reports an E2 count for scenario 2 or scenario 13 must state, next to that count, that the cell was scored on a criterion the arm could not read, and must report separately how many of that cell's E2 false positives are R3 findings on an undecidable trigger or on unnamed exception evidence.
@@ -204,9 +206,8 @@ Every statement in every fixture belongs to exactly one of: planted defect, adju
 
 **Observation items, in full** — statements where a finding is evidence about the *ruleset* rather than about the arm, so counting it either way would publish a known gap as a skill result:
 
-- ~~**D13.2** — "For major changes, add an entry to `docs/decisions/`." R3 as scoped passes it; no other rule reaches it. (W10 gap.)~~ **Planted defect from 2026-09-02** (R3, undecidable trigger) for reruns against the widened R3; observation item for the archived cells.
-- ~~**D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.)~~ **Planted defect from 2026-09-02** (R3, undecidable exception) for reruns against the widened R3; observation item for the archived cells.
-- **Scenario 12b, R3 findings on the duplicate-call retry condition and the seat-cap source (added 2026-09-02).** Reachable under the widened R3; recorded, counted under neither endpoint, because 12b's registry is not re-planted.
+- **D13.2** — "For major changes, add an entry to `docs/decisions/`." R3 as scoped passes it; no other rule reaches it. (W10 gap.) *Archived cells only; see the rerun classification below.*
+- **D15.6** — "Where possible, tag the affected component." Hedges the trigger, not the strength. (W10 gap.) *Archived cells only; see the rerun classification below.*
 - **D16.1** and **D16.2** — the force-push contradiction and the worked example omitting its own `Test plan:` line. R5 is scoped to rule-versus-rule, and an example is not a rule. (W13 gap.)
 - **Scenario 12a and 12c R1-section findings** — a finding demanding a dedicated rules section, which the shipped R1 text licenses. (W9 verdict; see B3.)
 - **Scenario 12b, an R1 finding grounded in retrieval pressure** — the number of distinct obligations packed into one unbroken block, rather than the absence of a section. A legitimate different answer to W9's question, which the scenario text already said; it was exempted there but not registered. **Added 2026-08-24 (round-2 review).**
@@ -219,6 +220,25 @@ Every statement in every fixture belongs to exactly one of: planted defect, adju
 - **A16.1** — "Reviewers should reject a pull request that force-pushes over `main`." (scenario 16, Notes section). **Added 2026-08-24.** B2 named this statement specifically: it is itself a hedged rule ("should") sitting in a Notes section, so an arm raising an R2 or R1 finding against it is arguably right, and B2 says it should score as "neither recall nor a false positive". The complement definition alone would have made it protected by default and scored such a finding as a false positive — reintroducing the defect B2 raised, in the fix for B2. It is an adjudication item: recorded verbatim, counted under neither endpoint.
 
 Scenario 10's adjudication list is empty (B1). No other scenario has adjudication items.
+
+### Rerun classification (added 2026-09-02, Wave B) — the single home for every change that applies to arms reading the post-Wave-B `SKILL.md`
+
+The entries above describe the archived cells and are not edited.
+For any arm that reads a `SKILL.md` blob at or after Wave B, the following supersede them, and every other passage in this file or in `../scenarios.md` that touches one of these statements is a pointer here, not a second statement.
+
+| Statement | Archived treatment | Rerun treatment | Why |
+| --- | --- | --- | --- |
+| Scenario 2, "MUST NOT archive a channel with more than one active member without explicit confirmation from the caller." | protected | **planted D2.1** — R3, exception evidence not observable ("confirmation from the caller" names a party, not an input; `confirmed` is undescribed) | R3 now requires observable exception evidence |
+| Scenario 13, D13.2 | observation | **planted** — R3, undecidable trigger | R3 now requires a decidable trigger |
+| Scenario 15, D15.6 | observation | **planted** — R3 primary or secondary, undecidable exception; E1 for scenario 15 becomes ten | same |
+| Scenario 12b, the duplicate-call retry condition and the seat-cap source | protected (E2) | **observation** — reachable under the widened R3; 12b stays an R1 probe and is not re-planted | same |
+| Scenario 12a and 12c, a finding demanding a dedicated rules section | `W9-verdict` observation | **E2 false positive** | R1 now says marked-and-grouped rules owe no section |
+| Scenario 12c, the rationale clause in step 3, "it bypasses the idempotency check and double-posts every entry in the range." | protected | **planted D12c.1** — R1 minor, discretionary context inside a rule section's step; the `--force` prohibition itself stays protected and moving it stays a false positive | R1's "keep rule sections free of discretionary context" reaches a procedure section; the same shape is planted on scenario 10 as D10.6/D10.7 |
+| Scenario 10, D10.11 "Adding a currency: update `fx/currencies.go` and the `currency_code` enum migration together." | planted (B1) | **protected** — procedural under R1's new sentence: it tells a reader already committed to adding a currency how to do it; E1 for scenario 10 becomes ten | seven of seven archived arms read it this way; B1's "together forecloses updating one alone" is withdrawn for reruns, and this is the author-facing ruling most open to reversal |
+| Scenario 14, arms | guard / known positive / ablated | **with-skill / known positive**; the ablated arm is not rerun because the current `SKILL.md` is the ablation — the guard sentence is deleted outright, not relocated | the 2026-09-01 cell read clean / clean |
+| Scenario 5, all statements | protected | protected; **scenario 5 joins the rerun set as a regression cell** (clean expected), because R3's trigger clause could reach rule 7's "multiple independent user-visible changes" if read too widely | R3 now says ordinary domain predicates pass |
+
+Scenarios 1, 6, and 8 also join the rerun set as regression cells on the assertions in `../scenarios.md`: scenario 1 for R1's embedding test, scenario 6 for R3's author-decision path, scenario 8 for R5 without the deleted guard.
 
 ## Scenario 9R — trigger discrimination
 
@@ -424,7 +444,7 @@ Both therefore have labeled sections, so under the shipped wording an arm that d
 Scoring it as a false positive would punish a faithful application of the rule and corrupt E2, the endpoint the wave rests on.
 
 - A finding on 12a or 12c grounded in **the absence of a dedicated rules section** is recorded as **`W9-verdict`** — neither recall nor a false positive, and excluded from the E2 count by name.
-  **Amended 2026-09-02 (Wave B):** R1 now says a document whose rules are already marked and grouped does not owe a rule section, whatever its headings. For reruns against the new blob, a section demand on 12a or 12c is an ordinary E2 false positive; `W9-verdict` applies only to the archived cells.
+  *Archived cells only; reruns follow the rerun classification in the registry.*
 - Every `W9-verdict` observation is direct evidence that R1's compact/long sentence needs rewording, because it shows the shipped text producing the outcome this fixture was built to call wrong.
 - A finding on 12a or 12c grounded in **anything else** — a manufactured R2/R3/R4/R5 defect in the prose — remains an ordinary E2 false positive.
 - 12c's `--force` prohibition keeps its own treatment: a finding proposing to move it out of step 3, away from the step whose semantics it modifies, is an E2 false positive under the same dependency criterion B1 states for scenario 10.
@@ -444,7 +464,7 @@ Planted defects:
 - D13.1 — "Keep the review tone professional." **This is the known positive.** If an arm misses it, that arm's other R3 results are not evidence.
 **Observation item (moved out of "Planted defects" 2026-08-24, per the registry above):**
 
-- D13.2 — "For major changes, add an entry to `docs/decisions/`." The action is observable and the trigger is undecidable, so R3 as scoped passes it and no other rule catches it. An arm that flags it — under any rule id, or under none — is evidence that the gap is closable without new wording; an arm that passes over it is **not** a recall miss.
+- D13.2 — "For major changes, add an entry to `docs/decisions/`." The action is observable and the trigger is undecidable, so R3 as scoped passes it and no other rule catches it. An arm that flags it — under any rule id, or under none — is evidence that the gap is closable without new wording; an arm that passes over it is **not** a recall miss. *Archived cells only; reruns follow the rerun classification in the registry.*
   It was listed as a planted defect, which meant E1 counted it: an arm applying R3 correctly would have been scored as missing a defect, and the suite would have published a ruleset gap as a skill failure. This file wins over `../scenarios.md` on conflict, so leaving it here would have overridden that file's observation-only treatment.
 
 Boundary item, recorded but not counted as a false positive when treated as a request for an author decision:
@@ -472,7 +492,9 @@ An R1 finding raised because the constraints live inline in a description field 
 
 Known positive: scenario 8 stands as the evidence that arms can find a reachable R5 conflict. This scenario is not scored as R5 recall.
 
-**Amended 2026-09-02 (Wave B, issue #160 decided).** The 2026-09-01 three-arm cell read "clean / clean" and `SKILL.md:59` was demoted to a Core Concept illustration. For reruns, arm 1 (guard present) is the current `SKILL.md`, which now equals the former ablation; arm 3 is not rerun; arm 2 (the scenario-8 known positive) reruns with it.
+**Amended 2026-09-02 (Wave B, issue #160 decided).**
+The 2026-09-01 three-arm cell read "clean / clean" and the guard sentence was deleted from `SKILL.md`.
+Rerun arms follow the rerun classification in the registry.
 
 **Amended 2026-08-24 (N6, issue #160) — the historical control is replaced, and the ablation runs in the same batch.**
 
@@ -535,7 +557,7 @@ Each statement is adjudicated against R2 ("Only ambiguous strength is a finding 
 | D15.3 | "Usually escalate to on-call when a ticket mentions data loss." | R2 defect |
 | D15.4 | "It is preferable to link the ticket to an existing issue rather than opening a new one." | R2 defect |
 | D15.5 | "Consider closing tickets with no reporter response after fourteen days." | R2 defect, **R3 secondary admissible** |
-| D15.6 | "Where possible, tag the affected component." | **reclassified: W10-gap observation, not a scored defect** |
+| D15.6 | "Where possible, tag the affected component." | **reclassified: W10-gap observation, not a scored defect** (archived cells; reruns follow the rerun classification in the registry) |
 | D15.7 | "Tickets from enterprise accounts should normally be triaged first." | R2 defect |
 | D15.8 | "Avoid promising a fix date in the first reply." | **reclassified: adjudication item** |
 | D15.9 | "Ideally the reproduction steps are recorded in the ticket itself rather than in a linked document." | R2 defect |

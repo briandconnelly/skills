@@ -33,16 +33,15 @@ R3 judges verifiability against observable evidence; for example:
 "Chat responses of four sentences or fewer unless asked" can be checked against output.
 "Never run destructive commands without confirmation" can be checked against tool traces.
 
-R5 judges conflicts by incompatible outcomes on one decision; for example, a restriction on how one field is represented does not restrict unrelated fields unless the document restricts the whole input object.
-
 The five rules that follow each carry an id, R1–R5, which findings cite.
 
 ## Rules
 
 - **R1 Distinguishability.**
   Make every binding rule structurally distinguishable from context.
-  A rule is distinguishable when it is marked — an imperative sentence, a list item, or explicit mandatory wording — and is not embedded in a paragraph of context; a rule so embedded is a finding.
-  In a compact document, a single flat description without sections, inline marking is all a rule owes.
+  A rule is distinguishable when it is marked — an imperative sentence, a list item, or explicit mandatory wording — and is not embedded.
+  A rule is embedded when it sits inside a paragraph of informing statements, facts or background, rather than standing as its own sentence or item among directives; an embedded rule is a finding.
+  In a compact document, a single flat description without sections, inline marking is all a rule owes, and embedding is not a finding there.
   In a long-form document, one with labeled sections, the rewrite for an embedded rule moves it into a dedicated labeled rule section when it is liftable — obeying it does not depend on its passage — and otherwise marks it in place; a document whose rules are already marked and grouped does not owe a rule section, whatever its headings.
   A statement binds when ignoring it violates a policy; a step that only tells a reader already committed to a task how to carry it out is procedural, not binding, however imperative its grammar.
   Keep rule sections free of discretionary context and load-bearing facts; place those statements in context, semantics, or similarly informative sections.
@@ -53,8 +52,9 @@ The five rules that follow each carry an id, R1–R5, which findings cite.
   Only ambiguous strength is a finding — a hedge ("generally", "try to") that leaves the reader unable to tell whether the statement binds.
 - **R3 Verifiability.**
   Each rule states a decidable trigger and a result checkable against some observable evidence: output, tool calls, repository state, or process artifacts.
-  A trigger is decidable when the document and the situation together tell the reader whether the rule applies; an exception is decidable when the evidence that satisfies it is named.
-  A rule is not a finding merely because checking it takes judgment, when the document bounds that judgment with a quantity, a named artifact, or a named party.
+  A trigger is decidable when the document and the situation together let the reader tell whether the rule applies; an ordinary domain predicate the reader can decide from the situation passes, and only a trigger nothing lets the reader decide is a finding.
+  An exception is decidable when the evidence that satisfies it is observable — an input, an artifact, or a recorded action; naming a party is not, by itself, evidence.
+  A rule is not a finding merely because applying it takes judgment, when the document bounds that judgment with a quantity or a named artifact.
   An unverifiable rule that does not reveal the author's intended safeguard is an author decision (see Finding Format).
 - **R4 Atomic obligations.**
   Independently checkable obligations are stated separately.

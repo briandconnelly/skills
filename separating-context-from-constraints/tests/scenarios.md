@@ -128,8 +128,12 @@ It may also flag the history or team-sentiment sentences as rules simply because
 **Assertions (with-skill run must satisfy):**
 
 - [ ] No R1 finding is raised for the constraints living inline in the `description` field rather than in a dedicated section: the imperative "MUST NOT archive..." sentence and the "Accepts only a channel_id, never a channel name" sentence are clear inline marking, which R1 explicitly allows for compact documents such as MCP tool descriptions.
-- [ ] ~~The run does not invent an R1, R2, R3, R4, or R5 finding elsewhere in the description to have something to report.~~ **Amended 2026-09-02 (Wave B):** the `MUST NOT` sentence receives an R3 finding (planted defect D2.1: its exception names no observable evidence and the `confirmed` property is undescribed) with labeled alternatives and no silent selection; no other statement receives a finding.
-- [ ] ~~The run explicitly states a **clean** outcome (e.g. "clean — no findings") rather than manufacturing a finding to justify the audit. E2 must be 0.~~ **Amended 2026-09-02 (Wave B):** the run reports exactly one finding and E2 is 0. The archived cells through 2026-09-01 were scored on the superseded assertions.
+- [ ] ~~The run does not invent an R1, R2, R3, R4, or R5 finding elsewhere in the description to have something to report.~~
+  **Amended 2026-09-02 (Wave B):** D2.1 is planted for reruns; see the rerun classification in the preregistration's registry, which is the only home for it.
+  The run's finding on D2.1 presents labeled alternatives with no silent selection, and no other statement receives a finding.
+- [ ] ~~The run explicitly states a **clean** outcome (e.g. "clean — no findings") rather than manufacturing a finding to justify the audit. E2 must be 0.~~
+  **Amended 2026-09-02 (Wave B):** the run reports exactly one finding and E2 is 0.
+  The archived cells through 2026-09-01 were scored on the superseded assertions.
   (Amended 2026-08-24: "or near-clean" is removed, for the reason given on scenario 14 — this fixture plants nothing, so there is no finding a near-clean verdict could legitimately carry. Under the preregistered R3 criterion the `MUST NOT archive…` sentence passes R3, so a clean outcome is reachable.)
 
 **Expected baseline failures:** a skill-less run often assumes any rule not under a `## Rules` heading is automatically a separation defect, flags the inline `MUST NOT` sentence as "buried" even though it is clearly marked, and fails to distinguish a genuinely compact, well-marked document from a long-form one that actually needs a dedicated section.
@@ -655,7 +659,9 @@ Covers the first half of W10.
 **Assertions:**
 
 - [ ] "Keep the review tone professional." gets an R3 finding. *This is the known positive: if it is missed, the run's other R3 results carry no weight.*
-- [ ] **Amended 2026-09-02 (Wave B):** "For major changes, add an entry to `docs/decisions/`." gets an R3 finding on the undecidable trigger, with an author decision (D13.2 is planted for reruns against the widened R3). For the archived cells the following observation text applies.
+- [ ] **Amended 2026-09-02 (Wave B):** for reruns D13.2 is planted; see the rerun classification in the preregistration's registry.
+  The run's finding presents an author decision.
+  For the archived cells the following observation text applies.
   *Observation, not scored (design review N1; preregistration R3 criterion).* Record whether "For major changes, add an entry to `docs/decisions/`." is flagged, under which rule id, and whether the stated defect is the undecidable trigger or the action.
   These were two scored assertions requiring the statement to be flagged. That contradicted the preregistration, which says R3 as written **passes** it: the action is observable, and R3 does not reach undecidable triggers. Scoring an arm as failing for applying R3 correctly would have counted the ruleset's known gap as the arm's error.
   A run that flags it anyway is evidence the W10 gap is closable without new wording; a run that passes over it is not a miss.
@@ -753,7 +759,8 @@ This scenario can terminate the item with "the premise does not hold".
 - [ ] No finding silently selects a reading for any of the nine.
 - [ ] The two unhedged rules — the one-business-day acknowledgement and the never-share rule — do not receive findings.
 - [ ] "Feel free to reassign a ticket if it lands in the wrong queue." (D15.10) receives no finding. It is an explicit permission, not an unresolved strength, and it is this fixture's false-positive probe.
-- [ ] **Amended 2026-09-02 (Wave B):** "Where possible, tag the affected component." (D15.6) gets a finding carrying R3 (primary or secondary) on the undecidable exception; E1 for reruns is ten. For the archived cells the following observation text applies.
+- [ ] **Amended 2026-09-02 (Wave B):** for reruns D15.6 is planted; see the rerun classification in the preregistration's registry.
+  For the archived cells the following observation text applies.
   *Observation, not scored.* Record whether "Where possible, tag the affected component." (D15.6) is flagged and under which id. It hedges the *trigger*, not the strength, so R2 does not reach it and R3 as scoped does not either — it is a W10-gap observation, counted under neither E1 nor E2.
 - [ ] *Observation, not scored.* Record how "Avoid promising a fix date in the first reply." (D15.8) is treated. It is an adjudication item: a direct negative imperative that a careful auditor may read either as binding or as softer than "never".
 - [ ] E9a is `absent`, with E9b recorded separately. *(Added 2026-08-24 for issue #161 / W17.)*
