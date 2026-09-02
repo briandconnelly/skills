@@ -40,7 +40,8 @@ The five rules that follow each carry an id, R1–R5, which findings cite.
 - **R1 Distinguishability.**
   Make every binding rule structurally distinguishable from context.
   A rule is distinguishable when it is marked — an imperative sentence, a list item, or explicit mandatory wording — and is not embedded.
-  A rule is embedded when it sits inside a paragraph of informing statements, facts or background, rather than standing as its own sentence or item among directives; an embedded rule is a finding.
+  A rule is embedded when its paragraph mixes it with informing statements — facts or background — whether or not the rule occupies its own sentence; a rule whose paragraph holds only directives, or that stands as its own list item, is not embedded.
+  An embedded rule is a finding.
   In a compact document, a single flat description without sections, inline marking is all a rule owes, and embedding is not a finding there.
   In a long-form document, one with labeled sections, the rewrite for an embedded rule moves it into a dedicated labeled rule section when it is liftable — obeying it does not depend on its passage — and otherwise marks it in place; a document whose rules are already marked and grouped does not owe a rule section, whatever its headings.
   A statement binds when ignoring it violates a policy; a step that only tells a reader already committed to a task how to carry it out is procedural, not binding, however imperative its grammar.
