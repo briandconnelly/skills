@@ -2,6 +2,8 @@
 
 **Amended 2026-09-02** after a Codex review (job `b50265f8d5d54e12bf1ba56956c7fb25`): the E2 totals, the E2 cells for scenarios 2, 12c, 13, and 18, and the W11, W14, and W17 verdicts are corrected in [`rescore-2026-09-02.md`](rescore-2026-09-02.md), which wins over this file where they differ. Superseded text below is struck rather than deleted.
 
+**Superseded for post-Wave-B arms 2026-09-02:** the cells rerun against the Wave B `SKILL.md` are recorded in [`results-waveB-2026-09-02.md`](results-waveB-2026-09-02.md), which wins over this file for any arm reading that wording; the cells below stand as the pre-Wave-B record.
+
 Every cell below was scored under [`preregistration.md`](preregistration.md) as amended through `b2f11be`, against `SKILL.md` blob `3bd60ba2a831479866155a62cbcd80f7280142ea` (identical on `main` at 0527520) and `references/example-audit.md` blob `f825b78fff6df83c0218ac30f7c020a1c142942b`.
 Model `claude-fable-5-1`, Claude Code 2.1.257, general-purpose subagents, harness-default sampling.
 Scorer: Claude, the session model, unblinded; selection, rule-id, tool-call, digest, and sensitive-string checks were extracted by script from the archived transcripts before hand scoring.
