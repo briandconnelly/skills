@@ -187,6 +187,8 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - `[3.param-names]` **Disambiguate parameter names.** Use `user_id`, not `user`; `channel_id`, not `channel`; `started_after`, not `since`.
   Ambiguous names cause wrong-shape arguments on the first call.
+  Two ambiguities need fixing, not one: which *form* a value takes (`user_id` over `user`) and which *entity* it belongs to (`package_name` over `name`, `repo_slug` over `slug`).
+  A bare `name`, `id`, `version`, or `query` is under-specified even on a single-entity tool, because an agent composing several tools sees the parameter without its tool name attached.
 
 - `[3.required-optional]` **Apply required-vs-optional discipline strictly.** Required parameters must be necessary; every optional parameter declares its omission semantics — what the server does when the field is absent — in its schema description.
   Use JSON Schema `default` only when the server actually applies that value; `default` is annotation, not behavior, and no validator injects it into the call.
@@ -217,7 +219,7 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
   Ask what the result contains, not where the tool puts it: data a caller parses out of `content` is machine-contract data misplaced (`[3.content-types]`), not an absent contract, so omitting `structuredContent` never establishes the carve-out.
   Note a qualifying omission in the tool's description.
   Evaluate `resource_link` results under `[3.resource-links]`.
-  Keep parser-compatible JSON in `content` as a fallback for older or weaker clients; support varies across MCP versions, so the fallback stays useful — but it is the fallback, not the contract.
+  Keep a `content` fallback for older or weaker clients; `structuredContent` support varies across MCP versions, so the fallback stays useful — but it is the fallback, not the contract, and `[3.content-types]` owns what the fallback blocks must hold.
 
 - `[3.output-schema-scope]` **Scope `outputSchema` to success results — a deliberate reading of an unsettled point.** The spec does not say whether `outputSchema` binds `isError: true` results.
   This skill takes the position that it governs success results only: an `isError: true` result carries the documented error envelope in `structuredContent` (see §6) instead of the success shape, and is not validated against `outputSchema`.
@@ -232,6 +234,11 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 
 - `[3.content-types]` **Use rich content types deliberately.** Tool results may include `text`, `image`, `audio`, `resource_link`, embedded `resource`, and `structuredContent`.
   Put machine-contract fields in `structuredContent`; use `content` for human rendering, linked artifacts, and compatibility fallbacks.
+  Those `content` roles are distinct blocks, not one blended one: a result carries a human-rendering text block, and may additionally carry a serialized copy of the structured payload for clients that cannot read `structuredContent` — the spec's backwards-compatibility SHOULD, optional under this skill.
+  A human-rendering block is prose and is not required to parse as JSON; do not report it as a defect for being prose.
+  What is binding is agreement: no `content` block may contradict `structuredContent`.
+  A text block that parses as JSON is read as the serialized copy and must equal the structured payload; a prose block must not report a different outcome than the structured payload does.
+  Two carriers giving different answers is worse than a missing fallback, because clients split on which one they believe.
 
 - `[3.resource-links]` **Prefer resource links over inline bulk or binary payloads.** For large documents, generated charts, exports, or files, return a concise `structuredContent` summary plus a `resource_link` with `uri`, `name`, `description`, `mimeType`, `size` where known, and `annotations.lastModified` where useful.
   Resource links returned by tools may not appear in `resources/list`, so include enough metadata for the agent to fetch, subscribe, cite, or discard them.
@@ -242,6 +249,8 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - `[3.declare-effects]` **Declare side effects, idempotency, and rate limits as first-class contract.** Use tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and structured response fields.
 
 - `[3.honest-annotations]` **Set annotations honestly.** `readOnlyHint: true` on a tool that mutates is worse than no annotation, because clients will skip safety prompts.
+  Map each effect to the hint that carries it: mutation is signalled by `readOnlyHint: false` (`[3.mutation-scope]` defines which calls count), and `destructiveHint` then separates a potentially destructive or irreversible update from a purely additive one.
+  Mutating is not destructive by itself — a create or a send is `readOnlyHint: false, destructiveHint: false`; reserve `destructiveHint: true` for calls that can overwrite or remove state a caller may still need, such as replacement-semantics updates and deletes.
 
 - `[3.annotation-defaults]` **Know the annotation defaults and gates.** An omitted annotation is not neutral: the spec defaults are `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, and `openWorldHint: true`, so an unannotated tool already reads as a possibly-destructive mutator.
   Declare annotations explicitly anyway so the contract is visible rather than inherited — but never report a missing `destructiveHint` as if omission declared the tool safe.
@@ -310,7 +319,8 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
   Collapse endpoint chains into the task they serve.
 
 - `[3.ap-prose-effects]` **Burying side effects, idempotency, or rate limits in description prose.** Agents do not reliably read prose for safety-relevant signals.
-  If a tool mutates state, say so via `destructiveHint`; if it can be retried safely, say so via `idempotentHint`; if it has a per-minute call limit, surface that in the response, not the description.
+  Carry them in the annotations and the structured response instead: `[3.declare-effects]` owns the obligation, `[3.honest-annotations]` owns which hint carries which effect, and `[3.annotation-defaults]` owns when the mutation hints mean anything at all.
+  A per-minute call limit belongs in the response, not the description.
 
 - `[3.ap-readonly-substitute]` **Using `readOnlyHint` as a substitute for artifact disclosure.** Disclose transient response artifacts through the structured response and the tool description — flipping the annotation is not disclosure.
   Under this skill's observable-scope reading, the tool stays `readOnlyHint: true`, because clients use `false` to gate auto-approval and a semantically read-only call gains friction without safety.

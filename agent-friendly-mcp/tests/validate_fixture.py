@@ -26,7 +26,10 @@ MCP 2026-07-28 baseline:
     when temporary is false, else a non-negative integer or null) — independent
     of the fixture-supplied schema, which may not encode them;
   * both results carry a non-empty `content` array that includes a textual
-    fallback block, per the §3 output contract.
+    fallback block, per the §3 output contract, and no `content` block
+    contradicts structuredContent: a block parsing to a JSON object or array is
+    the serialized copy and must equal the payload, while a prose block is not
+    required to parse as JSON (`[3.content-types]`).
 
 The JSON-RPC carrier (`wire.resource_error`) is checked against the SAME
 `error_schema` after renaming `machine_code`/`human_message` back to
@@ -71,16 +74,25 @@ def _schema_errors(instance, schema, where: str) -> list[Issue]:
     ]
 
 
-def _content_fallback_issue(result: dict, where: str) -> Issue | None:
-    """The §3 output contract keeps `content` as a human/compatibility fallback
-    alongside structuredContent: a result must carry a non-empty content array
-    that includes at least one non-empty textual block."""
+def _content_fallback_issues(result: dict, where: str) -> list[Issue]:
+    """`[3.content-types]`: a result must carry a non-empty content array with at
+    least one non-empty textual block, and no block may contradict
+    structuredContent.
+
+    The two `content` roles are checked differently on purpose. A human-rendering
+    block is prose and is *not* required to parse as JSON. A block that parses to
+    a JSON object or array is read as the serialized copy of the structured
+    payload and must equal it. Scalar-parseable prose ("42") stays prose — only
+    object/array shapes are read as the serialized copy.
+    """
     content = result.get("content")
     if not isinstance(content, list) or not content:
-        return Issue(
-            where,
-            "result must carry a non-empty 'content' array (§3 human/compatibility fallback)",
-        )
+        return [
+            Issue(
+                where,
+                "result must carry a non-empty 'content' array (§3 human/compatibility fallback)",
+            )
+        ]
     has_text = any(
         isinstance(block, dict)
         and block.get("type") == "text"
@@ -89,11 +101,41 @@ def _content_fallback_issue(result: dict, where: str) -> Issue | None:
         for block in content
     )
     if not has_text:
-        return Issue(
-            where,
-            "result 'content' must include a non-empty text block (§3 textual fallback)",
-        )
-    return None
+        return [
+            Issue(
+                where,
+                "result 'content' must include a non-empty text block (§3 textual fallback)",
+            )
+        ]
+    if "structuredContent" not in result:
+        # Nothing to agree with: either the [3.output-schema] carve-out, or the
+        # disclosed degraded carrier where content[0].text *is* the envelope.
+        return []
+
+    payload = result["structuredContent"]
+    issues: list[Issue] = []
+    for index, block in enumerate(content):
+        if not isinstance(block, dict) or block.get("type") != "text":
+            continue
+        text = block.get("text")
+        if not isinstance(text, str):
+            continue
+        try:
+            parsed = json.loads(text)
+        except ValueError:
+            continue  # prose fallback — legitimate, not a defect
+        if not isinstance(parsed, (dict, list)):
+            continue  # scalar-parseable prose, not a serialized payload
+        if parsed != payload:
+            issues.append(
+                Issue(
+                    where,
+                    f"content[{index}].text parses as JSON, so it is the serialized "
+                    "copy of the payload and must equal 'structuredContent' "
+                    "(§3 fallback agreement); the two carriers disagree",
+                )
+            )
+    return issues
 
 
 def _envelope_invariant_issues(envelope: object, where: str) -> list[Issue]:
@@ -411,9 +453,7 @@ def _success_issues(wire: dict) -> list[Issue]:
     issues += _result_type_issues(success, "success_result")
     if success.get("isError") is True:
         issues.append(Issue("success_result", "success_result must not set isError: true"))
-    content_issue = _content_fallback_issue(success, "success_result.content")
-    if content_issue:
-        issues.append(content_issue)
+    issues += _content_fallback_issues(success, "success_result.content")
     output_schema = wire.get("output_schema")
     if "structuredContent" not in success:
         # Key absence is the violation; a present null is legal wherever the
@@ -481,9 +521,7 @@ def _error_issues(wire: dict) -> list[Issue]:
     if error.get("isError") is not True:
         issues.append(Issue("error_result", "error_result must set isError: true"))
 
-    error_content_issue = _content_fallback_issue(error, "error_result.content")
-    if error_content_issue:
-        issues.append(error_content_issue)
+    issues += _content_fallback_issues(error, "error_result.content")
 
     degraded = bool(wire.get("degraded_text_carrier"))
     envelope, carrier_issues = _extract_envelope(error, degraded)
