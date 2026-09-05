@@ -402,3 +402,48 @@ def test_resource_read_content_block_needs_uri():
     del bad["wire"]["resource_read_result"]["result"]["contents"][0]["uri"]
     issues = validate(bad)
     assert any("missing required 'uri'" in i.message for i in issues)
+
+
+def test_prose_content_fallback_is_not_required_to_parse_as_json():
+    """`[3.content-types]`: a human-rendering block is prose by design. Enforcing
+    JSON here would fail this suite's own conforming fixtures."""
+    ok = copy.deepcopy(FIXTURE)
+    for key in ("success_result", "error_result"):
+        ok["wire"][key]["content"] = [{"type": "text", "text": "not JSON"}]
+    assert validate(ok) == []
+
+
+def test_serialized_json_fallback_matching_structured_payload_accepted():
+    ok = copy.deepcopy(FIXTURE)
+    for key in ("success_result", "error_result"):
+        result = ok["wire"][key]
+        result["content"] = [
+            {"type": "text", "text": json.dumps(result["structuredContent"])}
+        ]
+    assert validate(ok) == []
+
+
+def test_serialized_json_fallback_contradicting_structured_payload_rejected():
+    for key in ("success_result", "error_result"):
+        bad = copy.deepcopy(FIXTURE)
+        result = bad["wire"][key]
+        payload = copy.deepcopy(result["structuredContent"])
+        payload["injected_disagreement"] = True
+        result["content"] = [{"type": "text", "text": json.dumps(payload)}]
+        issues = validate(bad)
+        assert any(
+            i.where == f"{key}.content" and "must equal 'structuredContent'" in i.message
+            for i in issues
+        ), f"{key}: contradicting JSON fallback not caught: {[i.message for i in issues]}"
+
+
+def test_json_fallback_agreement_checked_alongside_a_prose_block():
+    """A prose block does not excuse a contradicting serialized block in the same result."""
+    bad = copy.deepcopy(FIXTURE)
+    result = bad["wire"]["success_result"]
+    result["content"] = [
+        {"type": "text", "text": "Issue #42: Login button misaligned (open)"},
+        {"type": "text", "text": json.dumps({"number": 7, "state": "closed"})},
+    ]
+    issues = validate(bad)
+    assert any("must equal 'structuredContent'" in i.message for i in issues)

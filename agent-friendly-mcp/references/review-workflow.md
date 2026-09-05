@@ -8,8 +8,15 @@ A review is grounded when its findings cite evidence from the schema, the respon
 
 ## Severity Scale
 
+Severity states demonstrated impact; it is not a band a defect earns from what it is called.
+**Critical** carries the extra burden, because it blocks merge: name the security or data-integrity risk, or the path by which an agent reliably fails the task, and cite the schema, payload, or transcript evidence that shows it.
+A defect whose impact you cannot demonstrate belongs in the band the evidence supports — usually Major — with a line saying what evidence would raise it.
+Step 1's calibration for a missing capability summary is the worked model; apply that discipline across the whole scale rather than only there.
+
 - **Critical** — agent will reliably fail to use the server correctly, or there is a security or data-integrity risk.
-  Examples: a tool that mutates shared or persistent state advertised `readOnlyHint: true` (§3), `idempotentHint: true` on a tool that creates duplicates on retry, undocumented destructive side effects, secrets leaked in error payloads, a `stdio` server logging to stdout, an auth model collapsed to "credential failure" with no distinction between missing / wrong / insufficient scope.
+  Examples where the shape itself is the risk, so no further impact evidence is needed: a tool that mutates shared or persistent state advertised `readOnlyHint: true` (§3), `idempotentHint: true` on a tool that creates duplicates on retry, undocumented destructive side effects, secrets leaked in error payloads, a `stdio` server logging to stdout.
+  Conditional example: an auth model collapsed to "credential failure" with no distinction between missing / wrong / insufficient scope is Critical when the collapse leaves an agent unable to reach a correct retry at all — a transcript looping on the same rejected call, or a scope failure the agent cannot separate from a bad credential by any other signal.
+  Without that, an imprecise auth error is a repair-quality defect and lands in Major: it costs turns without establishing a security risk or a reliable task failure.
   Blocks merge.
 - **Major** — agent will frequently choose the wrong primitive, waste tokens, or hit avoidable errors.
   Examples: overlapping tool descriptions, bloated definitions or a 50-tool catalog with no client-independent surface reduction (and no progressive-disclosure mechanism matched to the target clients), unstructured error strings with no symbolic codes, no capability fingerprint for a target client that caches or pins the server surface, resource lists that inline bodies.
@@ -32,7 +39,8 @@ A review is grounded when its findings cite evidence from the schema, the respon
    Name the evidence that placed the finding in its band.
    Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
    Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
-2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** For each section (§1 through §9), record exactly one of:
+2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** A full audit takes the full walk; SKILL.md's focused route applies only to a review scoped to one named surface, and its unread sections are recorded as `not-checked` below rather than reported as coverage.
+   For each section (§1 through §9), record exactly one of:
    - a **finding** with severity and evidence,
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),
    - **`not-checked`** with a reason (e.g., "no transcript available," "auth model out of scope for this audit," "no resources defined — §4 N/A").

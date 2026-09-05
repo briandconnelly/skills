@@ -1,8 +1,23 @@
 # Test Scenarios for agent-friendly-mcp
 
 Behavioral test scenarios for this skill, following the baseline/with-skill methodology: run each scenario with a fresh subagent that does NOT have the skill loaded (baseline), then with the skill loaded (treatment), and compare against the assertions.
-A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
 An assertion the with-skill run misses is a finding against the skill, not against the agent.
+
+## Scenario sets
+
+Every scenario belongs to exactly one set, and the set decides what a baseline pass means.
+Never pool the two sets into one score.
+
+- **Representative set** — a fixed roster whose job is to estimate what this skill does to ordinary in-scope work.
+  A scenario here is never tightened in response to its own results.
+  A baseline that satisfies every assertion is a **result to record**, not a scenario to fix: it is evidence the skill adds nothing on that task, which is precisely what this set exists to detect.
+  Editing a representative scenario resets its history; say so in the Results table when you do.
+- **Challenge set** — scenarios built to be hard enough to separate the arms and show whether a specific rule lands.
+  Here a baseline that passes everything does mean the scenario is too easy; tighten it.
+  Because this set selects for baseline failure by construction, its results measure whether a rule lands — never how much the skill helps overall, and never its cost.
+
+Scenarios 1–8 below are **challenge set**: each was built or tightened under the selection rule above.
+The representative set holds one scenario (R1), run once per arm, so evidence about ordinary tasks is one datapoint deep — do not cite challenge-set totals as the skill's net benefit.
 
 ## How to run
 
@@ -22,6 +37,14 @@ Each assertion is one of two kinds; scenarios label which.
 - **Non-scored conformance.**
   Report layout (the five-line finding format), the exact `Critical / Major / Minor / Nit` words, and coverage-table cosmetics.
   Recorded for consistency, never the reason a run fails.
+
+Every run records three things beyond the assertion count.
+
+- **Set** — representative or challenge, so the two are never averaged.
+- **Regression** — any assertion the baseline satisfied and the treatment missed.
+  A regression is a finding against the skill even when the treatment's total is higher; report it explicitly rather than letting a net gain absorb it.
+- **Overhead** — the treatment's token and tool-call cost stated against the baseline's, as a ratio, not the treatment's figure alone.
+  A skill that buys three assertions for four times the context has a price worth naming.
 
 Outcome-metric mapping is deliberately partial.
 First-call success, first-repair success, schema validity, tool-selection accuracy, and token usage are measured only where a scenario runs an executable or replayed task with a supplied catalog (see `agent-friendly-mcp/tests/fixtures/` and `agent-friendly-mcp/references/design-workflow.md` Step 8).
@@ -266,6 +289,33 @@ Record which wording a run was scored against.
 
 **Expected failure under the pre-#125 wording:** the missing summary lands at Major on the strength of the house default, with no evidence named — the inflation #125 was filed about — or the run reaches Minor but justifies it only by the *absence* of failure evidence rather than positive cold-start evidence.
 
+## Representative set
+
+### R1: Small read-only service (application test)
+
+A deliberately ordinary in-scope task: small surface, no trap, no rule this scenario was built to catch.
+It exists to answer the question the challenge set cannot — what the skill does to routine work — so a baseline that passes every assertion is the finding, not a defect in the scenario.
+Do not tighten these assertions in response to a run.
+
+**Prompt:**
+
+> Design the agent-facing MCP server contract for a service wrapping an internal package registry.
+> The underlying API has three read endpoints: search packages, get package metadata, list versions of a package.
+> Produce the tool list with input schemas, an output contract, and the error shape for a missing package.
+
+**Assertions (both arms scored identically):**
+
+- [ ] Tool names are `snake_case`, service-prefixed, verb+noun (`[3.naming]`).
+- [ ] Input schemas set `additionalProperties: false` on every object (`[3.closed-schemas]`).
+- [ ] Parameter names are unambiguous about what they identify — `package_name`, not `name` (`[3.param-names]`).
+- [ ] Read tools carry `readOnlyHint: true` with the mutation hints omitted, not defaulted (`[3.annotation-defaults]`).
+- [ ] Each tool publishes an `outputSchema` and returns `structuredContent` (`[3.output-schema]`, scored per tool).
+- [ ] The `content` fallback does not contradict `structuredContent` (`[3.content-types]`).
+- [ ] The missing-package failure returns a tool result error with a stable symbolic code and a repair hint naming a real callable surface (§6).
+- [ ] A capability summary states what the server does NOT do (§1/§2 negative scope).
+
+**Record:** set, regression, and overhead per the Scoring dimensions above.
+
 ## Results
 
 Every row is scored against the assertion text in force at its recorded tree, not against the current text.
@@ -276,6 +326,9 @@ Rows dated before 2026-07-29 additionally measured the MCP 2025-11-25 contract t
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-09-04 | R1 (small read-only service) | baseline | 4/8 | **Representative set**, Fable 5 subagent, zero tool calls (answered from memory as instructed). Passed closed input schemas, per-tool `outputSchema`+`structuredContent`, non-contradicting `content` ("one source of truth"), and a symbolic `PACKAGE_NOT_FOUND` whose recovery hint names the real `search_packages` tool. Failed service-prefixed naming (`get_package`, undocumented namespace assumption), the annotation gate (asserted `idempotentHint: true` on read-only tools), and agent-facing negative scope (a design-doc "Deliberate exclusions" section, not a summary exposed to agents). Cost: 25,892 tokens, 0 tool calls, ~1,150 words out. |
+| 2026-09-04 | R1 (small read-only service) | treatment | 7/8 | **Representative set**, Fable 5 subagent, same prompt and model as the baseline row. Took the **full walk** and said so, correctly reading the new route rule as barring the focused route for a new server. Passed naming, closed schemas, the annotation gate (mutation hints omitted, citing `[3.annotation-defaults]`), per-tool `outputSchema`, `content`/`structuredContent` agreement, the §6 envelope with a callable `repair`, and an explicit `does_not` array. **Regressions: none** — it passed every assertion the baseline passed. Cost: 97,485 tokens, 7 tool calls, ~3,400 words out — **3.8× the baseline's tokens for +3 assertions**. |
+| 2026-09-04 | R1 | finding against the skill | A3 missed by both arms | `[3.param-names]` requires disambiguated parameter names, and the treatment read §3 in full and still named the parameter `name` rather than `package_name` — the same choice the baseline made. One rule the skill did not transmit on an ordinary task; the first representative-set evidence of a non-effect. Diagnosis: `[3.param-names]`'s examples covered only the *form* ambiguity (`user_id` over `user`), never the *entity* ambiguity (`package_name` over `name`), so the rule under-determined this case; the entity form was added to the rule in the same change. Not yet re-run against the amended rule. |
 | 2026-06-09 | 2 (audit) | baseline | 5/9 | Caught readOnlyHint lie, duplication, error strings, tool count, naming — but no severity scale (used Critical/High/Medium), no five-line format, no §-anchoring, no coverage table, no N/A entries for resources/prompts. |
 | 2026-06-09 | 2 (audit) | with-skill | 9/9 | Five-line findings F1–F7 anchored to §N; coverage table with not-checked reasons; six probes run, three skipped with reasons; remediations name `chat_send_message`, `channel_id`, `search_tools`. Errors rated Critical (within loosened assertion). |
 | 2026-07-11 | 1 (design) | baseline | 4/9 | Tree `d586ce3`. Passed A3/A4/A5/A8; failed granularity (11 endpoint-mirroring tools), naming (no service prefix, noun_verb), negative scope, pagination provenance/detail-toggle, and shown `outputSchema` (claimed in prose only). [evidence](runs/2026-07-11-scenario1-baseline.md) |
