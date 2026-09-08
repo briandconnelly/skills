@@ -47,7 +47,7 @@ For each task, pick tool, resource, or prompt scaffold.
 
 - State-changing or operational?
   Tool.
-  Annotate with `destructiveHint` / `idempotentHint` honestly.
+  Annotate its effects per `[3.honest-annotations]`, which owns which hint carries which effect.
 - Read-only and browseable, with stable URIs the agent will quote back?
   Resource.
 - Multi-step orchestration scaffolding the agent invokes by name?
@@ -76,13 +76,13 @@ Checkpoint: §3 granularity rule.
 Treat the schema as the authoritative contract.
 Write it before behavior.
 
-- Required vs optional discipline: required parameters are necessary; optional ones declare their omission semantics in the schema description, with `default` only where the server actually applies that value (§3).
-- Strict types: enums for fixed value sets; formats (`date-time`, `uri`, `email`); `integer` vs `number` chosen deliberately.
-- Schema dialect: declare it where supported, and close object schemas with `additionalProperties: false` unless extension fields are intentional.
-- Outputs: satisfy `[3.output-schema]`, which owns the per-tool scope of that obligation, its carve-out, and the `content` fallback.
-- Rich results: for large or binary outputs, plan `resource_link` or embedded `resource` content plus a concise `structuredContent` summary instead of inlining bulk data.
-- Disambiguating names: `user_id` not `user`, `started_after` not `since`, `channel_id` not `channel`.
-- Descriptions cover when to use, edge cases, and an example invocation.
+Take each schema through the §3 rules that govern it; they own the requirements, this step owns only the order:
+
+- Parameters: `[3.required-optional]` (necessity, omission semantics, `default`, and the absent/`null`/empty distinction for partial updates), then `[3.strict-types]`, then `[3.param-names]`.
+- Schema construction: `[3.dialect]`, `[3.closed-schemas]`, `[3.portable-schema]`.
+- Descriptions: `[3.descriptions]` and `[3.constraint-separation]`.
+- Outputs: `[3.output-schema]`, which owns the per-tool scope of that obligation, its carve-out, and the `content` fallback.
+- Large or binary results: settle delivery here, under `[3.large-results]` and `[3.resource-links]`, so the input schema and the response shape are designed together rather than retrofitted.
 
 Output: complete tool input schemas, resource URI patterns, and prompt argument schemas — including descriptions and examples.
 Checkpoint: §3, §4. See `examples.md` §1 for a worked tool schema and §5 for a prompt scaffold.
