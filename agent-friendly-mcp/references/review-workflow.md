@@ -39,7 +39,7 @@ Step 1's calibration for a missing capability summary is the worked model; apply
    Name the evidence that placed the finding in its band.
    Record the finding and continue by reading the discovery surface (tool list, resource catalog, prompts) to reconstruct what the summary should have said.
    Note stated scope, negative scope, transport choice, and prerequisites that affect whether or how an agent should use the server.
-2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** A full audit takes the full walk; SKILL.md's focused route applies only to a review scoped to one named surface, and its unread sections are recorded as `not-checked` below rather than reported as coverage.
+2. **Walk [contract-checklist.md](contract-checklist.md) section by section, top to bottom.** SKILL.md's Checklist Map decides which route a review takes; whichever it takes, every section left unread is recorded as `not-checked` below.
    For each section (§1 through §9), record exactly one of:
    - a **finding** with severity and evidence,
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),

@@ -43,5 +43,8 @@ Adding a new rule id for the fallback contract.
 ## Enforcement
 
 `tests/validate_fixture.py` checks agreement, not encoding: a JSON-object/array-parseable text block must equal `structuredContent`; prose passes; a scalar-parseable block ("42") stays prose so numeric summaries do not trip the check.
+Equality is by JSON type, not Python's — `True == 1` in Python, so a `true` fallback would otherwise satisfy a `1` payload; numbers still compare numerically, so `1` and `1.0` agree.
+The guarantee is scoped to the serialized half: whether a prose sentence contradicts the payload is not decidable from a fixture, so prose agreement stays a review obligation and a clean validator run is not evidence the prose agrees.
+Both limits are stated in the rule and pinned by tests, so a future reader does not mistake the validator's silence for coverage.
 Skipped where `structuredContent` is absent — the `[3.output-schema]` carve-out, and the disclosed degraded carrier where `content[0].text` *is* the envelope.
 Four tests pin it, including the prose case, so a future tightening toward mandatory JSON fails a test that states why.

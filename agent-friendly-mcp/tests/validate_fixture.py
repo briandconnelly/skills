@@ -26,10 +26,12 @@ MCP 2026-07-28 baseline:
     when temporary is false, else a non-negative integer or null) — independent
     of the fixture-supplied schema, which may not encode them;
   * both results carry a non-empty `content` array that includes a textual
-    fallback block, per the §3 output contract, and no `content` block
-    contradicts structuredContent: a block parsing to a JSON object or array is
-    the serialized copy and must equal the payload, while a prose block is not
-    required to parse as JSON (`[3.content-types]`).
+    fallback block, per the §3 output contract, and no *serialized* `content`
+    block contradicts structuredContent: a block parsing to a JSON object or
+    array is the serialized copy and must equal the payload (compared by JSON
+    type, so `true` never satisfies `1`), while a prose block is not required to
+    parse as JSON (`[3.content-types]`). Prose *agreement* is not machine-checked
+    -- it is not decidable from the fixture -- so it stays a review obligation.
 
 The JSON-RPC carrier (`wire.resource_error`) is checked against the SAME
 `error_schema` after renaming `machine_code`/`human_message` back to
@@ -74,9 +76,26 @@ def _schema_errors(instance, schema, where: str) -> list[Issue]:
     ]
 
 
+def _json_equal(a, b) -> bool:
+    """Equality by JSON type, not Python's. `True == 1` in Python, but `true` and
+    `1` are different JSON types and must not agree. Numbers still compare
+    numerically, so `1` and `1.0` — the same JSON number, spelled differently —
+    do agree.
+    """
+    if isinstance(a, bool) or isinstance(b, bool):
+        return isinstance(a, bool) and isinstance(b, bool) and a is b
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_json_equal(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_json_equal(x, y) for x, y in zip(a, b))
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return a == b
+    return type(a) is type(b) and a == b
+
+
 def _content_fallback_issues(result: dict, where: str) -> list[Issue]:
     """`[3.content-types]`: a result must carry a non-empty content array with at
-    least one non-empty textual block, and no block may contradict
+    least one non-empty textual block, and no *serialized* block may contradict
     structuredContent.
 
     The two `content` roles are checked differently on purpose. A human-rendering
@@ -84,6 +103,13 @@ def _content_fallback_issues(result: dict, where: str) -> list[Issue]:
     a JSON object or array is read as the serialized copy of the structured
     payload and must equal it. Scalar-parseable prose ("42") stays prose — only
     object/array shapes are read as the serialized copy.
+
+    Scope of the guarantee, stated because silence here is not coverage: prose
+    agreement is NOT checked. Whether "Issue #42 … (open)" contradicts a payload
+    saying `state: "closed"` is not mechanically decidable from the fixture, so
+    `[3.content-types]` assigns prose agreement to review, and this validator
+    enforces only the serialized half. A clean run therefore means no serialized
+    block disagrees — never that the prose was verified.
     """
     content = result.get("content")
     if not isinstance(content, list) or not content:
@@ -126,7 +152,7 @@ def _content_fallback_issues(result: dict, where: str) -> list[Issue]:
             continue  # prose fallback — legitimate, not a defect
         if not isinstance(parsed, (dict, list)):
             continue  # scalar-parseable prose, not a serialized payload
-        if parsed != payload:
+        if not _json_equal(parsed, payload):
             issues.append(
                 Issue(
                     where,

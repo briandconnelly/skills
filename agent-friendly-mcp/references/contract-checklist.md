@@ -188,7 +188,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
 - `[3.param-names]` **Disambiguate parameter names.** Use `user_id`, not `user`; `channel_id`, not `channel`; `started_after`, not `since`.
   Ambiguous names cause wrong-shape arguments on the first call.
   Two ambiguities need fixing, not one: which *form* a value takes (`user_id` over `user`) and which *entity* it belongs to (`package_name` over `name`, `repo_slug` over `slug`).
-  A bare `name`, `id`, `version`, or `query` is under-specified even on a single-entity tool, because an agent composing several tools sees the parameter without its tool name attached.
+  The test for the entity half is whether the tool's own name settles which entity the value names.
+  A bare `name` is fine on `slack_lookup_channel` or `describe_tool`, and a bare `query` is fine on `search_tools`, because the tool name answers "of what".
+  Qualify it where the tool name does not: a tool named for one entity but keyed on another (`list_versions(package_name)`, not `list_versions(name)`), or a parameter shared across a family of tools whose subjects differ.
 
 - `[3.required-optional]` **Apply required-vs-optional discipline strictly.** Required parameters must be necessary; every optional parameter declares its omission semantics — what the server does when the field is absent — in its schema description.
   Use JSON Schema `default` only when the server actually applies that value; `default` is annotation, not behavior, and no validator injects it into the call.
@@ -237,7 +239,9 @@ Audit prompt: On the clients this server actually targets, what must an agent lo
   Those `content` roles are distinct blocks, not one blended one: a result carries a human-rendering text block, and may additionally carry a serialized copy of the structured payload for clients that cannot read `structuredContent` — the spec's backwards-compatibility SHOULD, optional under this skill.
   A human-rendering block is prose and is not required to parse as JSON; do not report it as a defect for being prose.
   What is binding is agreement: no `content` block may contradict `structuredContent`.
-  A text block that parses as JSON is read as the serialized copy and must equal the structured payload; a prose block must not report a different outcome than the structured payload does.
+  A text block that parses as a JSON **object or array** is read as the serialized copy and must equal the structured payload, compared by JSON type — `true` does not satisfy `1`.
+  Text that parses only as a scalar (`42`, `"done"`) is prose, not a serialized copy; treating it as one would flag ordinary numeric summaries.
+  A prose block equally must not report a different outcome than the structured payload does, but that half is a **review** obligation: whether a sentence contradicts a payload is not decidable mechanically, so `tests/validate_fixture.py` enforces only the serialized half and a clean run there is not evidence the prose agrees.
   Two carriers giving different answers is worse than a missing fallback, because clients split on which one they believe.
 
 - `[3.resource-links]` **Prefer resource links over inline bulk or binary payloads.** For large documents, generated charts, exports, or files, return a concise `structuredContent` summary plus a `resource_link` with `uri`, `name`, `description`, `mimeType`, `size` where known, and `annotations.lastModified` where useful.
