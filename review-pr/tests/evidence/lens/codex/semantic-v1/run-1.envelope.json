@@ -1,0 +1,25 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.154.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds millisecond timeouts, port validation, configuration loading, and host normalization, and deletes the default configuration. Changes are needed before merge: default loading now fails, port 65535 is rejected, and configuration errors are hidden. Review was static; tests were read but not run.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting this file leaves `app.startup.load_defaults()` reading a nonexistent path — Every call to load the bundled defaults raises `FileNotFoundError`.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns false because the upper bound is exclusive, despite the documented inclusive range — A valid TCP port is rejected.\n- app/parse.py:30 — silent-failure — `except Exception` silently converts missing files, permission errors, and malformed JSON into `{}` without documenting the fallback — Callers cannot distinguish a failed configuration load from a valid empty configuration or diagnose the underlying error.\n\n## Suggestions\n- app/parse.py:35 — comments — The docstring says “returns None when h is empty,” but the empty-input branch executes `return \"\"` — Callers following the documentation can fail to recognize an empty host when checking for `None`.\n- app/parse.py:38 — tests — No test exercises the trailing-dot branch; the only host test uses `\"Example.COM\"` — A regression leaving `\"Example.COM.\"` as `\"example.com.\"` would pass the current suite.\n\n## Strengths\n- The added timeout test checks that `\"1500ms\"` produces `1.5` seconds.\n- The optional JSON accelerator has an explicitly documented standard-library fallback.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/q1/yy47kpf51gb44d8wg1ywz4p80000gq/T/tmp.BQTmWmbfuQ/review-pr.dos0dG",
+  "head_sha": "49d291a319aaf674aa887f83b82dbcdb70d25228",
+  "base_sha": "574722c5e708437b4496b6fcd4d7d2bcdc9b0a23",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a30114cea9f0231cfd43009433efbfdc07968126a084433ad380d776db07ede4"
+}

@@ -34,7 +34,7 @@ Run `bash review-pr/tests/codex-adapter-test.sh` for the offline adapter interfa
 
 Run `bash review-pr/tests/codex-hostile-fixture-test.sh` for the runner-backed tool and policy-isolation gate.
 
-Run `bash review-pr/tests/lens-fixture-test.sh --runner codex --arm lens --runs 3` for the runner-backed review-quality gate.
+Collect reports with `bash review-pr/tests/lens-fixture-test.sh --runner codex --arm lens --runs 3`, then complete the [independent semantic assessment](../../tests/lens-rubric.md) and run `python3 review-pr/tests/score-lens.py review-pr/tests/evidence/lens/codex/semantic-v1` for the review-quality gate.
 
 Run `REVIEW_PR_RUNNER=codex bash review-pr/tests/checkout-pr-test.sh` for the authenticated GitHub checkout gate.
 

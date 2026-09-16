@@ -13,6 +13,22 @@ load_adapter "$RUNNER"
 [ -d "$DIR/.git" ] || die 2 "not a git repository: $DIR"
 g() { git -C "$DIR" "$@"; }
 
+# Inspect tree modes before removing or restoring anything; following a base
+# policy symlink would read its target from the head working tree.
+while IFS= read -r -d '' entry; do
+  mode="${entry%% *}"
+  [ "$mode" = 120000 ] || continue
+  p="${entry#*$'\t'}"
+  selected=""
+  if adapter_is_policy_path "$p"; then selected=1; fi
+  if [ "${#ADAPTER_POLICY_ROOTS[@]}" -gt 0 ]; then
+    for root in "${ADAPTER_POLICY_ROOTS[@]}"; do
+      [ "$p" != "$root" ] || selected=1
+    done
+  fi
+  [ -z "$selected" ] || die 1 "base reviewer policy must not be a symlink: $p"
+done < <(g ls-tree -r -z "$BASE")
+
 changes="$(
   while IFS= read -r -d '' p; do if adapter_is_policy_path "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only "$BASE" "$HEAD") \
     | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
@@ -25,7 +41,7 @@ fi
 BASE_PATHS=()
 while IFS= read -r -d '' p; do BASE_PATHS+=("$p"); done < <(policy_paths "$DIR" "$BASE")
 if [ "${#BASE_PATHS[@]}" -gt 0 ]; then
-  git_wt -C "$DIR" checkout -q "$BASE" -- "${BASE_PATHS[@]}"
+  git_wt --literal-pathspecs -C "$DIR" checkout -q "$BASE" -- "${BASE_PATHS[@]}"
 fi
 
 if [ "${#ADAPTER_ALWAYS_REMOVE[@]}" -gt 0 ]; then

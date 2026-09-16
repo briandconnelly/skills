@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Offline: normalized runner lifecycle, Claude adapter flags, watchdog, and cleanup.
 set -euo pipefail
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 export REVIEW_PR_SCRATCH
@@ -164,6 +165,19 @@ VALID_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, co
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" "$SRC/run-child.sh")"
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: valid review failed schema validation: $out"; FAIL=1; }
+# A malformed heading with JSON-sensitive characters must still produce the
+# public envelope and complete scratch cleanup.
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+malformed_result="$(printf '%b' "$VALID_RESULT")"
+critical_heading='## Critical'
+malformed_heading=$'## Crit\\ical\t"'
+malformed_result="${malformed_result/"$critical_heading"/$malformed_heading}"
+native="$(jq -n --arg r "$malformed_result" '{type:"result",is_error:false,result:$r}')"
+out="$(printf '%s' "$J" | FAKE_NATIVE="$native" "$SRC/run-child.sh")"
+jq -e '.schema_valid == false and (.schema_errors | length > 0) and .review != null' <<<"$out" >/dev/null \
+  || { echo "FAIL: malformed report broke the public JSON envelope: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: malformed report leaked the checkout"; FAIL=1; }
 SENT_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nCould not read the diff.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n- DIFF-UNAVAILABLE: denied\n'
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_RESULT="$SENT_RESULT" "$SRC/run-child.sh")"
@@ -177,6 +191,25 @@ for malformed in '{}' '{"type":"result","is_error":false,"result":17}'; do
   [ "$(jq -r .review.status <<<"$out")" = error ] \
     || { echo "FAIL: malformed Claude native result completed: $out"; FAIL=1; }
 done
+
+# Even a broken validator cannot discard a completed review.
+cp -R "$SRC" "$REVIEW_PR_SCRATCH/copied-scripts"
+printf '#!/usr/bin/env bash\nprintf broken-json\n' > "$REVIEW_PR_SCRATCH/copied-scripts/validate-result.sh"
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" REVIEW_PR_LENS="$SRC/../references/review-lens.md" "$REVIEW_PR_SCRATCH/copied-scripts/run-child.sh")"
+jq -e '.review.status == "completed" and .schema_valid == false and .schema_errors == ["result validator failed"]' <<<"$out" >/dev/null \
+  || { echo "FAIL: validator failure discarded the review: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: broken validator leaked the checkout"; FAIL=1; }
+# Several individually valid documents are not one validation object.
+v='{"schema_valid":true,"schema_errors":[],"diff_unavailable":false}'
+printf '#!/usr/bin/env bash\nprintf %%s\\\\n %q %q\n' "$v" "$v" > "$REVIEW_PR_SCRATCH/copied-scripts/validate-result.sh"
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" REVIEW_PR_LENS="$SRC/../references/review-lens.md" "$REVIEW_PR_SCRATCH/copied-scripts/run-child.sh")" || true
+jq -e '.review.status == "completed" and .schema_valid == false and .schema_errors == ["result validator failed"]' <<<"$out" >/dev/null 2>&1 \
+  || { echo "FAIL: duplicate validator objects discarded the review: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: duplicate validator objects leaked the checkout"; FAIL=1; }
 
 # The lens remains the sole review-behavior source.
 J="$(mkjob)"
