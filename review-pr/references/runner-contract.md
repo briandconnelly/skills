@@ -30,6 +30,7 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
 - RC8: The checkout must list every adapter-selected passive policy file in `policy-manifest.json`, and the child must read every listed file before reviewing the diff.
 - RC9: The checkout must fail before review when the policy manifest exceeds `REVIEW_PR_MAX_POLICY_FILES`, which defaults to 40, rather than silently omitting policy or exhausting the child turn budget.
 - RC10: A runner reference must document its command capability and whether filesystem reads are technically confined, while the review lens must limit commands to read-only inspection and forbid builds, tests, and other execution of repository code.
+- RC11: Base policy files, passive resources, and adapter policy roots must not be symlinks; the checkout must fail before policy restoration when any are found.
 
 ## Normalized result envelope
 

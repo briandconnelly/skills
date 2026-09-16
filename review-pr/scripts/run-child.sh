@@ -39,7 +39,10 @@ finish() {
   validation='{"schema_valid":false,"schema_errors":["no result"],"diff_unavailable":false}'
   if validate_normalized_result "$NORMALIZED"; then
     review_json="$(jq -c . "$NORMALIZED")"
-    validation="$(jq -r .result "$NORMALIZED" | "$HERE/validate-result.sh")"
+    if ! validation="$(jq -r .result "$NORMALIZED" | "$HERE/validate-result.sh")" \
+      || ! jq -e '(.schema_valid | type == "boolean") and (.schema_errors | type == "array") and (.diff_unavailable | type == "boolean")' <<<"$validation" >/dev/null 2>&1; then
+      validation='{"schema_valid":false,"schema_errors":["result validator failed"],"diff_unavailable":false}'
+    fi
   fi
   [ ! -f "$STDERR" ] || stderr_tail="$(tail -n 30 "$STDERR")"
   [ -z "$KEEP" ] || kept=true

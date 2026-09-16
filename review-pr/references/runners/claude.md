@@ -32,6 +32,6 @@ Run `bash review-pr/tests/adapter-contract-test.sh` for the offline adapter inte
 
 Run `bash review-pr/tests/hostile-fixture-test.sh` for the runner-backed tool and policy isolation gate.
 
-Run `bash review-pr/tests/lens-fixture-test.sh --runner claude --arm lens --runs 3` for the runner-backed review-quality gate.
+Collect reports with `bash review-pr/tests/lens-fixture-test.sh --runner claude --arm lens --runs 3 --collect-only`, then complete the [independent semantic assessment](../../tests/lens-rubric.md) and run `python3 review-pr/tests/score-lens.py review-pr/tests/evidence/lens/claude/semantic-v1` for the review-quality gate.
 
 Run `bash review-pr/tests/checkout-pr-test.sh` for the authenticated GitHub checkout gate.

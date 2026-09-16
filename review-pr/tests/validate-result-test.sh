@@ -232,6 +232,20 @@ x
 ## Not reviewed
 - app/ not read
 - DIFF-UNAVAILABLE: nope'
+# Malformed report text must remain valid JSON even when diagnostics quote it.
+critical_heading='## Critical'
+important_section=$'## Important\n(none)'
+check backslash-heading false false <<<"${VALID/"$critical_heading"/## Crit\\ical}"
+check tab-heading false false <<<"${VALID/"$critical_heading"/$'## Crit\tical'}"
+check quoted-heading false false <<<"${VALID/"$critical_heading"/## \"Critical\"}"
+check none-before-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'(none)$'\n'- app.py:1 — correctness — bad — breaks}"
+check none-after-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'- app.py:1 — correctness — bad — breaks$'\n'(none)}"
+check duplicate-none false false <<<"${VALID/"$important_section"/## Important$'\n'(none)$'\n'(none)}"
+check prose-em-dash true false <<<"${VALID/off-by-one excludes a legal port/off-by-one — excludes a legal port}"
+check blank-impact false false <<<"${VALID/off-by-one excludes a legal port/   }"
+check zero-line false false <<<"${VALID/parse port.py:12/parse port.py:0}"
+check deleted-file true false <<<"${VALID/parse port.py:12/parse port.py:12 [base]}"
+check invalid-side false false <<<"${VALID/parse port.py:12/parse port.py:12 [head]}"
 check empty false false <<<''
 
 [ "$FAIL" = 0 ] && echo "validate-result-test: OK"

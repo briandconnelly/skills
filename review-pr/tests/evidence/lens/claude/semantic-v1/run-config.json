@@ -1,0 +1,8 @@
+{
+  "runner": "claude",
+  "arm": "lens",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "collection_id": "0a5e8d464bf1e8bac9b5aa578818283d5544f9c6b41edbf2e9ab6daf573f6fac"
+}
