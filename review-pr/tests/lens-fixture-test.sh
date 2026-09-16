@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # lens-fixture-test.sh --runner NAME --arm lens --runs N [--budget USD] [--level LEVEL]
-# Runner-neutral quality instrument for the portable review lens.
+# Collects reports for the runner-neutral lens quality gate; scoring is a separate step (see lens-rubric.md).
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
-ARM=""; RUNNER=claude; RUNS=3; BUDGET=1; LEVEL=high; COLLECT_ONLY=""
+ARM=""; RUNNER=claude; RUNS=3; BUDGET=1; LEVEL=high
 while [ $# -gt 0 ]; do case "$1" in
-  --collect-only) COLLECT_ONLY=1; shift;;
   --runner) RUNNER="$2"; shift 2;; --arm) ARM="$2"; shift 2;; --runs) RUNS="$2"; shift 2;;
   --budget) BUDGET="$2"; shift 2;; --level) LEVEL="$2"; shift 2;;
   *) echo "usage: $0 --runner NAME --arm lens --runs N [--budget USD] [--level LEVEL]" >&2; exit 2;; esac; done
@@ -180,9 +179,5 @@ for k in $(seq 1 "$RUNS"); do
   rm -rf "$dir"
 done
 
-# Semantic judgments are separate from report generation; see lens-rubric.md.
-if [ -n "$COLLECT_ONLY" ]; then
-  echo "lens-fixture-test: reports collected under $EVID; quality gate pending semantic assessment"
-  exit 0
-fi
-python3 "$ROOT/tests/score-lens.py" "$EVID"
+# Collection removed any earlier assessments, so scoring must wait for a fresh semantic assessment.
+echo "lens-fixture-test: reports collected under $EVID; quality gate pending semantic assessment"

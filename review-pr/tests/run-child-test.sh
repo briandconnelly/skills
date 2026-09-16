@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Offline: normalized runner lifecycle, Claude adapter flags, watchdog, and cleanup.
 set -euo pipefail
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 export REVIEW_PR_SCRATCH
@@ -200,6 +201,15 @@ out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" REVIEW_PR_LENS="$SRC/../re
 jq -e '.review.status == "completed" and .schema_valid == false and .schema_errors == ["result validator failed"]' <<<"$out" >/dev/null \
   || { echo "FAIL: validator failure discarded the review: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: broken validator leaked the checkout"; FAIL=1; }
+# Several individually valid documents are not one validation object.
+v='{"schema_valid":true,"schema_errors":[],"diff_unavailable":false}'
+printf '#!/usr/bin/env bash\nprintf %%s\\\\n %q %q\n' "$v" "$v" > "$REVIEW_PR_SCRATCH/copied-scripts/validate-result.sh"
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" REVIEW_PR_LENS="$SRC/../references/review-lens.md" "$REVIEW_PR_SCRATCH/copied-scripts/run-child.sh")" || true
+jq -e '.review.status == "completed" and .schema_valid == false and .schema_errors == ["result validator failed"]' <<<"$out" >/dev/null 2>&1 \
+  || { echo "FAIL: duplicate validator objects discarded the review: $out"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: duplicate validator objects leaked the checkout"; FAIL=1; }
 
 # The lens remains the sole review-behavior source.
 J="$(mkjob)"

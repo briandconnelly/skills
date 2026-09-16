@@ -40,7 +40,7 @@ finish() {
   if validate_normalized_result "$NORMALIZED"; then
     review_json="$(jq -c . "$NORMALIZED")"
     if ! validation="$(jq -r .result "$NORMALIZED" | "$HERE/validate-result.sh")" \
-      || ! jq -e '(.schema_valid | type == "boolean") and (.schema_errors | type == "array") and (.diff_unavailable | type == "boolean")' <<<"$validation" >/dev/null 2>&1; then
+      || ! validation="$(jq -ces 'select(length == 1 and (.[0] | type == "object" and (.schema_valid | type == "boolean") and (.schema_errors | type == "array") and (.diff_unavailable | type == "boolean"))) | .[0]' <<<"$validation" 2>/dev/null)"; then
       validation='{"schema_valid":false,"schema_errors":["result validator failed"],"diff_unavailable":false}'
     fi
   fi

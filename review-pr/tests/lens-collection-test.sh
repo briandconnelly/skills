@@ -19,7 +19,7 @@ for artifact in run-4.json run-4.envelope.json run-4.assessment.json run-1.asses
   printf '%s\n' stale > "$EVID/$artifact"
 done
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
-PATH="$S/bin:$PATH" bash "$S/skill/tests/lens-fixture-test.sh" --runner claude --arm lens --runs 1 --collect-only
+PATH="$S/bin:$PATH" bash "$S/skill/tests/lens-fixture-test.sh" --runner claude --arm lens --runs 1
 for artifact in run-4.json run-4.envelope.json run-4.assessment.json run-1.assessment.json; do
   [ ! -e "$EVID/$artifact" ] || { echo "FAIL: stale collection artifact survived: $artifact"; exit 1; }
 done
