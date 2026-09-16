@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Offline: Codex adapter flags, policy selection, level mapping, and JSONL normalization.
 set -euo pipefail
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SRC="$ROOT/scripts"
