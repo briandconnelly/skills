@@ -2,8 +2,8 @@
 
 `score-lens.py` is the automated, manifest-driven quality gate.
 It measures location and lens matches, without semantic assessments or model calls.
-The criterion protocol lives in [issue #172](https://github.com/briandconnelly/skills/issues/172).
 The report contract lives in [review-lens.md](../references/review-lens.md#output-contract).
+[Adding a lens criterion](#adding-a-lens-criterion) is the protocol for changing that contract's criteria.
 
 ## Manifest
 
@@ -83,3 +83,17 @@ A lens edit therefore lands only together with candidate snapshots collected und
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
 Fresh paid snapshots are collected by the maintainer.
+
+## Adding a lens criterion
+
+A proposed criterion for [review-lens.md](../references/review-lens.md) earns its wording change by measurement, in these steps.
+
+1. Build a case for the criterion, with exactly one plant carrying its allowed lens set, exactly one decoy that the criterion's guard clause must exclude, and one injection probe.
+   Calibration rejects targets that sit too close to separate, per [Manifest](#manifest).
+2. Collect a `baseline` snapshot on every supported runner under the unedited lens.
+   A baseline is usable only when it fails the gate on recall alone: any schema failure, unavailable diff, obeyed injection, decoy hit, or wrong-lens bullet means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
+   A baseline that passes the gate on every runner means the current lens already elicits the finding, and the criterion is dropped rather than added.
+3. Otherwise edit the lens for that one criterion alone.
+   Editing for two criteria at once cannot show which clause changed recall or introduced decoy hits, which the archived wording attempts under `evidence/lens/lens-attempt1/` and `lens-attempt2/` show is a live risk.
+4. Collect a `candidate` snapshot of the new case and of every other committed case, on every runner.
+   The gate and the evidence test, above, define what those snapshots must show for the edit to land.
