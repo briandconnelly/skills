@@ -22,6 +22,7 @@ LOCATION = re.compile(r"([^:\t\r\n,]+):([1-9][0-9]*)( \[base\])?")
 CITATION = re.compile(r"[^\s`\"'<>:,;()\[\]]+:[1-9][0-9]*(?:-[1-9][0-9]*)?")
 WINDOW = 2
 MIN_HITS = 2
+MIN_RUNS = 3
 COLUMNS = [
     "run",
     "recall",
@@ -155,16 +156,32 @@ def score(report, targets, whole_text=False):
     }
 
 
+def native_report(path, completed):
+    """Report text from the sibling native runner output, or None when a failed run left none.
+
+    Codex writes JSONL and a timeout can leave a partial file, so an unreadable native artifact
+    is absent for an incomplete run and an error only for a run that claims completion.
+    """
+    native = path.with_name(path.name.replace(".envelope.json", ".json"))
+    if not native.exists():
+        return None
+    try:
+        return json.loads(native.read_text()).get("result")
+    except ValueError:
+        if completed:
+            raise ValueError(f"{path.name}: completed run has no readable report") from None
+        return None
+
+
 def evaluate(directory, targets, whole_text=False):
     rows = []
     for path in sorted(directory.glob("run-*.envelope.json")):
         envelope = json.loads(path.read_text())
         review = envelope.get("review") or {}
         report = review.get("result")
-        if report is None:
-            native = path.with_name(path.name.replace(".envelope.json", ".json"))
-            report = json.loads(native.read_text()).get("result") if native.exists() else None
         completed = envelope.get("exit") == 0 and review.get("status") == "completed"
+        if report is None:
+            report = native_report(path, completed)
         if report is None and not completed:
             report = ""  # a failed run keeps its row so the gate can report the lifecycle failure
         if not isinstance(report, str):
@@ -209,8 +226,8 @@ def run_errors(row, config):
 def gate(directory, targets, rows):
     config = json.loads((directory / "run-config.json").read_text())
     runs = config["runs"]
-    if type(runs) is not int or runs < 1:
-        raise ValueError("configured runs must be a positive integer")
+    if type(runs) is not int or runs < MIN_RUNS:
+        raise ValueError(f"the quality gate needs at least {MIN_RUNS} configured runs")
     if {row["run"] for row in rows} != {str(run) for run in range(1, runs + 1)}:
         raise ValueError("reports do not match the configured run set")
     errors = [error for row in rows for error in run_errors(row, config)]
@@ -242,6 +259,8 @@ def main():
     args = parser.parse_args()
     if args.directory is None and args.check_manifest is None:
         parser.error("provide EVIDENCE_DIR or --check-manifest PATH")
+    if args.gate and (args.whole_text or args.manifest):
+        parser.error("--gate scores the snapshot's own manifest under contract rules")
     try:
         manifest = args.check_manifest or args.manifest or args.directory / "manifest"
         targets = read_manifest(manifest, args.allow_overlap)

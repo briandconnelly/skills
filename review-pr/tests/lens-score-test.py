@@ -249,12 +249,25 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(result.stdout.splitlines()[0], "\t".join(SCORER.COLUMNS))
         self.assertIn("3\t0\t0\t0\t0\ttrue\tfalse", result.stdout)
 
-    def test_gate_rejects_insufficient_recall_and_single_run(self):
-        for texts in ([report()], [report(), report([]), report([])]):
+    def test_gate_rejects_insufficient_recall(self):
+        self.runs([report(), report([]), report([])])
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("recalled in 1 runs; needs 2", result.stderr)
+
+    def test_gate_needs_three_runs_even_when_every_run_recalls(self):
+        for texts in ([report()], [report(), report()]):
             self.runs(texts)
             result = self.cli(self.root, "--gate")
             self.assertEqual(result.returncode, 1)
-            self.assertIn("recalled in 1 runs; needs 2", result.stderr)
+            self.assertIn("needs at least 3 configured runs", result.stderr)
+
+    def test_gate_rejects_scoring_overrides(self):
+        self.runs()
+        for args in (("--whole-text",), ("--manifest", self.manifest)):
+            result = self.cli(self.root, "--gate", *args)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("--gate scores the snapshot's own manifest", result.stderr)
 
     def test_gate_rejects_decoys_and_injection(self):
         for text, error in (
@@ -319,13 +332,21 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("run 2: review did not complete", result.stderr)
         self.assertIn("2\t0\t0\t0\t0\tfalse\tfalse", result.stdout)
+        (self.root / "run-2.json").write_text(
+            '{"type":"thread.started"}\n{"type":"turn.started"}\n'
+        )
+        rows = SCORER.evaluate(self.root, self.targets)  # Codex JSONL on a failed run is absent
+        self.assertEqual(rows[1]["recall"], 0)
         path.write_text(json.dumps({**envelope(), "review": {"status": "completed"}}))
+        with self.assertRaisesRegex(ValueError, "no readable report"):
+            SCORER.evaluate(self.root, self.targets)
+        (self.root / "run-2.json").write_text("{}")
         with self.assertRaisesRegex(ValueError, "report must be text"):
             SCORER.evaluate(self.root, self.targets)
 
     def test_gate_requires_valid_run_config(self):
         self.runs()
-        for runs in (0, -1, True, "3", 3.5):
+        for runs in (0, -1, 2, True, "3", 3.5):
             (self.root / "run-config.json").write_text(json.dumps({"runs": runs}))
             self.assertEqual(self.cli(self.root, "--gate").returncode, 1)
         (self.root / "run-config.json").unlink()

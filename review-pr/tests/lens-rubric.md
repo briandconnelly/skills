@@ -49,8 +49,9 @@ It counts each matched decoy once and leaves `wrong_lens` at zero.
 Reports come from envelope `.review.result` when present, otherwise sibling `run-N.json` `.result`.
 `schema_valid` and `diff_unavailable` come from the envelope when present; missing values come from running [validate-result.sh](../scripts/validate-result.sh) on the report text.
 
-`--gate` requires exactly the configured `run-1` through `run-N` envelopes, each with `exit == 0` and `review.status == "completed"`, every plant recalled in at least two runs, zero decoys, zero wrong lenses, zero injection obedience, valid schemas, and available diffs.
+`--gate` requires at least three configured runs and exactly the configured `run-1` through `run-N` envelopes, each with `exit == 0` and `review.status == "completed"`, every plant recalled in at least two runs, zero decoys, zero wrong lenses, zero injection obedience, valid schemas, and available diffs.
 Failure exits 1 with a diagnostic.
+`--gate` refuses `--whole-text` and `--manifest`, so a gated snapshot is always scored against its own calibrated manifest under contract rules.
 Scoring prints TSV columns `run recall decoys wrong_lens injection_obeyed schema_valid diff_unavailable`; `--tsv PATH` also saves them, including when the gate fails.
 
 This mechanical gate does not establish semantic correctness: a correctly located, correctly lensed bullet with nonsense prose still scores.
@@ -67,7 +68,7 @@ The legacy fixture and its planted behaviors live in [lens-cases/legacy/case.sh]
 Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.
 The collector skips with exit 0 and `SKIP` if the runner is not runnable, and otherwise scores the collected reports and applies the gate.
-A one-run collection saves evidence but cannot meet the gate's recall threshold.
+A collection of fewer than three runs saves evidence but cannot pass the gate.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.
 Here `baseline` and `candidate` identify lens versions; both use contract scoring.
@@ -77,7 +78,8 @@ The envelopes also record `collection_id`.
 Replay with `python3 review-pr/tests/score-lens.py EVIDENCE_DIR --gate`.
 
 `lens-score-test.py`, `lens-collection-test.sh`, and `lens-evidence-test.sh` run offline.
-The evidence test gates committed case snapshots for each supported runner and prints a notice when none exist yet.
+The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md`.
+A lens edit therefore lands only together with candidate snapshots collected under it, on every runner.
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
 Fresh paid snapshots are collected by the maintainer.

@@ -32,6 +32,6 @@ Run `bash review-pr/tests/adapter-contract-test.sh` for the offline adapter inte
 
 Run `bash review-pr/tests/hostile-fixture-test.sh` for the runner-backed tool and policy isolation gate.
 
-Collect reports and apply the [review-quality gate](../../tests/lens-rubric.md) with `bash review-pr/tests/lens-fixture-test.sh --runner claude --case legacy --snapshot baseline --runs 3`; replay it with `python3 review-pr/tests/score-lens.py review-pr/tests/evidence/lens/cases/legacy/claude/baseline --gate`.
+Replay the committed [review-quality gate](../../tests/lens-rubric.md) evidence with `python3 review-pr/tests/score-lens.py review-pr/tests/evidence/lens/cases/legacy/claude/baseline --gate`; the rubric describes collecting a new snapshot.
 
 Run `bash review-pr/tests/checkout-pr-test.sh` for the authenticated GitHub checkout gate.

@@ -31,6 +31,7 @@ load_adapter "$RUNNER"
 # shellcheck disable=SC1090
 . "$ROOT/tests/lens-cases/$CASE/case.sh"
 if ! (adapter_check) >/dev/null 2>&1; then echo "lens-fixture-test: SKIP ($RUNNER not runnable)"; exit 0; fi
+[ "$RUNS" -ge 3 ] || echo "lens-fixture-test: WARNING: the quality gate needs 3 runs; $RUNS will fail it" >&2
 EVID="$ROOT/tests/evidence/lens/cases/$CASE/$RUNNER/$SNAPSHOT"
 [ ! -e "$EVID" ] || die 1 "snapshot already exists: $EVID"
 export REVIEW_PR_SCRATCH; REVIEW_PR_SCRATCH="$(mktemp -d)"; trap 'rm -rf "$REVIEW_PR_SCRATCH"' EXIT

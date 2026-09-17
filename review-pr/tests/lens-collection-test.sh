@@ -45,7 +45,7 @@ OFFLINE_MANIFEST="$EVID/manifest"
 if bash "$COLLECTOR" --runner claude --case legacy --snapshot baseline --runs 1 > "$S/first.log" 2>&1; then
   echo 'FAIL: one run passed the gate'; exit 1
 fi
-grep -q 'recalled in 1 runs; needs 2' "$S/first.log"
+grep -q 'needs at least 3 configured runs' "$S/first.log"
 for artifact in manifest run-config.json run-1.envelope.json run-1.json scores.tsv; do
   [ -s "$EVID/$artifact" ] || { echo "FAIL: missing $artifact"; exit 1; }
 done
@@ -71,10 +71,10 @@ diff -r "$S/baseline-saved" "$EVID"
 
 CANDIDATE="${EVID%baseline}candidate"
 OFFLINE_MANIFEST="$CANDIDATE/manifest"
-bash "$COLLECTOR" --runner claude --case legacy --snapshot candidate --runs 2 > "$S/candidate.log" 2>&1
+bash "$COLLECTOR" --runner claude --case legacy --snapshot candidate --runs 3 > "$S/candidate.log" 2>&1
 grep -q 'lens quality gate: OK' "$S/candidate.log"
-jq -e '.snapshot == "candidate" and .runs == 2' "$CANDIDATE/run-config.json" >/dev/null
-[ -s "$CANDIDATE/run-2.envelope.json" ]
+jq -e '.snapshot == "candidate" and .runs == 3' "$CANDIDATE/run-config.json" >/dev/null
+[ -s "$CANDIDATE/run-3.envelope.json" ]
 [ "$(jq -r .collection_id "$EVID/run-config.json")" != "$(jq -r .collection_id "$CANDIDATE/run-config.json")" ]
 diff -r "$S/baseline-saved" "$EVID"
 
@@ -92,7 +92,7 @@ if bash "$COLLECTOR" --runner claude --case overlap --snapshot baseline --runs 1
   echo 'FAIL: overlapping manifest was accepted'; exit 1
 fi
 grep -q 'overlapping scored windows' "$S/overlap.log"
-[ "$(wc -l < "$OFFLINE_CALLS" | tr -d ' ')" = 3 ]
+[ "$(wc -l < "$OFFLINE_CALLS" | tr -d ' ')" = 4 ]
 [ ! -e "$S/skill/tests/evidence/lens/cases/overlap/claude/baseline" ]
 OFFLINE_UNRUNNABLE=1 bash "$COLLECTOR" --runner claude --case overlap --snapshot baseline > "$S/skip.log" 2>&1
 grep -q 'SKIP (claude not runnable)' "$S/skip.log"

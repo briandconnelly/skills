@@ -4,16 +4,22 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SCORER="$ROOT/tests/score-lens.py"
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
+LENS_SHA256="$(shasum -a 256 "$ROOT/references/review-lens.md" | cut -d' ' -f1)"
+FAIL=0
 while IFS= read -r runner; do
   [ -n "$runner" ] || continue
-  found=false
+  current=0
   for snapshot in "$ROOT/tests/evidence/lens/cases/"*/"$runner/"*; do
     [ -d "$snapshot" ] || continue
-    found=true
     python3 "$SCORER" "$snapshot" --gate
+    [ "$(jq -r .lens_sha256 "$snapshot/run-config.json")" != "$LENS_SHA256" ] || current=$((current+1))
   done
-  if [ "$found" = false ]; then
-    echo "lens-evidence-test: NOTICE (no case snapshots yet for $runner)"
+  # A lens edit must arrive with evidence collected under it, for every supported runner.
+  if [ "$current" = 0 ]; then
+    echo "FAIL: no snapshot for $runner was collected with the current references/review-lens.md; collect a candidate snapshot (see lens-rubric.md)"
+    FAIL=1
+  else
+    echo "lens-evidence-test: $runner has $current snapshot(s) under the current lens"
   fi
 done < "$ROOT/scripts/adapters/supported"
 for arm in claude/lens codex/lens baseline; do
@@ -28,4 +34,5 @@ for arm in claude/lens codex/lens baseline; do
   ' "$S/scores.tsv"
   echo "lens-evidence-test: $arm OK (3 runs, recall $expected, decoys 0)"
 done
-printf '%s\n' 'lens-evidence-test: OK'
+[ "$FAIL" = 0 ] && printf '%s\n' 'lens-evidence-test: OK'
+exit "$FAIL"
