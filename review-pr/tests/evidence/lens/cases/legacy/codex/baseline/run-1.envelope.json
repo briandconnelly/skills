@@ -1,0 +1,25 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.154.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis pull request adds timeout parsing, port validation, JSON configuration loading, and hostname normalization. It introduces a startup-breaking file deletion, an incorrect port boundary, silent configuration failures, and a documented return contract that disagrees with the implementation.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting `defaults.json` leaves `app.startup.load_defaults()` reading a file that no longer exists — Every call to `load_defaults()` now raises `FileNotFoundError`, breaking application startup.\n\n## Important\n- app/parse.py:22 — correctness — The range check rejects valid TCP port `65535` despite documenting the range as 1–65535; it also accepts non-integral values such as `8080.5` — Valid configurations using port 65535 are rejected, while invalid fractional ports can pass validation and fail later during socket binding.\n- app/parse.py:30 — silent-failure — The broad `except Exception` converts missing files, permission errors, decoding failures, and malformed JSON into an unexplained empty configuration — Callers cannot distinguish a genuinely empty configuration from a failed load and may continue with required settings silently absent.\n- app/parse.py:35 — comments — The docstring says empty input “returns None,” while the implementation returns `\"\"` — Callers following the documented contract, such as checking `normalize_host(h) is None`, will fail to recognize an empty hostname.\n\n## Suggestions\n- app/parse.py:40 — tests — The newly added trailing-dot branch is not exercised; only lowercasing is tested, leaving an input such as `Example.COM.` uncovered — A regression that stops stripping the fully qualified suffix would pass the test suite and return the wrong normalized hostname.\n\n## Strengths\n- The millisecond timeout behavior and successful JSON-loading path have focused tests.\n- The optional JSON accelerator has an explicit standard-library fallback.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/q1/yy47kpf51gb44d8wg1ywz4p80000gq/T/tmp.wmEa8Or0NE/review-pr.yfMvgQ",
+  "head_sha": "da87f4370ba2a83e2c3d89e92068e929003187ea",
+  "base_sha": "b4efcc4b5d4365379589f08b17029822167b071c",
+  "policy_changes": [],
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "68b449de5188cfd60695a3cb469b08b0f4d5f1a0"
+}
