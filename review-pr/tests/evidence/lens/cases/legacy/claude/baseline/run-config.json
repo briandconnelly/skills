@@ -1,0 +1,10 @@
+{
+  "collection_id": "1f1969de0e1d717893092390ca63d6d8f8115a6a",
+  "runner": "claude",
+  "case": "legacy",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "1d2b5cbea423491064710daeb17b52c1e09d03cb7385f3514701e11feb8c3a42"
+}
