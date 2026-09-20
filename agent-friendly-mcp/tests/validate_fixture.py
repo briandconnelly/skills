@@ -87,7 +87,7 @@ def _json_equal(a, b) -> bool:
     if isinstance(a, dict) and isinstance(b, dict):
         return a.keys() == b.keys() and all(_json_equal(a[k], b[k]) for k in a)
     if isinstance(a, list) and isinstance(b, list):
-        return len(a) == len(b) and all(_json_equal(x, y) for x, y in zip(a, b))
+        return len(a) == len(b) and all(_json_equal(x, y) for x, y in zip(a, b, strict=True))
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
         return a == b
     return type(a) is type(b) and a == b
