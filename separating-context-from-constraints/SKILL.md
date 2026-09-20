@@ -28,7 +28,7 @@ Narrative placement does not itself signal that a rule binds.
 Interleaved rules are not individually checkable.
 Readers cannot distinguish negotiable flavor from requirements.
 
-R3 judges verifiability against observable evidence; for example:
+The R3 rule below defines the verifiability test; these examples illustrate it:
 "Be concise" cannot be checked.
 "Chat responses of four sentences or fewer unless asked" can be checked against output.
 "Never run destructive commands without confirmation" can be checked against tool traces.
@@ -43,7 +43,7 @@ Each rule below has an id and is checkable by an auditing agent.
   A target may carry more than one surface — a skill file has both a frontmatter description and a body — so classify each instruction-bearing surface separately.
   Treat a standalone document of more than one paragraph as long-form, and place its rules in a dedicated labeled section.
   Treat a single inline field or one-paragraph surface as compact — an MCP tool or resource description, a frontmatter description, or a one-paragraph prompt — and mark its rules inline with imperative sentences, list items, or explicit mandatory wording.
-  The surface decides, and paragraph count only breaks a tie for a standalone document: a field is compact however many paragraphs or headings its text contains.
+  The surface decides, and paragraph count matters only for a standalone document: a field is compact however many paragraphs or headings its text contains.
   Keep rule sections free of discretionary context and load-bearing facts; place those statements in context, semantics, or similarly informative sections.
   A "rule" that cannot fail is context in disguise and belongs elsewhere.
 - **R2 Explicit strength.**

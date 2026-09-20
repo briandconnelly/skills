@@ -74,10 +74,11 @@ Beyond scoring: every fixture is under twenty-five lines, each cell is a single 
 This re-score says what these sixteen outputs did. It does not establish variance, and it says nothing about documents unlike these.
 
 The comparison is whole-skill against no skill: it does not isolate which parts of the output contract — the six-field finding format, severity labels, secondary rule ids, or the dual per-rule/per-severity counting — produce the false-positive and rewrite-safety gains.
-Those value-bearing endpoints (E2 and E3) have not been systematically re-measured on the current `SKILL.md` wording; the 2026-08-23 confirmation cells scored contract conformance and single decision points, and one scorer noted an E2-class false positive ad hoc (below).
+Those value-bearing endpoints (E2 and E3) have not been systematically re-measured on the current `SKILL.md` wording; the 2026-08-23 confirmation cells scored each cell's confirmation questions plus the scenario's standing assertions, which overlap E2 and E3 only where an assertion happens to name the same behavior (scenario 8's assertion 4 is an E3-class check, and scenario 2's assertion 2 caught the E2-class false positive below as a scored FAIL).
 The contract's added complexity is therefore unvalidated, and the gain should be read as an association with the skill as a whole rather than a demonstrated effect of any one component.
 
 The E2 total is a figure for this archive, not a standing property of the skill: `tests/runs/2026-08-23-scenario2-with-skill.md` records a later with-skill material R3 finding against a preregistration-protected sentence, which that run's own scorer calls a false positive under E2.
+That fixture was later rerun on both wordings, three reps each; the cells are in the results table in [`../scenarios.md`](../scenarios.md#results).
 
 Redaction was never exercised: both scenario-4 arms declined to quote the example credential at all, so the conditional assertion passed without the behavior running.
 
@@ -124,8 +125,13 @@ Written before the scorer was dispatched, held outside its inputs, reproduced he
 > If E1, E2, and E3 all show large gaps on scenarios 1 and 6, the narrowing is wrong and those scenarios' original totals were closer to honest than I claimed.
 > If E3 shows no gap on scenarios 3, 7, or 8, then the author-decision contract — which the plan calls the skill's best idea — is not doing the work I attributed to it, and W11's premise changes.
 
-The stated falsification conditions did not fire.
-E1 showed no gap anywhere, and E3 showed a gap on scenarios 3, 6, and 8, so the author-decision contract is consistent with the improvement — though no ablation isolates it, and scenario 7 shows it is not always needed.
+The first falsification condition did not fire: E1 showed no gap anywhere.
+The second is ambiguous as sealed.
+Read literally, "no gap on scenarios 3, 7, or 8" fired, because scenario 7 shows no E3 gap (both arms preserved).
+Read as intended, no gap on any of the three, it did not, because scenarios 3 and 8 show gaps.
+Both readings are recorded here rather than resolved in the author's favor.
+E3 also showed a gap on scenario 6, which the condition did not name.
+The author-decision contract is consistent with the improvement, though no ablation isolates it, and scenario 7 shows it is not always needed.
 
 ## Unblinding key
 
