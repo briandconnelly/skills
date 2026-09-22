@@ -280,5 +280,32 @@ pushonly="$(cd "$R" && eval "$("$DIR/bot-env" 2>/dev/null)" && git remote get-ur
 [ "$pushonly" = 'https://github.com/acme/deploy.git' ] || fail "push-only remote's pushurl not rewritten: $pushonly"
 rm -rf "$R"
 
+# --- Cases from Copilot's review of PR #180 ---------------------------------
+
+# 26. A colonless remote value is a local path to git, even when it is named
+#     `github.com`; it must not be classified as a GitHub host or rewritten.
+R="$(mkrepo git@github.com:acme/x.git)"
+mkdir -p "$R/github.com"
+git -C "$R" remote add local github.com
+[ "$(verdict "$R")" = BOT ] || fail "org repo with a local remote named github.com aborted or resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" local)" = 'fetch=github.com push=github.com' ] || fail "local remote named github.com was rewritten: $(effective "$R" local)"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)"
+echo "$out" | grep -q "^export GIT_CONFIG_VALUE_[0-9]*='github.com'$" && fail "an exact pair was emitted for a local path named github.com"
+rm -rf "$R"
+
+# 27. A slash before the first colon makes the value a local path, not scp
+#     syntax (git's own rule), so `./github.com:x` is left alone as well.
+R="$(mkrepo git@github.com:acme/x.git)"
+mkdir -p "$R/github.com:x"
+git -C "$R" remote add odd './github.com:x'
+[ "$(verdict "$R")" = BOT ] || fail "org repo with a slash-before-colon local remote aborted or resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" odd)" = 'fetch=./github.com:x push=./github.com:x' ] || fail "slash-before-colon local remote was rewritten: $(effective "$R" odd)"
+rm -rf "$R"
+
+# 28. A repo whose only remote is a local path named github.com is personal.
+R="$(mkrepo github.com)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "sole local remote named github.com did not resolve personal"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"

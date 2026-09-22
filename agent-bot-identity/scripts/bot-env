@@ -57,14 +57,15 @@ done
 
 # Lowercased host of a remote URL in either the scheme form
 # (`ssh://[user@]host[:port]/path`) or the scp form (`[user@]host:path`).
-# Anything else (a local path, or the bare remote name git reports when a
-# push-only remote has no fetch URL) yields a non-host string that matches
-# nothing.
+# git recognizes the scp form only when there is a colon with no slash before
+# it; anything else — a local path (even one named `github.com`), or the bare
+# remote name git reports when a push-only remote has no fetch URL — has no
+# host and yields the empty string.
 url_host_lc() {
-  local u="$1" rest auth host
+  local u="$1" rest auth host=""
   case "$u" in
     *://*) rest="${u#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}" ;;
-    *) rest="${u#*@}"; host="${rest%%:*}" ;;
+    *:*) case "${u%%:*}" in */*) ;; *) rest="${u#*@}"; host="${rest%%:*}" ;; esac ;;
   esac
   printf '%s' "$host" | tr '[:upper:]' '[:lower:]'
 }
@@ -142,22 +143,23 @@ if [ "$rc" -eq 0 ]; then
             [ "$seen" -eq 0 ] && names_with_url+=("$name") ;;
         esac
         # Parse the raw value down to its authority and path: host decides
-        # GitHub-ness, the first path segment decides the account. A leading
-        # slash in an scp-style path (`git@github.com:/acme/x.git`) is
-        # tolerated by GitHub, so it is stripped before both decisions.
+        # GitHub-ness (`url_host_lc`, which treats a colonless or
+        # slash-before-colon value as a local path with no host), the first
+        # path segment decides the account. A leading slash in an scp-style
+        # path (`git@github.com:/acme/x.git`) is tolerated by GitHub, so it is
+        # stripped before both decisions.
+        host_lc="$(url_host_lc "$url")"
+        [ "$host_lc" = github.com ] || continue
         case "$url" in
           *://*)
-            rest="${url#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}"
+            rest="${url#*://}"
             case "$rest" in */*) path="${rest#*/}" ;; *) path="" ;; esac
             ;;
           *)
-            rest="${url#*@}"; host="${rest%%:*}"
-            case "$rest" in *:*) path="${rest#*:}" ;; *) path="" ;; esac
+            path="${url#*:}"
             ;;
         esac
         path="${path#/}"
-        host_lc="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
-        [ "$host_lc" = github.com ] || continue
         # The raw value is emitted verbatim inside single quotes as a
         # url.<base>.insteadOf key and value; refuse anything that cannot
         # travel that way rather than route with a partial identity.

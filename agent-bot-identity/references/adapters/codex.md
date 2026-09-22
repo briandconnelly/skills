@@ -74,9 +74,8 @@ What each part does (identical in intent to the Claude Variant A env):
 - `GIT_AUTHOR_*` / `GIT_COMMITTER_*` override global `user.*` so commits attribute to the bot.
 - The empty `credential.helper` (`GIT_CONFIG_VALUE_0`) resets the inherited helper list; the next entry installs the bot helper as the only one.
 - The `url.*` rewrites send org remotes to HTTPS inside the profile only, so pushes use the bot token instead of the personal SSH key.
-  Each rewrite is written as both `insteadOf` and `pushInsteadOf` (git consults the latter first for pushes), and the identity pairs on `https://github.com/acme/` keep a global force-SSH rewrite of `https://github.com/` from pulling an https remote back onto the personal key — git resolves rewrites by longest matching prefix across all scopes.
+  The four pairs are the same static set as the Claude adapter's Variant A block, and that adapter's bullet is the one explanation of why each rewrite is doubled and why the identity pairs exist; the same org-scoping limitation applies here.
   The match is literal and case-sensitive — normalize each enrolled repo's remote to canonical lowercase, and add `insteadOf` and `pushInsteadOf` pairs (bumping `GIT_CONFIG_COUNT`) for any `ssh://git@github.com/acme/` form.
-  The pairs are org-scoped, so a non-org `github.com` remote in the same repo stays on SSH; see the Claude adapter's Variant A note for the same limitation.
 - `commit.gpgsign false` keeps bot commits unsigned so the personal GPG key never signs bot-authored work.
 
 The `GIT_CONFIG_VALUE_1` helper value is `!$HOME/.config/acme-agent/bin/git-credential-bot`; `$HOME` there is expanded by git's shell when it runs the helper, not by Codex.
