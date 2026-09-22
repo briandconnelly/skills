@@ -87,16 +87,18 @@ echo "$out" | grep -q 'export BOT_INSTALL_ID' && { echo "FAIL: personal verdict 
 rm -rf "$REPO"
 
 # 9. Ambiguous-toward-bot (no remotes): default installation, stale selection
-#    cleared for the mint and in the emitted env, insteadOf pairs for every
-#    mapped account.
+#    cleared for the mint and in the emitted env, host-wide rewrite pairs so
+#    any github.com URL the command names still rides the token.
 REPO="$(mktemp -d)"
 git -C "$REPO" init -q
 out="$(cd "$REPO" && BOT_INSTALL_ID=999 "$DIR/bot-env" 2>/dev/null)"
 echo "$out" | grep -qF "GH_TOKEN='ghs_stub-none'" || { echo "FAIL: ambiguous mint did not fall back to the default installation"; FAIL=1; }
 echo "$out" | grep -q '^unset BOT_INSTALL_ID$' || { echo "FAIL: ambiguous verdict did not clear a stale selection"; FAIL=1; }
-echo "$out" | grep -qF "GIT_CONFIG_VALUE_2='git@github.com:acme/'" || { echo "FAIL: ambiguous verdict missing the first mapped account's rewrite pair"; FAIL=1; }
-echo "$out" | grep -qF "GIT_CONFIG_VALUE_4='git@github.com:beta/'" || { echo "FAIL: ambiguous verdict missing the second mapped account's rewrite pair"; FAIL=1; }
-echo "$out" | grep -q '^export GIT_CONFIG_COUNT=5$' || { echo "FAIL: ambiguous verdict emitted a wrong GIT_CONFIG_COUNT"; FAIL=1; }
+echo "$out" | grep -q "^export GIT_CONFIG_VALUE_[0-9]*='git@github.com:'$" || { echo "FAIL: ambiguous verdict missing the host-wide scp rewrite pair"; FAIL=1; }
+echo "$out" | grep -q "^export GIT_CONFIG_VALUE_[0-9]*='ssh://git@github.com/'$" || { echo "FAIL: ambiguous verdict missing the host-wide ssh:// rewrite pair"; FAIL=1; }
+count="$(echo "$out" | sed -n 's/^export GIT_CONFIG_COUNT=//p')"
+keys="$(echo "$out" | grep -c '^export GIT_CONFIG_KEY_')"
+[ "$count" = "$keys" ] || { echo "FAIL: ambiguous verdict emitted GIT_CONFIG_COUNT=$count for $keys keys"; FAIL=1; }
 rm -rf "$REPO"
 
 # 10. Remotes spanning two mapped accounts have no single right installation:
@@ -117,8 +119,10 @@ out="$(printf 'protocol=https\nhost=github.com\n\n' | BOT_INSTALL_ID=111 "$DIR/g
 echo "$out" | grep -q '^password=ghs_stub-111$' || { echo "FAIL: git-credential-bot did not pass the selection through to bot-token"; FAIL=1; }
 
 # 12. A mapped account plus an unmapped one (the fork/upstream shape) keeps the
-#     mapped account's selection — the installation boundary, not the gate, is
-#     what fails loudly for the unmapped remote. Pins intended semantics.
+#     mapped account's selection. The unmapped remote is still rewritten to
+#     HTTPS under the bot verdict (tests/routing-test.sh case 10), so a push
+#     there reaches the installation boundary and fails loudly instead of
+#     riding the personal SSH key. Pins intended semantics.
 REPO="$(mktemp -d)"
 git -C "$REPO" init -q
 git -C "$REPO" remote add origin git@github.com:acme/scratch.git
