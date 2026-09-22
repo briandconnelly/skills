@@ -171,8 +171,10 @@ git -C "$REPO" remote set-url --add --push origin SSH://git@GITHUB.COM/ACME/scra
 git -C "$REPO" remote set-url --add --push origin SSH://git@GITHUB.COM/ACME/scratch.git
 out="$(cd "$REPO" && "$DIR/bot-env")"
 echo "$out" | grep -q '^export GH_TOKEN=' || { echo "FAIL: mixed-case raw org pushurl did not get the bot verdict"; FAIL=1; }
-echo "$out" | grep -q '^export GIT_CONFIG_COUNT=5$' || { echo "FAIL: duplicate raw pushurls emitted duplicate rewrite pairs"; FAIL=1; }
-[ "$(echo "$out" | grep -c "GIT_CONFIG_VALUE_4='SSH://git@GITHUB.COM/ACME/'")" -eq 1 ] || { echo "FAIL: mixed-case raw pushurl rewrite was missing or duplicated"; FAIL=1; }
+# The raw value gets exactly one exact rewrite pair (insteadOf + pushInsteadOf),
+# emitted verbatim so git's literal match hits it; duplicates collapse.
+[ "$(echo "$out" | grep -c "^export GIT_CONFIG_VALUE_[0-9]*='SSH://git@GITHUB.COM/ACME/scratch.git'$")" -eq 2 ] || { echo "FAIL: mixed-case raw pushurl rewrite was missing or duplicated"; FAIL=1; }
+echo "$out" | grep -q "^export GIT_CONFIG_KEY_[0-9]*='url.https://github.com/ACME/scratch.git.insteadOf'$" || { echo "FAIL: mixed-case raw pushurl not rewritten to its HTTPS form"; FAIL=1; }
 rm -rf "$REPO"
 
 REPO="$(mktemp -d)"

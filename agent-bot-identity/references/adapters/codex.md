@@ -55,7 +55,7 @@ The profile lives at `$CODEX_HOME/bot.config.toml` (default `~/.codex/bot.config
 ## Static identity env
 
 Codex applies static identity through the profile's `shell_environment_policy.set` block, which `--profile bot` reads directly (verified: PATH and every `GIT_*` var below took effect under `--profile bot`).
-The block mirrors the Claude Variant A env — four identity vars, the `GIT_CONFIG_*` credential-helper reset plus bot helper, org-scoped `insteadOf`, and `commit.gpgsign false`.
+The block mirrors the Claude Variant A env — four identity vars, the `GIT_CONFIG_*` credential-helper reset plus bot helper, the org-scoped `insteadOf`/`pushInsteadOf` rewrite pairs, and `commit.gpgsign false`.
 
 Replace `<BOT_UID>` with the bot user ID from Phase 2, `acme` with your org, and `<you>` with your username (keep every path absolute).
 These examples use the recommended flat `~/.config/acme-agent/bin/` install location; existing `~/.claude/bot-shims/` installs keep working because the scripts self-locate — just keep every path consistent.
@@ -64,15 +64,19 @@ The verified `bot` profile used the inline `set = { … }` table form (a TOML in
 
 ```toml
 [shell_environment_policy]
-set = { PATH = "/Users/<you>/.config/acme-agent/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin", GIT_AUTHOR_NAME = "acme-agent[bot]", GIT_AUTHOR_EMAIL = "<BOT_UID>+acme-agent[bot]@users.noreply.github.com", GIT_COMMITTER_NAME = "acme-agent[bot]", GIT_COMMITTER_EMAIL = "<BOT_UID>+acme-agent[bot]@users.noreply.github.com", GIT_CONFIG_COUNT = "4", GIT_CONFIG_KEY_0 = "credential.helper", GIT_CONFIG_VALUE_0 = "", GIT_CONFIG_KEY_1 = "credential.helper", GIT_CONFIG_VALUE_1 = "!$HOME/.config/acme-agent/bin/git-credential-bot", GIT_CONFIG_KEY_2 = "url.https://github.com/acme/.insteadOf", GIT_CONFIG_VALUE_2 = "git@github.com:acme/", GIT_CONFIG_KEY_3 = "commit.gpgsign", GIT_CONFIG_VALUE_3 = "false" }
+set = { PATH = "/Users/<you>/.config/acme-agent/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin", GIT_AUTHOR_NAME = "acme-agent[bot]", GIT_AUTHOR_EMAIL = "<BOT_UID>+acme-agent[bot]@users.noreply.github.com", GIT_COMMITTER_NAME = "acme-agent[bot]", GIT_COMMITTER_EMAIL = "<BOT_UID>+acme-agent[bot]@users.noreply.github.com", GIT_CONFIG_COUNT = "7", GIT_CONFIG_KEY_0 = "credential.helper", GIT_CONFIG_VALUE_0 = "", GIT_CONFIG_KEY_1 = "credential.helper", GIT_CONFIG_VALUE_1 = "!$HOME/.config/acme-agent/bin/git-credential-bot", GIT_CONFIG_KEY_2 = "url.https://github.com/acme/.insteadOf", GIT_CONFIG_VALUE_2 = "git@github.com:acme/", GIT_CONFIG_KEY_3 = "url.https://github.com/acme/.pushInsteadOf", GIT_CONFIG_VALUE_3 = "git@github.com:acme/", GIT_CONFIG_KEY_4 = "url.https://github.com/acme/.insteadOf", GIT_CONFIG_VALUE_4 = "https://github.com/acme/", GIT_CONFIG_KEY_5 = "url.https://github.com/acme/.pushInsteadOf", GIT_CONFIG_VALUE_5 = "https://github.com/acme/", GIT_CONFIG_KEY_6 = "commit.gpgsign", GIT_CONFIG_VALUE_6 = "false" }
 ```
+
+The `pushInsteadOf` twins and the two identity pairs (keys 3–5) were added on 2026-09-22 after the recorded verification run, which used the four-entry block; they change only which `url.*` rewrites git sees and were exercised through git's own resolution (`tests/routing-test.sh`), not re-run under Codex.
 
 What each part does (identical in intent to the Claude Variant A env):
 
 - `GIT_AUTHOR_*` / `GIT_COMMITTER_*` override global `user.*` so commits attribute to the bot.
 - The empty `credential.helper` (`GIT_CONFIG_VALUE_0`) resets the inherited helper list; the next entry installs the bot helper as the only one.
-- `insteadOf` rewrites org SSH remotes to HTTPS inside the profile only, so pushes use the bot token instead of the personal SSH key.
-  The match is literal and case-sensitive — normalize each enrolled repo's remote to canonical lowercase, and add a second `insteadOf` pair (bumping `GIT_CONFIG_COUNT`) for any `ssh://git@github.com/acme/` form.
+- The `url.*` rewrites send org remotes to HTTPS inside the profile only, so pushes use the bot token instead of the personal SSH key.
+  Each rewrite is written as both `insteadOf` and `pushInsteadOf` (git consults the latter first for pushes), and the identity pairs on `https://github.com/acme/` keep a global force-SSH rewrite of `https://github.com/` from pulling an https remote back onto the personal key — git resolves rewrites by longest matching prefix across all scopes.
+  The match is literal and case-sensitive — normalize each enrolled repo's remote to canonical lowercase, and add `insteadOf` and `pushInsteadOf` pairs (bumping `GIT_CONFIG_COUNT`) for any `ssh://git@github.com/acme/` form.
+  The pairs are org-scoped, so a non-org `github.com` remote in the same repo stays on SSH; see the Claude adapter's Variant A note for the same limitation.
 - `commit.gpgsign false` keeps bot commits unsigned so the personal GPG key never signs bot-authored work.
 
 The `GIT_CONFIG_VALUE_1` helper value is `!$HOME/.config/acme-agent/bin/git-credential-bot`; `$HOME` there is expanded by git's shell when it runs the helper, not by Codex.
@@ -199,7 +203,7 @@ Ship the config that handles both surfaces:
 
 ## git auth
 
-git auth is unchanged from the harness-neutral core: the org-scoped `insteadOf` SSH→HTTPS rewrite plus the host-gated `git-credential-bot` credential helper, both installed through the `GIT_CONFIG_*` env in the identity block above.
+git auth is unchanged from the harness-neutral core: the org-scoped `insteadOf`/`pushInsteadOf` SSH→HTTPS rewrite pairs plus the host-gated `git-credential-bot` credential helper, both installed through the `GIT_CONFIG_*` env in the identity block above.
 See [SKILL.md Phase 3](../../SKILL.md) for the credential helper.
 Verified in Check 4: `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` succeeds via HTTPS even with SSH disabled, proving the rewrite-plus-token path is in use and no SSH path is touched.
 

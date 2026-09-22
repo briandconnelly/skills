@@ -37,15 +37,21 @@ Replace `<BOT_UID>` with the user ID from Phase 2, `acme` with your org, and `<y
     "GIT_AUTHOR_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
     "GIT_COMMITTER_NAME": "acme-agent[bot]",
     "GIT_COMMITTER_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
-    "GIT_CONFIG_COUNT": "4",
+    "GIT_CONFIG_COUNT": "7",
     "GIT_CONFIG_KEY_0": "credential.helper",
     "GIT_CONFIG_VALUE_0": "",
     "GIT_CONFIG_KEY_1": "credential.helper",
     "GIT_CONFIG_VALUE_1": "!$HOME/.config/acme-agent/bin/git-credential-bot",
     "GIT_CONFIG_KEY_2": "url.https://github.com/acme/.insteadOf",
     "GIT_CONFIG_VALUE_2": "git@github.com:acme/",
-    "GIT_CONFIG_KEY_3": "commit.gpgsign",
-    "GIT_CONFIG_VALUE_3": "false"
+    "GIT_CONFIG_KEY_3": "url.https://github.com/acme/.pushInsteadOf",
+    "GIT_CONFIG_VALUE_3": "git@github.com:acme/",
+    "GIT_CONFIG_KEY_4": "url.https://github.com/acme/.insteadOf",
+    "GIT_CONFIG_VALUE_4": "https://github.com/acme/",
+    "GIT_CONFIG_KEY_5": "url.https://github.com/acme/.pushInsteadOf",
+    "GIT_CONFIG_VALUE_5": "https://github.com/acme/",
+    "GIT_CONFIG_KEY_6": "commit.gpgsign",
+    "GIT_CONFIG_VALUE_6": "false"
   },
   "hooks": {
     "SessionStart": [
@@ -59,8 +65,11 @@ What each part does:
 
 - `GIT_AUTHOR_*` / `GIT_COMMITTER_*` override global `user.*` so commits attribute to the bot.
 - The empty `credential.helper` resets the inherited helper list (osxkeychain, gh helpers); the next entry installs the bot helper as the only one.
-- `insteadOf` rewrites SSH remotes to HTTPS inside agent sessions only, so pushes use the bot token instead of the personal SSH key; scoping it to the org prefix leaves other remotes alone.
-  The colon form covers `git@github.com:acme/` remotes; if any remote uses the `ssh://git@github.com/acme/` form, add a second `insteadOf` pair and bump the count.
+- The `url.*` rewrites send org remotes to HTTPS inside agent sessions only, so pushes use the bot token instead of the personal SSH key; scoping them to the org prefix leaves other remotes alone.
+  Each rewrite is written twice because git consults `pushInsteadOf` before `insteadOf` for pushes, so a `pushInsteadOf` rule in your own global config would otherwise win the push direction.
+  The identity pairs (`https://github.com/acme/` → itself) are load-bearing: git resolves rewrites by longest matching prefix across every config scope, so without them the common global force-SSH rewrite (`url.ssh://git@github.com/.insteadOf = https://github.com/`, or its `pushInsteadOf` form) pulls an https org remote back onto the personal SSH key with the bot as author.
+  The colon form covers `git@github.com:acme/` remotes; if any remote uses the `ssh://git@github.com/acme/` form, add `insteadOf` and `pushInsteadOf` pairs for it too and bump the count.
+  Variant A's pairs are org-scoped by construction, so a non-org `github.com` remote in the same repo (a fork's `upstream`) stays on SSH and would push with the personal key; Variant B's `bot-env` routes every `github.com` remote instead.
   Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url origin git@github.com:acme/<repo>.git`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
   The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
@@ -120,8 +129,15 @@ It emits explicit `unset`s on a personal verdict so no bot env leaks if a harnes
 It reads null-delimited raw repository-local and enabled worktree-local `remote.*.url` and `remote.*.pushurl` values rather than `git remote -v`, whose output has already passed through `insteadOf` rewriting.
 The raw host and organization path segment determine the verdict and any extra `insteadOf` pairs, so an existing rewrite cannot hide an enrolled affiliation or manufacture one.
 Raw repository affiliation intentionally controls identity even if another `insteadOf` rule changes the effective transport target, because ambiguity must resolve toward bot attribution rather than silent human attribution.
-The emitted block mirrors the Variant A env, with one improvement over the static block: `bot-env` derives extra `insteadOf` pairs from the matched raw remote values themselves, so `ssh://` forms and case variants are rewritten without manual pairs.
-That derivation is load-bearing, not cosmetic — git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the canonical pair alone would take the bot verdict (the org match is deliberately case-insensitive) yet let the push silently ride the personal SSH key.
+The emitted block mirrors the Variant A env, with one difference in the rewrites: under a bot verdict `bot-env` routes **every** `github.com` remote in the repo through HTTPS, not only the matched account's.
+It emits host-wide pairs (`git@github.com:`, `ssh://git@github.com/`, and the `https://github.com/` identity) plus one exact pair per raw remote value, each as both `insteadOf` and `pushInsteadOf`.
+The exact pairs are load-bearing, not cosmetic: git's rewrite match is literal, case-sensitive, and longest-prefix-wins across every config scope, so a verbatim pair for `git@github.com:Acme/x.git` covers the case variant GitHub accepts, and a verbatim pair for an https remote outranks any prefix rule in the user's own config — including the common force-SSH rewrite of `https://github.com/` — which would otherwise take the bot verdict yet let the push silently ride the personal SSH key.
+Routing the unmapped `github.com` remotes too (a fork's `upstream`) is deliberate: on SSH they would push with the personal key under the bot's authorship, whereas over HTTPS they reach the installation boundary and fail loudly.
+Remotes on other hosts are left alone, because the credential helper is host-gated and would only refuse them.
+One shape rewrites cannot win: a rule in your own git config whose base is a remote's complete URL ties the exact pair on length, and git keeps the first-read rule, which is yours.
+So before emitting anything `bot-env` asks git, with exactly the rewrites it is about to emit, where every remote that carries a `github.com` URL resolves in each configured direction (`git remote get-url --all` for remotes with a fetch URL, `--all --push` for all), and aborts the command if any resolved URL is still a non-HTTPS `github.com` URL — the message names the remote and the URL, and the fix is to remove that rule.
+Resolved URLs on other hosts pass through untouched, so a remote that fetches from GitHub and pushes elsewhere is not an error.
+URLs typed on the command line rather than configured as remotes are outside that check: the host-wide and account-prefix pairs cover them against host-wide rules, but a host-wide force-SSH rule ties the host-wide identity pair for a non-mapped account's URL, so prefer configured remotes in agent commands.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
 The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
@@ -132,19 +148,20 @@ The decision rules and their fail direction:
 
 | Situation | Verdict | Why |
 | --- | --- | --- |
-| Not a git repo (probe exits 128, git's definitive answer) | Personal | Unambiguous — nothing to attribute |
-| Probe fails any other way (git missing, broken PATH) | Bot, stderr warning | Ambiguous — cannot rule out org work; only a definitive "not a repository" may resolve personal |
+| Not a git repo (probe exits 128 **and** its stderr says `not a git repository`) | Personal | Unambiguous — nothing to attribute |
+| Probe fails any other way (any other exit 128 — corrupt config, unsupported repository format, malformed inherited `GIT_CONFIG_*`, dubious ownership — or git missing, broken PATH) | Bot, stderr warning | Ambiguous — git exits 128 on every fatal error, so only the not-a-repository message may resolve personal |
 | Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
 | Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
 | Any raw local remote URL or push URL is empty | Bot if otherwise undetermined, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |
 | A raw config record is valueless or malformed | Bot if otherwise undetermined, one stderr warning | Ambiguous — a record without the key/value separator cannot establish non-org affiliation |
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
+| A remote's effective fetch or push URL is still a non-HTTPS `github.com` URL after the bot rewrites (a rule in your own config matches its complete URL) | Command aborts, stderr names the remote and URL | A push there would ride the personal SSH key under the bot's authorship; remove the rule — destinations on other hosts are not checked |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
 
 Every ambiguous case resolves toward the bot because the two wrong outcomes are not symmetric: wrong-way-bot fails loudly (bot-authored commits are amendable, pushes 403 against the installation boundary) while wrong-way-personal is silent misattribution in the human's name.
-Two expected, harmless quirks of running per command: the ambiguity warnings (`no remotes`, `git probe failed`) print on *every* command in such a directory, not once — that repetition is the signal, kept stateless deliberately; and inside a bare repo or a `.git` directory `--is-inside-work-tree` exits 0 rather than 128, so the decision falls through to the remote check (an org-remoted bare repo still resolves to bot), which is why the table's "exits 128" row is the *definitive* not-a-repo answer rather than the only non-repo state.
+Two expected, harmless quirks of running per command: the ambiguity warnings (`no remotes`, `git probe failed`) print on *every* command in such a directory, not once — that repetition is the signal, kept stateless deliberately; and inside a bare repo or a `.git` directory `--is-inside-work-tree` exits 0 rather than 128, so the decision falls through to the remote check (an org-remoted bare repo still resolves to bot), which is why the table's personal row keys on git's not-a-repository message rather than on the exit status alone.
 For the same reason, do not gate on a local repo allowlist: an enrolled repo missing from the list silently works as the human.
 Do not check the installation list per command over the network: slow, flaky, and redundant — the token already enforces it server-side, and a not-yet-installed org repo simply fails at first push, which is the "enroll me" signal.
 
@@ -188,6 +205,9 @@ Variant B additionally (the gate and its fail direction):
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
 - Mixed-case remote regression: in an org repo whose remote spells the host or org with different case (`git@github.com:Acme/x.git`), `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` still succeeds — `bot-env` emitted a literal rewrite pair for that remote, covering git's case-sensitive `insteadOf` match.
+- Force-SSH rewrite regression (network-free): with `url.ssh://git@github.com/.insteadOf = https://github.com/` in your global git config and an org remote written as `https://github.com/acme/x.git`, an agent command's `git ls-remote --get-url origin` and `git remote get-url --push origin` both print the https URL — the exact pairs outrank the global rule.
+- Exit-128 regression: in an org repo, append `[broken` to `.git/config`; the next agent command warns `ambiguous, using the bot identity` and `echo "$GIT_AUTHOR_NAME"` prints the bot (git itself cannot read the broken config, so `git var` would fail here); restore the file afterward.
+- Tie regression (network-free): add `[url "ssh://git@github.com/acme/x.git"] insteadOf = https://github.com/acme/x.git` to your global git config in a repo whose origin is that https URL; the next agent command aborts naming `origin` and the ssh URL, and removing the rule restores routing.
 
 ## Common Mistakes — Claude Code mechanisms
 
@@ -201,7 +221,7 @@ These pitfalls name Claude Code mechanisms specifically; the harness-neutral mis
 | Centralizing by moving the static env block to user-level `settings.json` | Static env cannot be conditional — the bot activates in every project including other orgs and personal repos; centralize with the per-command guard (Variant B) |
 | Treating a failing `SessionStart` preflight as a blocking control | Claude Code can continue after hook startup failure; install the guard first, and make the guard fail inside each Bash command when `bot-env` is unavailable |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
-| Trusting the canonical `insteadOf` pair against mixed-case SSH remotes | git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the repo gets the bot verdict but pushes ride the personal SSH key; normalize remotes in Variant A, and in Variant B `bot-env` derives literal pairs from the matched remotes |
+| Trusting the canonical `insteadOf` pair against mixed-case SSH remotes | git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the repo gets the bot verdict but pushes ride the personal SSH key; normalize remotes in Variant A, and in Variant B `bot-env` emits a verbatim pair for every raw `github.com` remote |
 | Compound agent commands that cross repos (`cd <org-repo> && git commit`, `git -C <org-repo>`) | The Variant B verdict binds to the directory the command starts in, so the personal→org direction is silent human attribution; change directory in one command and commit in the next |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |

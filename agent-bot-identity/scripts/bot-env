@@ -27,10 +27,6 @@ install_id_for_org() {
   done
   return 1
 }
-mapped_orgs() {
-  local _line
-  for _line in $ORG_INSTALLS; do printf '%s ' "${_line%%:*}"; done
-}
 
 # Validate the map before any verdict: a malformed or duplicate entry is a
 # config error that must abort the command, never a silent first-entry win —
@@ -57,15 +53,43 @@ for _entry in $ORG_INSTALLS; do
   esac
   _seen_orgs="${_seen_orgs}|${_org}|"
 done
-# With zero entries the ambiguous-toward-bot paths would emit a broken rewrite
-# pair (`url.https://github.com//.insteadOf`) and the gate would never match.
 [ -n "$_seen_orgs" ] || { echo "bot-env: ORG_INSTALLS is empty; refusing to run" >&2; exit 1; }
 
+# Lowercased host of a remote URL in either the scheme form
+# (`ssh://[user@]host[:port]/path`) or the scp form (`[user@]host:path`).
+# Anything else (a local path, or the bare remote name git reports when a
+# push-only remote has no fetch URL) yields a non-host string that matches
+# nothing.
+url_host_lc() {
+  local u="$1" rest auth host
+  case "$u" in
+    *://*) rest="${u#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}" ;;
+    *) rest="${u#*@}"; host="${rest%%:*}" ;;
+  esac
+  printf '%s' "$host" | tr '[:upper:]' '[:lower:]'
+}
+
 verdict=personal
-ssh_prefixes=""
 matched_orgs=""
+# Every remote name that carries a fetch URL, on any host: the effective-URL
+# check below asks git for the fetch direction only where one is configured,
+# because git answers a push-only remote's fetch URL with the remote's name.
+names_with_url=()
+# Raw github.com remote values seen in this repo (deduplicated), their HTTPS
+# targets, and the remote names that carry them. On a bot verdict every raw
+# value gets an exact rewrite pair, and every name is checked for its
+# effective transport (see the emission below). Arrays, not delimited
+# records: any character git accepts in a URL must survive verbatim.
+github_raw=()
+github_target=()
+github_names=()
 rc=0
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || rc=$?
+# Only stderr is captured, under a fixed locale: git exits 128 on *every*
+# fatal error, and only the "not a git repository" one is a definitive
+# personal answer. A corrupt config, an unsupported repository format,
+# malformed inherited GIT_CONFIG_* state, or dubious ownership also exit 128,
+# and none of them can rule out org work.
+probe_err="$(LC_ALL=C git rev-parse --is-inside-work-tree 2>&1 >/dev/null)" || rc=$?
 if [ "$rc" -eq 0 ]; then
   raw_remotes="$(mktemp)"
   worktree_remotes="$(mktemp)"
@@ -99,45 +123,68 @@ if [ "$rc" -eq 0 ]; then
       empty_remote=0
       while IFS= read -r -d '' remote_record; do
         case "$remote_record" in
-          *$'\n'*) url="${remote_record#*$'\n'}" ;;
+          *$'\n'*) url="${remote_record#*$'\n'}"; key="${remote_record%%$'\n'*}" ;;
           *) empty_remote=1; continue ;;
         esac
         if [ -z "$url" ]; then
           empty_remote=1
           continue
         fi
-        prefix=""
+        # `remote.<name>.url` / `remote.<name>.pushurl`; the name may itself
+        # contain dots, so strip exactly the final property, never a suffix.
+        name="${key#remote.}"; name="${name%.*}"
+        case "$key" in
+          *.url)
+            seen=0
+            for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
+              [ "$existing" = "$name" ] && { seen=1; break; }
+            done
+            [ "$seen" -eq 0 ] && names_with_url+=("$name") ;;
+        esac
+        # Parse the raw value down to its authority and path: host decides
+        # GitHub-ness, the first path segment decides the account. A leading
+        # slash in an scp-style path (`git@github.com:/acme/x.git`) is
+        # tolerated by GitHub, so it is stripped before both decisions.
         case "$url" in
           *://*)
-            scheme="${url%%://*}"; rest="${url#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}"; path="${rest#*/}"
-            case "$scheme" in
-              [Hh][Tt][Tt][Pp][Ss]) ;;
-              *) prefix="${scheme}://${auth}/${path%%/*}/" ;;
-            esac
+            rest="${url#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}"
+            case "$rest" in */*) path="${rest#*/}" ;; *) path="" ;; esac
             ;;
           *)
-            rest="${url#*@}"; host="${rest%%:*}"; path="${rest#*:}"
-            prefix="${url%%:*}:${path%%/*}/"
+            rest="${url#*@}"; host="${rest%%:*}"
+            case "$rest" in *:*) path="${rest#*:}" ;; *) path="" ;; esac
             ;;
         esac
+        path="${path#/}"
         host_lc="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+        [ "$host_lc" = github.com ] || continue
+        # The raw value is emitted verbatim inside single quotes as a
+        # url.<base>.insteadOf key and value; refuse anything that cannot
+        # travel that way rather than route with a partial identity.
+        case "$url" in
+          *"'"*|*'"'*|*'\'*|*[[:space:]]*|*[[:cntrl:]]*)
+            echo "bot-env: raw remote URL in $PWD contains a character that cannot be emitted safely; refusing to run with undetermined identity" >&2
+            exit 1 ;;
+        esac
+        seen=0
+        for existing in "${github_raw[@]+"${github_raw[@]}"}"; do
+          [ "$existing" = "$url" ] && { seen=1; break; }
+        done
+        if [ "$seen" -eq 0 ]; then
+          github_raw+=("$url")
+          github_target+=("https://github.com/${path}")
+        fi
+        seen=0
+        for existing in "${github_names[@]+"${github_names[@]}"}"; do
+          [ "$existing" = "$name" ] && { seen=1; break; }
+        done
+        [ "$seen" -eq 0 ] && github_names+=("$name")
         org_segment_lc="$(printf '%s' "${path%%/*}" | tr '[:upper:]' '[:lower:]')"
-        if [ "$host_lc" = github.com ] && install_id_for_org "$org_segment_lc" >/dev/null; then
+        if install_id_for_org "$org_segment_lc" >/dev/null; then
           verdict=bot
           case "$matched_orgs" in
             *"|${org_segment_lc}|"*) ;;
             *) matched_orgs="${matched_orgs}|${org_segment_lc}|" ;;
-          esac
-          case "$prefix" in
-            "") ;;
-            "git@github.com:${org_segment_lc}/") ;;
-            *"'"*) echo "bot-env: matched remote prefix contains a single quote in $PWD; refusing to run with undetermined identity" >&2; exit 1 ;;
-            *)
-              case "$ssh_prefixes" in
-                *"|${prefix}|"*) ;;
-                *) ssh_prefixes="${ssh_prefixes}|${prefix}|" ;;
-              esac
-              ;;
           esac
         fi
       done <"$raw_remotes"
@@ -150,7 +197,16 @@ if [ "$rc" -eq 0 ]; then
     verdict=bot
     echo "bot-env: raw remote query failed in $PWD; using the bot identity" >&2
   fi
-elif [ "$rc" -ne 128 ]; then
+elif [ "$rc" -eq 128 ]; then
+  # Anchored to the first line: a malformed inherited config key can echo the
+  # phrase inside an unrelated diagnostic, and that is not git's answer.
+  case "$probe_err" in
+    "fatal: not a git repository"*) ;;
+    *)
+      verdict=bot
+      echo "bot-env: git probe failed (exit 128: ${probe_err%%$'\n'*}) in $PWD; ambiguous, using the bot identity" >&2 ;;
+  esac
+else
   verdict=bot
   echo "bot-env: git probe failed (exit $rc) in $PWD; ambiguous, using the bot identity" >&2
 fi
@@ -200,15 +256,71 @@ else
 fi
 [ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
 
-# insteadOf pairs cover the matched account; with no matched account (the
-# ambiguous-toward-bot paths) they cover every mapped account.
-if [ -n "$matched_org" ]; then
-  pair_orgs="$matched_org"
-else
-  pair_orgs="$(mapped_orgs)"
-fi
-first_org="${pair_orgs%% *}"
-rest_orgs="${pair_orgs#"$first_org"}"
+# Under a bot verdict every github.com transport in this command must go
+# through HTTPS, and so through the host-gated bot credential helper: a remote
+# left on SSH would push with the personal key under the bot's authorship.
+# git resolves insteadOf/pushInsteadOf by longest matching prefix across every
+# config scope (first-read wins a tie, and the user's own config is read
+# first), so each rewrite is emitted twice — pushInsteadOf is consulted before
+# insteadOf for pushes — and at three lengths: host-wide pairs, which cover
+# the canonical forms and any URL typed on the command line; identity pairs on
+# each mapped account's https prefix, which outrank a host-wide force-SSH rule
+# in the user's config for that account's URLs; and one exact pair per raw
+# remote value, which outranks any prefix rule and covers mixed-case and
+# ssh:// spellings verbatim.
+pair_base=()
+pair_value=()
+add_pair() { pair_base+=("$1"); pair_value+=("$2"); }
+add_pair 'https://github.com/' 'git@github.com:'
+add_pair 'https://github.com/' 'github.com:'
+add_pair 'https://github.com/' 'ssh://git@github.com/'
+add_pair 'https://github.com/' 'https://github.com/'
+for _line in $ORG_INSTALLS; do
+  add_pair "https://github.com/${_line%%:*}/" "https://github.com/${_line%%:*}/"
+done
+i=0
+while [ "$i" -lt "${#github_raw[@]}" ]; do
+  add_pair "${github_target[$i]}" "${github_raw[$i]}"
+  i=$((i + 1))
+done
+
+# What rewrites cannot win is a rule in the user's own config that matches a
+# remote's complete URL: equal length, read first, it keeps the remote on SSH.
+# So ask git, with exactly the rewrites about to be emitted, where each
+# github.com remote actually resolves, and refuse to route if any direction
+# still leaves github.com over anything but HTTPS — a push there would ride
+# the personal key under the bot's authorship. URLs typed on the command line
+# are outside this check; the host-wide and account pairs are their only cover.
+cfg=()
+i=0
+while [ "$i" -lt "${#pair_base[@]}" ]; do
+  cfg+=(-c "url.${pair_base[$i]}.insteadOf=${pair_value[$i]}" -c "url.${pair_base[$i]}.pushInsteadOf=${pair_value[$i]}")
+  i=$((i + 1))
+done
+for name in "${github_names[@]+"${github_names[@]}"}"; do
+  has_url=0
+  for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
+    [ "$existing" = "$name" ] && { has_url=1; break; }
+  done
+  for direction in "" --push; do
+    [ "$direction" = "" ] && [ "$has_url" -eq 0 ] && continue
+    effective="$(git "${cfg[@]}" remote get-url --all $direction "$name" 2>/dev/null)" || {
+      echo "bot-env: could not resolve the effective URL of remote '${name}' in $PWD; refusing to run with undetermined transport" >&2
+      exit 1
+    }
+    while IFS= read -r resolved; do
+      [ -n "$resolved" ] || continue
+      # Only github.com destinations are held to HTTPS; a remote that pushes
+      # to another host is that host's business and the helper ignores it.
+      case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
+      [ "$(url_host_lc "$resolved")" = github.com ] || continue
+      echo "bot-env: remote '${name}' still resolves to ${resolved} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
+      exit 1
+    done <<EOF3
+$effective
+EOF3
+  done
+done
 
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'
@@ -219,32 +331,21 @@ export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
 export GIT_CONFIG_VALUE_1='!${SCRIPT_DIR}/git-credential-bot'
-export GIT_CONFIG_KEY_2='url.https://github.com/${first_org}/.insteadOf'
-export GIT_CONFIG_VALUE_2='git@github.com:${first_org}/'
-export GIT_CONFIG_KEY_3='commit.gpgsign'
-export GIT_CONFIG_VALUE_3='false'
+export GIT_CONFIG_KEY_2='commit.gpgsign'
+export GIT_CONFIG_VALUE_2='false'
 EOF
-
-idx=4
-for extra_org in $rest_orgs; do
+idx=3
+i=0
+while [ "$i" -lt "${#pair_base[@]}" ]; do
   cat <<EOF
-export GIT_CONFIG_KEY_${idx}='url.https://github.com/${extra_org}/.insteadOf'
-export GIT_CONFIG_VALUE_${idx}='git@github.com:${extra_org}/'
+export GIT_CONFIG_KEY_${idx}='url.${pair_base[$i]}.insteadOf'
+export GIT_CONFIG_VALUE_${idx}='${pair_value[$i]}'
+export GIT_CONFIG_KEY_$((idx + 1))='url.${pair_base[$i]}.pushInsteadOf'
+export GIT_CONFIG_VALUE_$((idx + 1))='${pair_value[$i]}'
 EOF
-  idx=$((idx + 1))
+  idx=$((idx + 2))
+  i=$((i + 1))
 done
-if [ -n "$ssh_prefixes" ]; then
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    cat <<EOF
-export GIT_CONFIG_KEY_${idx}='url.https://github.com/${matched_org}/.insteadOf'
-export GIT_CONFIG_VALUE_${idx}='${p}'
-EOF
-    idx=$((idx + 1))
-  done <<EOF2
-$(printf '%s' "$ssh_prefixes" | tr '|' '\n')
-EOF2
-fi
 
 if [ -n "$matched_org" ]; then
   echo "export BOT_INSTALL_ID='${bot_install_id}'"
