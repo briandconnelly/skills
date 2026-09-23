@@ -144,7 +144,7 @@ Implemented adapters:
 
 - [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision). Tested.
 - [Codex CLI](references/adapters/codex.md) — Variant A partially verified, with the GitHub write path not exercised and a documented `as-me` limitation; Variant B pending. Core routing probes were run against Codex 0.143.0, with activation behavior re-probed on 0.144.1.
-- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path on 1.18.22; Variant B is the same plugin file installed at user level, and its global-install location is untested live.
+- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path (versions and dates in the adapter's Status); Variant B is the same plugin file installed at user level, and its global-install location is untested live.
 
 | Capability | Claude Code | Codex CLI | OpenCode |
 | --- | --- | --- | --- |
@@ -165,12 +165,12 @@ In a fresh agent session in an opted-in repo:
 
 - Run your adapter's activation checks first — see the adapter doc.
 - Do not begin git or `gh` work until your adapter's token check and the command-scope credential-helper check pass — see the adapter doc for which token check applies.
-- If the adapter injects `GH_TOKEN` into the session env (Claude Code): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
-  This check does not port: under a per-invocation shim adapter (Codex CLI) a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
+- If the adapter injects `GH_TOKEN` into the command env (Claude Code, OpenCode): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
+  This check does not port to a per-invocation shim adapter (Codex CLI), where a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
 - Membership: `gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx 'acme/<this-repo>'` → prints the repo, proving the token belongs to the installation that covers this session's repo.
   Match case-insensitively (`-i`): GitHub's namespace is case-insensitive and `full_name` returns canonical casing, so a hand-written expected name that differs only in case would otherwise false-negative.
   Write the expected `owner/repo` from what you know the session repo to be; deriving it through the token under test (e.g. `gh repo view`) can fail before the assertion runs.
-  This is the harness-neutral token check both adapters share, and the only check here that a wrong-installation token fails: the `ghs_` prefix, an enrolled-repo *count*, and a direct `gh api repos/{owner}/{repo}` read on a public repo all pass for any valid installation token of the App — a count is a diagnostic, never a pass (`--paginate` matters: the endpoint pages at 30 repos).
+  This is the harness-neutral token check every adapter shares, and the only check here that a wrong-installation token fails: the `ghs_` prefix, an enrolled-repo *count*, and a direct `gh api repos/{owner}/{repo}` read on a public repo all pass for any valid installation token of the App — a count is a diagnostic, never a pass (`--paginate` matters: the endpoint pages at 30 repos).
   Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
