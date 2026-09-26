@@ -10,7 +10,7 @@ Harness: Claude Code 2.1.283, Agent tool, general-purpose subagent, three indepe
 Prompt: the fixture below, verbatim, preceded by the preface quoted under "Dispatch" below
 Sampling: harness default
 Scorer: Claude Fable 5.1 (claude-fable-5-1), the session model, 2026-09-26, unblinded
-Notes: this is a confirmation cell, not a scenario. The fixture is not in `tests/scenarios.md` and was written for this cell. It is the known-positive probe for a proposed wording change, so it runs on the PRIOR wording first; the preregistration below says when the wording ships and when it is declined.
+Notes: this is a confirmation cell, not a scenario. The fixture is not in `tests/scenarios.md` and was written for this cell. It is the known-positive probe for a proposed wording change, so it runs on the PRIOR wording first; the preregistration below says when the wording ships and when it is declined. Each subagent transcript also carried the harness's auto-mode tool-preference reminder once (checked by grep in all fifteen transcripts of this session); every arm nonetheless made only the three tool calls its preface permitted.
 
 ## Why this cell
 

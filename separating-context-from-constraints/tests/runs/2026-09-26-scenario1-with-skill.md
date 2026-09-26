@@ -10,7 +10,7 @@ Harness: Claude Code 2.1.283, Agent tool, general-purpose subagent, three indepe
 Prompt: the scenario prompt from `tests/scenarios.md`, verbatim, preceded by the preface quoted under "Dispatch" below
 Sampling: harness default
 Scorer: Claude Fable 5.1 (claude-fable-5-1), the session model, 2026-09-26, unblinded
-Notes: Confirmation cell for two `SKILL.md` edits made in response to the 2026-09-26 review's findings 4a and 4b: the litmus-test imperative in Core Concept became a definition (the command already lives in Audit Procedure step 2), and the sentence "Defaults and defeasible guidance are legitimate rules, not failed constraints" moved from R2 into Core Concept's binding-rules role. Scenario 1 is the cell for the litmus-test change: its three buried rules are found only by classifying every statement, so a weakened classification step would show here first.
+Notes: Confirmation cell for two `SKILL.md` edits made in response to the 2026-09-26 review's findings 4a and 4b: the litmus-test imperative in Core Concept became a definition (the command already lives in Audit Procedure step 2), and the sentence "Defaults and defeasible guidance are legitimate rules, not failed constraints" moved from R2 into Core Concept's binding-rules role. Scenario 1 is the cell for the litmus-test change: its three buried rules are found only by classifying every statement, so a weakened classification step would show here first. Each subagent transcript also carried the harness's auto-mode tool-preference reminder once (checked by grep in all fifteen transcripts of this session); every arm nonetheless made only the three tool calls its preface permitted.
 
 ## Why this cell
 

@@ -10,7 +10,7 @@ Harness: Claude Code 2.1.283, Agent tool, general-purpose subagent, three indepe
 Prompt: the scenario prompt from `tests/scenarios.md`, verbatim, preceded by the preface quoted under "Dispatch" below
 Sampling: harness default
 Scorer: Claude Fable 5.1 (claude-fable-5-1), the session model, 2026-09-26, unblinded
-Notes: Confirmation cell for the same two `SKILL.md` edits as `2026-09-26-scenario1-with-skill.md`. Scenario 5 is the cell for the defaults-sentence move: its rule 6 says "by default" and its assertion 3 forbids flagging that as an R2 hedge, so a reader who no longer sees "Defaults and defeasible guidance are legitimate rules" inside R2 would over-correct here first.
+Notes: Confirmation cell for the same two `SKILL.md` edits as `2026-09-26-scenario1-with-skill.md`. Scenario 5 is the cell for the defaults-sentence move: its rule 6 says "by default" and its assertion 3 forbids flagging that as an R2 hedge, so a reader who no longer sees "Defaults and defeasible guidance are legitimate rules" inside R2 would over-correct here first. Each subagent transcript also carried the harness's auto-mode tool-preference reminder once (checked by grep in all fifteen transcripts of this session); every arm nonetheless made only the three tool calls its preface permitted.
 
 ## Why this cell
 
