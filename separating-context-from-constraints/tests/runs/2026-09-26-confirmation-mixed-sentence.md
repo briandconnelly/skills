@@ -43,6 +43,8 @@ Planted (D1): line 6, the component-first sentence — a binding rule buried in 
 Probe (P1): line 10, the ticket-number rule — correctly placed in `## Rules`, with a rationale clause attached. Neither planted nor protected; the cell records what each arm does with it.
 Protected: line 5 (schedule fact), line 7 (history), line 11 (clean rule).
 
+Correction, added after scoring (Codex cross-check of PR #182): the two `## Rules` references above miscount the blank line after the heading. P1 is line 11 and the protected tagging rule is line 12; lines 5, 6, and 7 are correct as written. Scoring keyed on the named statements, the scoring table already cites line 12, and no outcome changes.
+
 ## Preregistered questions
 
 | # | Question | Expected on prior wording |
