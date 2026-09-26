@@ -101,10 +101,19 @@ This is the E9 report-shape behavior tracked in issue #161; reps 1 and 2 did not
 
 ## Decision
 
-Prior-wording Q1 is 3/3 and Q3 is 3/3, so the first row of the preregistered table applies: the finding-2 wording is **declined** as a measured no-change-needed outcome.
+Prior-wording Q1 is 3/3 and Q3 is 3/3, so the first row of the preregistered table applies: the finding-2 wording is **declined** for PR #182.
 The current text already induces clause-level classification and sentence-level findings for mixed sentences, on this fixture and on scenario 1 (2026-09-14, 3/3).
 The review's claim that the procedure leaves extraction and consolidation "unstable" is not supported at n=6 across two fixtures; what it identified is a documentation gap, and this cell records how the gap is currently resolved in practice without adding a rule.
 The candidate wording was not written into `SKILL.md`, no new-wording arm ran, and the self-compliance edits (review findings 4a and 4b) ship on their own confirmation cells (`2026-09-26-scenario1-with-skill.md`, `2026-09-26-scenario5-with-skill.md`).
+
+### Scope of the decline
+
+Added after the agent review on PR #182, which correctly objected to the preregistered row's label "measured no-change-needed".
+The decision rule turned on behaviour only, and that is all this cell measured.
+Six consistent arms across two fixtures are regression evidence for how auditors currently resolve mixed sentences.
+They do not supply the missing definition: `SKILL.md` still names neither the classification unit nor the finding unit, so nothing written binds a future auditor to the behaviour observed here.
+The outcome is therefore a declined wording with the documentation gap left open, tracked in issue #183, not a finding that no change is needed.
+Specifying the unit is an author decision, because any natural wording also settles Q2's policy question: whether a rationale clause attached to its own rule inside a rule section is a minor R1 finding, which current arms answer yes 3/3 without any sentence saying so.
 
 ## Scored Output — rep 1
 
