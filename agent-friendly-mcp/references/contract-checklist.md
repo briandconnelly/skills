@@ -99,7 +99,7 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
   The optional `instructions` field rides this result under 2026-07-28 — it is no longer carried by an `initialize` response — and remains advisory wherever it travels (`[2.instructions-advisory]`).
   Say in the capability summary how an agent gets from `server/discover` to the house surfaces, because a capability advertisement does not carry the task-level guidance `[2.summary]` requires.
 
-- `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, and some surface only a prefix of it (`[2.instructions-prefix]`), so behavior that exists only there is invisible to those agents.
+- `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, some surface only a prefix of it (`[2.instructions-prefix]`), and some surface it only once the agent looks up one of the server's tools, so behavior that exists only there is invisible to those agents, or invisible until that lookup.
   Essential selection, prerequisite, safety, and repair behavior must also reach the agent through a surface it is guaranteed to see — the tool and resource schemas, or a discovery tool or resource the client does honor.
   Using `instructions` is fine; relying on it alone is not.
 
