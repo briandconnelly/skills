@@ -29,8 +29,8 @@ Issue #184 also reported a cold-start observation (runpod/snowpod#462): with a t
 Add two rules and extend one.
 
 - `[2.instructions-advisory]` names the prefix case alongside the never-surfaced case, so both route to the same "never the sole carrier" requirement.
-- `[2.instructions-prefix]` owns the layout: order by what the agent needs before its first call, keep the binding contract inside the shortest prefix measured on the clients a server targets, and tie any length test to a measurement.
-- `[2.truncation-signal]` owns the self-check the agent can run on its own copy, and states that it is a floor, per the cold-start observation above.
+- `[2.instructions-prefix]` owns the layout and the length budget.
+- `[2.truncation-signal]` owns the self-check the agent can run on its own copy, and why it is a floor (the cold-start observation above).
 - `review-workflow.md` gains a measurement step in the cold-start probe and a Major example for binding rules past a measured prefix.
 
 The rules state no number.

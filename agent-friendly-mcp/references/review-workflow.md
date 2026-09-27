@@ -62,7 +62,7 @@ Each should be answerable from concrete evidence — schema text, response paylo
   Can it learn what the server does, what it does NOT do, and what prerequisites affect use in one read?
   Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
   When the server sets `instructions`, render the string it actually sends and measure it: total length, the offset where each section ends, and which sections fall past the prefix measured on each target client (`[2.instructions-prefix]`).
-  Where you can run a target client, place sentinels at known offsets and ask a fresh session which ones it can see; otherwise mark the prefix check `not-checked` for that client rather than borrowing another client's figure.
+  Where you can run a target client, place sentinels at known offsets and ask a fresh session which ones it can see; otherwise record the prefix check as `not-checked` for that client, in the §2 row's notes of the coverage table, rather than borrowing another client's figure.
 - **Tool selection.** Given two adjacent tools (same verb, overlapping nouns, or similar surface), can an agent pick the right one without invoking both?
   Are descriptions narrow enough that the schema alone disambiguates?
   Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*

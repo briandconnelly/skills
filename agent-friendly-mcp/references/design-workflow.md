@@ -93,7 +93,7 @@ Decide how an agent finds the right primitive at the lowest cost its clients all
 
 - Write the server capability summary: what it does, what it does NOT do, and any prerequisites that affect whether or how an agent should use it.
 - Expose the summary through a resource, discovery tool, or instructions field, whichever the client honors.
-  Treat `instructions` as supplemental because some clients do not surface it to the model and some surface only a prefix; lay it out under `[2.instructions-prefix]` and `[2.truncation-signal]`.
+  Treat `instructions` as supplemental (`[2.instructions-advisory]`) and lay it out under `[2.instructions-prefix]` and `[2.truncation-signal]`.
 - Make compact definitions your baseline (§2), then, if you need progressive disclosure, pick a mechanism by cost axis: host-managed context disclosure, server-managed catalog disclosure, or client-independent surface reduction — only the last helps a client that preloads and never lazy-loads.
 - Make discovery selective, but through a discovery tool, resource catalog, or authorization-scoped catalog — native `tools/list` takes only a pagination cursor and has no filter parameters.
   A flat list of 80 tools is undiscoverable.
