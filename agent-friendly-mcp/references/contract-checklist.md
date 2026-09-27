@@ -99,9 +99,19 @@ Audit prompt: Can an agent learn what this server does, what it doesn't, and whi
   The optional `instructions` field rides this result under 2026-07-28 — it is no longer carried by an `initialize` response — and remains advisory wherever it travels (`[2.instructions-advisory]`).
   Say in the capability summary how an agent gets from `server/discover` to the house surfaces, because a capability advertisement does not carry the task-level guidance `[2.summary]` requires.
 
-- `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, so behavior that exists only there is invisible to those agents.
+- `[2.instructions-advisory]` **Treat server `instructions` as advisory, never as the sole carrier.** Some clients never surface the `instructions` field to the model, and some surface only a prefix of it (`[2.instructions-prefix]`), so behavior that exists only there is invisible to those agents.
   Essential selection, prerequisite, safety, and repair behavior must also reach the agent through a surface it is guaranteed to see — the tool and resource schemas, or a discovery tool or resource the client does honor.
   Using `instructions` is fine; relying on it alone is not.
+
+- `[2.instructions-prefix]` **Lay out `instructions` so the prefix a client delivers is still a correct contract.** Some clients deliver only a fixed-length prefix of `instructions` and drop the rest; whether the agent sees any marker of the cut is up to the client, so an agent holding a partial copy can proceed as though it had the whole contract.
+  Order the text by what the agent needs before its first call: negative scope, binding safety and ordering rules, and the pointer to the full contract come first; material another surface already serves — tool routing that `tools/list` carries, naming conventions a resource carries — comes after.
+  Spend the head on branch rules, not glossaries: a payload that describes itself when it arrives, such as an error envelope, needs only which field to branch on, which value means do not retry, and where the full glossary lives.
+  Prefix lengths are client properties, often undocumented, and free to change between releases or even between sessions, so no single figure binds: keep the binding contract inside the shortest prefix measured on the clients you target, measured in the unit each client cuts in, and date where each figure came from (the observations on record live in `decisions/006-instructions-prefix.md`).
+  A length test is evidence only when its limit comes from such a measurement; one that asserts an unmeasured limit stays green while the client cuts the text.
+
+- `[2.truncation-signal]` **Give the agent a check it can run on its own copy of `instructions`.** "Clients may truncate" is not a rule under `[2.rules-then-context]`: it names no condition an agent can evaluate, because the agent cannot tell whether its copy was cut.
+  State at the head which section ends the text and what to read when that section is missing, and pin that section last with a test so a reorder cannot break the check silently.
+  The check is a floor, not a substitute for `[2.instructions-prefix]`: in the one cold-start observation on record the agent followed the rules inside the prefix and never acted on the check, so the directives themselves must sit inside the prefix.
 
 - `[2.negative-scope]` **State negative scope explicitly.** What the server does NOT do is as important as what it does.
   Negative scope prevents wasted exploration and wrong-tool selection.

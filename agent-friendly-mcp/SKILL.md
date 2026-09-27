@@ -28,7 +28,7 @@ Read the cited ids — a row names the concern but does not define the rule, so 
 
 | Concern | Governing rules |
 | --- | --- |
-| What carries the contract, and what is only advisory | `[5.scaffolding-only]`, `[5.ap-contract-container]`, `[2.instructions-advisory]` |
+| What carries the contract, and what is only advisory | `[5.scaffolding-only]`, `[5.ap-contract-container]`, `[2.instructions-advisory]`, `[2.instructions-prefix]`, `[2.truncation-signal]` |
 | Capability negotiation before optional features | `[1.negotiated-caps]` |
 | Tool granularity: tasks vs endpoints | `[3.task-completing]`, `[3.hide-steps]`, `[3.ap-endpoint-wrapping]` |
 | Side effects, idempotency, and rate limits | `[3.declare-effects]`, `[3.honest-annotations]`, `[3.annotation-defaults]` |
