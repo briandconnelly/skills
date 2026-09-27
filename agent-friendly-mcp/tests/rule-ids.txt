@@ -20,6 +20,8 @@
 2.summary
 2.discover-first
 2.instructions-advisory
+2.instructions-prefix
+2.truncation-signal
 2.negative-scope
 2.rules-then-context
 2.compact-baseline

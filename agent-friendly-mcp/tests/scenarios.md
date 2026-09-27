@@ -16,7 +16,7 @@ Never pool the two sets into one score.
   Here a baseline that passes everything does mean the scenario is too easy; tighten it.
   Because this set selects for baseline failure by construction, its results measure whether a rule lands — never how much the skill helps overall, and never its cost.
 
-Scenarios 1–8 below are **challenge set**: each was built or tightened under the selection rule above.
+Scenarios 1–9 below are **challenge set**: each was built or tightened under the selection rule above.
 The representative set holds one scenario (R1), run once per arm, so evidence about ordinary tasks is one datapoint deep — do not cite challenge-set totals as the skill's net benefit.
 
 ## How to run
@@ -289,6 +289,176 @@ Record which wording a run was scored against.
 
 **Expected failure under the pre-#125 wording:** the missing summary lands at Major on the strength of the house default, with no evidence named — the inflation #125 was filed about — or the run reaches Minor but justifies it only by the *absence* of failure evidence rather than positive cold-start evidence.
 
+## Scenario 9: Instructions laid out for a truncated prefix (audit test)
+
+Scenario 4 tests how `instructions` prose is phrased; this one tests where the binding content sits in it, and whether the audit stays client-neutral about truncation.
+The fixture's `instructions` string is 2,736 ASCII characters. Measured as zero-based offsets: the background history ends at 1,296, the error-field glossary ends at 2,153, the line "Note: some clients may truncate these instructions." starts at 2,155, and every binding rule follows the `Rules:` header at 2,208.
+None of the four tools' descriptions or schemas restates those rules.
+Those offsets are for scoring only and are not given to either arm.
+
+**Prompt:**
+
+> Audit the server-level `instructions` string and the tool descriptions of this MCP server for agent-friendliness.
+> Its operators target two MCP clients: Claude Code and Codex CLI.
+> Report your findings with a severity and a concrete remediation for each.
+>
+> ```json
+> {
+>   "serverInfo": {
+>     "name": "ledgerline",
+>     "title": "Ledgerline Bookkeeping",
+>     "version": "3.2.0"
+>   },
+>   "instructions": "Ledgerline connects agents to the Ledgerline bookkeeping platform, which small-business accountants use to manage client ledgers, invoices, and reconciliations. Ledgerline began in 2014 as an internal tool at a regional accounting firm and was spun out as a product in 2017; the MCP server was added in 2025 so that assistants could help accountants with routine ledger work. The server was rewritten in 2026 on the Ledgerline public API, replacing an earlier integration that scraped the web interface, and it now shares that API's authentication and audit logging. Accountants typically use it for month-end close: reviewing unposted entries, correcting miscategorized transactions, and preparing the ledger for review by a senior partner. The platform stores each client's books as a project, and every project holds accounts, journal entries, invoices, and bank feeds. Most accountants manage between ten and forty client projects, and many of them keep one project per fiscal year for archival reasons, so project names often repeat with a year suffix. The server exposes tools for listing projects, reading and posting journal entries, and voiding entries, and it also offers read access to invoices. It does not file taxes, move money, connect bank accounts, or send invoices to customers.\n\nError envelope reference: every failed call returns an error object with these fields. `code` is a stable symbolic identifier such as `project_not_found`, `entry_locked`, `period_closed`, or `rate_limited`. `message` is a human-readable sentence intended for display to the accountant. `field` names the input argument that caused the failure, when one did. `allowed` lists the accepted values for that field, when the set is small. `retryable` is a boolean; `true` means the same call may succeed later, and `false` means it will not. `retry_after_ms` appears only on `rate_limited` and says how long to wait. `repair` carries a suggested next call, with `tool` and `arguments` keys. `request_id` correlates the failure with server logs and should be quoted when the accountant contacts support. `docs_url` points at the help-center article for the code.\n\nNote: some clients may truncate these instructions.\n\nRules:\n- Call ledgerline_list_projects before any project-scoped call, and pass the returned project_id; project names are not unique and are never accepted as identifiers.\n- ledgerline_void_entry is irreversible: it requires a confirm_token obtained from ledgerline_void_entry with dry_run=true, and the token expires after 5 minutes.\n- Never post or void entries in a closed period; check the period_status field of the project first, and treat period_closed errors as non-retryable.\n- Keep to 30 calls per minute per project.",
+>   "tools": [
+>     {
+>       "name": "ledgerline_list_projects",
+>       "title": "List client projects",
+>       "description": "List the accountant's client projects with their ids, names, fiscal years, and period status.",
+>       "inputSchema": {
+>         "type": "object",
+>         "properties": {
+>           "cursor": {
+>             "type": "string",
+>             "description": "Opaque cursor from a previous call."
+>           }
+>         },
+>         "required": [],
+>         "additionalProperties": false
+>       },
+>       "annotations": {
+>         "readOnlyHint": true
+>       }
+>     },
+>     {
+>       "name": "ledgerline_get_entries",
+>       "title": "Read journal entries",
+>       "description": "Return journal entries for one project, newest first.",
+>       "inputSchema": {
+>         "type": "object",
+>         "properties": {
+>           "project_id": {
+>             "type": "string",
+>             "description": "Project identifier."
+>           },
+>           "since": {
+>             "type": "string",
+>             "format": "date",
+>             "description": "Only entries on or after this date."
+>           }
+>         },
+>         "required": [
+>           "project_id"
+>         ],
+>         "additionalProperties": false
+>       },
+>       "annotations": {
+>         "readOnlyHint": true
+>       }
+>     },
+>     {
+>       "name": "ledgerline_post_entry",
+>       "title": "Post a journal entry",
+>       "description": "Post a balanced journal entry to a project.",
+>       "inputSchema": {
+>         "type": "object",
+>         "properties": {
+>           "project_id": {
+>             "type": "string",
+>             "description": "Project identifier."
+>           },
+>           "date": {
+>             "type": "string",
+>             "format": "date"
+>           },
+>           "lines": {
+>             "type": "array",
+>             "description": "Debit and credit lines; debits must equal credits.",
+>             "items": {
+>               "type": "object",
+>               "properties": {
+>                 "account": {
+>                   "type": "string"
+>                 },
+>                 "debit": {
+>                   "type": "number"
+>                 },
+>                 "credit": {
+>                   "type": "number"
+>                 }
+>               },
+>               "required": [
+>                 "account"
+>               ],
+>               "additionalProperties": false
+>             }
+>           }
+>         },
+>         "required": [
+>           "project_id",
+>           "date",
+>           "lines"
+>         ],
+>         "additionalProperties": false
+>       },
+>       "annotations": {
+>         "readOnlyHint": false,
+>         "destructiveHint": false,
+>         "idempotentHint": false
+>       }
+>     },
+>     {
+>       "name": "ledgerline_void_entry",
+>       "title": "Void a journal entry",
+>       "description": "Void a posted journal entry.",
+>       "inputSchema": {
+>         "type": "object",
+>         "properties": {
+>           "project_id": {
+>             "type": "string",
+>             "description": "Project identifier."
+>           },
+>           "entry_id": {
+>             "type": "string",
+>             "description": "Entry to void."
+>           },
+>           "dry_run": {
+>             "type": "boolean",
+>             "default": false,
+>             "description": "Preview the void without applying it."
+>           },
+>           "confirm_token": {
+>             "type": "string",
+>             "description": "Token confirming the void."
+>           }
+>         },
+>         "required": [
+>           "project_id",
+>           "entry_id"
+>         ],
+>         "additionalProperties": false
+>       },
+>       "annotations": {
+>         "readOnlyHint": false,
+>         "destructiveHint": true,
+>         "idempotentHint": false
+>       }
+>     }
+>   ]
+> }
+> ```
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] **A1 (position).** Identifies that the binding rules (project-id prerequisite, void confirmation, closed-period check, rate limit) come last, after the background and glossary, and that a client delivering only a prefix of `instructions` would drop them.
+- [ ] **A2 (reorder).** The remediation moves the binding rules to the head of the string, ahead of the history and the glossary.
+- [ ] **A3 (glossary).** Cuts the error-field glossary down to what the agent must branch on (for example which field or value means do not retry) and moves the rest out of the string or drops it, because the error payload carries its own fields when it arrives.
+- [ ] **A4 (second carrier).** The rules that govern a specific call (the `ledgerline_list_projects` prerequisite, the `dry_run`/`confirm_token` flow on `ledgerline_void_entry`, the period check before posting or voiding) are also required on that tool's description or schema, not only in `instructions`.
+- [ ] **A5 (actionable truncation signal).** Flags "some clients may truncate these instructions" as something an agent cannot act on, and proposes a check the agent can run on its own copy, such as a known final line and what to read when it is missing.
+- [ ] **A6 (no borrowed figure).** States no single truncation length as applying to both named clients or to clients in general. Any figure given is attributed to one client and marked as that client's documented or measured behavior, or the budget is left to measurement on each client. Asserting that Codex CLI, or MCP clients generally, cut at 2,048 characters or 2 KB fails.
+
+**Expected baseline failures:** the rules are rewritten for clarity but left in place, or the glossary is kept as is; the truncation note is kept or reworded rather than replaced by a check; any length budget is stated as a general client limit.
+
 ## Representative set
 
 ### R1: Small read-only service (application test)
@@ -356,3 +526,5 @@ Rows dated before 2026-07-29 additionally measured the MCP 2025-11-25 contract t
 | 2026-07-30 | 8 (severity calibration) | control (pre-#125 wording) | n/a — rated **Major** | Tree `f733b93`, Fable 5 subagent. The control arm for the pair below; it names the house default as its reason ("a missing summary is Major by default"), which is the inflation #125 was filed about. [evidence](runs/2026-07-30-scenario8-severity-calibration.md) |
 | 2026-07-30 | 8 (severity calibration) | treatment (#125 wording) | 5/5 — rated **Minor** | Tree `f733b93` + the #125 edit only, Fable 5 subagent. Same fixture and model as the control; only `review-workflow.md` differed. Cites simulated cold-start evidence, the one-tool catalog, and definition self-sufficiency; both arms found the same defects elsewhere, so the change scaled one finding down rather than softening the report. One trial per arm — establishes the wording can move the rating, not a rate. [evidence](runs/2026-07-30-scenario8-severity-calibration.md) |
 | 2026-07-29 | 5 (resources) | with-skill | 8/8 | Tree `1b0b743`, Fable 5 subagent. `subscriptions/listen` with `resourceSubscriptions` filter and `subscriptionId`-tagged updates, distinguished from `list_changed`; chunk-id stability pinned to page version with `chunk_stale` repair; native triage fields; namespaced `_meta`; honest `ttlMs`/`cacheScope` per `[8.cacheable-results]`. [evidence](runs/2026-07-29-scenario5-with-skill.md) |
+| 2026-09-26 | 9 (instructions prefix) | baseline | 5/6 | Tree `b878505`, Fable 5.1 subagent, prompt file only. Moved the rules first, cut the glossary to a branch rule, put each rule on its tool, and attributed 2,048 to Claude Code alone; failed A5 (deleted the truncation note with no replacement check). Confound: it saw truncated instructions in its own Claude Code context. 57,975 tokens, 3 tool uses. [evidence](runs/2026-09-26-scenario9.md) |
+| 2026-09-26 | 9 (instructions prefix) | with-skill | 6/6 | Tree `b878505`, Fable 5.1 subagent, isolated skill copy. Measured offsets, cited per-client figures to decision 006, drafted a 1,267-character replacement with an `END` line check. Only A5 separates the arms, so the scenario needs tightening before it can show A1–A4 or A6 land. 138,119 tokens, 16 tool uses. [evidence](runs/2026-09-26-scenario9.md) |

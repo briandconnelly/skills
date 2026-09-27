@@ -19,7 +19,7 @@ Step 1's calibration for a missing capability summary is the worked model; apply
   Without that, an imprecise auth error is a repair-quality defect and lands in Major: it costs turns without establishing a security risk or a reliable task failure.
   Blocks merge.
 - **Major** — agent will frequently choose the wrong primitive, waste tokens, or hit avoidable errors.
-  Examples: overlapping tool descriptions, bloated definitions or a 50-tool catalog with no client-independent surface reduction (and no progressive-disclosure mechanism matched to the target clients), unstructured error strings with no symbolic codes, no capability fingerprint for a target client that caches or pins the server surface, resource lists that inline bodies.
+  Examples: overlapping tool descriptions, bloated definitions or a 50-tool catalog with no client-independent surface reduction (and no progressive-disclosure mechanism matched to the target clients), unstructured error strings with no symbolic codes, binding `instructions` rules that sit past a target client's measured prefix and reach the agent through no other surface, no capability fingerprint for a target client that caches or pins the server surface, resource lists that inline bodies.
 - **Minor** — degrades agent experience but recoverable.
   Examples: verbose default responses with no detail toggle, missing `request_id` correlation, ambiguous parameter names whose schema types still constrain shape, summaries longer than three sentences.
 - **Nit** — style, naming, or doc improvement.
@@ -61,6 +61,8 @@ Each should be answerable from concrete evidence — schema text, response paylo
 - **Cold start.** What does an agent see when it first connects?
   Can it learn what the server does, what it does NOT do, and what prerequisites affect use in one read?
   Trace the first few definition loads from a transcript or simulate them from the schema. *(maps to §1, §2)*
+  When the server sets `instructions`, render the string it actually sends and measure it: total length, the offset where each section ends, and which sections fall past the prefix measured on each target client (`[2.instructions-prefix]`).
+  Where you can run a target client, place sentinels at known offsets and ask a fresh session which ones it can see, then confirm from the session's transcript whether the answer came from its starting context, a tool lookup, or a file read, and record the provenance as unresolved when the transcript does not show it; otherwise record the prefix check as `not-checked` for that client, in the §2 row's notes of the coverage table, rather than borrowing another client's figure.
 - **Tool selection.** Given two adjacent tools (same verb, overlapping nouns, or similar surface), can an agent pick the right one without invoking both?
   Are descriptions narrow enough that the schema alone disambiguates?
   Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
