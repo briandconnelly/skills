@@ -175,3 +175,170 @@ The harness's inventory point is `agent_start` (R3.4), so even Tier 1 runs a min
 Tools carry `sourceInfo` (`path`, `origin`, `scope`), so R3.8.4's provenance check extends to tools: an explicitly loaded file reports its absolute path with `origin: "top-level"`, `scope: "temporary"`; built-in tools report `builtin:<name>`, which R3.8.5 uses to tell built-ins from the target.
 `grep`, `find`, `ls`, and `powershell` are registered `direct` but not active under default settings, so "active" (R3.8.3) must be checked against `getActiveTools()`, not inferred from exposure.
 `getMcpServers()` returns `[]` with built-in MCP disabled; it does not throw.
+
+## RPC helper used by S4–S6
+
+`rpc_probe.py` starts `pi --mode rpc`, sends JSONL commands, prints every line until each command has a response, then closes stdin.
+In every run below Pi exited on its own when stdin closed (no "killed" line).
+
+```python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Spike helper: start `pi --mode rpc`, send JSONL commands, print every line received.
+
+Usage: rpc_probe.py '<json command>' [...] -- <pi arguments>
+"""
+
+import json
+import select
+import subprocess
+import sys
+import time
+
+
+def main() -> int:
+    sep = sys.argv.index("--")
+    commands, pi_args = sys.argv[1:sep], sys.argv[sep + 1 :]
+    proc = subprocess.Popen(
+        ["pi", "--mode", "rpc", *pi_args],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
+    for command in commands:
+        proc.stdin.write(command + "\n")
+        proc.stdin.flush()
+    responses, deadline = 0, time.monotonic() + 30
+    while responses < len(commands) and time.monotonic() < deadline:
+        ready, _, _ = select.select([proc.stdout], [], [], 0.5)
+        if not ready:
+            continue
+        line = proc.stdout.readline()
+        if not line:
+            break
+        print(line, end="")
+        if json.loads(line).get("type") == "response":
+            responses += 1
+    proc.stdin.close()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        print("# pi did not exit within 5s of stdin closing; killed", file=sys.stderr)
+    sys.stderr.write(proc.stderr.read())
+    print(f"# exit={proc.returncode} responses={responses}/{len(commands)}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+## S4 — invalid themes without the TUI
+
+Question: does Pi report an invalid theme in a non-interactive run, and does the installed schema catch what Pi does not?
+
+Themes (built from the installed `dark.json`; its first color key is `accent`):
+
+```bash
+T=$P/dist/modes/interactive/theme
+jq '.name="gate-good"' $T/dark.json > $S/themes/gate-good.json
+jq '.name="gate-bad-ref" | .colors |= (to_entries | .[0].value = "no-such-var" | from_entries)' $T/dark.json > $S/themes/gate-bad-ref.json
+jq '.name="gate-bad-missing" | .colors |= (to_entries | .[1:] | from_entries)' $T/dark.json > $S/themes/gate-bad-missing.json
+```
+
+Commands, per theme `$t`:
+
+```bash
+uv run --script $S/rpc_probe.py '{"id":"1","type":"get_state"}' -- \
+  -ne -ns -np --no-themes -nc --no-session --theme $S/themes/$t.json --use-theme $t
+pi -ne -ns -np --no-themes -nc --no-session -e $S/faux-probe.ts -e $P/examples/extensions/hello.ts \
+  --theme $S/themes/$t.json --use-theme $t --provider gate-faux --model scripted --mode json "greet gate" < /dev/null
+uvx --from check-jsonschema check-jsonschema --schemafile $T/theme-schema.json $S/themes/*.json
+```
+
+Observed (all Pi runs under the S2 environment):
+
+```text
+RPC get_state:  gate-good, gate-bad-ref, gate-bad-missing -> success:true, no other lines, exit 0
+JSON mode:      gate-good exit=0 stderr_bytes=0 error/warn events=0
+                gate-bad-ref exit=0 stderr_bytes=0 error/warn events=0
+                gate-bad-missing exit=0 stderr_bytes=0 error/warn events=0
+schema:         gate-bad-missing.json::$.colors: 'accent' is a required property
+                (gate-good and gate-bad-ref pass the schema)
+```
+
+Verdict: partial.
+Pi reports neither invalid theme outside the TUI; the installed schema catches a missing required color but not an unresolvable variable reference.
+
+Consequence for R3: Theme Tier 1 is structural only — validate against the installed `theme-schema.json` — and the gate report marks variable resolution and rendering unchecked.
+
+## S5 — project trust without a prompt
+
+Question: does a `.pi/` project resource load non-interactively only with `--approve`, without writing a trust decision, and is a skip detectable?
+
+Setup and commands (`-np` deliberately omitted so the prompt loads through discovery):
+
+```bash
+mkdir -p $S/proj/.pi/prompts
+printf -- '---\ndescription: spike prompt\n---\nSay spike.\n' > $S/proj/.pi/prompts/spike-prompt.md
+cd $S/proj
+uv run --script $S/rpc_probe.py '{"id":"1","type":"get_commands"}' -- -ne -ns --no-themes -nc --no-session
+uv run --script $S/rpc_probe.py '{"id":"1","type":"get_commands"}' -- -ne -ns --no-themes -nc --no-session --approve
+```
+
+Observed (real agent directory hashed before and after, as in S2):
+
+```text
+without --approve: commands = []   (no other events, nothing on stderr)
+with --approve:
+{"name":"spike-prompt","source":"prompt","sourceInfo":{"path":"$S/proj/.pi/prompts/spike-prompt.md","source":"auto","scope":"project","origin":"top-level","baseDir":"$S/proj/.pi"}}
+REAL AGENT DIR UNCHANGED
+throwaway agent directory afterwards: auth.json, models-store.json (no trust.json)
+```
+
+Verdict: confirmed.
+A skipped project resource is not signalled; it is simply absent.
+
+Consequence for R3: R3.2 as written works (`--approve`, process-only).
+Because Pi does not signal the skip, a project artifact run without `--approve` is caught only by its declared resource being missing (R3.8.2), which the self-test's trust-skipped fixture (R3.12) must exercise.
+
+## S6 — a package loaded with `-e`
+
+Question: does `pi -e <package dir>` expose the package's resources with package provenance, without writing settings?
+
+Setup and commands:
+
+```bash
+mkdir -p $S/pkg/prompts $S/pkg/extensions
+printf '{"name":"gate-spike-package","version":"0.0.0","keywords":["pi-package"]}\n' > $S/pkg/package.json
+printf -- '---\ndescription: package prompt\n---\nSay package.\n' > $S/pkg/prompts/pkg-prompt.md
+cp $P/examples/extensions/hello.ts $S/pkg/extensions/hello.ts
+cd $S/work
+uv run --script $S/rpc_probe.py '{"id":"1","type":"get_commands"}' -- \
+  -ne -ns -np --no-themes -nc --no-session -e $S/pkg
+pi -ne -ns -np --no-themes -nc --no-session -e $S/faux-probe.ts -e $S/pkg -e $S/inventory-probe.ts \
+  --provider gate-faux --model scripted --mode json "greet gate" < /dev/null
+```
+
+Observed:
+
+```text
+{"name":"pkg-prompt","source":"prompt","sourceInfo":{"path":"$S/pkg/prompts/pkg-prompt.md","source":"$S/pkg","scope":"temporary","origin":"package","baseDir":"$S/pkg"}}
+json run exit=0; hello tool sourceInfo at agent_start:
+{"path":"$S/pkg/extensions/hello.ts","source":"cli","scope":"temporary","origin":"top-level"}
+{"toolName":"hello","isError":false}
+{"pending":0,"state":{"callCount":2,"deferredFetchCount":0,"cancelledDeferred":[]}}
+throwaway agent directory afterwards: auth.json, models-store.json (no settings.json)
+```
+
+Verdict: partial.
+Package-sourced prompts carry `origin: "package"`, `scope: "temporary"`, and `baseDir`; a package-sourced extension's tool reports `origin: "top-level"`, `source: "cli"`, and no `baseDir`.
+No settings file is written.
+
+Consequence for R3: R3.1's `-e <package dir>` works.
+R3.8.4's package check uses `origin`/`baseDir` only for commands, prompts, and skills; for tools it checks that `sourceInfo.path` lies under the package directory.
