@@ -7,17 +7,19 @@ Spec: `docs/superpowers/specs/2026-09-29-pi-coding-agent-design.md`, section Spi
 Each item states the question, the exact command, the observed output (trimmed, not paraphrased), a verdict (confirmed / refuted / partial), and the consequence for the gate requirements (R3).
 Probes ran from untracked scratch (`.eval-tmp/pi-spike/`); their sources are reproduced here so the runs can be repeated.
 Every Pi run redirected stdin from `/dev/null`.
+`dynamic-tools.ts` and `hello.ts` are Pi's own bundled examples under `$P/examples/extensions/`.
+A cross-model review (Codex via amicus, job 72ab4bbb, 2026-09-29) found five overreaches in the first version of this record; the S2, S3, and S6 sections below were narrowed or extended by follow-up runs in response.
 
 ## Summary
 
 | Item | Verdict | Consequence for R3 |
 |---|---|---|
 | S1 faux provider from outside Pi | confirmed | Tier 2 works as designed; event and message field names recorded |
-| S2 isolation | confirmed | `PI_CODING_AGENT_DIR` + `PI_OFFLINE` + `PI_SKIP_VERSION_CHECK` isolate the run; verified under a network-denying sandbox with a positive control |
-| S3 inventory point | confirmed, timing constraint | inventory at `agent_start` (session_start depends on load order), so Tier 1 runs a one-step faux turn; tools carry `sourceInfo` |
+| S2 isolation | confirmed (narrow) | the throwaway agent directory keeps the real one's regular files unchanged, and a scripted turn completes with outbound network denied; `PI_OFFLINE` is not a network boundary for extension code |
+| S3 inventory point | confirmed after follow-up | load the harness last and take the inventory at `agent_end`; earlier points miss tools registered by later handlers; Tier 1 runs a one-step faux turn; tools carry `sourceInfo` |
 | S4 themes | partial | Pi reports no invalid theme outside the TUI; Tier 1 validates against the installed schema, variable resolution unchecked |
 | S5 project trust | confirmed | `--approve` loads project resources process-only; a skip is silent, caught only as a missing declared resource |
-| S6 package via `-e` | partial | commands/prompts/skills carry package provenance; tools do not, so tool provenance is a path-prefix check |
+| S6 package via `-e` | partial after follow-up | only prompts carry `origin: "package"`; extension tools, extension commands, and skills report `origin: "top-level"`, so package provenance is a path-under-package-directory check for every kind |
 
 ## S1 — faux provider from outside Pi's package
 
@@ -105,7 +107,7 @@ Observed:
 
 ```text
 exit=0
-REAL AGENT DIR UNCHANGED   (38 files hashed)
+REAL AGENT DIR UNCHANGED   (38 regular files hashed)
 files Pi wrote into the throwaway agent directory:
   auth.json
   models-store.json
@@ -115,7 +117,11 @@ files Pi wrote into the throwaway agent directory:
 
 Verdict: confirmed.
 
-Consequence for R3: R3.1's environment is sufficient for isolation; the gate can hash the real agent directory before and after each run (R3.2) with the command above, and a scripted turn needs no network.
+What this shows, and what it does not:
+the hashes cover the contents and names of regular files only (`find -type f`), not directories, symlinks, or metadata;
+the network result shows a scripted turn needs no outbound network, not that `PI_OFFLINE` stops extension code from using it (the sandbox, not the environment variable, denied the network here).
+
+Consequence for R3: R3.1's environment isolates Pi's own configuration; R3.2's before/after check must list the whole tree (`find ~/.pi/agent -print` with each entry's type and, for files, a content hash, and for symlinks, the target), not only regular files; R3.14's statement that the gate is not a sandbox stands.
 
 ## S3 — when the inventory sees every tool
 
@@ -156,12 +162,17 @@ Command, run once with the probe loaded first and once with it loaded last (`dyn
 
 ```bash
 cd $S/work
-# first: -e inventory-probe.ts -e faux-probe.ts -e hello.ts -e dynamic-tools.ts
-# last:  -e faux-probe.ts -e hello.ts -e dynamic-tools.ts -e inventory-probe.ts
-PI_CODING_AGENT_DIR=$S/agent PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 \
-  PI_SPIKE_FAUX_OUT=$S/s3-faux-$order.json PI_SPIKE_INVENTORY_OUT=$S/s3-inventory-$order.json \
-  pi -ne -ns -np --no-themes -nc --no-session <extensions in that order> \
-  --provider gate-faux --model scripted --mode json "greet gate" < /dev/null
+run() {  # run <label> <extension flags...>
+  PI_CODING_AGENT_DIR=$S/agent PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 \
+    PI_SPIKE_FAUX_OUT=$S/s3-faux-$1.json PI_SPIKE_INVENTORY_OUT=$S/s3-inventory-$1.json \
+    pi -ne -ns -np --no-themes -nc --no-session "${@:2}" \
+    --provider gate-faux --model scripted --mode json "greet gate" \
+    > $S/s3-events-$1.jsonl 2> $S/s3-stderr-$1.txt < /dev/null
+}
+run first -e $S/inventory-probe.ts -e $S/faux-probe.ts \
+  -e $P/examples/extensions/hello.ts -e $P/examples/extensions/dynamic-tools.ts
+run last -e $S/faux-probe.ts -e $P/examples/extensions/hello.ts \
+  -e $P/examples/extensions/dynamic-tools.ts -e $S/inventory-probe.ts
 ```
 
 Observed (both runs exit 0, no `extension_error`, stderr empty; tool paths shortened to basenames):
@@ -177,12 +188,56 @@ sourceInfo of hello: {"path":"<P>/examples/extensions/hello.ts","source":"cli","
 sourceInfo of read:  {"path":"builtin:read","source":"builtin","scope":"temporary","origin":"top-level"}
 ```
 
-Verdict: confirmed, with a timing constraint.
-At `session_start` the inventory depends on load order: loaded first, the probe misses `echo_session`.
-At `agent_start` both orders see every tool.
+Follow-up (review finding: a tool registered inside a later extension's own `agent_start` handler).
+`late-tool.ts`:
+
+```typescript
+// Follow-up to S3: registers a tool inside its own agent_start handler.
+import { Type } from "@earendil-works/pi-ai";
+import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+	pi.on("agent_start", () => {
+		pi.registerTool(
+			defineTool({
+				name: "late_tool",
+				label: "Late Tool",
+				description: "Registered during agent_start",
+				parameters: Type.Object({}),
+				async execute() {
+					return { content: [{ type: "text", text: "late" }], details: {} };
+				},
+			}),
+		);
+	});
+}
+```
+
+Run with the same `run` helper, loading `late-tool.ts` in place of `dynamic-tools.ts`:
+
+```bash
+run first -e $S/inventory-probe.ts -e $S/faux-probe.ts -e $P/examples/extensions/hello.ts -e $S/late-tool.ts
+run last -e $S/faux-probe.ts -e $P/examples/extensions/hello.ts -e $S/late-tool.ts -e $S/inventory-probe.ts
+```
+
+Observed (both exit 0, stderr empty; output files `s3b-*`):
+
+```text
+first session_start late_tool present: False
+first agent_start   late_tool present: False
+first agent_end     late_tool present: True
+last  session_start late_tool present: False
+last  agent_start   late_tool present: True
+last  agent_end     late_tool present: True
+```
+
+Verdict: confirmed after follow-up, with a timing constraint.
+Handlers run in extension load order at every event, so a snapshot taken before a later extension's handler for the same event misses what that handler registers.
+Loaded last, the probe sees every tool at `agent_start` and `agent_end`; loaded first, only `agent_end` sees `late_tool`.
 
 Consequence for R3:
-The harness's inventory point is `agent_start` (R3.4), so even Tier 1 runs a minimal faux turn (one scripted text reply) to reach it; that turn needs no model and no network (S1, S2).
+`pi-gate` loads the harness last and takes the inventory at `agent_end` (R3.4); a tool an artifact registers inside its own `agent_end` handler is still not guaranteed to be observed, and the report says so.
+Tier 1 therefore runs a minimal faux turn (one scripted text reply) to reach `agent_end`; that turn needs no model and no network (S1, S2).
 Tools carry `sourceInfo` (`path`, `origin`, `scope`), so R3.8.4's provenance check extends to tools: an explicitly loaded file reports its absolute path with `origin: "top-level"`, `scope: "temporary"`; built-in tools report `builtin:<name>`, which R3.8.5 uses to tell built-ins from the target.
 `grep`, `find`, `ls`, and `powershell` are registered `direct` but not active under default settings, so "active" (R3.8.3) must be checked against `getActiveTools()`, not inferred from exposure.
 `getMcpServers()` returns `[]` with built-in MCP disabled; it does not throw.
@@ -347,9 +402,40 @@ json run exit=0; hello tool sourceInfo at agent_start:
 throwaway agent directory afterwards: auth.json, models-store.json (no settings.json)
 ```
 
-Verdict: partial.
-Package-sourced prompts carry `origin: "package"`, `scope: "temporary"`, and `baseDir`; a package-sourced extension's tool reports `origin: "top-level"`, `source: "cli"`, and no `baseDir`.
+Follow-up (review finding: commands and skills were not exercised).
+Added to the package: a skill and an extension that registers a command.
+
+```bash
+mkdir -p $S/pkg/skills/pkg-skill
+printf -- '---\nname: pkg-skill\ndescription: Spike skill shipped in a package.\n---\n\n# pkg-skill\n\nSay package skill.\n' \
+  > $S/pkg/skills/pkg-skill/SKILL.md
+```
+
+`pkg/extensions/pkg-command.ts`:
+
+```typescript
+// Follow-up to S6: an extension command shipped in a package.
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+	pi.registerCommand("pkg-command", {
+		description: "Spike command shipped in a package",
+		handler: async () => {},
+	});
+}
+```
+
+Same `get_commands` command as above; observed (exit 0, output file `s6b-rpc.txt`):
+
+```text
+{"name":"pkg-command","source":"extension","sourceInfo":{"path":"$S/pkg/extensions/pkg-command.ts","source":"cli","scope":"temporary","origin":"top-level"}}
+{"name":"pkg-prompt","source":"prompt","sourceInfo":{"path":"$S/pkg/prompts/pkg-prompt.md","source":"$S/pkg","scope":"temporary","origin":"package","baseDir":"$S/pkg"}}
+{"name":"skill:pkg-skill","source":"skill","sourceInfo":{"path":"$S/pkg/skills/pkg-skill/SKILL.md","source":"cli","scope":"temporary","origin":"top-level"}}
+```
+
+Verdict: partial after follow-up.
+Only prompt templates report package provenance (`origin: "package"`, `baseDir`); extension tools, extension commands, and skills from the same package report `origin: "top-level"`, `source: "cli"`, and no `baseDir`.
 No settings file is written.
 
 Consequence for R3: R3.1's `-e <package dir>` works.
-R3.8.4's package check uses `origin`/`baseDir` only for commands, prompts, and skills; for tools it checks that `sourceInfo.path` lies under the package directory.
+R3.8.4's package check is a path check for every kind: each declared resource's `sourceInfo.path` must lie under the package directory; `origin: "package"` is an extra check for prompts only.
