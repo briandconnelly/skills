@@ -8,6 +8,17 @@ Each item states the question, the exact command, the observed output (trimmed, 
 Probes ran from untracked scratch (`.eval-tmp/pi-spike/`); their sources are reproduced here so the runs can be repeated.
 Every Pi run redirected stdin from `/dev/null`.
 
+## Summary
+
+| Item | Verdict | Consequence for R3 |
+|---|---|---|
+| S1 faux provider from outside Pi | confirmed | Tier 2 works as designed; event and message field names recorded |
+| S2 isolation | confirmed | `PI_CODING_AGENT_DIR` + `PI_OFFLINE` + `PI_SKIP_VERSION_CHECK` isolate the run; verified under a network-denying sandbox with a positive control |
+| S3 inventory point | confirmed, timing constraint | inventory at `agent_start` (session_start depends on load order), so Tier 1 runs a one-step faux turn; tools carry `sourceInfo` |
+| S4 themes | partial | Pi reports no invalid theme outside the TUI; Tier 1 validates against the installed schema, variable resolution unchecked |
+| S5 project trust | confirmed | `--approve` loads project resources process-only; a skip is silent, caught only as a missing declared resource |
+| S6 package via `-e` | partial | commands/prompts/skills carry package provenance; tools do not, so tool provenance is a path-prefix check |
+
 ## S1 — faux provider from outside Pi's package
 
 Question: can an extension loaded with `-e` from outside Pi's package import `@earendil-works/pi-ai` through Pi's loader, register the faux provider, and have `--provider`/`--model` select it for a scripted turn?
