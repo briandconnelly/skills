@@ -1,0 +1,12 @@
+{
+  "navigation": [
+    {"title": "Get Started", "items": [{"title": "Quickstart", "path": "quickstart.md"}]},
+    {"title": "Guides", "items": [
+      {"title": "Run Pi", "items": [
+        {"title": "Configure Pi", "path": "configuration.md"},
+        {"title": "Virtual Models", "path": "virtual-models.md"},
+        {"title": "Removed Page", "path": "gone.md"}
+      ]}
+    ]}
+  ]
+}
