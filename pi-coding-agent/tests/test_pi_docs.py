@@ -239,9 +239,20 @@ def test_cli_no_install_exits_2(tmp_path, capsys):
     assert "No Pi install found" in capsys.readouterr().err
 
 
-@pytest.mark.skipif(shutil.which("pi") is None, reason="pi is not installed; live check not run")
-def test_live_install_matches_pi_version():
+def _live_install():
+    """The Pi install `pi` on PATH runs, or None when there is none to check against."""
+    if shutil.which("pi") is None:
+        pytest.skip("no `pi` on PATH; live check not run")
+    if pi_docs.unattributed_pi(os.environ.get("PATH")):
+        pytest.skip(
+            "`pi` on PATH is not a Pi install (another command or wrapper); live check not run"
+        )
     installs = pi_docs.find_installs(os.environ.get("PATH"), Path.cwd())
+    return installs
+
+
+def test_live_install_matches_pi_version():
+    installs = _live_install()
     reported = subprocess.run(
         ["pi", "--version"], capture_output=True, text=True, check=True, timeout=30
     ).stdout.strip()
@@ -325,3 +336,38 @@ def test_example_header_stops_at_first_code_line(pi_install, tmp_path):
     assert [h.file for h in pi_docs.grep(install, ["Codey header"])] == [
         "examples/extensions/codey.ts"
     ]
+
+
+# Copilot review (PR #187) findings, each pinned before its fix.
+
+
+def test_duplicate_slug_skips_an_existing_suffixed_slug():
+    text = "## Foo\n## Foo-1\n## Foo\n"
+    assert {"foo", "foo-1", "foo-2"} <= pi_docs.anchors(text)
+
+
+@pytest.mark.parametrize(
+    ("shim_dir", "install_dir"),
+    [
+        # Windows npm: <prefix>\pi.cmd beside <prefix>\node_modules
+        (".", "node_modules/@earendil-works/pi-coding-agent"),
+        # Unix npm without a symlink: <prefix>/bin/pi, <prefix>/lib/node_modules
+        ("bin", "lib/node_modules/@earendil-works/pi-coding-agent"),
+    ],
+)
+def test_npm_shim_layouts_resolve_to_the_global_install(tmp_path, shim_dir, install_dir):
+    prefix = tmp_path / "prefix"
+    shim_parent = prefix / shim_dir
+    shim_parent.mkdir(parents=True, exist_ok=True)
+    shim = shim_parent / "pi"
+    shim.write_text("#!/bin/sh\n")
+    shim.chmod(0o755)
+    root = prefix / install_dir
+    root.mkdir(parents=True)
+    manifest = {"name": pi_docs.PACKAGE_NAME, "version": "0.99.1"}
+    (root / "package.json").write_text(json.dumps(manifest))
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    installs = pi_docs.find_installs(str(shim_parent), elsewhere)
+    assert [(i.root, i.on_path) for i in installs] == [(root.resolve(), True)]
+    assert pi_docs.unattributed_pi(str(shim_parent)) is None

@@ -75,6 +75,24 @@ def _package_root(start: Path) -> Path | None:
     return None
 
 
+def _install_root_for(exe: str) -> Path | None:
+    """The Pi package a PATH executable runs, without executing it.
+
+    Covers a symlink into the package (Homebrew, npm on Unix) and npm's shim layouts:
+    `<prefix>/pi.cmd` beside `<prefix>/node_modules` (Windows) and `<prefix>/bin/pi`
+    beside `<prefix>/lib/node_modules` (Unix without a symlink).
+    """
+    path = Path(exe)
+    root = _package_root(path.resolve().parent)
+    if root is not None:
+        return root
+    for candidate in (path.parent / LOCAL_INSTALL, path.parent.parent / "lib" / LOCAL_INSTALL):
+        root = _package_root(candidate)
+        if root == candidate:
+            return root.resolve()
+    return None
+
+
 def _version(root: Path) -> str:
     return str(json.loads((root / "package.json").read_text(encoding="utf-8"))["version"])
 
@@ -84,7 +102,7 @@ def find_installs(path_env: str | None, cwd: Path) -> list[Install]:
     found: dict[Path, Install] = {}
     exe = shutil.which("pi", path=path_env)
     if exe:
-        root = _package_root(Path(exe).resolve().parent)
+        root = _install_root_for(exe)
         if root is not None:
             found[root] = Install(root, _version(root), on_path=True)
     for directory in (cwd, *cwd.parents):
@@ -132,7 +150,7 @@ def code_mask(lines: list[str]) -> list[bool]:
 def unattributed_pi(path_env: str | None) -> str | None:
     """The `pi` on PATH when it is not inside any Pi package (a wrapper or another tool)."""
     exe = shutil.which("pi", path=path_env)
-    if exe and _package_root(Path(exe).resolve().parent) is None:
+    if exe and _install_root_for(exe) is None:
         return exe
     return None
 
@@ -159,12 +177,14 @@ def slugify(text: str) -> str:
 def anchors(text: str) -> set[str]:
     """Every fragment a link into this page can target: heading slugs and explicit ids."""
     result: set[str] = set()
-    seen: dict[str, int] = {}
+    occurrences: dict[str, int] = {}  # github-slugger: suffix until the slug is unused
     for heading in headings(text):
-        slug = slugify(heading.text)
-        count = seen.get(slug, 0)
-        seen[slug] = count + 1
-        result.add(slug if count == 0 else f"{slug}-{count}")
+        base = slug = slugify(heading.text)
+        while slug in occurrences:
+            occurrences[base] += 1
+            slug = f"{base}-{occurrences[base]}"
+        occurrences[slug] = 0
+        result.add(slug)
     lines = text.splitlines()
     for line, in_code in zip(lines, code_mask(lines), strict=True):
         if not in_code:
