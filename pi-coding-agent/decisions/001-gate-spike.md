@@ -6,7 +6,7 @@ Spec: `docs/superpowers/specs/2026-09-29-pi-coding-agent-design.md`, section Spi
 
 Each item states the question, the exact command, the observed output (trimmed, not paraphrased), a verdict (confirmed / refuted / partial), and the consequence for the gate requirements (R3).
 Probes ran from untracked scratch (`.eval-tmp/pi-spike/`); their sources are reproduced here so the runs can be repeated.
-Every Pi run redirected stdin from `/dev/null`.
+Direct Pi runs (print and JSON mode) redirected stdin from `/dev/null`; RPC runs went through `rpc_probe.py`, which writes commands to Pi's stdin over a pipe and then closes it.
 `dynamic-tools.ts` and `hello.ts` are Pi's own bundled examples under `$P/examples/extensions/`.
 A cross-model review (Codex via amicus, job 72ab4bbb, 2026-09-29) found five overreaches in the first version of this record; the S2, S3, and S6 sections below were narrowed or extended by follow-up runs in response.
 
@@ -15,11 +15,11 @@ A cross-model review (Codex via amicus, job 72ab4bbb, 2026-09-29) found five ove
 | Item | Verdict | Consequence for R3 |
 |---|---|---|
 | S1 faux provider from outside Pi | confirmed | Tier 2 works as designed; event and message field names recorded |
-| S2 isolation | confirmed (narrow) | the throwaway agent directory keeps the real one's regular files unchanged, and a scripted turn completes with outbound network denied; `PI_OFFLINE` is not a network boundary for extension code |
+| S2 isolation | confirmed (narrow) | the throwaway agent directory keeps the real one's regular files unchanged (writes only; reads not observed), and a scripted turn completes with outbound network denied; `PI_OFFLINE` is not a network boundary for extension code |
 | S3 inventory point | confirmed after follow-up | load the harness last and take the inventory at `agent_end`; earlier points miss tools registered by later handlers; Tier 1 runs a one-step faux turn; tools carry `sourceInfo` |
 | S4 themes | partial | Pi reports no invalid theme outside the TUI; Tier 1 validates against the installed schema, variable resolution unchecked |
 | S5 project trust | confirmed | `--approve` loads project resources process-only; a skip is silent, caught only as a missing declared resource |
-| S6 package via `-e` | partial after follow-up | only prompts carry `origin: "package"`; extension tools, extension commands, and skills report `origin: "top-level"`, so package provenance is a path-under-package-directory check for every kind |
+| S6 package via `-e` | partial after follow-up | only prompts carry `origin: "package"`; extension tools, extension commands, and skills report `origin: "top-level"`, so package provenance is a path-under-package-directory check for those kinds; MCP servers and themes not probed |
 
 ## S1 — faux provider from outside Pi's package
 
@@ -121,7 +121,9 @@ What this shows, and what it does not:
 the hashes cover the contents and names of regular files only (`find -type f`), not directories, symlinks, or metadata;
 the network result shows a scripted turn needs no outbound network, not that `PI_OFFLINE` stops extension code from using it (the sandbox, not the environment variable, denied the network here).
 
-Consequence for R3: R3.1's environment isolates Pi's own configuration; R3.2's before/after check must list the whole tree (`find ~/.pi/agent -print` with each entry's type and, for files, a content hash, and for symlinks, the target), not only regular files; R3.14's statement that the gate is not a sandbox stands.
+Reads were not observed: unchanged hashes show only that Pi wrote nothing to the real directory's regular files, not that it never read them.
+
+Consequence for R3: R3.1's environment redirects where Pi keeps its configuration and keeps its writes out of the real directory (whether Pi still reads it was not tested); R3.2's before/after check must list the whole tree (`find ~/.pi/agent -print` with each entry's type and, for files, a content hash, and for symlinks, the target), not only regular files; R3.14's statement that the gate is not a sandbox stands.
 
 ## S3 — when the inventory sees every tool
 
@@ -241,6 +243,16 @@ Tier 1 therefore runs a minimal faux turn (one scripted text reply) to reach `ag
 Tools carry `sourceInfo` (`path`, `origin`, `scope`), so R3.8.4's provenance check extends to tools: an explicitly loaded file reports its absolute path with `origin: "top-level"`, `scope: "temporary"`; built-in tools report `builtin:<name>`, which R3.8.5 uses to tell built-ins from the target.
 `grep`, `find`, `ls`, and `powershell` are registered `direct` but not active under default settings, so "active" (R3.8.3) must be checked against `getActiveTools()`, not inferred from exposure.
 `getMcpServers()` returns `[]` with built-in MCP disabled; it does not throw.
+
+## Environment for S4–S6
+
+Every S4–S6 command below ran with the S2 isolation environment exported first:
+
+```bash
+export PI_CODING_AGENT_DIR=$S/agent PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1
+```
+
+Without it, these commands would read and write the real `~/.pi/agent`.
 
 ## RPC helper used by S4–S6
 
@@ -438,4 +450,5 @@ Only prompt templates report package provenance (`origin: "package"`, `baseDir`)
 No settings file is written.
 
 Consequence for R3: R3.1's `-e <package dir>` works.
-R3.8.4's package check is a path check for every kind: each declared resource's `sourceInfo.path` must lie under the package directory; `origin: "package"` is an extra check for prompts only.
+R3.8.4's package check is a path check for the kinds observed here — extension tools, extension commands, skills, and prompt templates: each one's `sourceInfo.path` must lie under the package directory; `origin: "package"` is an extra check for prompts only.
+Not observed here: MCP servers (Pi's `RegisteredMcpServer` has `extensionPath`, not `sourceInfo`) and themes (`sourceInfo` is optional in Pi's `Theme` type); their package provenance needs its own check or an explicit "unchecked" in the report.
