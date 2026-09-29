@@ -249,3 +249,79 @@ def test_live_install_matches_pi_version():
     assert installs[0].version == reported
     assert "quickstart.md" in {e.get("path") for e in pi_docs.build_index(installs[0])}
     assert any(h.file.startswith("examples/") for h in pi_docs.grep(installs[0], ["hello"]))
+
+
+# Review 2 (Codex, job 6f48c8b1) findings, each pinned before its fix.
+
+
+def test_where_warns_when_pi_on_path_is_not_an_install(tmp_path, capsys):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    wrapper = bin_dir / "pi"
+    wrapper.write_text('#!/bin/sh\nexec somewhere-else "$@"\n')
+    wrapper.chmod(0o755)
+    local = tmp_path / "node_modules" / "@earendil-works" / "pi-coding-agent"
+    local.mkdir(parents=True)
+    manifest = {"name": pi_docs.PACKAGE_NAME, "version": "0.98.0"}
+    (local / "package.json").write_text(json.dumps(manifest))
+    code = pi_docs.main(["where"], path_env=str(bin_dir), cwd=tmp_path, skill_dir=tmp_path)
+    captured = capsys.readouterr()
+    assert code == pi_docs.EXIT_OK
+    assert f"`pi` on PATH ({wrapper}) does not belong to any install found" in captured.err
+    code = pi_docs.main(
+        ["where", "--json"], path_env=str(bin_dir), cwd=tmp_path, skill_dir=tmp_path
+    )
+    assert json.loads(capsys.readouterr().out)["unattributed_pi_on_path"] == str(wrapper)
+
+
+def test_headings_respect_fence_length_and_character():
+    longer = "`" * 4
+    text = (
+        f"{longer}md\n{FENCE_MARK}\n## phantom\n{longer}\n## real\n"
+        f"~~~\n{FENCE_MARK}\n## inside tilde\n~~~\n## after tilde\n"
+    )
+    assert [h.text for h in pi_docs.headings(text)] == ["real", "after tilde"]
+
+
+def test_grep_section_ignores_headings_inside_long_fences(tmp_path):
+    longer = "`" * 4
+    page = tmp_path / "page.md"
+    page.write_text(f"## Outer\n{longer}\n{FENCE_MARK}\n## fake\n{longer}\nzebra\n")
+    pattern = pi_docs.re.compile("zebra")
+    assert [h.section for h in pi_docs._grep_markdown(page, "page.md", pattern)] == ["Outer"]
+
+
+@pytest.mark.parametrize(
+    ("heading", "slug"),
+    [
+        ("Read [configuration](configuration.md)", "read-configuration"),
+        ("This is _italic_ and **bold**", "this-is-italic-and-bold"),
+        ("session_before_compact", "session_before_compact"),
+        ("`before_agent_start` hook", "before_agent_start-hook"),
+    ],
+)
+def test_slug_uses_rendered_heading_text(heading, slug):
+    assert pi_docs.slugify(heading) == slug
+
+
+def test_cli_json_miss_prints_empty_json(pi_install, tmp_path, capsys):
+    code, out, err = _run(["grep", "--json", "no-such-term-xyzzy"], pi_install, tmp_path, capsys)
+    assert code == pi_docs.EXIT_NOT_FOUND
+    assert json.loads(out) == []
+    assert "no matches" in err
+    code, out, _ = _run(["changelog", "--json", "no-such-term-xyzzy"], pi_install, tmp_path, capsys)
+    assert code == pi_docs.EXIT_NOT_FOUND
+    assert json.loads(out) == []
+
+
+def test_example_header_stops_at_first_code_line(pi_install, tmp_path):
+    _, root = pi_install
+    (root / "examples" / "extensions" / "codey.ts").write_text(
+        "/**\n * Codey header\n */\n\n"
+        "const DESTRUCTIVE = [\n  'zebra-code',\n];\nexport default 1;\n"
+    )
+    install = _install(pi_install, tmp_path)
+    assert pi_docs.grep(install, ["zebra-code"]) == []
+    assert [h.file for h in pi_docs.grep(install, ["Codey header"])] == [
+        "examples/extensions/codey.ts"
+    ]

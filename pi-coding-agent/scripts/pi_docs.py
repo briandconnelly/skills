@@ -27,6 +27,8 @@ FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 ANCHOR_TAG = re.compile(r'<a\s+(?:id|name)="([^"]+)"')
 HTML_TAG = re.compile(r"<[^>]+>")
+LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+EMPHASIS = re.compile(r"(\*\*|__|\*|(?<!\w)_)(\S(?:.*?\S)?)\1(?!\w)")
 
 
 class NoInstallError(Exception):
@@ -101,25 +103,55 @@ def find_installs(path_env: str | None, cwd: Path) -> list[Install]:
     return sorted(found.values(), key=lambda i: (not i.on_path, str(i.root)))
 
 
+def code_mask(lines: list[str]) -> list[bool]:
+    """True for each line inside a fenced code block, fence lines included.
+
+    A fence closes only on a bare run of the same character at least as long as the
+    opening run, so a three-backtick line inside a four-backtick block stays code.
+    """
+    mask: list[bool] = []
+    opening: str | None = None
+    for line in lines:
+        match = FENCE.match(line)
+        if opening is None:
+            if match:
+                opening = match.group(1)
+            mask.append(match is not None)
+            continue
+        mask.append(True)
+        if (
+            match
+            and match.group(1)[0] == opening[0]
+            and len(match.group(1)) >= len(opening)
+            and line.strip() == match.group(1)
+        ):
+            opening = None
+    return mask
+
+
+def unattributed_pi(path_env: str | None) -> str | None:
+    """The `pi` on PATH when it is not inside any Pi package (a wrapper or another tool)."""
+    exe = shutil.which("pi", path=path_env)
+    if exe and _package_root(Path(exe).resolve().parent) is None:
+        return exe
+    return None
+
+
 def headings(text: str) -> list[Heading]:
     """ATX headings outside fenced code blocks."""
+    lines = text.splitlines()
     result: list[Heading] = []
-    in_fence = False
-    for number, line in enumerate(text.splitlines(), start=1):
-        if FENCE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        match = HEADING.match(line)
+    for number, (line, in_code) in enumerate(zip(lines, code_mask(lines), strict=True), start=1):
+        match = None if in_code else HEADING.match(line)
         if match:
             result.append(Heading(len(match.group(1)), match.group(2), number))
     return result
 
 
 def slugify(text: str) -> str:
-    """GitHub-style heading slug: lowercase, punctuation dropped, spaces to hyphens."""
-    text = HTML_TAG.sub("", text).strip().lower()
+    """GitHub-style slug of the rendered heading text: markup removed, then punctuation."""
+    text = LINK.sub(r"\1", HTML_TAG.sub("", text))
+    text = EMPHASIS.sub(r"\2", text).strip().lower()
     text = re.sub(r"[^\w\- ]", "", text)
     return text.replace(" ", "-")
 
@@ -133,17 +165,15 @@ def anchors(text: str) -> set[str]:
         count = seen.get(slug, 0)
         seen[slug] = count + 1
         result.add(slug if count == 0 else f"{slug}-{count}")
-    in_fence = False
-    for line in text.splitlines():
-        if FENCE.match(line):
-            in_fence = not in_fence
-        elif not in_fence:
+    lines = text.splitlines()
+    for line, in_code in zip(lines, code_mask(lines), strict=True):
+        if not in_code:
             result.update(ANCHOR_TAG.findall(line))
     return result
 
 
 DEFAULT_SKILL_DIR = Path(__file__).resolve().parent.parent
-EXAMPLE_HEADER_END = re.compile(r"^\s*(import|export)\b")
+HEADER_LINE = re.compile(r"^\s*($|//|/\*|\*|#!)")
 INDEX_LEVELS = (2, 3)
 EXIT_OK, EXIT_NOT_FOUND, EXIT_NO_INSTALL = 0, 1, 2
 
@@ -206,11 +236,9 @@ def build_index(install: Install) -> list[dict[str, Any]]:
 def _grep_markdown(path: Path, label: str, pattern: re.Pattern[str]) -> list[Hit]:
     hits: list[Hit] = []
     section = "(top)"
-    in_fence = False
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if FENCE.match(line):
-            in_fence = not in_fence
-        elif not in_fence and (match := HEADING.match(line)):
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for number, (line, in_code) in enumerate(zip(lines, code_mask(lines), strict=True), start=1):
+        if not in_code and (match := HEADING.match(line)):
             section = match.group(2)
         if pattern.search(line):
             hits.append(Hit(label, section, number, line.strip()))
@@ -220,7 +248,7 @@ def _grep_markdown(path: Path, label: str, pattern: re.Pattern[str]) -> list[Hit
 def _grep_example_header(path: Path, label: str, pattern: re.Pattern[str]) -> list[Hit]:
     hits: list[Hit] = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if EXAMPLE_HEADER_END.match(line):
+        if not HEADER_LINE.match(line):
             break
         if pattern.search(line):
             hits.append(Hit(label, "(header comment)", number, line.strip()))
@@ -313,7 +341,9 @@ def _print_index(entries: list[dict[str, Any]]) -> None:
             print(f"{indent}    {nested}{'#' * heading['level']} {heading['text']}")
 
 
-def _cmd_where(installs: list[Install], args: argparse.Namespace, skill_dir: Path) -> int:
+def _cmd_where(
+    installs: list[Install], args: argparse.Namespace, skill_dir: Path, stray: str | None
+) -> int:
     primary = installs[0]
     recorded = verified_against(skill_dir)
     if not args.json:
@@ -331,6 +361,7 @@ def _cmd_where(installs: list[Install], args: argparse.Namespace, skill_dir: Pat
             }
             for i in installs
         ],
+        "unattributed_pi_on_path": stray,
         "verified_against": recorded,
         "verification_matches": None if recorded is None else recorded == primary.version,
     }
@@ -355,6 +386,8 @@ def _cmd_grep(primary: Install, args: argparse.Namespace) -> int:
             f"or example header comments of Pi {primary.version} at {primary.root}",
             file=sys.stderr,
         )
+        if args.json:
+            print("[]")
         return EXIT_NOT_FOUND
     if args.json:
         print(json.dumps([asdict(hit) for hit in hits], indent=2))
@@ -367,10 +400,14 @@ def _cmd_grep(primary: Install, args: argparse.Namespace) -> int:
 def _cmd_changelog(primary: Install, args: argparse.Namespace) -> int:
     if not primary.changelog.is_file():
         print(f"no CHANGELOG.md at {primary.changelog}", file=sys.stderr)
+        if args.json:
+            print("[]")
         return EXIT_NOT_FOUND
     entries = changelog(primary, args.term)
     if not entries:
         print(f"no changelog lines mention {args.term!r} (Pi {primary.version})", file=sys.stderr)
+        if args.json:
+            print("[]")
         return EXIT_NOT_FOUND
     if args.json:
         print(json.dumps([{"version": v, "lines": ls} for v, ls in entries], indent=2))
@@ -410,8 +447,15 @@ def main(
     except NoInstallError as error:
         print(error, file=sys.stderr)
         return EXIT_NO_INSTALL
+    stray = unattributed_pi(path_env if path_env is not None else os.environ.get("PATH"))
+    if stray:
+        print(
+            f"warning: `pi` on PATH ({stray}) does not belong to any install found; "
+            f"the docs below are from {installs[0].root} and may not match the Pi you run",
+            file=sys.stderr,
+        )
     if args.command == "where":
-        return _cmd_where(installs, args, skill_dir)
+        return _cmd_where(installs, args, skill_dir, stray)
     handlers = {"index": _cmd_index, "grep": _cmd_grep, "changelog": _cmd_changelog}
     return handlers[args.command](installs[0], args)
 
