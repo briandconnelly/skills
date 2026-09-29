@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 from _scripts import load_script
@@ -97,3 +101,151 @@ def test_real_pages_expose_heading_and_explicit_anchors(pi_install, tmp_path):
     assert {"error-handling", "choose-an-integration-point"} <= extensions
     configuration = pi_docs.anchors((install.docs / "configuration.md").read_text(encoding="utf-8"))
     assert "project-pi-directory" in configuration
+
+
+def _install(pi_install, tmp_path):
+    bin_dir, _ = pi_install
+    return pi_docs.find_installs(str(bin_dir), tmp_path)[0]
+
+
+def _run(argv, pi_install, tmp_path, capsys, skill_dir=None):
+    bin_dir, _ = pi_install
+    code = pi_docs.main(
+        argv, path_env=str(bin_dir), cwd=tmp_path, skill_dir=skill_dir or tmp_path / "no-skill"
+    )
+    captured = capsys.readouterr()
+    return code, captured.out, captured.err
+
+
+def test_index_follows_navigation_with_level_2_and_3_headings(pi_install, tmp_path):
+    entries = pi_docs.build_index(_install(pi_install, tmp_path))
+    quickstart = next(e for e in entries if e.get("path") == "quickstart.md")
+    assert quickstart["depth"] == 1
+    assert not quickstart["missing"]
+    guides = next(e for e in entries if e.get("title") == "Guides")
+    assert {"level": 3, "text": "Choose how to customize Pi"} in quickstart["headings"]
+    run_pi = next(e for e in entries if e.get("title") == "Run Pi")
+    assert run_pi["group"]
+    assert run_pi["depth"] == guides["depth"] + 1
+    virtual_models = next(e for e in entries if e.get("path") == "virtual-models.md")
+    assert virtual_models["depth"] == run_pi["depth"] + 1
+
+
+def test_index_flags_navigation_pages_missing_from_disk(pi_install, tmp_path):
+    entries = pi_docs.build_index(_install(pi_install, tmp_path))
+    assert next(e for e in entries if e.get("path") == "gone.md")["missing"]
+
+
+def test_index_lists_pages_absent_from_navigation(pi_install, tmp_path):
+    entries = pi_docs.build_index(_install(pi_install, tmp_path))
+    assert {"cli.md", "extensions.md"} <= {e["path"] for e in entries if e.get("unlisted")}
+
+
+def test_grep_finds_every_home_of_a_multi_home_answer(pi_install, tmp_path):
+    files = {h.file for h in pi_docs.grep(_install(pi_install, tmp_path), ["system prompt"])}
+    assert {"docs/cli.md", "docs/configuration.md", "docs/extensions.md"} <= files
+
+
+def test_grep_reports_the_enclosing_section(pi_install, tmp_path):
+    hits = pi_docs.grep(_install(pi_install, tmp_path), ["APPEND_SYSTEM.md"])
+    assert any(h.file == "docs/configuration.md" and h.section == "Agent directory" for h in hits)
+
+
+def test_grep_terms_are_literal(pi_install, tmp_path):
+    hits = pi_docs.grep(_install(pi_install, tmp_path), ["pi.registerTool("])
+    assert any(h.file == "docs/extensions.md" for h in hits)
+
+
+def test_grep_searches_example_headers_not_bodies(pi_install, tmp_path):
+    install = _install(pi_install, tmp_path)
+    header = pi_docs.grep(install, ["Minimal custom tool example"])
+    assert [(h.file, h.section) for h in header] == [
+        ("examples/extensions/hello.ts", "(header comment)")
+    ]
+    assert pi_docs.grep(install, ["greeted"]) == []
+
+
+def test_grep_skips_node_modules_under_examples(pi_install, tmp_path):
+    _, root = pi_install
+    dep = root / "examples" / "extensions" / "x" / "node_modules" / "dep"
+    dep.mkdir(parents=True)
+    (dep / "index.ts").write_text("/** zebra-marker */\n")
+    assert pi_docs.grep(_install(pi_install, tmp_path), ["zebra-marker"]) == []
+
+
+def test_changelog_groups_matches_by_version(pi_install, tmp_path):
+    entries = pi_docs.changelog(_install(pi_install, tmp_path), "virtual model")
+    assert [version for version, _ in entries] == ["[0.99.0] - 2026-09-29"]
+    assert any("registerVirtualModel" in line for line in entries[0][1])
+
+
+def test_cli_changelog_without_changelog_file_names_the_path(pi_install, tmp_path, capsys):
+    _, root = pi_install
+    (root / "CHANGELOG.md").unlink()
+    code, out, err = _run(["changelog", "virtual"], pi_install, tmp_path, capsys)
+    assert code == pi_docs.EXIT_NOT_FOUND
+    assert out == ""
+    assert "CHANGELOG.md" in err
+
+
+def test_cli_where_json(pi_install, tmp_path, capsys):
+    code, out, _ = _run(["where", "--json"], pi_install, tmp_path, capsys)
+    data = json.loads(out)
+    assert code == pi_docs.EXIT_OK
+    assert data["installs"][0]["version"] == "0.99.1"
+    assert data["installs"][0]["on_path"] is True
+    assert data["verified_against"] is None
+
+
+@pytest.mark.parametrize(
+    ("recorded", "expected"),
+    [
+        ("0.97.0\n", "verified against 0.97.0; installed Pi is 0.99.1"),
+        ("v0.99.1\n", "verified against 0.99.1 (matches installed)"),
+        ("0.99.1", "verified against 0.99.1 (matches installed)"),
+        ("\n", "verified against: unrecorded"),
+    ],
+)
+def test_cli_where_reports_skill_verification(pi_install, tmp_path, capsys, recorded, expected):
+    skill = tmp_path / "skill"
+    skill.mkdir()
+    (skill / "verified-against").write_text(recorded)
+    code, out, _ = _run(["where"], pi_install, tmp_path, capsys, skill_dir=skill)
+    assert code == pi_docs.EXIT_OK
+    assert expected in out
+
+
+def test_cli_index_text_shows_nesting_and_missing(pi_install, tmp_path, capsys):
+    code, out, _ = _run(["index"], pi_install, tmp_path, capsys)
+    assert code == pi_docs.EXIT_OK
+    assert "  Run Pi/" in out
+    assert "Removed Page — gone.md (missing)" in out
+    assert "Not in docs.json navigation:" in out
+
+
+def test_cli_grep_no_match_exits_1_and_says_where_it_looked(pi_install, tmp_path, capsys):
+    code, out, err = _run(["grep", "no-such-term-xyzzy"], pi_install, tmp_path, capsys)
+    assert code == pi_docs.EXIT_NOT_FOUND
+    assert out == ""
+    assert "no matches" in err
+    assert "0.99.1" in err
+
+
+def test_cli_no_install_exits_2(tmp_path, capsys):
+    empty = tmp_path / "bin"
+    empty.mkdir()
+    code = pi_docs.main(["index"], path_env=str(empty), cwd=tmp_path, skill_dir=tmp_path)
+    assert code == pi_docs.EXIT_NO_INSTALL
+    assert "No Pi install found" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(shutil.which("pi") is None, reason="pi is not installed; live check not run")
+def test_live_install_matches_pi_version():
+    installs = pi_docs.find_installs(os.environ.get("PATH"), Path.cwd())
+    reported = subprocess.run(
+        ["pi", "--version"], capture_output=True, text=True, check=True, timeout=30
+    ).stdout.strip()
+    assert installs[0].on_path
+    assert installs[0].version == reported
+    assert "quickstart.md" in {e.get("path") for e in pi_docs.build_index(installs[0])}
+    assert any(h.file.startswith("examples/") for h in pi_docs.grep(installs[0], ["hello"]))
