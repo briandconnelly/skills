@@ -73,3 +73,36 @@ def test_no_install_exits_2(tmp_path, capsys):
     code = check_drift.main(["--skill-dir", str(skill)], path_env=str(empty), cwd=tmp_path)
     assert code == check_drift.EXIT_NO_INSTALL
     assert "No Pi install found" in capsys.readouterr().err
+
+
+# Review 3 (Codex, job c9f53a7b) findings, each pinned before its fix.
+
+
+def test_valid_anchor_prefix_with_extra_fragment_text_fails(pi_install, tmp_path, capsys):
+    skill = _skill(tmp_path, "See docs/quickstart.md#choose-how-to-customize-pi%2Dmissing\n")
+    code, out, _ = _run(skill, pi_install, tmp_path, capsys)
+    assert code == check_drift.EXIT_FAIL
+    assert "'choose-how-to-customize-pi%2Dmissing'" in out
+
+
+def test_page_name_case_must_match_exactly(pi_install, tmp_path, capsys):
+    skill = _skill(tmp_path, "See docs/cli.md and DOCS/QUICKSTART.md\n")
+    code, out, _ = _run(skill, pi_install, tmp_path, capsys)
+    assert code == check_drift.EXIT_FAIL
+    assert (
+        "FAIL SKILL.md:1 DOCS/QUICKSTART.md: DOCS/QUICKSTART.md does not exist in Pi 0.99.1" in out
+    )
+
+
+def test_hosted_page_link_fails_and_points_at_installed_docs(pi_install, tmp_path, capsys):
+    skill = _skill(tmp_path, "See docs/cli.md and https://pi.dev/docs/latest/quickstart\n")
+    code, out, _ = _run(skill, pi_install, tmp_path, capsys)
+    assert code == check_drift.EXIT_FAIL
+    assert "FAIL SKILL.md:1 https://pi.dev/docs/latest/quickstart" in out
+    assert "cite the installed docs/<page>.md instead" in out
+
+
+def test_bare_hosted_docs_root_is_allowed(pi_install, tmp_path, capsys):
+    skill = _skill(tmp_path, "Fallback: https://pi.dev/docs/latest. See docs/cli.md.\n")
+    code, _, _ = _run(skill, pi_install, tmp_path, capsys)
+    assert code == check_drift.EXIT_PASS

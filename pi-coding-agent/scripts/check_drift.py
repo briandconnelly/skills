@@ -27,7 +27,13 @@ if TYPE_CHECKING:
 SCRIPTS = Path(__file__).resolve().parent
 DEFAULT_SKILL_DIR = SCRIPTS.parent
 EXIT_PASS, EXIT_FAIL, EXIT_NO_INSTALL = 0, 1, 2
-CITATION = re.compile(r"\bdocs/([A-Za-z0-9._-]+\.md)(?:#([A-Za-z0-9_-]+))?")
+# Case-insensitive so a miscased citation is found (and then fails on the exact-name check,
+# which matters on case-insensitive filesystems); the fragment runs to the end of the link
+# target so a valid prefix cannot hide invalid trailing text.
+CITATION = re.compile(r"(?i)\bdocs/([a-z0-9._-]+\.md)(?:#([^\s)\]>`'\"]+))?")
+# A hosted link to a specific page bypasses the installed docs; the bare docs root is allowed.
+HOSTED_PAGE = re.compile(r"https?://pi\.dev/docs/latest/[^\s)\]>`'\"]+")
+SENTENCE_END = ".,;:!?"
 
 
 def _load_pi_docs() -> ModuleType:
@@ -63,30 +69,34 @@ def check_citations(skill_dir: Path, install: Any) -> tuple[int, list[Problem]]:
     """Count every citation and return the ones that do not resolve in the installed docs."""
     checked = 0
     problems: list[Problem] = []
-    targets_by_page: dict[str, set[str] | None] = {}
+    version = install.version
+    pages = {path.name for path in install.docs.glob("*.md")}  # exact names, any filesystem
+    targets_by_page: dict[str, set[str]] = {}
     for document in skill_documents(skill_dir):
         label = document.relative_to(skill_dir).as_posix()
         lines = document.read_text(encoding="utf-8").splitlines()
         for number, line in enumerate(lines, start=1):
+            for hosted in HOSTED_PAGE.finditer(line):
+                checked += 1
+                link = hosted.group(0).rstrip(SENTENCE_END)
+                reason = "hosted Pi docs link; cite the installed docs/<page>.md instead"
+                problems.append(Problem(label, number, link, reason))
             for match in CITATION.finditer(line):
                 checked += 1
-                page, fragment = match.group(1), match.group(2)
-                if page not in targets_by_page:
-                    path = install.docs / page
-                    targets_by_page[page] = (
-                        pi_docs.anchors(path.read_text(encoding="utf-8"))
-                        if path.is_file()
-                        else None
-                    )
-                targets = targets_by_page[page]
-                version = install.version
-                if targets is None:
-                    reason = f"docs/{page} does not exist in Pi {version}"
-                elif fragment and fragment not in targets:
-                    reason = f"no heading or <a id> '{fragment}' in docs/{page} (Pi {version})"
-                else:
+                page = match.group(1)
+                cited_page = match.group(0).split("#")[0]  # as written, e.g. DOCS/Cli.md
+                fragment = (match.group(2) or "").rstrip(SENTENCE_END)
+                citation = cited_page + (f"#{fragment}" if fragment else "")
+                if cited_page != f"docs/{page}" or page not in pages:
+                    reason = f"{cited_page} does not exist in Pi {version}"
+                    problems.append(Problem(label, number, citation, reason))
                     continue
-                problems.append(Problem(label, number, match.group(0), reason))
+                if page not in targets_by_page:
+                    text = (install.docs / page).read_text(encoding="utf-8")
+                    targets_by_page[page] = pi_docs.anchors(text)
+                if fragment and fragment not in targets_by_page[page]:
+                    reason = f"no heading or <a id> '{fragment}' in docs/{page} (Pi {version})"
+                    problems.append(Problem(label, number, citation, reason))
     return checked, problems
 
 
