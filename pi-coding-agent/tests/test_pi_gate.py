@@ -599,3 +599,53 @@ def test_a_concurrent_write_still_fails_and_says_why(tmp_path, monkeypatch):
     assert len(changed) == 1
     assert "sessions/other-pi-session.jsonl" in changed[0].detail
     assert "another Pi process" in changed[0].detail
+
+
+def test_pi_shape_errors_name_the_offending_path():
+    with pytest.raises(pi_gate.PiShapeError) as caught:
+        pi_gate.require_shape("get_commands", {"data": {"commands": [{"source": "prompt"}]}})
+    assert "data/commands/0" in str(caught.value)
+    assert "name" in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("command_type", "reply"),
+    [
+        ("get_commands", {"data": {"commands": [{"nope": 1}]}}),
+        ("prompt", {"data": {}}),
+    ],
+)
+def test_malformed_rpc_reply_fails_as_pi_shape_and_closes_pi(
+    tmp_path, monkeypatch, command_type, reply
+):
+    original_request = pi_gate.RpcSession.request
+    original_close = pi_gate.RpcSession.close
+    closed = []
+
+    def request(self, command):
+        response = original_request(self, command)
+        if command["type"] == command_type and response is not None:
+            return {**response, **reply}
+        return response
+
+    def close(self):
+        closed.append(True)
+        return original_close(self)
+
+    monkeypatch.setattr(pi_gate.RpcSession, "request", request)
+    monkeypatch.setattr(pi_gate.RpcSession, "close", close)
+    checks = _run(tmp_path, "tool/word-count.ts")
+    assert "pi-shape" in _fails(checks)
+    assert closed == [True]
+
+
+def test_malformed_mcp_list_output_fails_as_pi_shape(tmp_path, monkeypatch):
+    real_run = pi_gate.subprocess.run
+
+    def run(command, **kwargs):
+        if "mcp" in command:
+            return pi_gate.subprocess.CompletedProcess(command, 0, '{"servers": {}}', "")
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr(pi_gate.subprocess, "run", run)
+    assert "pi-shape" in _fails(_run(tmp_path, "mcp-config/mcp.json"))

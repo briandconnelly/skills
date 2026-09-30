@@ -81,3 +81,14 @@ Pinned by: `test_a_project_local_install_without_pi_on_path_is_gated`.
 Found by a critical cross-model review after the first Copilot round (Codex via amicus, job 0ff2c949, 2026-09-29): a model declared in `expect.models` passed when the gate's own `tier2.providers` supplied it; an empty `events` pattern matched any record; and `expectTranscript` was satisfied by an earlier scripted assistant reply.
 The gate now fails a declared model that a faux provider supplies (`provenance`), requires every event pattern to name a `type`, and checks `expectTranscript` only against system, user, and tool messages.
 Pinned by: `test_gate_supplied_content_does_not_count_for_the_artifact` and the empty-event case of `test_invalid_gate_files_are_rejected_with_their_reason`.
+
+## Deferred minors, designed with Codex
+
+The three minors deferred at merge were designed in a review–revise pass with Codex (via amicus, job fe89ee9d, 2026-09-29), which changed two of the three drafts.
+
+- Concurrent writes: the gate still fails on any change under the real agent directory, because excluding `sessions/` would hide a leak an artifact wrote only there, and neither mtimes nor a process check can attribute a write. It now reports one `agent-dir-changed` check listing every changed path and naming a concurrent Pi process as the likely cause.
+  Pinned by: `test_a_concurrent_write_still_fails_and_says_why`.
+- Pi output shape: every Pi reply the gate reads is validated at its boundary against `PI_SHAPES` in `pi_gate.py` (only the fields the gate reads), failing as `pi-shape` with the offending path; the RPC child is closed in a `finally`. A broad `except` around the checks was rejected because it would leave Pi running and report gate bugs as Pi changes.
+  Pinned by: `test_pi_shape_errors_name_the_offending_path`, `test_malformed_rpc_reply_fails_as_pi_shape_and_closes_pi`, and `test_malformed_mcp_list_output_fails_as_pi_shape`.
+- A symlinked `.pi` directory: the artifact path is made absolute with `..` collapsed but symlinks kept (`lexical_path`), so a symlinked `.pi` keeps its name and `.pi/../outside` is still refused.
+  Pinned by: `test_symlinked_pi_directory_is_gated`, `test_symlinked_parent_above_pi_directory_is_gated`, and `test_dot_dot_out_of_pi_directory_is_not_project_scoped`.
