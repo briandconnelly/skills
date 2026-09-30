@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
+import shutil
+from pathlib import Path
+
 import pytest
 from _scripts import load_script
 
 pi_gate = load_script("pi_gate")
+
+GATE_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "gate"
 
 
 # gate.json validation (R3.6, R3.7)
@@ -137,3 +143,106 @@ def test_gate_env_strips_pi_settings_and_provider_keys(tmp_path, monkeypatch):
     assert env["KEEP_ME"] == "yes"
     assert env["PI_OFFLINE"] == env["PI_SKIP_VERSION_CHECK"] == "1"
     assert env["PI_CODING_AGENT_DIR"] == str(tmp_path / "ws" / "agent")
+
+
+# Live runs against the installed Pi: RPC surfaces
+
+
+def _install():
+    if shutil.which("pi") is None:
+        pytest.skip("no `pi` on PATH; live gate runs not run")
+    return pi_gate.pi_docs.find_installs(None, Path.cwd())[0]
+
+
+def _run(tmp_path, artifact, gate=None):
+    install = _install()
+    real = tmp_path / "real-agent"
+    real.mkdir(exist_ok=True)
+    (real / "settings.json").write_text("{}")
+    artifact = GATE_FIXTURES / artifact
+    gate_path = GATE_FIXTURES / gate if gate else pi_gate.default_gate_path(artifact)
+    return pi_gate.gate(artifact, gate_path, install, pi_gate.GateOptions(real))
+
+
+def _fails(checks):
+    return sorted({check.code for check in checks if check.status == "FAIL"})
+
+
+def _unchecked(checks):
+    return {check.name for check in checks if check.status == "UNCHECKED"}
+
+
+POSITIVE_RPC = [
+    ("tool/word-count.ts", {"tool word_count", "tool result word_count", "script consumed"}),
+    ("command/note.ts", {"command note", "event message_end"}),
+    ("hook/system-marker.ts", {"transcript"}),
+    ("skill/gate-skill", {"skill skill:gate-skill", "transcript"}),
+    ("prompt/gate-prompt.md", {"prompt gate-prompt", "transcript"}),
+    ("project/.pi/prompts/project-prompt.md", {"prompt project-prompt", "transcript"}),
+    ("virtual-model/router.ts", {"model router/auto", "physical models"}),
+    ("tui/shortcut.ts", {"load"}),
+    ("mcp/register.ts", {"MCP server gate-docs"}),
+]
+
+
+@pytest.mark.parametrize(("artifact", "must_pass"), POSITIVE_RPC)
+def test_rpc_surface_fixture_passes(tmp_path, artifact, must_pass):
+    checks = _run(tmp_path, artifact)
+    assert _fails(checks) == [], [c for c in checks if c.status == "FAIL"]
+    assert must_pass <= {check.name for check in checks if check.status == "PASS"}
+
+
+@pytest.mark.parametrize(
+    ("artifact", "unchecked"),
+    [
+        ("tui/shortcut.ts", {"shortcut ctrl+alt+g", "message renderer gate-status", "Tier 2"}),
+        ("mcp/register.ts", {"MCP connection"}),
+        ("virtual-model/router.ts", {"model provenance"}),
+        ("tool/word-count.ts", {"late registration"}),
+    ],
+)
+def test_report_names_what_rpc_runs_could_not_check(tmp_path, artifact, unchecked):
+    assert unchecked <= _unchecked(_run(tmp_path, artifact))
+
+
+NEGATIVE_RPC = [
+    ("negative/broken.ts", None, "load-error"),
+    ("negative/start-throws.ts", None, "extension-error"),
+    ("tool/word-count.ts", "negative/wrong-exposure.gate.json", "exposure"),
+    ("tool/word-count.ts", "negative/unconsumed.gate.json", "unconsumed-steps"),
+    ("command/note.ts", "negative/event-mismatch.gate.json", "event-mismatch"),
+    ("skill/gate-skill", "negative/transcript-miss.gate.json", "transcript"),
+]
+
+
+@pytest.mark.parametrize(("artifact", "gate", "code"), NEGATIVE_RPC)
+def test_rpc_negative_fixture_fails_with_its_reason(tmp_path, artifact, gate, code):
+    assert code in _fails(_run(tmp_path, artifact, gate))
+
+
+def test_tier_1_only_skips_tier_2_and_says_so(tmp_path):
+    install = _install()
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    options = pi_gate.GateOptions(tmp_path, tier=pi_gate.TIER_1)
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert not [check for check in checks if check.tier == "2"]
+    assert "Tier 2" in _unchecked(checks)
+
+
+def test_no_install_refuses_and_says_not_verified(tmp_path, monkeypatch, capsys):
+    empty = tmp_path / "bin"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    monkeypatch.chdir(tmp_path)
+    assert pi_gate.main([str(tmp_path / "tool.ts")]) == pi_gate.EXIT_NO_INSTALL
+    assert "not verified" in capsys.readouterr().err
+
+
+def test_json_report_is_machine_readable(tmp_path, capsys):
+    _install()
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    code = pi_gate.main([str(artifact), "--json", "--real-agent-dir", str(tmp_path)])
+    payload = json.loads(capsys.readouterr().out)
+    assert code == pi_gate.EXIT_PASS
+    assert payload["ok"] is True
+    assert {"status", "tier", "name", "detail", "code"} == set(payload["checks"][0])

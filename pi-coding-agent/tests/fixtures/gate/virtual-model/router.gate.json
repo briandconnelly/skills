@@ -1,0 +1,14 @@
+{
+  "kind": "extension",
+  "expect": { "models": ["router/auto"] },
+  "tier2": {
+    "providers": [
+      { "provider": "llama-cpp", "models": ["qwen"] },
+      { "provider": "anthropic", "models": ["claude-sonnet-4-5"] }
+    ],
+    "model": "router/auto",
+    "prompts": ["hi", "Please review this long request in detail, covering the design, the tests, the failure modes, the migration path, and every open question the team raised in the last planning meeting."],
+    "steps": [{ "provider": "llama-cpp", "text": "short answer" }, { "provider": "anthropic", "text": "long answer" }],
+    "assistantModels": ["llama-cpp/qwen", "anthropic/claude-sonnet-4-5"]
+  }
+}

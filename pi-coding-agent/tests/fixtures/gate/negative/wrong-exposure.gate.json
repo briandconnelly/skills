@@ -1,0 +1,1 @@
+{ "kind": "extension", "expect": { "tools": [{ "name": "word_count", "exposure": "model-only" }] } }
