@@ -1,0 +1,2 @@
+Theme files here (theme/gate-theme.json, package/team-kit/themes/kit-theme.json, negative/bad-theme.json) are derived with jq from Pi 0.99.1's dist/modes/interactive/theme/dark.json (2026-09-29); re-derive them when Pi changes that file (MAINTAINING.md step 2).
+Every other fixture is hand-written.

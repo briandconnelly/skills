@@ -19,6 +19,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import select
 import shutil
 import subprocess
@@ -845,6 +846,105 @@ def unchecked_items(data: dict[str, Any], tier: int) -> list[Check]:
     return items
 
 
+# Checks that do not use the RPC run
+
+
+def flag_checks(expected: list[str], args: list[str], ws: Workspace, cwd: Path) -> list[Check]:
+    result = subprocess.run(
+        ["pi", *args, "--help"],
+        env=gate_env(ws),
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=DEFAULT_TIMEOUT,
+        check=False,
+    )
+    _, _, section = result.stdout.partition(EXTENSION_FLAGS_HEADING)
+    listed = set(re.findall(r"^\s+--([\w-]+)", section, flags=re.MULTILINE))
+    return [
+        passed("1", f"flag --{name}", "listed by pi --help under Extension CLI Flags")
+        if name in listed
+        else failed("1", "missing-resource", f"flag --{name} is not listed by pi --help")
+        for name in expected
+    ]
+
+
+def _theme_files(target: Path) -> list[Path]:
+    if target.is_file():
+        return [target]
+    return sorted(
+        path
+        for path in target.rglob("*.json")
+        if "node_modules" not in path.relative_to(target).parts
+        and path.name != "package.json"
+        and not path.name.endswith("gate.json")
+    )
+
+
+def theme_checks(expected: list[str], target: Path, install_root: Path) -> list[Check]:
+    import jsonschema  # noqa: PLC0415 - only theme gates need the dependency
+
+    validator = jsonschema.Draft7Validator(json.loads((install_root / THEME_SCHEMA).read_text()))
+    themes: dict[str, tuple[Path, Any]] = {}
+    for path in _theme_files(target):
+        with contextlib.suppress(json.JSONDecodeError):
+            theme = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(theme, dict) and isinstance(theme.get("name"), str):
+                themes[theme["name"]] = (path, theme)
+    checks: list[Check] = []
+    for name in expected:
+        if name not in themes:
+            checks.append(failed("1", "missing-resource", f"no theme named {name} under {target}"))
+            continue
+        path, theme = themes[name]
+        errors = sorted(validator.iter_errors(theme), key=lambda e: list(e.absolute_path))
+        if errors:
+            where = "/".join(str(part) for part in errors[0].absolute_path) or "(root)"
+            detail = f"{path.name} fails the installed theme schema at {where}: {errors[0].message}"
+            checks.append(failed("1", "schema", detail))
+        else:
+            checks.append(
+                passed("1", f"theme {name}", f"{path.name} validates against {THEME_SCHEMA}")
+            )
+    return checks
+
+
+def mcp_config_checks(expected: list[str], target: Path, ws: Workspace) -> list[Check]:
+    """Validate an mcp.json with every server disabled, so nothing connects or spawns."""
+    try:
+        config = json.loads(target.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return [failed("1", "load-error", f"{target} is not valid JSON: {error}")]
+    for server in (config.get("mcpServers") or {}).values():
+        if isinstance(server, dict):
+            server["enabled"] = False
+    (ws.agent / "mcp.json").write_text(json.dumps(config), encoding="utf-8")
+    result = subprocess.run(
+        ["pi", "mcp", "list", "--json"],
+        env=gate_env(ws),
+        cwd=ws.work,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=DEFAULT_TIMEOUT,
+        check=False,
+    )
+    try:
+        listing = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return [failed("1", "load-error", f"pi mcp list gave no JSON: {result.stderr.strip()}")]
+    checks = [failed("1", "mcp-config", error) for error in listing["errors"]]
+    names = {server["name"] for server in listing["servers"]}
+    checks += [
+        passed("1", f"MCP server {name}", "valid and listed by pi mcp list")
+        if name in names
+        else failed("1", "missing-resource", f"MCP server {name} is not listed by pi mcp list")
+        for name in expected
+    ]
+    return checks
+
+
 # Orchestration
 
 
@@ -888,11 +988,20 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
 
 
 def _run_checks(data: dict[str, Any], ws: Workspace, run: Staged) -> list[Check]:
-    if data["kind"] not in RPC_KINDS:
-        return [failed("-", "bad-gate", f"kind {data['kind']} is not gated yet")]
+    expect = data.get("expect") or {}
+    kind = data["kind"]
+    if kind == "theme":
+        return theme_checks(_names(expect.get("themes", [])), run.loaded, run.install_root)
+    if kind == "mcp-config":
+        return mcp_config_checks(_names(expect.get("mcpServers", [])), run.loaded, ws)
     args = pi_args(data, run.loaded, approve=run.approve)
     obs = observe(data, args, ws, run.cwd, tier=run.tier)
-    return tier1_checks(data, obs, run.loaded) + tier2_checks(data, obs)
+    checks = tier1_checks(data, obs, run.loaded) + tier2_checks(data, obs)
+    if expect.get("flags") and not obs.load_error:
+        checks += flag_checks(_names(expect["flags"]), args, ws, run.cwd)
+    if expect.get("themes"):
+        checks += theme_checks(_names(expect["themes"]), run.loaded, run.install_root)
+    return checks
 
 
 # Report and CLI

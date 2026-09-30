@@ -246,3 +246,45 @@ def test_json_report_is_machine_readable(tmp_path, capsys):
     assert code == pi_gate.EXIT_PASS
     assert payload["ok"] is True
     assert {"status", "tier", "name", "detail", "code"} == set(payload["checks"][0])
+
+
+# Live runs: surfaces checked without an RPC turn
+
+
+POSITIVE_STATIC = [
+    ("flag/verbose.ts", {"flag --gate-verbose"}),
+    ("mcp-config/mcp.json", {"MCP server filesystem", "MCP server docs"}),
+    ("theme/gate-theme.json", {"theme gate-theme"}),
+    (
+        "package/team-kit",
+        {"tool word_count", "skill skill:kit-skill", "prompt kit-prompt", "theme kit-theme"},
+    ),
+]
+
+
+@pytest.mark.parametrize(("artifact", "must_pass"), POSITIVE_STATIC)
+def test_static_surface_fixture_passes(tmp_path, artifact, must_pass):
+    checks = _run(tmp_path, artifact)
+    assert _fails(checks) == [], [c for c in checks if c.status == "FAIL"]
+    assert must_pass <= {check.name for check in checks if check.status == "PASS"}
+
+
+@pytest.mark.parametrize(
+    ("artifact", "unchecked"),
+    [
+        ("flag/verbose.ts", {"flag behavior", "Tier 2"}),
+        ("mcp-config/mcp.json", {"MCP connection"}),
+        ("theme/gate-theme.json", {"theme"}),
+        ("package/team-kit", {"theme"}),
+    ],
+)
+def test_report_names_what_static_checks_could_not_check(tmp_path, artifact, unchecked):
+    assert unchecked <= _unchecked(_run(tmp_path, artifact))
+
+
+@pytest.mark.parametrize(
+    ("artifact", "code"),
+    [("negative/bad-theme.json", "schema"), ("negative/sse-mcp.json", "mcp-config")],
+)
+def test_static_negative_fixture_fails_with_its_reason(tmp_path, artifact, code):
+    assert code in _fails(_run(tmp_path, artifact))
