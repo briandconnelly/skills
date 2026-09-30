@@ -671,9 +671,13 @@ def test_symlink_then_dot_dot_gates_the_file_the_os_opens(tmp_path):
     assert _fails(checks) == []
 
 
-def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "error",
+    [json.JSONDecodeError("Expecting value", "", 0), PermissionError("inventory unreadable")],
+)
+def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch, error):
     def broken(_path):
-        raise json.JSONDecodeError("Expecting value", "", 0)
+        raise error
 
     monkeypatch.setattr(pi_gate, "_read_json", broken)
     assert "pi-shape" in _fails(_run(tmp_path, "tool/word-count.ts"))

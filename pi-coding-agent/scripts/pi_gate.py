@@ -717,8 +717,8 @@ def _inventory(session: RpcSession, workspace: Workspace) -> dict[str, Any] | No
     session.prompt(INVENTORY_COMMAND)
     try:
         inventory = _read_json(workspace.inventory)
-    except json.JSONDecodeError as error:
-        raise PiShapeError(f"inventory is not valid JSON: {error}") from error
+    except (OSError, json.JSONDecodeError) as error:
+        raise PiShapeError(f"inventory could not be read as JSON: {error}") from error
     return None if inventory is None else require_shape("inventory", inventory)
 
 
