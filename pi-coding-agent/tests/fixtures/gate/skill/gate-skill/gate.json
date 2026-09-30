@@ -1,0 +1,8 @@
+{
+  "kind": "skill",
+  "expect": { "skills": ["gate-skill"] },
+  "tier2": {
+    "prompts": ["/skill:gate-skill"],
+    "steps": [{ "expectTranscript": "SKILL-MARKER-2C9D", "text": "ok" }]
+  }
+}

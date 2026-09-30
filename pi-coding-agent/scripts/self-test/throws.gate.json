@@ -1,0 +1,9 @@
+{
+  "kind": "extension",
+  "expect": { "tools": [{ "name": "boom", "exposure": "direct" }] },
+  "tier2": {
+    "prompts": ["use boom"],
+    "steps": [{ "toolCall": { "name": "boom", "arguments": {} } }, { "text": "done" }],
+    "expect": { "toolResults": [{ "toolName": "boom", "isError": false }] }
+  }
+}

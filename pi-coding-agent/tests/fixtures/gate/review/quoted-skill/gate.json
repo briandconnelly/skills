@@ -1,0 +1,8 @@
+{
+  "kind": "skill",
+  "expect": { "skills": ["quoted-skill"] },
+  "tier2": {
+    "prompts": ["/skill:quoted-skill"],
+    "steps": [{ "expectTranscript": "Reply with \"QUOTED-MARKER\"\nand nothing else.", "text": "ok" }]
+  }
+}

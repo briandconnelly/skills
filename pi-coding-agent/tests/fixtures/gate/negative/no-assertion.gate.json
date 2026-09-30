@@ -1,0 +1,1 @@
+{ "kind": "extension", "expect": { "commands": ["note"] }, "tier2": { "prompts": ["/note x"] } }

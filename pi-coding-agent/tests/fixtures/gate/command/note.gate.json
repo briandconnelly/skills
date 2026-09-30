@@ -1,0 +1,10 @@
+{
+  "kind": "extension",
+  "expect": { "commands": ["note"] },
+  "tier2": {
+    "prompts": ["/note remember the gate"],
+    "expect": {
+      "events": [{ "type": "message_end", "message": { "customType": "note", "content": "note: remember the gate" } }]
+    }
+  }
+}

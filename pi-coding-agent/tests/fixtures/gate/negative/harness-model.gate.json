@@ -1,0 +1,11 @@
+{
+  "kind": "extension",
+  "expect": { "models": ["router/auto"] },
+  "tier2": {
+    "providers": [{ "provider": "router", "models": ["auto"] }],
+    "model": "router/auto",
+    "prompts": ["hi"],
+    "steps": [{ "provider": "router", "text": "ok" }],
+    "assistantModels": ["router/auto"]
+  }
+}

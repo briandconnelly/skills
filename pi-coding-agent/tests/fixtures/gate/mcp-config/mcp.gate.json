@@ -1,0 +1,1 @@
+{ "kind": "mcp-config", "expect": { "mcpServers": ["filesystem", "docs"] } }

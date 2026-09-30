@@ -1,0 +1,1 @@
+{ "kind": "extension", "expect": { "unobservable": ["shortcut ctrl+alt+g", "message renderer gate-status"] } }
