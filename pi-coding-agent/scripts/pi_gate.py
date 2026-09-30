@@ -296,6 +296,13 @@ _SOURCE_INFO = {"type": "object", "properties": {"path": _STR, "origin": _STR}}
 # fields fails as pi-shape naming the path, instead of raising (MAINTAINING.md: run
 # check_drift.py against the new Pi). Extra fields are allowed.
 PI_SHAPES: dict[str, dict[str, Any]] = {
+    "response": {
+        "type": "object",
+        "properties": {"success": {"type": "boolean"}, "error": _STR},
+        "required": ["success"],
+        "if": {"properties": {"success": {"const": False}}},
+        "then": {"required": ["error"]},
+    },
     "prompt": {
         "type": "object",
         "properties": {"data": {"type": "object", "required": ["disposition"]}},
@@ -631,9 +638,12 @@ class RpcSession:
             text = line.decode("utf-8", errors="replace").rstrip("\r")
             if text.strip():
                 try:
-                    return json.loads(text)
+                    record = json.loads(text)
                 except json.JSONDecodeError:
                     return {"type": "pi-gate-unparsed", "line": text}
+                if not isinstance(record, dict):
+                    raise PiShapeError(f"RPC record is not a JSON object: {text[:200]}")
+                return record
         return None
 
     def _answer_dialog(self, record: dict[str, Any]) -> None:
@@ -670,7 +680,9 @@ class RpcSession:
 
     def prompt(self, message: str) -> dict[str, Any] | None:
         response = self.request({"type": "prompt", "message": message})
-        if response is not None and response.get("success"):
+        if response is not None:
+            require_shape("response", response)
+        if response is not None and response["success"]:
             require_shape("prompt", response)
         started = (
             response and response.get("success") and response["data"]["disposition"] != "handled"
@@ -717,7 +729,7 @@ def _inventory(session: RpcSession, workspace: Workspace) -> dict[str, Any] | No
     session.prompt(INVENTORY_COMMAND)
     try:
         inventory = _read_json(workspace.inventory)
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, ValueError) as error:  # ValueError covers bad JSON and bad UTF-8
         raise PiShapeError(f"inventory could not be read as JSON: {error}") from error
     return None if inventory is None else require_shape("inventory", inventory)
 
@@ -732,8 +744,8 @@ def _run_tier2(session: RpcSession, data: dict[str, Any], obs: Observation, ws: 
     if tier2.get("model"):
         provider, _, model_id = tier2["model"].partition("/")
         response = session.request({"type": "set_model", "provider": provider, "modelId": model_id})
-        if response is not None and not response.get("success"):
-            obs.set_model_error = f"{tier2['model']}: {response.get('error')}"
+        if response is not None and not require_shape("response", response)["success"]:
+            obs.set_model_error = f"{tier2['model']}: {response['error']}"
             return
     for message in tier2.get("prompts", []):
         response = session.prompt(message)

@@ -673,7 +673,11 @@ def test_symlink_then_dot_dot_gates_the_file_the_os_opens(tmp_path):
 
 @pytest.mark.parametrize(
     "error",
-    [json.JSONDecodeError("Expecting value", "", 0), PermissionError("inventory unreadable")],
+    [
+        json.JSONDecodeError("Expecting value", "", 0),
+        PermissionError("inventory unreadable"),
+        UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+    ],
 )
 def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch, error):
     def broken(_path):
@@ -681,3 +685,27 @@ def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch, error):
 
     monkeypatch.setattr(pi_gate, "_read_json", broken)
     assert "pi-shape" in _fails(_run(tmp_path, "tool/word-count.ts"))
+
+
+# Copilot review on PR #189, pinned before each fix
+
+
+def test_malformed_set_model_reply_fails_as_pi_shape(tmp_path, monkeypatch):
+    original_request = pi_gate.RpcSession.request
+
+    def request(self, command):
+        response = original_request(self, command)
+        if command["type"] == "set_model" and response is not None:
+            return {**response, "success": "yes"}
+        return response
+
+    monkeypatch.setattr(pi_gate.RpcSession, "request", request)
+    assert "pi-shape" in _fails(_run(tmp_path, "virtual-model/router.ts"))
+
+
+@pytest.mark.parametrize("line", [b"[]\n", b"null\n", b'"text"\n'])
+def test_non_object_rpc_record_is_a_pi_shape_error(line):
+    session = pi_gate.RpcSession.__new__(pi_gate.RpcSession)
+    session._buffer = line
+    with pytest.raises(pi_gate.PiShapeError):
+        session._buffered()
