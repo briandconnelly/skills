@@ -54,7 +54,10 @@ export default function (pi: ExtensionAPI) {
 		const expected = step.expectTranscript;
 		const entry: FauxResponseStep = expected
 			? (context) => {
-					if (!JSON.stringify(context.messages).includes(expected)) transcriptMisses.push(expected);
+					// Scripted assistant replies are the gate's own text; only what Pi and the artifact
+					// sent (system, user, and tool messages) can satisfy the expectation.
+					const sent = context.messages.filter((m) => m.role !== "assistant");
+					if (!JSON.stringify(sent).includes(expected)) transcriptMisses.push(expected);
 					return reply(step);
 				}
 			: reply(step);

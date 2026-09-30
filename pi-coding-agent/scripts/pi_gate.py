@@ -270,7 +270,10 @@ GATE_SCHEMA: dict[str, Any] = {
                     "type": "object",
                     "properties": {
                         "toolResults": {"type": "array", "items": _TOOL_RESULT},
-                        "events": {"type": "array", "items": {"type": "object"}},
+                        "events": {
+                            "type": "array",
+                            "items": {"type": "object", "required": ["type"]},
+                        },
                     },
                     "additionalProperties": False,
                 },
@@ -712,14 +715,23 @@ def _command_checks(
     return checks
 
 
-def _model_checks(expected: list[str], models: list[dict[str, Any]]) -> list[Check]:
+def _model_checks(
+    expected: list[str], models: list[dict[str, Any]], harness: set[str]
+) -> list[Check]:
+    """A declared model must be available and must not be one the gate's harness supplies."""
     available = {f"{model['provider']}/{model['id']}" for model in models}
-    return [
-        passed("1", f"model {name}", "in get_available_models")
-        if name in available
-        else failed("1", "missing-resource", f"model {name} is not in get_available_models")
-        for name in expected
-    ]
+    checks: list[Check] = []
+    for name in expected:
+        if name in harness:
+            detail = f"model {name} is a faux model the gate supplies (tier2.providers)"
+            checks.append(failed("1", "provenance", detail))
+        elif name in available:
+            checks.append(passed("1", f"model {name}", "in get_available_models"))
+        else:
+            checks.append(
+                failed("1", "missing-resource", f"model {name} is not in get_available_models")
+            )
+    return checks
 
 
 def _mcp_checks(expected: list[str], inventory: dict[str, Any], target: Path) -> list[Check]:
@@ -817,7 +829,7 @@ def tier1_checks(data: dict[str, Any], obs: Observation, target: Path) -> list[C
     expect = data.get("expect") or {}
     checks += _tool_checks(expect.get("tools", []), obs.inventory, target)
     checks += _command_checks(data, obs.commands, target)
-    checks += _model_checks(_names(expect.get("models", [])), obs.models)
+    checks += _model_checks(_names(expect.get("models", [])), obs.models, _harness_models(data))
     checks += _mcp_checks(_names(expect.get("mcpServers", [])), obs.inventory, target)
     checks += _provenance_sweep(data, obs, target)
     if not checks or all(check.status != "FAIL" for check in checks):

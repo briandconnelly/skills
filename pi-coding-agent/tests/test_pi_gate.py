@@ -53,6 +53,10 @@ def _gate_file(tmp_path, body):
             '{"kind": "extension", "tier2": {"prompts": ["hi"], "providers": [{"provider": "p"}]}}',
             "bad-gate",
         ),
+        (
+            '{"kind": "extension", "tier2": {"prompts": ["hi"], "expect": {"events": [{}]}}}',
+            "bad-gate",
+        ),
         ("[1]", "bad-gate"),
         ("{not json", "bad-gate"),
     ],
@@ -510,3 +514,18 @@ def test_every_gate_fixture_and_recipe_passes_strict_validation():
         if gate.name in {"empty.gate.json"}:
             continue
         pi_gate.load_gate(gate)
+
+
+# Codex critical review after Copilot round 1 (job 0ff2c949), pinned before its fix
+
+
+@pytest.mark.parametrize(
+    ("artifact", "gate", "code"),
+    [
+        ("negative/inert.ts", "negative/harness-model.gate.json", "provenance"),
+        ("skill/gate-skill", "negative/transcript-echo.gate.json", "transcript"),
+    ],
+)
+def test_gate_supplied_content_does_not_count_for_the_artifact(tmp_path, artifact, gate, code):
+    checks = _run(tmp_path, artifact, gate)
+    assert code in _fails(checks)

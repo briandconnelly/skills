@@ -75,3 +75,9 @@ Pinned by: `test_checkpoint_1_negative_fails_with_its_reason`, `test_rejected_pr
 `pi_docs.find_installs` accepts a project-local install, but the first version ran whatever `pi` was on `PATH`, which crashed when there was none (final review).
 The gate now launches the `bin` entry of the install it reports, so the version in the report is the version that ran.
 Pinned by: `test_a_project_local_install_without_pi_on_path_is_gated`.
+
+## Only the artifact's own content counts
+
+Found by a critical cross-model review after the first Copilot round (Codex via amicus, job 0ff2c949, 2026-09-29): a model declared in `expect.models` passed when the gate's own `tier2.providers` supplied it; an empty `events` pattern matched any record; and `expectTranscript` was satisfied by an earlier scripted assistant reply.
+The gate now fails a declared model that a faux provider supplies (`provenance`), requires every event pattern to name a `type`, and checks `expectTranscript` only against system, user, and tool messages.
+Pinned by: `test_gate_supplied_content_does_not_count_for_the_artifact` and the empty-event case of `test_invalid_gate_files_are_rejected_with_their_reason`.

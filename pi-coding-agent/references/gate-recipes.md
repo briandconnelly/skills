@@ -12,7 +12,7 @@ Put the file next to the artifact: `<name>.gate.json` beside a file, or `gate.js
 - `tier2.steps`: the faux model's scripted replies, each a `text` or a `toolCall`, optionally with `provider` and `expectTranscript` (text that must be in the transcript the model receives).
 - `tier2.model` and `tier2.providers`: select a model, and add faux providers that stand in for physical ones.
 - `tier2.assistantModels`: the `provider/model` that must answer each turn (default: the gate's own faux model).
-- `tier2.expect`: `toolResults` (`toolName`, `isError`, `contains`, matched against the result's text) and `events` (each an object that some RPC record must contain).
+- `tier2.expect`: `toolResults` (`toolName`, `isError`, `contains`, matched against the result's text) and `events` (each an object, naming at least `type`, that some RPC record must contain); `expectTranscript` matches only what Pi and the artifact sent, never a scripted reply.
 - `tier2.model` must be a faux model or appear in `expect.models`; the gate refuses to select any other model, and Pi's own HTTP requests during a gate run go to a dead proxy (the artifact's code is not sandboxed).
 - Tier 2 fails when it runs no model turn and declares no `toolResults` or `events`, and when a tool fails without a `toolResults` entry that expects `isError: true`.
 
