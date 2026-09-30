@@ -537,3 +537,175 @@ def test_gate_supplied_content_does_not_count_for_the_artifact(tmp_path, artifac
 
 def test_malformed_mcp_config_fails_without_a_traceback(tmp_path):
     assert "mcp-config" in _fails(_run(tmp_path, "negative/mcp-list.json"))
+
+
+# Deferred minors (M2 to M4), designed with Codex (job fe89ee9d), pinned before each fix
+
+
+def _project_prompt(root):
+    source = GATE_FIXTURES / "project" / ".pi" / "prompts"
+    shutil.copytree(source, root, dirs_exist_ok=True)
+
+
+def test_symlinked_pi_directory_is_gated(tmp_path):
+    install = _install()
+    _project_prompt(tmp_path / "real-pi" / "prompts")
+    (tmp_path / "project").mkdir()
+    (tmp_path / "project" / ".pi").symlink_to(tmp_path / "real-pi")
+    artifact = tmp_path / "project" / ".pi" / "prompts" / "project-prompt.md"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+def test_symlinked_parent_above_pi_directory_is_gated(tmp_path):
+    install = _install()
+    _project_prompt(tmp_path / "elsewhere" / ".pi" / "prompts")
+    (tmp_path / "link").symlink_to(tmp_path / "elsewhere")
+    artifact = tmp_path / "link" / ".pi" / "prompts" / "project-prompt.md"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+def test_dot_dot_out_of_pi_directory_is_not_project_scoped(tmp_path):
+    (tmp_path / "ws").mkdir()
+    ws = pi_gate.Workspace.create(tmp_path / "ws")
+    (tmp_path / "project" / ".pi").mkdir(parents=True)
+    (tmp_path / "project" / "outside.md").write_text("x")
+    artifact = tmp_path / "project" / ".pi" / ".." / "outside.md"
+    with pytest.raises(pi_gate.GateError) as caught:
+        pi_gate.stage(artifact.absolute(), "project", ws)
+    assert caught.value.code == "bad-gate"
+
+
+def test_a_concurrent_write_still_fails_and_says_why(tmp_path, monkeypatch):
+    install = _install()
+    real = tmp_path / "real-agent"
+    (real / "sessions").mkdir(parents=True)
+    original = pi_gate._run_checks
+
+    def run_then_write(*args):
+        checks = original(*args)
+        (real / "sessions" / "other-pi-session.jsonl").write_text("{}")
+        return checks
+
+    monkeypatch.setattr(pi_gate, "_run_checks", run_then_write)
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    checks = pi_gate.gate(
+        artifact, pi_gate.default_gate_path(artifact), install, pi_gate.GateOptions(real)
+    )
+    changed = [check for check in checks if check.code == "agent-dir-changed"]
+    assert len(changed) == 1
+    assert "sessions/other-pi-session.jsonl" in changed[0].detail
+    assert "another Pi process" in changed[0].detail
+
+
+def test_pi_shape_errors_name_the_offending_path():
+    with pytest.raises(pi_gate.PiShapeError) as caught:
+        pi_gate.require_shape("get_commands", {"data": {"commands": [{"source": "prompt"}]}})
+    assert "data/commands/0" in str(caught.value)
+    assert "name" in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("command_type", "reply"),
+    [
+        ("get_commands", {"data": {"commands": [{"nope": 1}]}}),
+        ("prompt", {"data": {}}),
+        (
+            "get_commands",
+            {"data": {"commands": [{"name": "x", "source": "prompt", "sourceInfo": "bad"}]}},
+        ),
+    ],
+)
+def test_malformed_rpc_reply_fails_as_pi_shape_and_closes_pi(
+    tmp_path, monkeypatch, command_type, reply
+):
+    original_request = pi_gate.RpcSession.request
+    original_close = pi_gate.RpcSession.close
+    closed = []
+
+    def request(self, command):
+        response = original_request(self, command)
+        if command["type"] == command_type and response is not None:
+            return {**response, **reply}
+        return response
+
+    def close(self):
+        closed.append(True)
+        return original_close(self)
+
+    monkeypatch.setattr(pi_gate.RpcSession, "request", request)
+    monkeypatch.setattr(pi_gate.RpcSession, "close", close)
+    checks = _run(tmp_path, "tool/word-count.ts")
+    assert "pi-shape" in _fails(checks)
+    assert closed == [True]
+
+
+def test_malformed_mcp_list_output_fails_as_pi_shape(tmp_path, monkeypatch):
+    real_run = pi_gate.subprocess.run
+
+    def run(command, **kwargs):
+        if "mcp" in command:
+            return pi_gate.subprocess.CompletedProcess(command, 0, '{"servers": {}}', "")
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr(pi_gate.subprocess, "run", run)
+    assert "pi-shape" in _fails(_run(tmp_path, "mcp-config/mcp.json"))
+
+
+# Codex review of the M2 to M4 diff (job d2a12940), pinned before each fix
+
+
+def test_symlink_then_dot_dot_gates_the_file_the_os_opens(tmp_path):
+    install = _install()
+    (tmp_path / "other" / "dir").mkdir(parents=True)
+    for name in ("word-count.ts", "word-count.gate.json"):
+        shutil.copy(GATE_FIXTURES / "tool" / name, tmp_path / "other" / name)
+    shutil.copy(GATE_FIXTURES / "negative" / "broken.ts", tmp_path / "word-count.ts")
+    (tmp_path / "link").symlink_to(tmp_path / "other" / "dir")
+    artifact = tmp_path / "link" / ".." / "word-count.ts"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        json.JSONDecodeError("Expecting value", "", 0),
+        PermissionError("inventory unreadable"),
+        UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+    ],
+)
+def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch, error):
+    def broken(_path):
+        raise error
+
+    monkeypatch.setattr(pi_gate, "_read_json", broken)
+    assert "pi-shape" in _fails(_run(tmp_path, "tool/word-count.ts"))
+
+
+# Copilot review on PR #189, pinned before each fix
+
+
+def test_malformed_set_model_reply_fails_as_pi_shape(tmp_path, monkeypatch):
+    original_request = pi_gate.RpcSession.request
+
+    def request(self, command):
+        response = original_request(self, command)
+        if command["type"] == "set_model" and response is not None:
+            return {**response, "success": "yes"}
+        return response
+
+    monkeypatch.setattr(pi_gate.RpcSession, "request", request)
+    assert "pi-shape" in _fails(_run(tmp_path, "virtual-model/router.ts"))
+
+
+@pytest.mark.parametrize("line", [b"[]\n", b"null\n", b'"text"\n'])
+def test_non_object_rpc_record_is_a_pi_shape_error(line):
+    session = pi_gate.RpcSession.__new__(pi_gate.RpcSession)
+    session._buffer = line
+    with pytest.raises(pi_gate.PiShapeError):
+        session._buffered()

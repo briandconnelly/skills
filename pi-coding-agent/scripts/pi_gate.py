@@ -285,6 +285,106 @@ GATE_SCHEMA: dict[str, Any] = {
 }
 
 
+def _objects(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
+    item = {"type": "object", "properties": properties, "required": required}
+    return {"type": "array", "items": item}
+
+
+_STR = {"type": "string"}
+_SOURCE_INFO = {"type": "object", "properties": {"path": _STR, "origin": _STR}}
+# What the gate reads from Pi's output, and nothing more. A reply that lacks one of these
+# fields fails as pi-shape naming the path, instead of raising (MAINTAINING.md: run
+# check_drift.py against the new Pi). Extra fields are allowed.
+PI_SHAPES: dict[str, dict[str, Any]] = {
+    "response": {
+        "type": "object",
+        "properties": {"success": {"type": "boolean"}, "error": _STR},
+        "required": ["success"],
+        "if": {"properties": {"success": {"const": False}}},
+        "then": {"required": ["error"]},
+    },
+    "prompt": {
+        "type": "object",
+        "properties": {"data": {"type": "object", "required": ["disposition"]}},
+        "required": ["data"],
+    },
+    "get_commands": {
+        "type": "object",
+        "properties": {
+            "data": {
+                "type": "object",
+                "properties": {
+                    "commands": _objects(
+                        {"name": _STR, "source": _STR, "sourceInfo": _SOURCE_INFO},
+                        ["name", "source"],
+                    )
+                },
+                "required": ["commands"],
+            }
+        },
+        "required": ["data"],
+    },
+    "get_available_models": {
+        "type": "object",
+        "properties": {
+            "data": {
+                "type": "object",
+                "properties": {
+                    "models": _objects({"provider": _STR, "id": _STR}, ["provider", "id"])
+                },
+                "required": ["models"],
+            }
+        },
+        "required": ["data"],
+    },
+    "inventory": {
+        "type": "object",
+        "properties": {
+            "tools": _objects(
+                {"name": _STR, "exposure": _STR, "sourceInfo": _SOURCE_INFO}, ["name", "exposure"]
+            ),
+            "activeTools": {"type": "array", "items": _STR},
+            "mcpServers": _objects(
+                {"name": _STR, "extensionPath": _STR}, ["name", "extensionPath"]
+            ),
+            "faux": _objects(
+                {"provider": _STR, "pending": {"type": "integer"}}, ["provider", "pending"]
+            ),
+            "transcriptMisses": {"type": "array", "items": _STR},
+        },
+        "required": ["tools", "activeTools", "mcpServers", "faux", "transcriptMisses"],
+    },
+    "message_end": {
+        "type": "object",
+        "properties": {"message": {"type": "object"}},
+        "required": ["message"],
+    },
+    "pi mcp list": {
+        "type": "object",
+        "properties": {
+            "errors": {"type": "array", "items": _STR},
+            "servers": _objects({"name": _STR}, ["name"]),
+        },
+        "required": ["errors", "servers"],
+    },
+}
+
+
+class PiShapeError(Exception):
+    """Pi's output lacks a field the gate reads."""
+
+
+def require_shape(name: str, value: Any) -> Any:
+    """Return value if it has the shape the gate reads from Pi's `name` output; else raise."""
+    error = jsonschema.exceptions.best_match(
+        jsonschema.Draft7Validator(PI_SHAPES[name]).iter_errors(value)
+    )
+    if error is not None:
+        where = "/".join(str(part) for part in error.absolute_path) or "(top level)"
+        raise PiShapeError(f"{name} output at {where}: {error.message}")
+    return value
+
+
 def _declares_something(data: dict[str, Any]) -> bool:
     expect = data.get("expect") or {}
     tier2 = data.get("tier2") or {}
@@ -411,17 +511,34 @@ def gate_env(workspace: Workspace) -> dict[str, str]:
     return env
 
 
+def _pi_directory(artifact: Path, real: Path) -> Path | None:
+    """The real `.pi` directory holding the artifact, found by name among its unresolved or
+    resolved parents (a symlinked `.pi` keeps its name only in the unresolved path), and
+    accepted only if the artifact really lives inside it (so `.pi/../x` does not count)."""
+    for parent in [*artifact.parents, *real.parents]:
+        if parent.name == ".pi":
+            candidate = parent.resolve()
+            if real.is_relative_to(candidate) and real != candidate:
+                return candidate
+    return None
+
+
 def stage(artifact: Path, scope: str, workspace: Workspace) -> tuple[Path, Path]:
-    """Return (path Pi loads the artifact from, working directory for the run)."""
+    """Return (path Pi loads the artifact from, working directory for the run).
+
+    `artifact` is absolute but unresolved; the file loaded is the one the OS opens for it.
+    """
+    real = artifact.resolve()
     if scope != "project":
-        return artifact, workspace.work
-    pi_dir = next((parent for parent in artifact.parents if parent.name == ".pi"), None)
+        return real, workspace.work
+    pi_dir = _pi_directory(artifact, real)
     if pi_dir is None:
         raise GateError(
             "bad-gate", f"scope is project but {artifact} is not under a .pi/ directory"
         )
     project = workspace.root / "project"
-    target = project / ".pi" / artifact.relative_to(pi_dir)
+    target = project / ".pi" / real.relative_to(pi_dir)
+    artifact = real
     target.parent.mkdir(parents=True)
     if artifact.is_dir():
         shutil.copytree(artifact, target)
@@ -521,9 +638,12 @@ class RpcSession:
             text = line.decode("utf-8", errors="replace").rstrip("\r")
             if text.strip():
                 try:
-                    return json.loads(text)
+                    record = json.loads(text)
                 except json.JSONDecodeError:
                     return {"type": "pi-gate-unparsed", "line": text}
+                if not isinstance(record, dict):
+                    raise PiShapeError(f"RPC record is not a JSON object: {text[:200]}")
+                return record
         return None
 
     def _answer_dialog(self, record: dict[str, Any]) -> None:
@@ -560,6 +680,10 @@ class RpcSession:
 
     def prompt(self, message: str) -> dict[str, Any] | None:
         response = self.request({"type": "prompt", "message": message})
+        if response is not None:
+            require_shape("response", response)
+        if response is not None and response["success"]:
+            require_shape("prompt", response)
         started = (
             response and response.get("success") and response["data"]["disposition"] != "handled"
         )
@@ -589,6 +713,7 @@ class Observation:
     inventory: dict[str, Any] | None = None
     tier2_inventory: dict[str, Any] | None = None
     set_model_error: str | None = None
+    shape_error: str | None = None
     unscripted_model: str | None = None
     prompt_errors: list[str] = field(default_factory=list)
     load_error: str | None = None
@@ -602,7 +727,11 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 def _inventory(session: RpcSession, workspace: Workspace) -> dict[str, Any] | None:
     workspace.inventory.unlink(missing_ok=True)
     session.prompt(INVENTORY_COMMAND)
-    return _read_json(workspace.inventory)
+    try:
+        inventory = _read_json(workspace.inventory)
+    except (OSError, ValueError) as error:  # ValueError covers bad JSON and bad UTF-8
+        raise PiShapeError(f"inventory could not be read as JSON: {error}") from error
+    return None if inventory is None else require_shape("inventory", inventory)
 
 
 def _run_tier2(session: RpcSession, data: dict[str, Any], obs: Observation, ws: Workspace) -> None:
@@ -615,8 +744,8 @@ def _run_tier2(session: RpcSession, data: dict[str, Any], obs: Observation, ws: 
     if tier2.get("model"):
         provider, _, model_id = tier2["model"].partition("/")
         response = session.request({"type": "set_model", "provider": provider, "modelId": model_id})
-        if response is not None and not response.get("success"):
-            obs.set_model_error = f"{tier2['model']}: {response.get('error')}"
+        if response is not None and not require_shape("response", response)["success"]:
+            obs.set_model_error = f"{tier2['model']}: {response['error']}"
             return
     for message in tier2.get("prompts", []):
         response = session.prompt(message)
@@ -638,15 +767,23 @@ def observe(
         if session.request({"type": "set_auto_retry", "enabled": False}) is not None:
             session.prompt(TIER1_PROMPT)
             obs.inventory = _inventory(session, ws)
-            commands = session.request({"type": "get_commands"}) or {}
-            models = session.request({"type": "get_available_models"}) or {}
-            obs.commands = (commands.get("data") or {}).get("commands", [])
-            obs.models = (models.get("data") or {}).get("models", [])
+            commands = session.request({"type": "get_commands"})
+            models = session.request({"type": "get_available_models"})
+            if commands is not None:
+                obs.commands = require_shape("get_commands", commands)["data"]["commands"]
+            if models is not None:
+                obs.models = require_shape("get_available_models", models)["data"]["models"]
             if tier == TIER_2 and data.get("tier2"):
                 _run_tier2(session, data, obs, ws)
+            for record in session.records:
+                if record.get("type") == "message_end":
+                    require_shape("message_end", record)
     except TimeoutError:
         obs.timed_out = True
-    code = session.close()
+    except PiShapeError as error:
+        obs.shape_error = str(error)
+    finally:
+        code = session.close()
     obs.records = session.records
     if session.exited_early:
         text = stderr.read_text(encoding="utf-8", errors="replace").strip()
@@ -816,6 +953,9 @@ def _assistant_messages(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def tier1_checks(data: dict[str, Any], obs: Observation, target: Path) -> list[Check]:
+    if obs.shape_error:
+        detail = f"{obs.shape_error}; this Pi's output changed shape, run check_drift.py"
+        return [failed("1", "pi-shape", detail)]
     if obs.load_error:
         return [failed("1", "load-error", obs.load_error)]
     if obs.timed_out or obs.inventory is None:
@@ -948,7 +1088,7 @@ def _script_checks(tier2: dict[str, Any], inventory: dict[str, Any]) -> list[Che
 
 
 def tier2_checks(data: dict[str, Any], obs: Observation) -> list[Check]:
-    if obs.load_error or obs.tier2_start is None:
+    if obs.shape_error or obs.load_error or obs.tier2_start is None:
         return []
     if obs.unscripted_model:
         detail = (
@@ -1104,9 +1244,11 @@ def mcp_config_checks(expected: list[str], target: Path, ws: Workspace) -> list[
     except subprocess.TimeoutExpired:
         return [failed("1", "timeout", "pi mcp list did not finish in time")]
     try:
-        listing = json.loads(result.stdout)
+        listing = require_shape("pi mcp list", json.loads(result.stdout))
     except json.JSONDecodeError:
         return [failed("1", "load-error", f"pi mcp list gave no JSON: {result.stderr.strip()}")]
+    except PiShapeError as error:
+        return [failed("1", "pi-shape", f"{error}; this Pi's output changed shape")]
     checks = [failed("1", "mcp-config", error) for error in listing["errors"]]
     names = {server["name"] for server in listing["servers"]}
     checks += [
@@ -1148,7 +1290,7 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
     with tempfile.TemporaryDirectory(prefix="pi-gate-") as tmp:
         ws = Workspace.create(Path(tmp), pi_command(install.root))
         try:
-            loaded, cwd = stage(artifact.resolve(), data.get("scope", "temporary"), ws)
+            loaded, cwd = stage(artifact.absolute(), data.get("scope", "temporary"), ws)
         except GateError as error:
             return [failed("-", error.code, str(error))]
         run = Staged(loaded, cwd, tier, options.approve, install.root)
@@ -1157,9 +1299,15 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
         detail = f"no check ran: gate.json's expect declares nothing a {data['kind']} gate checks"
         checks.append(failed("-", "nothing-checked", detail))
     changes = snapshot_diff(before, snapshot(options.real_agent_dir))
-    checks += [
-        failed("-", "agent-dir-changed", f"{options.real_agent_dir}/{change}") for change in changes
-    ]
+    if changes:
+        # Kept strict (R3.2.0): the gate cannot tell its own leak from another writer, so it
+        # fails either way and says which is the likely cause.
+        detail = (
+            f"{options.real_agent_dir} changed during the gate run: {'; '.join(changes)}. "
+            "If another Pi process was running (a session finishing a turn, a token refresh), "
+            "close it and rerun the gate; otherwise the artifact or the gate wrote there."
+        )
+        checks.append(failed("-", "agent-dir-changed", detail))
     return checks + unchecked_items(data, tier)
 
 
