@@ -18,6 +18,8 @@ This skill finds them, covers remaining surface choices, and reports which parts
 5. If no Pi is installed, follow **No installed Pi** instead of **Answer mode** or **Build mode**.
 6. Never answer Pi facts from memory or from this skill's text.
 7. When Pi is installed, source Pi facts from its docs, changelog, or bundled examples, except for the hosted fallback in **Answer mode**, steps 6–7.
+8. When you cannot find a feature in the documentation you read, name the pages checked before saying it was not found or is not supported.
+9. Name changed context or configuration files without a gate kind as unchecked by the gate when reporting completion, including when the task also changes a gated artifact.
 
 ## No installed Pi
 
@@ -32,7 +34,7 @@ This skill finds them, covers remaining surface choices, and reports which parts
 2. Use `pi_docs.py grep <terms>` to find terms, not as the navigation path.
 3. Find every home of the feature: when the answer spans layers (CLI flag, config file, extension API), present each layer with its precedence and when to use it.
 4. Cite installed facts as `docs/<page>.md#<section>` with the installed version.
-5. When you cannot find the feature, say "I could not find this in the installed vX.Y.Z docs after checking <the pages you read>"; never say "not supported" without that list.
+5. When you cannot find the feature, report the absence in accordance with **Rules for every Pi task**, step 8, including the installed version.
 6. Only after step 5, consult `pi_docs.py changelog <term>` and https://pi.dev/docs/latest.
 7. Cite hosted findings with their page URLs and label them as not from the installed version.
 
@@ -48,7 +50,9 @@ This skill finds them, covers remaining surface choices, and reports which parts
 8. Name every UNCHECKED item from the report to the user; never call the work done without that list.
 9. Tell the user the gate isolates what Pi reads and writes, not what the artifact's code does: the code runs with the user's own filesystem and network permissions and is not sandboxed (docs/security.md#choose-how-to-run-pi).
 10. If `pi_gate.py` reports that Pi is not installed, follow **No installed Pi**.
-11. If a check fails, fix the artifact or its gate file and rerun the gate; do not edit the report or skip the failing check.
+11. If a check fails with `pi-shape` or `gate-dependency`, repair the gate's dependencies using `MAINTAINING.md`'s update procedure, step 2, and rerun the gate.
+12. For other failures, fix the artifact or its gate file and rerun the gate.
+13. Never edit the report or skip a failing check.
 
 ## Configuration-only mode
 
@@ -57,7 +61,7 @@ Context and configuration files such as `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM
 
 ### Rules
 
-1. Name each changed file as unchecked by the gate when reporting completion.
+1. Report changed files according to **Rules for every Pi task**, step 9.
 2. Do not create a gate file or run the gate self-test or artifact gate for this branch.
 
 ## What the gate does
@@ -68,6 +72,7 @@ For RPC surfaces, it loads the artifact, then a harness that registers a scripte
 Theme checks validate the installed schema; MCP configuration checks validate original server entries with Pi's own validator before listing a copy with every server disabled.
 Smoke turns and successful tool calls without result assertions leave behavior or result content UNCHECKED.
 Registered tools, commands, skills, and prompts not exercised in Tier 2 are also UNCHECKED, including those inside packages.
+Assertion coverage limits are described in `references/gate-recipes.md`, **Fields**.
 It lists every check as PASS, FAIL (with a named reason), or UNCHECKED, and fails if anything under the real `~/.pi/agent` changed during the run.
 
 ## Maintenance

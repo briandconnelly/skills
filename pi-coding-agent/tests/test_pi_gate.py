@@ -329,6 +329,7 @@ def test_self_test_passes_and_covers_every_control(tmp_path):
         "empty-gate",
         "target-not-loaded",
         "wrong-provider",
+        "mcp-config",
     }
 
 
@@ -770,7 +771,7 @@ def _broken_word_count(tmp_path, *, result_expect=None, calls=1):
 def test_wrong_tool_output_without_an_assertion_is_reported_unchecked(tmp_path):
     checks = _broken_word_count(tmp_path)
     assert _fails(checks) == []
-    assert "tool result word_count" in _unchecked(checks)
+    assert "unasserted tool call word_count #1" in _unchecked(checks)
     assert not any(
         check.status == "PASS" and check.name == "tool result word_count" for check in checks
     )
@@ -796,7 +797,7 @@ def test_one_result_assertion_does_not_cover_two_calls(tmp_path):
         tmp_path, result_expect=[{"toolName": "word_count", "contains": "999 words"}], calls=2
     )
     assert _fails(checks) == []
-    assert "tool result word_count" in _unchecked(checks)
+    assert "unasserted tool call word_count #2" in _unchecked(checks)
     assert any(
         check.status == "PASS" and check.name == "tool result word_count" for check in checks
     )
@@ -831,3 +832,81 @@ def test_prompt_without_transcript_assertion_is_reported_unchecked(tmp_path):
     checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
     assert _fails(checks) == []
     assert "prompt expansion gate-prompt" in _unchecked(checks)
+
+
+def test_hook_smoke_turn_without_assertions_is_reported_unchecked(tmp_path):
+    artifact = GATE_FIXTURES / "hook/system-marker.ts"
+    data = json.loads(pi_gate.default_gate_path(artifact).read_text())
+    del data["tier2"]["steps"][0]["expectTranscript"]
+    gate = tmp_path / "hook.gate.json"
+    gate.write_text(json.dumps(data))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert _fails(checks) == []
+    assert "Tier 2 behavior" in _unchecked(checks)
+
+
+def test_empty_expectation_lists_do_not_cover_command_behavior(tmp_path):
+    artifact = GATE_FIXTURES / "command/note.ts"
+    data = json.loads(pi_gate.default_gate_path(artifact).read_text())
+    data["tier2"]["expect"] = {"events": [], "toolResults": []}
+    gate = tmp_path / "command.gate.json"
+    gate.write_text(json.dumps(data))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert "command behavior note" in _unchecked(checks)
+    assert "Tier 2 behavior" in _unchecked(checks)
+
+
+@pytest.mark.parametrize(
+    ("mode", "code"),
+    [
+        ("missing-node", "gate-dependency"),
+        ("failed-import", "gate-dependency"),
+        ("timeout", "timeout"),
+        ("malformed-output", "pi-shape"),
+    ],
+)
+def test_mcp_validator_infrastructure_failures_are_not_artifact_errors(
+    tmp_path, monkeypatch, mode, code
+):
+    install = _install()
+    (tmp_path / "ws").mkdir()
+    ws = pi_gate.Workspace.create(tmp_path / "ws")
+
+    def run(command, **_kwargs):
+        if mode == "missing-node":
+            raise FileNotFoundError("node")
+        if mode == "timeout":
+            raise pi_gate.subprocess.TimeoutExpired(command, 1)
+        if mode == "failed-import":
+            return pi_gate.subprocess.CompletedProcess(command, 1, "", "ERR_MODULE_NOT_FOUND")
+        return pi_gate.subprocess.CompletedProcess(command, 0, '[{"error":"changed contract"}]', "")
+
+    monkeypatch.setattr(pi_gate.subprocess, "run", run)
+    checks = pi_gate.original_mcp_checks(
+        {"mcpServers": {"docs": {"url": "https://example.com/mcp"}}},
+        tmp_path / "mcp.json",
+        ws,
+        install.root,
+    )
+    assert _fails(checks) == [code]
+
+
+def test_self_test_detects_validator_drift_that_accepts_invalid_enabled(tmp_path, monkeypatch):
+    install = _install()
+    real_run = pi_gate.subprocess.run
+
+    def run(command, **kwargs):
+        if str(pi_gate.MCP_VALIDATOR) in command:
+            return pi_gate.subprocess.CompletedProcess(command, 0, "[]", "")
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr(pi_gate.subprocess, "run", run)
+    ok, lines = pi_gate.self_test(install, tmp_path / "real")
+    assert not ok
+    assert any(line.startswith("FAIL self-test invalid MCP enabled value") for line in lines)
+
+
+def test_explicit_model_sequence_counts_as_router_behavior_assertion(tmp_path):
+    checks = _run(tmp_path, "virtual-model/router.ts")
+    assert _fails(checks) == []
+    assert "Tier 2 behavior" not in _unchecked(checks)

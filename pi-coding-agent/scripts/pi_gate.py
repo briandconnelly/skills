@@ -1064,9 +1064,13 @@ def _tool_result_checks(
     ]
     checks += [
         unchecked(
-            f"tool result {r.get('toolName')}", "call succeeded but no result assertion matched it"
+            f"unasserted tool call {r.get('toolName')} #{index}",
+            "call succeeded but no result assertion matched it",
         )
-        for r in ends
+        for index, r in enumerate(
+            (r for r in records if r.get("type") == "tool_execution_end"), start=1
+        )
+        if any(r is remaining for remaining in ends)
         if not r.get("isError")
     ]
     return checks
@@ -1141,6 +1145,16 @@ def tier2_checks(data: dict[str, Any], obs: Observation) -> list[Check]:
 # What each surface leaves unchecked (R3.10)
 
 
+def has_behavior_assertions(tier2: dict[str, Any]) -> bool:
+    expect = tier2.get("expect") or {}
+    return bool(
+        tier2.get("assistantModels")
+        or expect.get("toolResults")
+        or expect.get("events")
+        or any(step.get("expectTranscript") for step in tier2.get("steps", []))
+    )
+
+
 def behavior_coverage(data: dict[str, Any], obs: Observation, target: Path) -> list[Check]:
     """Report observed artifact resources not exercised by the declared Tier 2."""
     if obs.shape_error or obs.load_error or obs.prompt_errors or obs.inventory is None:
@@ -1156,7 +1170,6 @@ def behavior_coverage(data: dict[str, Any], obs: Observation, target: Path) -> l
     ]
     tier2 = data.get("tier2") or {}
     invoked = {prompt.split()[0] for prompt in tier2.get("prompts", []) if prompt.split()}
-    expectations = tier2.get("expect") or {}
     transcript_asserted = any(step.get("expectTranscript") for step in tier2.get("steps", []))
     for command in obs.commands:
         if origin_of((command.get("sourceInfo") or {}).get("path", ""), target) != "target":
@@ -1171,7 +1184,7 @@ def behavior_coverage(data: dict[str, Any], obs: Observation, target: Path) -> l
             checks.append(
                 unchecked(f"{label} expansion {name}", "invoked without a transcript assertion")
             )
-        elif source == "extension" and not (expectations or transcript_asserted):
+        elif source == "extension" and not has_behavior_assertions(tier2):
             checks.append(
                 unchecked(f"command behavior {name}", "invoked without a behavior assertion")
             )
@@ -1188,6 +1201,10 @@ def unchecked_items(data: dict[str, Any], tier: int) -> list[Check]:
         items.append(unchecked("late registration", detail))
     if tier2 and tier == TIER_1:
         items.append(unchecked("Tier 2", "not run (--tier 1)"))
+    elif tier2 and not has_behavior_assertions(tier2):
+        items.append(
+            unchecked("Tier 2 behavior", "scripted turns declare no artifact behavior assertions")
+        )
     elif not tier2 and data["kind"] not in ("theme", "mcp-config"):
         items.append(unchecked("Tier 2", "gate.json declares no tier2 block; no behavior was run"))
     if expect.get("models"):
@@ -1290,11 +1307,21 @@ def original_mcp_checks(
             timeout=DEFAULT_TIMEOUT,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        return [failed("1", "mcp-config", f"could not validate original MCP config: {error}")]
+    except subprocess.TimeoutExpired:
+        return [failed("1", "timeout", "installed Pi MCP validator did not finish in time")]
+    except OSError as error:
+        detail = (
+            f"could not start installed Pi MCP validator: {error}; "
+            "restore Node/Pi and run check_drift.py"
+        )
+        return [failed("1", "gate-dependency", detail)]
     if validation.returncode:
         return [
-            failed("1", "mcp-config", f"installed Pi validator failed: {validation.stderr.strip()}")
+            failed(
+                "1",
+                "gate-dependency",
+                f"installed Pi validator failed: {validation.stderr.strip()}; run check_drift.py",
+            )
         ]
     try:
         errors = require_shape("MCP validation", json.loads(validation.stdout))
@@ -1458,6 +1485,9 @@ SELF_TEST_CASES = (
         "not-faux.gate.json",
         "wrong-provider",
         also=("provider-error", "wrong-model"),
+    ),
+    SelfTestCase(
+        "invalid MCP enabled value", "invalid-mcp.json", "invalid-mcp.gate.json", "mcp-config"
     ),
 )
 
