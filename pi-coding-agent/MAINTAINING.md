@@ -1,7 +1,13 @@
 # Maintaining pi-coding-agent
 
-This file is the only home of the procedure for updating the skill to a new Pi release.
-`verified-against` holds the Pi version the skill was last fully checked against; bump it only in step 6.
+This file is the home of gate failure recovery and the procedure for updating the skill to a new Pi release.
+`verified-against` holds the Pi version the skill was last fully checked against; bump it only in **Update procedure**, step 6.
+
+## Gate failure recovery
+
+1. For `gate-environment`, restore the missing or blocked runtime named in the report, including its availability on PATH and execution permissions, then rerun the failing check.
+2. For `pi-shape` or `gate-dependency`, first check that Node and the Pi installation are executable and intact; restore the environment or installation if needed, then rerun the failing check.
+   If the failure persists because an installed interface changed, use **Update procedure**, step 2, then rerun the failing check.
 
 ## Update procedure
 

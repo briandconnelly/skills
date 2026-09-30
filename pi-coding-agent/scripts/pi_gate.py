@@ -1312,9 +1312,9 @@ def original_mcp_checks(
     except OSError as error:
         detail = (
             f"could not start installed Pi MCP validator: {error}; "
-            "restore Node/Pi and run check_drift.py"
+            "see MAINTAINING.md#gate-failure-recovery"
         )
-        return [failed("1", "gate-dependency", detail)]
+        return [failed("1", "gate-environment", detail)]
     if validation.returncode:
         return [
             failed(

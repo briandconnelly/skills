@@ -859,7 +859,8 @@ def test_empty_expectation_lists_do_not_cover_command_behavior(tmp_path):
 @pytest.mark.parametrize(
     ("mode", "code"),
     [
-        ("missing-node", "gate-dependency"),
+        ("missing-node", "gate-environment"),
+        ("blocked-node", "gate-environment"),
         ("failed-import", "gate-dependency"),
         ("timeout", "timeout"),
         ("malformed-output", "pi-shape"),
@@ -875,6 +876,8 @@ def test_mcp_validator_infrastructure_failures_are_not_artifact_errors(
     def run(command, **_kwargs):
         if mode == "missing-node":
             raise FileNotFoundError("node")
+        if mode == "blocked-node":
+            raise PermissionError("node")
         if mode == "timeout":
             raise pi_gate.subprocess.TimeoutExpired(command, 1)
         if mode == "failed-import":

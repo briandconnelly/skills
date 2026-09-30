@@ -43,7 +43,7 @@ The original gate copied the file into the throwaway agent directory with `enabl
 The critical review on 2026-09-29 reproduced a false pass for `enabled: "not-a-boolean"`, because disabling the server repaired the invalid field before validation.
 The gate now validates original entries with the installed Pi's `validateMcpServerConfig` through `scripts/mcp-validator.mjs`, then lists a disabled copy.
 The internal module path and export are tracked by `GATE_DEPENDENCIES`, and an invalid-`enabled` self-test control catches changes in the validator's return contract.
-Validator infrastructure failures are reported as `gate-dependency`, distinct from invalid artifact entries reported as `mcp-config`.
+Validator failure recovery is documented in [MAINTAINING.md, Gate failure recovery](../MAINTAINING.md#gate-failure-recovery).
 A project `.pi/mcp.json` is checked the same way, as a global file; project trust for it is not exercised.
 Pinned by: the `mcp-config/mcp.json` case of `test_static_surface_fixture_passes`, the `negative/sse-mcp.json` case of `test_static_negative_fixture_fails_with_its_reason`, `test_mcp_enabled_is_validated_before_disabling_servers`, `test_valid_mcp_configs_are_checked_without_starting_servers`, and the `invalid MCP enabled value` self-test control.
 

@@ -50,7 +50,7 @@ This skill finds them, covers remaining surface choices, and reports which parts
 8. Name every UNCHECKED item from the report to the user; never call the work done without that list.
 9. Tell the user the gate isolates what Pi reads and writes, not what the artifact's code does: the code runs with the user's own filesystem and network permissions and is not sandboxed (docs/security.md#choose-how-to-run-pi).
 10. If `pi_gate.py` reports that Pi is not installed, follow **No installed Pi**.
-11. If a check fails with `pi-shape` or `gate-dependency`, repair the gate's dependencies using `MAINTAINING.md`'s update procedure, step 2, and rerun the gate.
+11. If a check fails with `gate-environment`, `pi-shape`, or `gate-dependency`, follow [Gate failure recovery](MAINTAINING.md#gate-failure-recovery).
 12. For other failures, fix the artifact or its gate file and rerun the gate.
 13. Never edit the report or skip a failing check.
 
@@ -70,9 +70,7 @@ Context and configuration files such as `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM
 The artifact's code is not held to that: it can open its own connections (Build mode, step 9).
 For RPC surfaces, it loads the artifact, then a harness that registers a scripted faux model, and runs a one-step turn (Tier 1) and the turns scripted in the gate file (Tier 2).
 Theme checks validate the installed schema; MCP configuration checks validate original server entries with Pi's own validator before listing a copy with every server disabled.
-Smoke turns and successful tool calls without result assertions leave behavior or result content UNCHECKED.
-Registered tools, commands, skills, and prompts not exercised in Tier 2 are also UNCHECKED, including those inside packages.
-Assertion coverage limits are described in `references/gate-recipes.md`, **Fields**.
+Assertion coverage and limits are documented in [gate.json recipes, Fields](references/gate-recipes.md#fields).
 It lists every check as PASS, FAIL (with a named reason), or UNCHECKED, and fails if anything under the real `~/.pi/agent` changed during the run.
 
 ## Maintenance
