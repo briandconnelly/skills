@@ -537,3 +537,43 @@ def test_gate_supplied_content_does_not_count_for_the_artifact(tmp_path, artifac
 
 def test_malformed_mcp_config_fails_without_a_traceback(tmp_path):
     assert "mcp-config" in _fails(_run(tmp_path, "negative/mcp-list.json"))
+
+
+# Deferred minors (M2 to M4), designed with Codex (job fe89ee9d), pinned before each fix
+
+
+def _project_prompt(root):
+    source = GATE_FIXTURES / "project" / ".pi" / "prompts"
+    shutil.copytree(source, root, dirs_exist_ok=True)
+
+
+def test_symlinked_pi_directory_is_gated(tmp_path):
+    install = _install()
+    _project_prompt(tmp_path / "real-pi" / "prompts")
+    (tmp_path / "project").mkdir()
+    (tmp_path / "project" / ".pi").symlink_to(tmp_path / "real-pi")
+    artifact = tmp_path / "project" / ".pi" / "prompts" / "project-prompt.md"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+def test_symlinked_parent_above_pi_directory_is_gated(tmp_path):
+    install = _install()
+    _project_prompt(tmp_path / "elsewhere" / ".pi" / "prompts")
+    (tmp_path / "link").symlink_to(tmp_path / "elsewhere")
+    artifact = tmp_path / "link" / ".pi" / "prompts" / "project-prompt.md"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+def test_dot_dot_out_of_pi_directory_is_not_project_scoped(tmp_path):
+    (tmp_path / "ws").mkdir()
+    ws = pi_gate.Workspace.create(tmp_path / "ws")
+    (tmp_path / "project" / ".pi").mkdir(parents=True)
+    (tmp_path / "project" / "outside.md").write_text("x")
+    artifact = tmp_path / "project" / ".pi" / ".." / "outside.md"
+    with pytest.raises(pi_gate.GateError) as caught:
+        pi_gate.stage(pi_gate.lexical_path(artifact), "project", ws)
+    assert caught.value.code == "bad-gate"

@@ -411,6 +411,11 @@ def gate_env(workspace: Workspace) -> dict[str, str]:
     return env
 
 
+def lexical_path(path: Path) -> Path:
+    """Absolute, with `..` collapsed, but symlinks kept: a symlinked `.pi` keeps its name."""
+    return Path(os.path.normpath(path.absolute()))
+
+
 def stage(artifact: Path, scope: str, workspace: Workspace) -> tuple[Path, Path]:
     """Return (path Pi loads the artifact from, working directory for the run)."""
     if scope != "project":
@@ -1148,7 +1153,7 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
     with tempfile.TemporaryDirectory(prefix="pi-gate-") as tmp:
         ws = Workspace.create(Path(tmp), pi_command(install.root))
         try:
-            loaded, cwd = stage(artifact.resolve(), data.get("scope", "temporary"), ws)
+            loaded, cwd = stage(lexical_path(artifact), data.get("scope", "temporary"), ws)
         except GateError as error:
             return [failed("-", error.code, str(error))]
         run = Staged(loaded, cwd, tier, options.approve, install.root)
