@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 from _scripts import load_script
 
 check_drift = load_script("check_drift")
@@ -14,7 +19,9 @@ def _skill(tmp_path, body, name="SKILL.md"):
 
 def _run(skill, pi_install, tmp_path, capsys):
     bin_dir, _ = pi_install
-    code = check_drift.main(["--skill-dir", str(skill)], path_env=str(bin_dir), cwd=tmp_path)
+    code = check_drift.main(
+        ["--skill-dir", str(skill), "--stages", "citations"], path_env=str(bin_dir), cwd=tmp_path
+    )
     captured = capsys.readouterr()
     return code, captured.out, captured.err
 
@@ -106,3 +113,128 @@ def test_bare_hosted_docs_root_is_allowed(pi_install, tmp_path, capsys):
     skill = _skill(tmp_path, "Fallback: https://pi.dev/docs/latest. See docs/cli.md.\n")
     code, _, _ = _run(skill, pi_install, tmp_path, capsys)
     assert code == check_drift.EXIT_PASS
+
+
+# Gate dependencies, gate, and changelog stages (R8.3, R8.4)
+
+
+def _dependency_tree(tmp_path, *, hoisted=False):
+    """A minimal install whose files mention every gate dependency, laid out like Homebrew's."""
+    root = tmp_path / "node_modules" / "@earendil-works" / "pi-coding-agent"
+    deps = check_drift.pi_gate.GATE_DEPENDENCIES
+    (root / "docs").mkdir(parents=True)
+    (root / "docs" / "cli.md").write_text("\n".join(deps["cli_docs"]) + "\n")
+    (root / "docs" / "environment-variables.md").write_text(" ".join(deps["env"]) + "\n")
+    headings = "".join(f"### {name}\n\n" for name in deps["rpc_commands"])
+    (root / "docs" / "rpc-commands.md").write_text(headings)
+    (root / "docs" / "json.md").write_text(" ".join(deps["events"]) + "\n")
+    types = root / "dist" / "core" / "extensions" / "types.d.ts"
+    types.parent.mkdir(parents=True)
+    types.write_text(" ".join(f"{name}()" for name in deps["extension_api"]) + "\n")
+    pi_ai = (root.parent if hoisted else root / "node_modules" / "@earendil-works") / "pi-ai"
+    faux = pi_ai / check_drift.FAUX_DTS
+    faux.parent.mkdir(parents=True)
+    faux.write_text(" ".join(deps["faux_exports"]) + "\n")
+    for name in deps["files"]:
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text("{}")
+    return root, "\n".join(f"  {flag} <x>" for flag in deps["cli_flags"])
+
+
+@pytest.mark.parametrize("hoisted", [False, True])
+def test_dependencies_pass_when_every_interface_exists(tmp_path, hoisted):
+    root, help_text = _dependency_tree(tmp_path, hoisted=hoisted)
+    checked, problems = check_drift.check_dependencies(root, "0.99.1", help_text)
+    assert problems == []
+    assert checked == sum(len(names) for names in check_drift.pi_gate.GATE_DEPENDENCIES.values())
+
+
+def test_missing_flag_fails_with_its_reason(tmp_path):
+    root, help_text = _dependency_tree(tmp_path)
+    help_text = help_text.replace("--approve", "--approval")
+    _, problems = check_drift.check_dependencies(root, "0.99.1", help_text)
+    assert [p.reason for p in problems] == [
+        "gate depends on cli_flags --approve, absent from pi --help (Pi 0.99.1)"
+    ]
+
+
+def test_flag_prefix_does_not_count_as_the_flag(tmp_path):
+    root, help_text = _dependency_tree(tmp_path)
+    help_text = help_text.replace("  --no-session <x>", "  --no-session-dir <x>")
+    _, problems = check_drift.check_dependencies(root, "0.99.1", help_text)
+    assert [p.citation for p in problems] == ["--no-session"]
+
+
+def test_missing_rpc_command_and_source_file_fail(tmp_path):
+    root, help_text = _dependency_tree(tmp_path)
+    (root / "docs" / "rpc-commands.md").write_text("### prompt\n")
+    (root / "docs" / "environment-variables.md").unlink()
+    _, problems = check_drift.check_dependencies(root, "0.99.1", help_text)
+    reasons = [p.reason for p in problems]
+    assert (
+        "gate depends on rpc_commands set_model, absent from docs/rpc-commands.md (Pi 0.99.1)"
+        in reasons
+    )
+    assert "docs/environment-variables.md missing from Pi 0.99.1" in reasons
+
+
+def test_changelog_delta_spans_verified_to_installed(tmp_path):
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        "# Changelog\n\n## [0.99.1] - x\n- new a\n\n## [0.99.0] - x\n- new b\n\n"
+        "## [0.87.1] - x\n- old\n"
+    )
+    install = SimpleNamespace(version="0.99.1", changelog=changelog)
+    lines = check_drift.changelog_delta(install, "0.87.1")
+    assert "## [0.99.0] - x" in lines
+    assert "- new a" in lines
+    assert "- old" not in lines
+    assert check_drift.changelog_delta(install, None) == []
+
+
+def test_unknown_stage_is_a_usage_error(pi_install, tmp_path):
+    bin_dir, _ = pi_install
+    with pytest.raises(SystemExit):
+        check_drift.main(["--stages", "citations,typo"], path_env=str(bin_dir), cwd=tmp_path)
+
+
+def test_skipped_stages_are_named(pi_install, tmp_path, capsys):
+    skill = _skill(tmp_path, "See docs/cli.md\n")
+    _run(skill, pi_install, tmp_path, capsys)
+    code = check_drift.main(
+        ["--skill-dir", str(skill), "--stages", "citations"],
+        path_env=str(pi_install[0]),
+        cwd=tmp_path,
+    )
+    assert code == check_drift.EXIT_PASS
+    assert "NOT RUN: dependencies, gate, changelog" in capsys.readouterr().out
+
+
+def _live():
+    if shutil.which("pi") is None:
+        pytest.skip("no `pi` on PATH; live drift stages not run")
+    return check_drift.pi_docs.find_installs(None, Path.cwd())[0]
+
+
+def test_live_dependencies_all_exist():
+    install = _live()
+    _, problems = check_drift.check_dependencies(
+        install.root, install.version, check_drift.pi_help(None)
+    )
+    assert problems == []
+
+
+def test_live_gate_stage_passes():
+    install = _live()
+    assert check_drift.check_gate(check_drift.DEFAULT_SKILL_DIR, install) == []
+
+
+def test_live_gate_stage_reports_a_failing_fixture(tmp_path):
+    install = _live()
+    fixtures = tmp_path / "skill" / "tests" / "fixtures" / "gate" / "moved"
+    fixtures.mkdir(parents=True)
+    negative = check_drift.DEFAULT_SKILL_DIR / "tests" / "fixtures" / "gate" / "negative"
+    for name in ("broken.ts", "broken.gate.json"):
+        shutil.copy(negative / name, fixtures / name)
+    failures = check_drift.check_gate(tmp_path / "skill", install)
+    assert any("load-error" in failure for failure in failures)
