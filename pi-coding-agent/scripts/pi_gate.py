@@ -65,7 +65,7 @@ EXTENSION_FLAGS_HEADING = "Extension CLI Flags:"
 DEFAULT_TIMEOUT = 60.0
 TIER_1, TIER_2 = 1, 2
 # expect keys whose resources carry no provenance, so they cannot show the target loaded
-PROVENANCE_FREE = frozenset({"unobservable", "flags", "themes"})
+PROVENANCE_FREE = frozenset({"unobservable", "flags", "themes", "models"})
 
 # Every Pi interface the gate depends on. check_drift.py verifies each one against the
 # installed Pi (MAINTAINING.md); this dictionary is their only list.
@@ -210,6 +210,9 @@ def load_gate(path: Path) -> dict[str, Any]:
     for key in ("expect", "tier2"):
         if not isinstance(data.get(key) or {}, dict):
             raise GateError("bad-gate", f"{path}: {key} must be a JSON object")
+    prompts = (data.get("tier2") or {}).get("prompts", [])
+    if not isinstance(prompts, list) or not all(isinstance(p, str) for p in prompts):
+        raise GateError("bad-gate", f"{path}: tier2.prompts must be a list of strings")
     unknown = set(data.get("expect") or {}) - set(EXPECT_KEYS)
     if unknown:
         raise GateError("bad-gate", f"{path}: unknown expect keys {sorted(unknown)}")
@@ -473,6 +476,7 @@ class Observation:
     inventory: dict[str, Any] | None = None
     tier2_inventory: dict[str, Any] | None = None
     set_model_error: str | None = None
+    prompt_errors: list[str] = field(default_factory=list)
     load_error: str | None = None
     timed_out: bool = False
 
@@ -496,7 +500,9 @@ def _run_tier2(session: RpcSession, tier2: dict[str, Any], obs: Observation, ws:
             obs.set_model_error = f"{tier2['model']}: {response.get('error')}"
             return
     for message in tier2.get("prompts", []):
-        session.prompt(message)
+        response = session.prompt(message)
+        if response is not None and not response.get("success"):
+            obs.prompt_errors.append(f"{message!r}: {response.get('error')}")
     obs.tier2_inventory = _inventory(session, ws)
 
 
@@ -640,8 +646,7 @@ def _provenance_sweep(data: dict[str, Any], obs: Observation, target: Path) -> l
         for label, path, origin in origins
         if origin == "other"
     ]
-    own_models = {f"{m['provider']}/{m['id']}" for m in obs.models} - _harness_models(data)
-    if any(origin == "target" for _, _, origin in origins) or own_models:
+    if any(origin == "target" for _, _, origin in origins):
         checks.append(passed("1", "target loaded", "the artifact contributed observed resources"))
     elif {key for key, value in (data.get("expect") or {}).items() if value} - PROVENANCE_FREE:
         detail = "only harness and built-in resources were observed; the artifact did not load"
@@ -729,23 +734,24 @@ def _model_sequence_checks(data: dict[str, Any], records: list[dict[str, Any]]) 
                 "2", "wrong-model", f"assistant messages came from {actual}, expected {expected}"
             )
         )
-    elif not checks:
-        checks.append(passed("2", "physical models", f"{actual or 'no model turn'}"))
+    elif actual and not checks:
+        checks.append(passed("2", "physical models", f"{actual}"))
     return checks
 
 
 def _tool_result_checks(
     expected: list[dict[str, Any]], records: list[dict[str, Any]]
 ) -> list[Check]:
+    """Match each expectation, in order, to the next unused result of that tool."""
     checks: list[Check] = []
     ends = [r for r in records if r.get("type") == "tool_execution_end"]
     for entry in expected:
         name = entry["toolName"]
-        found = [r for r in ends if r.get("toolName") == name]
-        if not found:
-            checks.append(failed("2", "tool-result", f"no tool_execution_end for {name}"))
+        end = next((r for r in ends if r.get("toolName") == name), None)
+        if end is None:
+            checks.append(failed("2", "tool-result", f"no unmatched tool_execution_end for {name}"))
             continue
-        end = found[0]
+        ends.remove(end)
         text = json.dumps(end.get("result"))
         want_error = entry.get("isError", False)
         if end.get("isError") != want_error:
@@ -758,6 +764,16 @@ def _tool_result_checks(
             checks.append(failed("2", "tool-result", detail))
         else:
             checks.append(passed("2", f"tool result {name}", text[:120]))
+    checks += [
+        failed(
+            "2",
+            "tool-result",
+            f"{r.get('toolName')} failed and gate.json does not expect it: "
+            f"{json.dumps(r.get('result'))[:300]}",
+        )
+        for r in ends
+        if r.get("isError")
+    ]
     return checks
 
 
@@ -804,6 +820,12 @@ def tier2_checks(data: dict[str, Any], obs: Observation) -> list[Check]:
     records = obs.records[obs.tier2_start :]
     expect = data["tier2"].get("expect") or {}
     checks = _errors(records, "2") + _dialogs(records)
+    checks += [failed("2", "prompt-rejected", error) for error in obs.prompt_errors]
+    if not _assistant_messages(records) and not (expect.get("toolResults") or expect.get("events")):
+        detail = (
+            "Tier 2 ran no model turn and declares no tool result or event; nothing was checked"
+        )
+        checks.append(failed("2", "tier2-empty", detail))
     checks += _model_sequence_checks(data, records)
     if any(r.get("type") == "auto_retry_start" for r in records):
         checks.append(
@@ -1014,6 +1036,7 @@ class SelfTestCase:
     gate: str
     expected: str | None  # the failure code a negative case must produce; None must pass
     approve: bool = True
+    also: tuple[str, ...] = ()  # other failure codes the control is known to produce
 
 
 SELF_TEST_CASES = (
@@ -1021,18 +1044,36 @@ SELF_TEST_CASES = (
     SelfTestCase("tool whose execute() throws", "throws.ts", "throws.gate.json", "tool-result"),
     SelfTestCase("misspelled tool name", "<hello>", "misspelled.gate.json", "missing-resource"),
     SelfTestCase("empty gate.json", "<hello>", "empty.gate.json", "empty-gate"),
-    SelfTestCase("target not loaded", "inert.ts", "inert.gate.json", "target-not-loaded"),
+    SelfTestCase(
+        "target not loaded",
+        "inert.ts",
+        "inert.gate.json",
+        "target-not-loaded",
+        also=("missing-resource",),
+    ),
     SelfTestCase(
         "project artifact without --approve",
         "project/.pi/prompts/trust-probe.md",
         "trust-probe.gate.json",
         "missing-resource",
         approve=False,
+        also=("target-not-loaded",),
     ),
     SelfTestCase(
-        "faux provider not answering", "not-faux.ts", "not-faux.gate.json", "wrong-provider"
+        "faux provider not answering",
+        "not-faux.ts",
+        "not-faux.gate.json",
+        "wrong-provider",
+        also=("provider-error", "wrong-model"),
     ),
 )
+
+
+def case_passes(case: SelfTestCase, codes: list[str]) -> bool:
+    """A control passes only with its own code and the codes it is known to add, nothing else."""
+    if case.expected is None:
+        return not codes
+    return case.expected in codes and set(codes) <= {case.expected, *case.also}
 
 
 def self_test(install: Any, real_agent_dir: Path) -> tuple[bool, list[str]]:
@@ -1044,7 +1085,7 @@ def self_test(install: Any, real_agent_dir: Path) -> tuple[bool, list[str]]:
         options = GateOptions(real_agent_dir, approve=case.approve)
         checks = gate(artifact, SELF_TEST_DIR / case.gate, install, options)
         codes = sorted({check.code for check in checks if check.status == "FAIL"})
-        good = not codes if case.expected is None else case.expected in codes
+        good = case_passes(case, codes)
         ok = ok and good
         want = "pass" if case.expected is None else f"fail with {case.expected}"
         status = "PASS" if good else "FAIL"

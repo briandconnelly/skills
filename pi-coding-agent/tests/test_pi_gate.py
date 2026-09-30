@@ -33,6 +33,8 @@ def _gate_file(tmp_path, body):
         ('{"kind": "extension", "scope": "user", "expect": {"tools": ["t"]}}', "bad-gate"),
         ('{"kind": "extension", "expect": ["tools"]}', "bad-gate"),
         ('{"kind": "extension", "tier2": ["hi"]}', "bad-gate"),
+        ('{"kind": "extension", "tier2": {"prompts": [null]}}', "bad-gate"),
+        ('{"kind": "extension", "tier2": {"prompts": "hi"}}', "bad-gate"),
         ("[1]", "bad-gate"),
         ("{not json", "bad-gate"),
     ],
@@ -354,3 +356,58 @@ def test_every_positive_fixture_is_listed_once():
         if "negative" not in gate.relative_to(GATE_FIXTURES).parts
     }
     assert found == {artifact for artifact, _ in POSITIVE}
+
+
+# Codex checkpoint 1 findings (job 216e3992), each pinned before its fix
+
+
+@pytest.mark.parametrize(
+    ("artifact", "gate", "code"),
+    [
+        ("command/note.ts", "negative/no-assertion.gate.json", "tier2-empty"),
+        ("negative/flaky.ts", "negative/flaky-reuse.gate.json", "tool-result"),
+        ("negative/flaky.ts", "negative/flaky-unexpected.gate.json", "tool-result"),
+    ],
+)
+def test_checkpoint_1_negative_fails_with_its_reason(tmp_path, artifact, gate, code):
+    assert code in _fails(_run(tmp_path, artifact, gate))
+
+
+def test_no_model_turn_is_not_reported_as_a_pass(tmp_path):
+    checks = _run(tmp_path, "command/note.ts")
+    assert "physical models" not in {check.name for check in checks if check.status == "PASS"}
+
+
+def test_rejected_prompt_fails(tmp_path):
+    install = _install()
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    data = {"kind": "extension", "expect": {"tools": ["word_count"]}, "tier2": {"prompts": [None]}}
+    (tmp_path / "ws").mkdir()
+    ws = pi_gate.Workspace.create(tmp_path / "ws")
+    run = pi_gate.Staged(artifact, ws.work, pi_gate.TIER_2, True, install.root)
+    codes = {check.code for check in pi_gate._run_checks(data, ws, run) if check.status == "FAIL"}
+    assert "prompt-rejected" in codes
+
+
+def test_unattributed_models_do_not_show_the_target_loaded(tmp_path):
+    obs = pi_gate.Observation(
+        inventory={"tools": [], "activeTools": [], "mcpServers": []},
+        models=[{"provider": "someone-else", "id": "m"}],
+    )
+    data = {"kind": "extension", "expect": {"models": ["someone-else/m"]}}
+    checks = pi_gate._provenance_sweep(data, obs, tmp_path / "artifact.ts")
+    assert [(check.status, check.name) for check in checks] == [("UNCHECKED", "target loaded")]
+
+
+@pytest.mark.parametrize(
+    ("codes", "good"),
+    [
+        (["target-not-loaded"], True),
+        (["missing-resource", "target-not-loaded"], True),
+        (["target-not-loaded", "timeout"], False),
+        (["missing-resource"], False),
+    ],
+)
+def test_self_test_control_rejects_unrelated_failures(codes, good):
+    case = next(c for c in pi_gate.SELF_TEST_CASES if c.expected == "target-not-loaded")
+    assert pi_gate.case_passes(case, codes) is good
