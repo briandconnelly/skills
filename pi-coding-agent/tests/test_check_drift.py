@@ -238,3 +238,40 @@ def test_live_gate_stage_reports_a_failing_fixture(tmp_path):
         shutil.copy(negative / name, fixtures / name)
     failures = check_drift.check_gate(tmp_path / "skill", install)
     assert any("load-error" in failure for failure in failures)
+
+
+# Codex checkpoint 2 findings (job 423f2a2d), each pinned before its fix
+
+
+def test_gate_stage_fails_with_no_positive_fixtures(tmp_path, capsys):
+    install = _live()
+    (tmp_path / "skill").mkdir()
+    assert check_drift._stage_gate(tmp_path / "skill", install) is False
+    assert "no positive fixtures" in capsys.readouterr().out
+
+
+def test_dependency_stage_fails_when_nothing_is_checked(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(check_drift.pi_gate, "GATE_DEPENDENCIES", {})
+    install = SimpleNamespace(root=tmp_path, version="0.99.1")
+    assert check_drift._stage_dependencies(install, "") is False
+    assert "nothing was checked" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("recorded", "changelog", "ok"),
+    [
+        ("0.87.1", "## [0.99.1] - x\n- new\n\n## [0.87.1] - x\n- old\n", True),
+        ("0.87.1", None, False),
+        ("0.87.1", "no version headings here\n", False),
+        ("0.99.1", None, True),
+    ],
+)
+def test_changelog_stage_fails_without_a_reviewable_delta(tmp_path, recorded, changelog, ok):
+    skill = tmp_path / "skill"
+    skill.mkdir()
+    (skill / "verified-against").write_text(f"{recorded}\n")
+    path = tmp_path / "CHANGELOG.md"
+    if changelog is not None:
+        path.write_text(changelog)
+    install = SimpleNamespace(version="0.99.1", changelog=path)
+    assert check_drift._stage_changelog(skill, install) is ok

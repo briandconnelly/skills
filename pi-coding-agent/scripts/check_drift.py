@@ -262,6 +262,9 @@ def _stage_citations(skill_dir: Path, install: Any) -> bool:
 
 def _stage_dependencies(install: Any, help_text: str) -> bool:
     checked, problems = check_dependencies(install.root, install.version, help_text)
+    if checked == 0:
+        print("FAIL dependencies: GATE_DEPENDENCIES lists nothing; nothing was checked")
+        return False
     for problem in problems:
         print(f"FAIL dependency {problem.citation}: {problem.reason}")
     status = "FAIL" if problems else "PASS"
@@ -273,6 +276,9 @@ def _stage_dependencies(install: Any, help_text: str) -> bool:
 
 
 def _stage_gate(skill_dir: Path, install: Any) -> bool:
+    if not fixture_gates(skill_dir):
+        print(f"FAIL gate: no positive fixtures under {skill_dir}/tests/fixtures/gate")
+        return False
     failures = check_gate(skill_dir, install)
     for failure in failures:
         print(f"FAIL gate {failure}")
@@ -285,19 +291,28 @@ def _stage_gate(skill_dir: Path, install: Any) -> bool:
     return not failures
 
 
-def _stage_changelog(skill_dir: Path, install: Any) -> None:
+def _stage_changelog(skill_dir: Path, install: Any) -> bool:
+    """Print the delta for review; fail when versions differ and there is no delta to review."""
     recorded = pi_docs.verified_against(skill_dir)
     if recorded is None:
         print("REVIEW changelog: verified-against is unrecorded; review CHANGELOG.md in full")
-    elif recorded == install.version:
+        return True
+    if recorded == install.version:
         print(f"REVIEW changelog: installed Pi {install.version} is the verified version")
-    else:
-        lines = changelog_delta(install, recorded)
+        return True
+    lines = changelog_delta(install, recorded)
+    if not lines:
         print(
-            f"REVIEW changelog: {recorded} -> {install.version}, {len(lines)} lines; "
-            "look for new surfaces and changed contracts (MAINTAINING.md)"
+            f"FAIL changelog: no CHANGELOG.md entries found between {recorded} and "
+            f"{install.version} at {install.changelog}; the delta cannot be reviewed"
         )
-        print("\n".join(lines))
+        return False
+    print(
+        f"REVIEW changelog: {recorded} -> {install.version}, {len(lines)} lines; "
+        "look for new surfaces and changed contracts (MAINTAINING.md)"
+    )
+    print("\n".join(lines))
+    return True
 
 
 def pi_help_from(path_env: str | None) -> str:
@@ -336,7 +351,7 @@ def main(
     if "gate" in stages:
         ok = _stage_gate(args.skill_dir, install) and ok
     if "changelog" in stages:
-        _stage_changelog(args.skill_dir, install)
+        ok = _stage_changelog(args.skill_dir, install) and ok
     skipped = [stage for stage in STAGES if stage not in stages]
     if skipped:
         print(f"NOT RUN: {', '.join(skipped)} (--stages); do not bump verified-against")

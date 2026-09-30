@@ -7,7 +7,7 @@ This file is the only home of the procedure for updating the skill to a new Pi r
 
 1. Install the new Pi release and run `uv run pi-coding-agent/scripts/check_drift.py` from the repository root.
    It checks, in order: every `docs/<page>.md#<section>` citation in `SKILL.md`, this file, and `references/`; every Pi interface listed in `GATE_DEPENDENCIES` in `scripts/pi_gate.py`; `pi_gate.py --self-test` and every fixture under `tests/fixtures/gate/` outside `negative/`.
-   It then prints the `CHANGELOG.md` entries between `verified-against` and the installed version.
+   It then prints the `CHANGELOG.md` entries between `verified-against` and the installed version, and fails if it finds none to review.
 2. Fix every failure it reports.
    A moved section is fixed by citing its new anchor; a changed gate dependency is fixed in `pi_gate.py` or `faux-harness.ts`, with `GATE_DEPENDENCIES` updated to match; a fixture copied from Pi (the themes under `tests/fixtures/gate/`) is re-copied from the new release.
 3. Read the changelog delta for new extension surfaces and for changed contracts the gate or the fixtures rely on; add a fixture and a `references/gate-recipes.md` entry for each new surface.
