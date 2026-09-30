@@ -1,0 +1,9 @@
+{
+  "kind": "extension",
+  "expect": { "tools": [{ "name": "hello", "exposure": "direct" }] },
+  "tier2": {
+    "prompts": ["greet gate"],
+    "steps": [{ "toolCall": { "name": "hello", "arguments": { "name": "gate" } } }, { "text": "done" }],
+    "expect": { "toolResults": [{ "toolName": "hello", "isError": false, "contains": "Hello, gate!" }] }
+  }
+}

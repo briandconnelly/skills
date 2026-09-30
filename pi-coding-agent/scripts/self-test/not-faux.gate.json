@@ -1,0 +1,5 @@
+{
+  "kind": "extension",
+  "expect": { "models": ["not-faux/m"] },
+  "tier2": { "model": "not-faux/m", "prompts": ["hello"] }
+}

@@ -288,3 +288,69 @@ def test_report_names_what_static_checks_could_not_check(tmp_path, artifact, unc
 )
 def test_static_negative_fixture_fails_with_its_reason(tmp_path, artifact, code):
     assert code in _fails(_run(tmp_path, artifact))
+
+
+# Self-test and review-focus inputs
+
+
+def test_self_test_passes_and_covers_every_control(tmp_path):
+    install = _install()
+    ok, lines = pi_gate.self_test(install, tmp_path)
+    assert ok, lines
+    assert len(lines) == len(pi_gate.SELF_TEST_CASES)
+    assert {case.expected for case in pi_gate.SELF_TEST_CASES} == {
+        None,
+        "tool-result",
+        "missing-resource",
+        "empty-gate",
+        "target-not-loaded",
+        "wrong-provider",
+    }
+
+
+POSITIVE_REVIEW = [
+    ("review/dialog.ts", {"event message_end"}),
+    ("review/dir-ext", {"tool word_count"}),
+]
+
+
+@pytest.mark.parametrize(("artifact", "must_pass"), POSITIVE_REVIEW)
+def test_review_fixture_passes(tmp_path, artifact, must_pass):
+    checks = _run(tmp_path, artifact)
+    assert _fails(checks) == [], [c for c in checks if c.status == "FAIL"]
+    assert must_pass <= {check.name for check in checks if check.status == "PASS"}
+
+
+def test_dialog_is_answered_and_reported_unchecked(tmp_path):
+    assert "dialog confirm" in _unchecked(_run(tmp_path, "review/dialog.ts"))
+
+
+def test_symlinked_path_with_a_space_keeps_provenance(tmp_path):
+    install = _install()
+    real_dir = tmp_path / "with space"
+    real_dir.mkdir()
+    for name in ("word-count.ts", "word-count.gate.json"):
+        shutil.copy(GATE_FIXTURES / "tool" / name, real_dir / name)
+    link = tmp_path / "link"
+    link.symlink_to(real_dir)
+    artifact = link / "word-count.ts"
+    checks = pi_gate.gate(
+        artifact,
+        pi_gate.default_gate_path(artifact),
+        install,
+        pi_gate.GateOptions(tmp_path / "real"),
+    )
+    assert _fails(checks) == []
+
+
+POSITIVE = POSITIVE_RPC + POSITIVE_STATIC + POSITIVE_REVIEW
+
+
+def test_every_positive_fixture_is_listed_once():
+    """check_drift.py runs every gate file outside negative/; keep these lists in step with it."""
+    found = {
+        pi_gate.artifact_for_gate(gate).relative_to(GATE_FIXTURES).as_posix()
+        for gate in GATE_FIXTURES.rglob("*gate.json")
+        if "negative" not in gate.relative_to(GATE_FIXTURES).parts
+    }
+    assert found == {artifact for artifact, _ in POSITIVE}

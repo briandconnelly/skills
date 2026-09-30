@@ -1004,6 +1004,54 @@ def _run_checks(data: dict[str, Any], ws: Workspace, run: Staged) -> list[Check]
     return checks
 
 
+# Self-test (R3.12)
+
+
+@dataclass(frozen=True)
+class SelfTestCase:
+    name: str
+    artifact: str  # relative to self-test/, or "<hello>" for Pi's bundled hello.ts
+    gate: str
+    expected: str | None  # the failure code a negative case must produce; None must pass
+    approve: bool = True
+
+
+SELF_TEST_CASES = (
+    SelfTestCase("bundled hello.ts passes", "<hello>", "hello.gate.json", None),
+    SelfTestCase("tool whose execute() throws", "throws.ts", "throws.gate.json", "tool-result"),
+    SelfTestCase("misspelled tool name", "<hello>", "misspelled.gate.json", "missing-resource"),
+    SelfTestCase("empty gate.json", "<hello>", "empty.gate.json", "empty-gate"),
+    SelfTestCase("target not loaded", "inert.ts", "inert.gate.json", "target-not-loaded"),
+    SelfTestCase(
+        "project artifact without --approve",
+        "project/.pi/prompts/trust-probe.md",
+        "trust-probe.gate.json",
+        "missing-resource",
+        approve=False,
+    ),
+    SelfTestCase(
+        "faux provider not answering", "not-faux.ts", "not-faux.gate.json", "wrong-provider"
+    ),
+)
+
+
+def self_test(install: Any, real_agent_dir: Path) -> tuple[bool, list[str]]:
+    lines: list[str] = []
+    ok = True
+    hello = install.root / "examples" / "extensions" / "hello.ts"
+    for case in SELF_TEST_CASES:
+        artifact = hello if case.artifact == "<hello>" else SELF_TEST_DIR / case.artifact
+        options = GateOptions(real_agent_dir, approve=case.approve)
+        checks = gate(artifact, SELF_TEST_DIR / case.gate, install, options)
+        codes = sorted({check.code for check in checks if check.status == "FAIL"})
+        good = not codes if case.expected is None else case.expected in codes
+        ok = ok and good
+        want = "pass" if case.expected is None else f"fail with {case.expected}"
+        status = "PASS" if good else "FAIL"
+        lines.append(f"{status} self-test {case.name}: must {want}; got {codes or 'pass'}")
+    return ok, lines
+
+
 # Report and CLI
 
 
@@ -1037,16 +1085,24 @@ def _find_install() -> Any:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pi-gate", description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("artifact", type=Path)
+    parser.add_argument("artifact", nargs="?", type=Path)
     parser.add_argument("--gate", type=Path, help="gate file (default: next to the artifact)")
     parser.add_argument("--tier", type=int, choices=(TIER_1, TIER_2))
+    parser.add_argument("--self-test", action="store_true", help="run the gate's own controls")
     parser.add_argument("--json", action="store_true", help="print the checks as JSON")
     default_real = Path(os.environ.get("PI_CODING_AGENT_DIR") or Path.home() / ".pi" / "agent")
     parser.add_argument("--real-agent-dir", type=Path, default=default_real, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if not args.self_test and args.artifact is None:
+        parser.error("give an artifact path or --self-test")
     install = _find_install()
     if install is None:
         return EXIT_NO_INSTALL
+    if args.self_test:
+        ok, lines = self_test(install, args.real_agent_dir)
+        print("\n".join(lines))
+        print(f"RESULT    self-test {'PASS' if ok else 'FAIL'} (Pi {install.version})")
+        return EXIT_PASS if ok else EXIT_FAIL
     gate_path = args.gate or default_gate_path(args.artifact)
     checks = gate(args.artifact, gate_path, install, GateOptions(args.real_agent_dir, args.tier))
     ok, lines = report(args.artifact, install.version, checks)
