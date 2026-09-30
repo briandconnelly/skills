@@ -13,6 +13,8 @@ Result: PASS
 
 Finding against the skill: the virtual-model recipe and fixture use the provider id `llama-cpp`; the agent found Pi's built-in llama.cpp provider id is `llama.cpp` and corrected it in its own gate file.
 
+Note added after the final review: criterion (d) was scored from the gate being the only runner. The review later showed the gate itself could reach a real provider when `tier2.model` named an undeclared real model (fixed in the same branch). In this run every model the router reached was a faux stand-in declared in `tier2.providers`, so no real call was made.
+
 ## Transcript (the agent's final report, verbatim)
 
 ## Answer

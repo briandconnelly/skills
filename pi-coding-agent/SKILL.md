@@ -30,6 +30,7 @@ This skill finds them, covers the two choices they leave unmade, and proves what
 1. Choose the surface with Pi's own chooser, docs/quickstart.md#choose-how-to-customize-pi, and, where it is silent, `references/choosing-a-surface.md`.
 2. Read the installed contract page for that surface and the nearest bundled example (`pi_docs.py grep <term>` searches `examples/` headers).
 3. Write the artifact's `gate.json` next to it before calling the work done; copy the shape for its surface from `references/gate-recipes.md`.
+   The gate checks the kinds listed there; a change that is only a configuration file (a context file such as `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `settings.json`, `models.json`) has no gate, so name it to the user as unchecked instead of running the gate on it.
 4. Run `uv run <skill-dir>/scripts/pi_gate.py --self-test` once per session; a gate result counts only after a passing self-test in the same session.
 5. Run `uv run <skill-dir>/scripts/pi_gate.py <artifact>` and show the user the full report.
 6. Report the work as verified only for the checks the report lists as PASS.
@@ -41,7 +42,7 @@ If a check fails, fix the artifact or its `gate.json` and rerun the gate; do not
 
 ## What the gate does
 
-`pi_gate.py` runs Pi with discovery off, a throwaway agent directory, and no network access for Pi itself.
+`pi_gate.py` runs Pi with discovery off, a throwaway agent directory, credentials removed from its environment, and every HTTP request routed to a dead proxy, so no real model is called.
 It loads the artifact, then a harness that registers a scripted faux model, and runs a one-step turn (Tier 1) and the turns scripted in `gate.json` (Tier 2).
 It lists every check as PASS, FAIL (with a named reason), or UNCHECKED, and fails if anything under the real `~/.pi/agent` changed during the run.
 

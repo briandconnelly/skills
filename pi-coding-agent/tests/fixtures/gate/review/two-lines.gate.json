@@ -1,0 +1,9 @@
+{
+  "kind": "extension",
+  "expect": { "tools": ["two_lines"] },
+  "tier2": {
+    "prompts": ["two lines"],
+    "steps": [{ "toolCall": { "name": "two_lines", "arguments": {} } }, { "text": "done" }],
+    "expect": { "toolResults": [{ "toolName": "two_lines", "isError": false, "contains": "first \"line\"\nsecond line, café" }] }
+  }
+}

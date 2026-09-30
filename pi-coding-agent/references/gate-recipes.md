@@ -12,7 +12,8 @@ Put the file next to the artifact: `<name>.gate.json` beside a file, or `gate.js
 - `tier2.steps`: the faux model's scripted replies, each a `text` or a `toolCall`, optionally with `provider` and `expectTranscript` (text that must be in the transcript the model receives).
 - `tier2.model` and `tier2.providers`: select a model, and add faux providers that stand in for physical ones.
 - `tier2.assistantModels`: the `provider/model` that must answer each turn (default: the gate's own faux model).
-- `tier2.expect`: `toolResults` (`toolName`, `isError`, `contains`) and `events` (each an object that some RPC record must contain).
+- `tier2.expect`: `toolResults` (`toolName`, `isError`, `contains`, matched against the result's text) and `events` (each an object that some RPC record must contain).
+- `tier2.model` must be a faux model or appear in `expect.models`; the gate refuses to select any other model, and every HTTP request Pi makes during a gate run goes to a dead proxy.
 - Tier 2 fails when it runs no model turn and declares no `toolResults` or `events`, and when a tool fails without a `toolResults` entry that expects `isError: true`.
 
 ## Extension tool
@@ -265,7 +266,7 @@ Fixture: `tests/fixtures/gate/virtual-model/router.gate.json`
   "tier2": {
     "providers": [
       {
-        "provider": "llama-cpp",
+        "provider": "llama.cpp",
         "models": [
           "qwen"
         ]
@@ -284,7 +285,7 @@ Fixture: `tests/fixtures/gate/virtual-model/router.gate.json`
     ],
     "steps": [
       {
-        "provider": "llama-cpp",
+        "provider": "llama.cpp",
         "text": "short answer"
       },
       {
@@ -293,7 +294,7 @@ Fixture: `tests/fixtures/gate/virtual-model/router.gate.json`
       }
     ],
     "assistantModels": [
-      "llama-cpp/qwen",
+      "llama.cpp/qwen",
       "anthropic/claude-sonnet-4-5"
     ]
   }

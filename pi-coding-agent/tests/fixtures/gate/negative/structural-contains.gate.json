@@ -1,0 +1,9 @@
+{
+  "kind": "extension",
+  "expect": { "tools": ["word_count"] },
+  "tier2": {
+    "prompts": ["count"],
+    "steps": [{ "toolCall": { "name": "word_count", "arguments": { "text": "one two" } } }, { "text": "done" }],
+    "expect": { "toolResults": [{ "toolName": "word_count", "isError": false, "contains": "\"type\"" }] }
+  }
+}

@@ -63,6 +63,12 @@ DIALOG_METHODS = ("select", "confirm", "input", "editor")
 THEME_SCHEMA = Path("dist/modes/interactive/theme/theme-schema.json")
 EXTENSION_FLAGS_HEADING = "Extension CLI Flags:"
 DEFAULT_TIMEOUT = 60.0
+# Pi honours HTTP(S)_PROXY for its model requests; a dead proxy makes any provider call fail
+# at once, whatever credentials the environment or the user's files hold.
+DEAD_PROXY = "http://127.0.0.1:9"
+CREDENTIAL_SUFFIXES = ("_API_KEY", "_TOKEN")
+CREDENTIAL_PREFIXES = ("PI_", "AWS_", "CLOUDSDK_", "GOOGLE_APPLICATION_")
+PROXY_NAMES = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY")
 TIER_1, TIER_2 = 1, 2
 # expect keys whose resources carry no provenance, so they cannot show the target loaded
 PROVENANCE_FREE = frozenset({"unobservable", "flags", "themes", "models"})
@@ -273,27 +279,51 @@ class Workspace:
     work: Path
     spec: Path
     inventory: Path
+    pi: tuple[str, ...]  # how to launch the Pi being gated
 
     @classmethod
-    def create(cls, root: Path) -> Workspace:
+    def create(cls, root: Path, pi: tuple[str, ...] = ("pi",)) -> Workspace:
         agent, work = root / "agent", root / "work"
         agent.mkdir()
         work.mkdir()
-        return cls(root, agent, work, root / "harness-spec.json", root / "inventory.json")
+        return cls(root, agent, work, root / "harness-spec.json", root / "inventory.json", pi)
+
+
+def pi_command(root: Path) -> tuple[str, ...]:
+    """The installed package's own `pi` entry point, so a project-local install works too."""
+    bin_field = json.loads((root / "package.json").read_text(encoding="utf-8")).get("bin")
+    entry = bin_field.get("pi") if isinstance(bin_field, dict) else bin_field
+    return (str(root / entry),) if isinstance(entry, str) else ("pi",)
+
+
+def _credential_or_proxy(key: str) -> bool:
+    upper = key.upper()
+    return (
+        upper.endswith(CREDENTIAL_SUFFIXES)
+        or upper.startswith(CREDENTIAL_PREFIXES)
+        or upper in PROXY_NAMES
+    )
 
 
 def gate_env(workspace: Workspace) -> dict[str, str]:
-    """The caller's environment minus Pi settings and provider API keys, plus isolation."""
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith("PI_") and not key.endswith("_API_KEY")
-    }
+    """The caller's environment minus Pi settings, credentials, and proxies, plus isolation.
+
+    Every HTTP(S) request Pi makes goes to a dead proxy, so a model request that is not
+    answered by a faux provider fails instead of reaching (and billing) a real provider.
+    """
+    env = {key: value for key, value in os.environ.items() if not _credential_or_proxy(key)}
     env.update(
         PI_CODING_AGENT_DIR=str(workspace.agent),
         PI_OFFLINE="1",
         PI_SKIP_VERSION_CHECK="1",
         PI_GATE_SPEC=str(workspace.spec),
+        HTTP_PROXY=DEAD_PROXY,
+        HTTPS_PROXY=DEAD_PROXY,
+        http_proxy=DEAD_PROXY,
+        https_proxy=DEAD_PROXY,
+        AWS_SHARED_CREDENTIALS_FILE=str(workspace.root / "aws-credentials"),
+        AWS_CONFIG_FILE=str(workspace.root / "aws-config"),
+        CLOUDSDK_CONFIG=str(workspace.root / "gcloud"),
     )
     return env
 
@@ -376,10 +406,10 @@ def matches(pattern: Any, value: Any) -> bool:
 class RpcSession:
     """A `pi --mode rpc` child: JSONL on stdin/stdout, split on LF only (docs/rpc.md)."""
 
-    def __init__(self, args: list[str], env: dict[str, str], cwd: Path, stderr: Path) -> None:
+    def __init__(self, command: list[str], env: dict[str, str], cwd: Path, stderr: Path) -> None:
         self._stderr = stderr.open("wb")
         self.proc = subprocess.Popen(
-            ["pi", "--mode", "rpc", *args],
+            command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=self._stderr,
@@ -476,6 +506,7 @@ class Observation:
     inventory: dict[str, Any] | None = None
     tier2_inventory: dict[str, Any] | None = None
     set_model_error: str | None = None
+    unscripted_model: str | None = None
     prompt_errors: list[str] = field(default_factory=list)
     load_error: str | None = None
     timed_out: bool = False
@@ -491,8 +522,13 @@ def _inventory(session: RpcSession, workspace: Workspace) -> dict[str, Any] | No
     return _read_json(workspace.inventory)
 
 
-def _run_tier2(session: RpcSession, tier2: dict[str, Any], obs: Observation, ws: Workspace) -> None:
+def _run_tier2(session: RpcSession, data: dict[str, Any], obs: Observation, ws: Workspace) -> None:
+    tier2 = data["tier2"]
     obs.tier2_start = len(session.records)
+    declared = set(_names((data.get("expect") or {}).get("models", [])))
+    if tier2.get("model") and tier2["model"] not in _harness_models(data) | declared:
+        obs.unscripted_model = tier2["model"]
+        return
     if tier2.get("model"):
         provider, _, model_id = tier2["model"].partition("/")
         response = session.request({"type": "set_model", "provider": provider, "modelId": model_id})
@@ -513,7 +549,7 @@ def observe(
     ws.spec.write_text(json.dumps(harness_spec(data, ws)), encoding="utf-8")
     stderr = ws.root / "pi-stderr.txt"
     full = [*args, "-e", str(HARNESS), "--provider", FAUX_PROVIDER, "--model", FAUX_MODEL]
-    session = RpcSession(full, gate_env(ws), cwd, stderr)
+    session = RpcSession([*ws.pi, "--mode", "rpc", *full], gate_env(ws), cwd, stderr)
     obs = Observation()
     try:
         if session.request({"type": "set_auto_retry", "enabled": False}) is not None:
@@ -524,7 +560,7 @@ def observe(
             obs.commands = (commands.get("data") or {}).get("commands", [])
             obs.models = (models.get("data") or {}).get("models", [])
             if tier == TIER_2 and data.get("tier2"):
-                _run_tier2(session, data["tier2"], obs, ws)
+                _run_tier2(session, data, obs, ws)
     except TimeoutError:
         obs.timed_out = True
     code = session.close()
@@ -739,6 +775,15 @@ def _model_sequence_checks(data: dict[str, Any], records: list[dict[str, Any]]) 
     return checks
 
 
+def _result_text(result: Any) -> str:
+    """The tool result's text parts, as the model sees them; JSON only for non-text results."""
+    content = result.get("content") if isinstance(result, dict) else None
+    parts = [
+        c.get("text", "") for c in content or [] if isinstance(c, dict) and c.get("type") == "text"
+    ]
+    return "\n".join(parts) if parts else json.dumps(result, ensure_ascii=False)
+
+
 def _tool_result_checks(
     expected: list[dict[str, Any]], records: list[dict[str, Any]]
 ) -> list[Check]:
@@ -752,7 +797,7 @@ def _tool_result_checks(
             checks.append(failed("2", "tool-result", f"no unmatched tool_execution_end for {name}"))
             continue
         ends.remove(end)
-        text = json.dumps(end.get("result"))
+        text = _result_text(end.get("result"))
         want_error = entry.get("isError", False)
         if end.get("isError") != want_error:
             detail = (
@@ -813,6 +858,12 @@ def _script_checks(tier2: dict[str, Any], inventory: dict[str, Any]) -> list[Che
 def tier2_checks(data: dict[str, Any], obs: Observation) -> list[Check]:
     if obs.load_error or obs.tier2_start is None:
         return []
+    if obs.unscripted_model:
+        detail = (
+            f"tier2.model {obs.unscripted_model} is neither a faux model (tier2.providers) nor "
+            "declared in expect.models; the gate does not select a model it cannot account for"
+        )
+        return [failed("2", "unscripted-model", detail)]
     if obs.set_model_error:
         return [failed("2", "set-model", f"could not select {obs.set_model_error}")]
     if obs.timed_out or obs.tier2_inventory is None:
@@ -872,16 +923,19 @@ def unchecked_items(data: dict[str, Any], tier: int) -> list[Check]:
 
 
 def flag_checks(expected: list[str], args: list[str], ws: Workspace, cwd: Path) -> list[Check]:
-    result = subprocess.run(
-        ["pi", *args, "--help"],
-        env=gate_env(ws),
-        cwd=cwd,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        timeout=DEFAULT_TIMEOUT,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [*ws.pi, *args, "--help"],
+            env=gate_env(ws),
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=DEFAULT_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return [failed("1", "timeout", "pi --help did not finish in time")]
     _, _, section = result.stdout.partition(EXTENSION_FLAGS_HEADING)
     listed = set(re.findall(r"^\s+--([\w-]+)", section, flags=re.MULTILINE))
     return [
@@ -942,16 +996,19 @@ def mcp_config_checks(expected: list[str], target: Path, ws: Workspace) -> list[
         if isinstance(server, dict):
             server["enabled"] = False
     (ws.agent / "mcp.json").write_text(json.dumps(config), encoding="utf-8")
-    result = subprocess.run(
-        ["pi", "mcp", "list", "--json"],
-        env=gate_env(ws),
-        cwd=ws.work,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        timeout=DEFAULT_TIMEOUT,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [*ws.pi, "mcp", "list", "--json"],
+            env=gate_env(ws),
+            cwd=ws.work,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=DEFAULT_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return [failed("1", "timeout", "pi mcp list did not finish in time")]
     try:
         listing = json.loads(result.stdout)
     except json.JSONDecodeError:
@@ -995,13 +1052,16 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
     tier = options.tier or (TIER_2 if data.get("tier2") else TIER_1)
     before = snapshot(options.real_agent_dir)
     with tempfile.TemporaryDirectory(prefix="pi-gate-") as tmp:
-        ws = Workspace.create(Path(tmp))
+        ws = Workspace.create(Path(tmp), pi_command(install.root))
         try:
             loaded, cwd = stage(artifact.resolve(), data.get("scope", "temporary"), ws)
         except GateError as error:
             return [failed("-", error.code, str(error))]
         run = Staged(loaded, cwd, tier, options.approve, install.root)
         checks = _run_checks(data, ws, run)
+    if not any(check.status in ("PASS", "FAIL") for check in checks):
+        detail = f"no check ran: gate.json's expect declares nothing a {data['kind']} gate checks"
+        checks.append(failed("-", "nothing-checked", detail))
     changes = snapshot_diff(before, snapshot(options.real_agent_dir))
     checks += [
         failed("-", "agent-dir-changed", f"{options.real_agent_dir}/{change}") for change in changes
@@ -1019,7 +1079,7 @@ def _run_checks(data: dict[str, Any], ws: Workspace, run: Staged) -> list[Check]
     args = pi_args(data, run.loaded, approve=run.approve)
     obs = observe(data, args, ws, run.cwd, tier=run.tier)
     checks = tier1_checks(data, obs, run.loaded) + tier2_checks(data, obs)
-    if expect.get("flags") and not obs.load_error:
+    if expect.get("flags") and not obs.load_error and not obs.timed_out:
         checks += flag_checks(_names(expect["flags"]), args, ws, run.cwd)
     if expect.get("themes"):
         checks += theme_checks(_names(expect["themes"]), run.loaded, run.install_root)

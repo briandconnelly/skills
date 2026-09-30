@@ -51,10 +51,12 @@ Pinned by: `test_dialog_is_answered_and_reported_unchecked`.
 
 ## Environment
 
-The gate removes every `PI_*` variable and every variable ending in `_API_KEY` from the environment it gives Pi, then sets the isolation variables (R3.1 named only the variables it sets).
-A scripted Tier 2 that selected a real provider by mistake therefore finds no key instead of billing the user.
-The artifact's own code still runs with the user's other environment variables and permissions (R3.14).
-Pinned by: `test_gate_env_strips_pi_settings_and_provider_keys`.
+The first version removed only `PI_*` and `*_API_KEY` variables.
+The final review (fresh reviewer, 2026-09-29) showed that was not enough: with `ANTHROPIC_OAUTH_TOKEN` exported and `tier2.model` set to `anthropic/claude-sonnet-4-5`, the request reached Anthropic (a fake token earned a 401), because `PI_OFFLINE` stops only automatic network activity, not model requests.
+The gate now removes every `PI_*`, `AWS_*`, `CLOUDSDK_*`, and `GOOGLE_APPLICATION_*` variable, every variable ending in `_API_KEY` or `_TOKEN`, and every proxy variable; points the AWS and gcloud credential files into the throwaway workspace; and sets `HTTP_PROXY`/`HTTPS_PROXY` to a dead local port, which Pi honours for model requests (the same run then fails with "Connection error").
+It also refuses a `tier2.model` that is neither a faux model nor declared in `expect.models` (`unscripted-model`).
+The artifact's own code still runs with the user's other environment variables and file permissions (R3.14), and its own HTTP requests also meet the dead proxy.
+Pinned by: `test_gate_env_blocks_every_route_to_a_paid_provider` and `test_a_real_provider_is_never_reached`.
 
 ## "Target not loaded" control
 
@@ -67,3 +69,9 @@ Pinned by: the `target not loaded` self-test control.
 Found by the first cross-model review (Codex via amicus, job 216e3992, 2026-09-29): a Tier 2 with no model turn and no declared expectation passed on nothing, a rejected prompt was ignored, and a tool error passed silently when `gate.json` declared no tool result.
 The gate now fails a Tier 2 that runs no model turn and declares no `toolResults` or `events` (`tier2-empty`), fails a prompt Pi rejects (`prompt-rejected`), matches each `toolResults` entry to a distinct result in order, and fails any tool error no entry expects.
 Pinned by: `test_checkpoint_1_negative_fails_with_its_reason`, `test_rejected_prompt_fails`, and `test_no_model_turn_is_not_reported_as_a_pass`.
+
+## Pi is launched from the install it reports
+
+`pi_docs.find_installs` accepts a project-local install, but the first version ran whatever `pi` was on `PATH`, which crashed when there was none (final review).
+The gate now launches the `bin` entry of the install it reports, so the version in the report is the version that ran.
+Pinned by: `test_a_project_local_install_without_pi_on_path_is_gated`.

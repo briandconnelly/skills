@@ -313,6 +313,7 @@ def test_self_test_passes_and_covers_every_control(tmp_path):
 POSITIVE_REVIEW = [
     ("review/dialog.ts", {"event message_end"}),
     ("review/dir-ext", {"tool word_count"}),
+    ("review/two-lines.ts", {"tool result two_lines"}),
 ]
 
 
@@ -411,3 +412,74 @@ def test_unattributed_models_do_not_show_the_target_loaded(tmp_path):
 def test_self_test_control_rejects_unrelated_failures(codes, good):
     case = next(c for c in pi_gate.SELF_TEST_CASES if c.expected == "target-not-loaded")
     assert pi_gate.case_passes(case, codes) is good
+
+
+# Final review findings (fresh reviewer and Codex job 4402bbb7), each pinned before its fix
+
+
+def test_gate_env_blocks_every_route_to_a_paid_provider(tmp_path, monkeypatch):
+    for name in ("ANTHROPIC_OAUTH_TOKEN", "AWS_ACCESS_KEY_ID", "GOOGLE_APPLICATION_CREDENTIALS"):
+        monkeypatch.setenv(name, "secret")
+    monkeypatch.setenv("NO_PROXY", "*")
+    (tmp_path / "ws").mkdir()
+    ws = pi_gate.Workspace.create(tmp_path / "ws")
+    env = pi_gate.gate_env(ws)
+    assert not {
+        "ANTHROPIC_OAUTH_TOKEN",
+        "AWS_ACCESS_KEY_ID",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+    } & set(env)
+    assert "NO_PROXY" not in env
+    assert env["HTTPS_PROXY"] == env["HTTP_PROXY"] == pi_gate.DEAD_PROXY
+    assert env["AWS_SHARED_CREDENTIALS_FILE"].startswith(str(ws.root))
+
+
+@pytest.mark.parametrize(
+    ("gate", "code"),
+    [
+        ("negative/unscripted-model.gate.json", "unscripted-model"),
+        ("negative/declared-real-model.gate.json", None),
+    ],
+)
+def test_a_real_provider_is_never_reached(tmp_path, monkeypatch, gate, code):
+    monkeypatch.setenv("ANTHROPIC_OAUTH_TOKEN", "sk-ant-oat-fake-gate-test")
+    checks = _run(tmp_path, "tool/word-count.ts", gate)
+    details = " ".join(check.detail for check in checks)
+    assert "401" not in details
+    assert "authentication_error" not in details
+    assert _fails(checks)
+    if code:
+        assert code in _fails(checks)
+
+
+def test_structural_json_text_does_not_satisfy_contains(tmp_path):
+    codes = _fails(_run(tmp_path, "tool/word-count.ts", "negative/structural-contains.gate.json"))
+    assert "tool-result" in codes
+
+
+def test_a_gate_that_checks_nothing_fails(tmp_path):
+    codes = _fails(_run(tmp_path, "theme/gate-theme.json", "negative/theme-no-themes.gate.json"))
+    assert "nothing-checked" in codes
+
+
+def test_a_hanging_extension_times_out_with_a_report(tmp_path, monkeypatch):
+    monkeypatch.setattr(pi_gate, "DEFAULT_TIMEOUT", 3.0)
+    assert "timeout" in _fails(_run(tmp_path, "negative/hang.ts"))
+
+
+def test_a_project_local_install_without_pi_on_path_is_gated(tmp_path, monkeypatch, capsys):
+    install = _install()
+    project = tmp_path / "project"
+    local = project / "node_modules" / "@earendil-works"
+    local.mkdir(parents=True)
+    (local / "pi-coding-agent").symlink_to(install.root)
+    node_only = tmp_path / "bin"
+    node_only.mkdir()
+    node = shutil.which("node")
+    assert node is not None
+    (node_only / "node").symlink_to(node)
+    monkeypatch.setenv("PATH", str(node_only))
+    monkeypatch.chdir(project)
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    code = pi_gate.main([str(artifact), "--real-agent-dir", str(tmp_path / "real")])
+    assert code == pi_gate.EXIT_PASS, capsys.readouterr().out

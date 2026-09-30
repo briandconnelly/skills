@@ -10,7 +10,7 @@ export default function (pi: ExtensionAPI) {
 		name: "Auto",
 		route(request, ctx) {
 			const last = JSON.stringify(request.messages.at(-1) ?? "");
-			const [provider, id] = last.length < SHORT ? ["llama-cpp", "qwen"] : ["anthropic", "claude-sonnet-4-5"];
+			const [provider, id] = last.length < SHORT ? ["llama.cpp", "qwen"] : ["anthropic", "claude-sonnet-4-5"];
 			const model = ctx.modelRegistry.find(provider, id);
 			if (!model) throw new Error(`physical model ${provider}/${id} is not available`);
 			return { model, thinkingLevel: "off" };
