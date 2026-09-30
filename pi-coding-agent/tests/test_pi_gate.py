@@ -35,6 +35,24 @@ def _gate_file(tmp_path, body):
         ('{"kind": "extension", "tier2": ["hi"]}', "bad-gate"),
         ('{"kind": "extension", "tier2": {"prompts": [null]}}', "bad-gate"),
         ('{"kind": "extension", "tier2": {"prompts": "hi"}}', "bad-gate"),
+        (
+            '{"kind": "extension", "expect": {"tools": ["t"]}, "teir2": {"prompts": ["hi"]}}',
+            "bad-gate",
+        ),
+        ('{"kind": "extension", "expect": {"tools": true}}', "bad-gate"),
+        ('{"kind": "extension", "expect": {"tools": [1]}}', "bad-gate"),
+        ('{"kind": "extension", "tier2": {"prompts": ["hi"], "stpes": []}}', "bad-gate"),
+        (
+            '{"kind": "extension", "tier2": {"prompts": ["hi"], "steps": [{"txt": "a"}]}}',
+            "bad-gate",
+        ),
+        ('{"kind": "extension", "tier2": {"prompts": ["hi"], "steps": ["a"]}}', "bad-gate"),
+        ('{"kind": "extension", "tier2": {"prompts": ["hi"], "expect": {"tool": []}}}', "bad-gate"),
+        ('{"kind": "extension", "tier2": {"prompts": ["hi"], "model": 3}}', "bad-gate"),
+        (
+            '{"kind": "extension", "tier2": {"prompts": ["hi"], "providers": [{"provider": "p"}]}}',
+            "bad-gate",
+        ),
         ("[1]", "bad-gate"),
         ("{not json", "bad-gate"),
     ],
@@ -483,3 +501,12 @@ def test_a_project_local_install_without_pi_on_path_is_gated(tmp_path, monkeypat
     artifact = GATE_FIXTURES / "tool" / "word-count.ts"
     code = pi_gate.main([str(artifact), "--real-agent-dir", str(tmp_path / "real")])
     assert code == pi_gate.EXIT_PASS, capsys.readouterr().out
+
+
+def test_every_gate_fixture_and_recipe_passes_strict_validation():
+    for gate in list(GATE_FIXTURES.rglob("*gate.json")) + list(
+        pi_gate.SELF_TEST_DIR.glob("*gate.json")
+    ):
+        if gate.name in {"empty.gate.json"}:
+            continue
+        pi_gate.load_gate(gate)

@@ -17,7 +17,6 @@ import argparse
 import importlib.util
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -174,15 +173,13 @@ def check_dependencies(root: Path, version: str, help_text: str) -> tuple[int, l
     return checked, problems
 
 
-def pi_help(path_env: str | None) -> str:
-    """`pi --help` from the same PATH used to find the install, isolated like a gate run."""
+def pi_help(install: Any) -> str:
+    """`pi --help` from the install being checked (not whatever `pi` is on PATH), isolated."""
     with tempfile.TemporaryDirectory(prefix="check-drift-") as agent:
         env = {key: value for key, value in os.environ.items() if not key.startswith("PI_")}
         env.update(PI_CODING_AGENT_DIR=agent, PI_OFFLINE="1", PI_SKIP_VERSION_CHECK="1")
-        if path_env is not None:
-            env["PATH"] = path_env
         result = subprocess.run(
-            [shutil.which("pi", path=path_env) or "pi", "--help"],
+            [*pi_gate.pi_command(install.root), "--help"],
             env=env,
             stdin=subprocess.DEVNULL,
             capture_output=True,
@@ -315,9 +312,9 @@ def _stage_changelog(skill_dir: Path, install: Any) -> bool:
     return True
 
 
-def pi_help_from(path_env: str | None) -> str:
+def pi_help_from(install: Any) -> str:
     try:
-        return pi_help(path_env)
+        return pi_help(install)
     except (OSError, subprocess.SubprocessError) as error:
         print(f"could not run pi --help: {error}", file=sys.stderr)
         return ""
@@ -347,7 +344,7 @@ def main(
     if "citations" in stages:
         ok = _stage_citations(args.skill_dir, install) and ok
     if "dependencies" in stages:
-        ok = _stage_dependencies(install, pi_help_from(path)) and ok
+        ok = _stage_dependencies(install, pi_help_from(install)) and ok
     if "gate" in stages:
         ok = _stage_gate(args.skill_dir, install) and ok
     if "changelog" in stages:

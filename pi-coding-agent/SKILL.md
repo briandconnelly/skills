@@ -42,7 +42,8 @@ If a check fails, fix the artifact or its `gate.json` and rerun the gate; do not
 
 ## What the gate does
 
-`pi_gate.py` runs Pi with discovery off, a throwaway agent directory, credentials removed from its environment, and every HTTP request routed to a dead proxy, so no real model is called.
+`pi_gate.py` runs Pi with discovery off, a throwaway agent directory, and credentials removed from its environment, and points Pi's HTTP proxy at a dead port, so Pi's own model requests cannot reach a real provider.
+The artifact's code is not held to that: it can open its own connections (rule 8).
 It loads the artifact, then a harness that registers a scripted faux model, and runs a one-step turn (Tier 1) and the turns scripted in `gate.json` (Tier 2).
 It lists every check as PASS, FAIL (with a named reason), or UNCHECKED, and fails if anything under the real `~/.pi/agent` changed during the run.
 

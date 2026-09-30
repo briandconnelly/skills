@@ -55,7 +55,7 @@ The first version removed only `PI_*` and `*_API_KEY` variables.
 The final review (fresh reviewer, 2026-09-29) showed that was not enough: with `ANTHROPIC_OAUTH_TOKEN` exported and `tier2.model` set to `anthropic/claude-sonnet-4-5`, the request reached Anthropic (a fake token earned a 401), because `PI_OFFLINE` stops only automatic network activity, not model requests.
 The gate now removes every `PI_*`, `AWS_*`, `CLOUDSDK_*`, and `GOOGLE_APPLICATION_*` variable, every variable ending in `_API_KEY` or `_TOKEN`, and every proxy variable; points the AWS and gcloud credential files into the throwaway workspace; and sets `HTTP_PROXY`/`HTTPS_PROXY` to a dead local port, which Pi honours for model requests (the same run then fails with "Connection error").
 It also refuses a `tier2.model` that is neither a faux model nor declared in `expect.models` (`unscripted-model`).
-The artifact's own code still runs with the user's other environment variables and file permissions (R3.14), and its own HTTP requests also meet the dead proxy.
+The artifact's own code still runs with the user's other environment variables and file permissions (R3.14); clients that honour the proxy variables meet the dead proxy, but code that ignores them or opens raw sockets can still reach the network (Copilot review on PR #188), so the guarantee covers Pi's own requests only.
 Pinned by: `test_gate_env_blocks_every_route_to_a_paid_provider` and `test_a_real_provider_is_never_reached`.
 
 ## "Target not loaded" control

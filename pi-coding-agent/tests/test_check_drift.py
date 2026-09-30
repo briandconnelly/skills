@@ -219,7 +219,7 @@ def _live():
 def test_live_dependencies_all_exist():
     install = _live()
     _, problems = check_drift.check_dependencies(
-        install.root, install.version, check_drift.pi_help(None)
+        install.root, install.version, check_drift.pi_help(install)
     )
     assert problems == []
 
@@ -275,3 +275,20 @@ def test_changelog_stage_fails_without_a_reviewable_delta(tmp_path, recorded, ch
         path.write_text(changelog)
     install = SimpleNamespace(version="0.99.1", changelog=path)
     assert check_drift._stage_changelog(skill, install) is ok
+
+
+# Copilot review (PR #188), pinned before its fix
+
+
+def test_pi_help_uses_the_selected_install_not_path(tmp_path, monkeypatch):
+    install = _live()
+    node = shutil.which("node")
+    assert node is not None
+    node_only = tmp_path / "bin"
+    node_only.mkdir()
+    (node_only / "node").symlink_to(node)
+    monkeypatch.setenv("PATH", str(node_only))
+    _, problems = check_drift.check_dependencies(
+        install.root, install.version, check_drift.pi_help(install)
+    )
+    assert problems == []

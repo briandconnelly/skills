@@ -30,6 +30,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import jsonschema
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
@@ -197,6 +199,89 @@ def artifact_for_gate(gate_path: Path) -> Path:
     return siblings[0]
 
 
+_STRINGS = {"type": "array", "items": {"type": "string"}}
+_TOOL = {
+    "oneOf": [
+        {"type": "string"},
+        {
+            "type": "object",
+            "properties": {"name": {"type": "string"}, "exposure": {"type": "string"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    ]
+}
+_STEP = {
+    "type": "object",
+    "properties": {
+        "provider": {"type": "string"},
+        "text": {"type": "string"},
+        "expectTranscript": {"type": "string"},
+        "toolCall": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}, "arguments": {"type": "object"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    },
+    "additionalProperties": False,
+}
+_TOOL_RESULT = {
+    "type": "object",
+    "properties": {
+        "toolName": {"type": "string"},
+        "isError": {"type": "boolean"},
+        "contains": {"type": "string"},
+    },
+    "required": ["toolName"],
+    "additionalProperties": False,
+}
+# The only definition of gate.json's shape; references/gate-recipes.md explains the fields.
+GATE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "kind": {"enum": list(KINDS)},
+        "scope": {"enum": ["temporary", "project"]},
+        "expect": {
+            "type": "object",
+            "properties": {
+                **{key: _STRINGS for key in EXPECT_KEYS},
+                "tools": {"type": "array", "items": _TOOL},
+            },
+            "additionalProperties": False,
+        },
+        "tier2": {
+            "type": "object",
+            "properties": {
+                "prompts": _STRINGS,
+                "steps": {"type": "array", "items": _STEP},
+                "model": {"type": "string"},
+                "assistantModels": _STRINGS,
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"provider": {"type": "string"}, "models": _STRINGS},
+                        "required": ["provider", "models"],
+                        "additionalProperties": False,
+                    },
+                },
+                "expect": {
+                    "type": "object",
+                    "properties": {
+                        "toolResults": {"type": "array", "items": _TOOL_RESULT},
+                        "events": {"type": "array", "items": {"type": "object"}},
+                    },
+                    "additionalProperties": False,
+                },
+            },
+            "additionalProperties": False,
+        },
+    },
+    "additionalProperties": False,
+}
+
+
 def _declares_something(data: dict[str, Any]) -> bool:
     expect = data.get("expect") or {}
     tier2 = data.get("tier2") or {}
@@ -213,23 +298,18 @@ def load_gate(path: Path) -> dict[str, Any]:
         raise GateError("bad-gate", f"{path} is not valid JSON: {error}") from error
     if not isinstance(data, dict):
         raise GateError("bad-gate", f"{path} must hold a JSON object")
-    for key in ("expect", "tier2"):
-        if not isinstance(data.get(key) or {}, dict):
-            raise GateError("bad-gate", f"{path}: {key} must be a JSON object")
-    prompts = (data.get("tier2") or {}).get("prompts", [])
-    if not isinstance(prompts, list) or not all(isinstance(p, str) for p in prompts):
-        raise GateError("bad-gate", f"{path}: tier2.prompts must be a list of strings")
-    unknown = set(data.get("expect") or {}) - set(EXPECT_KEYS)
-    if unknown:
-        raise GateError("bad-gate", f"{path}: unknown expect keys {sorted(unknown)}")
+    error = jsonschema.exceptions.best_match(
+        jsonschema.Draft7Validator(GATE_SCHEMA).iter_errors(data)
+    )
+    if error is not None:
+        where = "/".join(str(part) for part in error.absolute_path) or "(top level)"
+        raise GateError("bad-gate", f"{path}: {where}: {error.message}")
     if not _declares_something(data):
         raise GateError(
             "empty-gate", f"{path} declares no resource and no Tier 2 prompt; nothing to check"
         )
     if data.get("kind") not in KINDS:
         raise GateError("bad-gate", f"{path}: kind must be one of {', '.join(KINDS)}")
-    if data.get("scope", "temporary") not in ("temporary", "project"):
-        raise GateError("bad-gate", f"{path}: scope must be temporary or project")
     return data
 
 
@@ -959,8 +1039,6 @@ def _theme_files(target: Path) -> list[Path]:
 
 
 def theme_checks(expected: list[str], target: Path, install_root: Path) -> list[Check]:
-    import jsonschema  # noqa: PLC0415 - only theme gates need the dependency
-
     validator = jsonschema.Draft7Validator(json.loads((install_root / THEME_SCHEMA).read_text()))
     themes: dict[str, tuple[Path, Any]] = {}
     for path in _theme_files(target):
