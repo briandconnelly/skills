@@ -577,3 +577,25 @@ def test_dot_dot_out_of_pi_directory_is_not_project_scoped(tmp_path):
     with pytest.raises(pi_gate.GateError) as caught:
         pi_gate.stage(pi_gate.lexical_path(artifact), "project", ws)
     assert caught.value.code == "bad-gate"
+
+
+def test_a_concurrent_write_still_fails_and_says_why(tmp_path, monkeypatch):
+    install = _install()
+    real = tmp_path / "real-agent"
+    (real / "sessions").mkdir(parents=True)
+    original = pi_gate._run_checks
+
+    def run_then_write(*args):
+        checks = original(*args)
+        (real / "sessions" / "other-pi-session.jsonl").write_text("{}")
+        return checks
+
+    monkeypatch.setattr(pi_gate, "_run_checks", run_then_write)
+    artifact = GATE_FIXTURES / "tool" / "word-count.ts"
+    checks = pi_gate.gate(
+        artifact, pi_gate.default_gate_path(artifact), install, pi_gate.GateOptions(real)
+    )
+    changed = [check for check in checks if check.code == "agent-dir-changed"]
+    assert len(changed) == 1
+    assert "sessions/other-pi-session.jsonl" in changed[0].detail
+    assert "another Pi process" in changed[0].detail

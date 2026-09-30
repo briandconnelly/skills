@@ -1162,9 +1162,15 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
         detail = f"no check ran: gate.json's expect declares nothing a {data['kind']} gate checks"
         checks.append(failed("-", "nothing-checked", detail))
     changes = snapshot_diff(before, snapshot(options.real_agent_dir))
-    checks += [
-        failed("-", "agent-dir-changed", f"{options.real_agent_dir}/{change}") for change in changes
-    ]
+    if changes:
+        # Kept strict (R3.2.0): the gate cannot tell its own leak from another writer, so it
+        # fails either way and says which is the likely cause.
+        detail = (
+            f"{options.real_agent_dir} changed during the gate run: {'; '.join(changes)}. "
+            "If another Pi process was running (a session finishing a turn, a token refresh), "
+            "close it and rerun the gate; otherwise the artifact or the gate wrote there."
+        )
+        checks.append(failed("-", "agent-dir-changed", detail))
     return checks + unchecked_items(data, tier)
 
 
