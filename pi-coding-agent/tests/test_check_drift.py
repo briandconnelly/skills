@@ -131,6 +131,7 @@ def _dependency_tree(tmp_path, *, hoisted=False):
     types = root / "dist" / "core" / "extensions" / "types.d.ts"
     types.parent.mkdir(parents=True)
     types.write_text(" ".join(f"{name}()" for name in deps["extension_api"]) + "\n")
+    (types.parent.parent / "mcp-servers.d.ts").write_text(" ".join(deps["mcp_exports"]) + "\n")
     pi_ai = (root.parent if hoisted else root / "node_modules" / "@earendil-works") / "pi-ai"
     faux = pi_ai / check_drift.FAUX_DTS
     faux.parent.mkdir(parents=True)

@@ -16,6 +16,12 @@ Put the file next to the artifact: `<name>.gate.json` beside a file, or `gate.js
 - `tier2.model` must be a faux model or appear in `expect.models`; the gate refuses to select any other model, and Pi's own HTTP requests during a gate run go to a dead proxy (the artifact's code is not sandboxed).
 - Tier 2 fails when it runs no model turn and declares no `toolResults` or `events`, and when a tool fails without a `toolResults` entry that expects `isError: true`.
 
+A successful tool call without a matching result expectation is reported UNCHECKED.
+An expectation without `contains` checks only error status and leaves result content UNCHECKED.
+Resources registered by the artifact but not exercised in Tier 2 remain UNCHECKED, even if another resource in the same package was exercised.
+For invoked skills and prompts, the absence of any `expectTranscript` leaves expansion UNCHECKED.
+The gate does not determine whether a declared transcript or event assertion is relevant to every invocation; coverage applies only to the assertions shown as PASS.
+
 ## Extension tool
 
 A scripted call must return the expected result.

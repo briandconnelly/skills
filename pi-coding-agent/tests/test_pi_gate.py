@@ -709,3 +709,125 @@ def test_non_object_rpc_record_is_a_pi_shape_error(line):
     session._buffer = line
     with pytest.raises(pi_gate.PiShapeError):
         session._buffered()
+
+
+# Critical review: validate original configs and report missing behavior assertions.
+
+
+@pytest.mark.parametrize("enabled", ["false", 0, None, [], {}])
+def test_mcp_enabled_is_validated_before_disabling_servers(tmp_path, enabled):
+    artifact = tmp_path / "mcp.json"
+    config = {"mcpServers": {"docs": {"url": "https://example.com/mcp", "enabled": enabled}}}
+    artifact.write_text(json.dumps(config))
+    gate = tmp_path / "mcp.gate.json"
+    gate.write_text(json.dumps({"kind": "mcp-config", "expect": {"mcpServers": ["docs"]}}))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert "mcp-config" in _fails(checks)
+    assert any("enabled must be a boolean" in check.detail for check in checks)
+    assert json.loads(artifact.read_text()) == config
+
+
+@pytest.mark.parametrize("enabled", [True, False, "absent"])
+def test_valid_mcp_configs_are_checked_without_starting_servers(tmp_path, enabled):
+    marker = tmp_path / "server-started"
+    server = {
+        "command": "node",
+        "args": ["-e", f"require('node:fs').writeFileSync({json.dumps(str(marker))}, 'started')"],
+    }
+    if enabled != "absent":
+        server["enabled"] = enabled
+    artifact = tmp_path / "mcp.json"
+    config = {"mcpServers": {"docs": server}}
+    artifact.write_text(json.dumps(config))
+    gate = tmp_path / "mcp.gate.json"
+    gate.write_text(json.dumps({"kind": "mcp-config", "expect": {"mcpServers": ["docs"]}}))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert _fails(checks) == []
+    assert not marker.exists()
+    assert json.loads(artifact.read_text()) == config
+
+
+def _broken_word_count(tmp_path, *, result_expect=None, calls=1):
+    artifact = tmp_path / "word-count.ts"
+    source = (GATE_FIXTURES / "tool/word-count.ts").read_text()
+    artifact.write_text(
+        source.replace(
+            "const words = params.text.split(/\\s+/).filter(Boolean).length;", "const words = 999;"
+        )
+    )
+    data = json.loads((GATE_FIXTURES / "tool/word-count.gate.json").read_text())
+    tier2 = data["tier2"]
+    call, reply = tier2["steps"]
+    tier2["steps"] = [call] * calls + [reply]
+    tier2.pop("expect")
+    if result_expect is not None:
+        tier2["expect"] = {"toolResults": result_expect}
+    gate = tmp_path / "word-count.gate.json"
+    gate.write_text(json.dumps(data))
+    return pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+
+
+def test_wrong_tool_output_without_an_assertion_is_reported_unchecked(tmp_path):
+    checks = _broken_word_count(tmp_path)
+    assert _fails(checks) == []
+    assert "tool result word_count" in _unchecked(checks)
+    assert not any(
+        check.status == "PASS" and check.name == "tool result word_count" for check in checks
+    )
+
+
+def test_wrong_tool_output_with_an_assertion_fails(tmp_path):
+    checks = _broken_word_count(
+        tmp_path, result_expect=[{"toolName": "word_count", "contains": "3 words"}]
+    )
+    assert "tool-result" in _fails(checks)
+
+
+def test_error_status_assertion_leaves_tool_result_content_unchecked(tmp_path):
+    checks = _broken_word_count(
+        tmp_path, result_expect=[{"toolName": "word_count", "isError": False}]
+    )
+    assert _fails(checks) == []
+    assert "tool result content word_count" in _unchecked(checks)
+
+
+def test_one_result_assertion_does_not_cover_two_calls(tmp_path):
+    checks = _broken_word_count(
+        tmp_path, result_expect=[{"toolName": "word_count", "contains": "999 words"}], calls=2
+    )
+    assert _fails(checks) == []
+    assert "tool result word_count" in _unchecked(checks)
+    assert any(
+        check.status == "PASS" and check.name == "tool result word_count" for check in checks
+    )
+
+
+def test_package_prompt_does_not_cover_other_registered_resources(tmp_path):
+    checks = _run(tmp_path, "package/team-kit")
+    assert _fails(checks) == []
+    assert {"tool behavior word_count", "skill behavior skill:kit-skill"} <= _unchecked(checks)
+    assert "prompt behavior kit-prompt" not in _unchecked(checks)
+
+
+def test_load_only_tool_is_reported_as_unexercised(tmp_path):
+    install = _install()
+    artifact = GATE_FIXTURES / "tool/word-count.ts"
+    checks = pi_gate.gate(
+        artifact,
+        pi_gate.default_gate_path(artifact),
+        install,
+        pi_gate.GateOptions(tmp_path / "real", tier=pi_gate.TIER_1),
+    )
+    assert _fails(checks) == []
+    assert "tool behavior word_count" in _unchecked(checks)
+
+
+def test_prompt_without_transcript_assertion_is_reported_unchecked(tmp_path):
+    artifact = GATE_FIXTURES / "prompt/gate-prompt.md"
+    data = json.loads(pi_gate.default_gate_path(artifact).read_text())
+    del data["tier2"]["steps"][0]["expectTranscript"]
+    gate = tmp_path / "prompt.gate.json"
+    gate.write_text(json.dumps(data))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert _fails(checks) == []
+    assert "prompt expansion gate-prompt" in _unchecked(checks)

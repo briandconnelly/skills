@@ -63,6 +63,8 @@ EXPECT_KEYS = (
 ACTIVE_EXPOSURES = ("direct", "model-only")
 DIALOG_METHODS = ("select", "confirm", "input", "editor")
 THEME_SCHEMA = Path("dist/modes/interactive/theme/theme-schema.json")
+MCP_VALIDATOR_MODULE = Path("dist/core/mcp-servers.js")
+MCP_VALIDATOR = SCRIPTS / "mcp-validator.mjs"
 EXTENSION_FLAGS_HEADING = "Extension CLI Flags:"
 DEFAULT_TIMEOUT = 60.0
 # Pi honours HTTP(S)_PROXY for its model requests; a dead proxy makes any provider call fail
@@ -127,7 +129,8 @@ GATE_DEPENDENCIES: dict[str, list[str]] = {
         "fauxAssistantMessage",
         "getPendingResponseCount",
     ],
-    "files": [THEME_SCHEMA.as_posix()],
+    "mcp_exports": ["validateMcpServerConfig"],
+    "files": [THEME_SCHEMA.as_posix(), MCP_VALIDATOR_MODULE.as_posix()],
 }
 
 
@@ -367,6 +370,7 @@ PI_SHAPES: dict[str, dict[str, Any]] = {
         },
         "required": ["errors", "servers"],
     },
+    "MCP validation": _STRINGS,
 }
 
 
@@ -1041,6 +1045,13 @@ def _tool_result_checks(
             checks.append(failed("2", "tool-result", detail))
         else:
             checks.append(passed("2", f"tool result {name}", text[:120]))
+            if not entry.get("contains"):
+                checks.append(
+                    unchecked(
+                        f"tool result content {name}",
+                        "only error status was asserted; result content was not checked",
+                    )
+                )
     checks += [
         failed(
             "2",
@@ -1050,6 +1061,13 @@ def _tool_result_checks(
         )
         for r in ends
         if r.get("isError")
+    ]
+    checks += [
+        unchecked(
+            f"tool result {r.get('toolName')}", "call succeeded but no result assertion matched it"
+        )
+        for r in ends
+        if not r.get("isError")
     ]
     return checks
 
@@ -1121,6 +1139,43 @@ def tier2_checks(data: dict[str, Any], obs: Observation) -> list[Check]:
 
 
 # What each surface leaves unchecked (R3.10)
+
+
+def behavior_coverage(data: dict[str, Any], obs: Observation, target: Path) -> list[Check]:
+    """Report observed artifact resources not exercised by the declared Tier 2."""
+    if obs.shape_error or obs.load_error or obs.prompt_errors or obs.inventory is None:
+        return []
+    records = obs.records[obs.tier2_start :] if obs.tier2_start is not None else []
+    inventory = obs.tier2_inventory or obs.inventory
+    called = {r.get("toolName") for r in records if r.get("type") == "tool_execution_end"}
+    checks = [
+        unchecked(f"tool behavior {tool['name']}", "registered but not called in Tier 2")
+        for tool in inventory["tools"]
+        if origin_of((tool.get("sourceInfo") or {}).get("path", ""), target) == "target"
+        and tool["name"] not in called
+    ]
+    tier2 = data.get("tier2") or {}
+    invoked = {prompt.split()[0] for prompt in tier2.get("prompts", []) if prompt.split()}
+    expectations = tier2.get("expect") or {}
+    transcript_asserted = any(step.get("expectTranscript") for step in tier2.get("steps", []))
+    for command in obs.commands:
+        if origin_of((command.get("sourceInfo") or {}).get("path", ""), target) != "target":
+            continue
+        source, name = command["source"], command["name"]
+        label = {"extension": "command", "skill": "skill", "prompt": "prompt"}.get(source, source)
+        if obs.tier2_start is None or f"/{name}" not in invoked:
+            checks.append(
+                unchecked(f"{label} behavior {name}", "registered but not invoked in Tier 2")
+            )
+        elif source in ("skill", "prompt") and not transcript_asserted:
+            checks.append(
+                unchecked(f"{label} expansion {name}", "invoked without a transcript assertion")
+            )
+        elif source == "extension" and not (expectations or transcript_asserted):
+            checks.append(
+                unchecked(f"command behavior {name}", "invoked without a behavior assertion")
+            )
+    return checks
 
 
 def unchecked_items(data: dict[str, Any], tier: int) -> list[Check]:
@@ -1216,17 +1271,50 @@ def theme_checks(expected: list[str], target: Path, install_root: Path) -> list[
     return checks
 
 
-def mcp_config_checks(expected: list[str], target: Path, ws: Workspace) -> list[Check]:
-    """Validate an mcp.json with every server disabled, so nothing connects or spawns."""
-    try:
-        config = json.loads(target.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        return [failed("1", "load-error", f"{target} is not valid JSON: {error}")]
+def original_mcp_checks(
+    config: Any, target: Path, ws: Workspace, install_root: Path
+) -> list[Check]:
+    """Validate the original entries without starting or connecting to any server."""
     servers = config.get("mcpServers") if isinstance(config, dict) else None
     if not isinstance(servers, dict):
         detail = f"{target} must be a JSON object with an mcpServers object (docs/mcp.md)"
         return [failed("1", "mcp-config", detail)]
-    for server in servers.values():
+    try:
+        validation = subprocess.run(
+            ["node", str(MCP_VALIDATOR), str(install_root / MCP_VALIDATOR_MODULE)],
+            env=gate_env(ws),
+            cwd=ws.work,
+            input=json.dumps(config),
+            capture_output=True,
+            text=True,
+            timeout=DEFAULT_TIMEOUT,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return [failed("1", "mcp-config", f"could not validate original MCP config: {error}")]
+    if validation.returncode:
+        return [
+            failed("1", "mcp-config", f"installed Pi validator failed: {validation.stderr.strip()}")
+        ]
+    try:
+        errors = require_shape("MCP validation", json.loads(validation.stdout))
+    except (json.JSONDecodeError, PiShapeError) as error:
+        return [failed("1", "pi-shape", f"installed Pi validator: {error}; run check_drift.py")]
+    return [failed("1", "mcp-config", error) for error in errors]
+
+
+def mcp_config_checks(
+    expected: list[str], target: Path, ws: Workspace, install_root: Path
+) -> list[Check]:
+    """Validate original entries, then list a copy with every server disabled."""
+    try:
+        config = json.loads(target.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return [failed("1", "load-error", f"{target} is not valid JSON: {error}")]
+    checks = original_mcp_checks(config, target, ws, install_root)
+    if checks:
+        return checks
+    for server in config["mcpServers"].values():
         if isinstance(server, dict):
             server["enabled"] = False
     (ws.agent / "mcp.json").write_text(json.dumps(config), encoding="utf-8")
@@ -1317,10 +1405,13 @@ def _run_checks(data: dict[str, Any], ws: Workspace, run: Staged) -> list[Check]
     if kind == "theme":
         return theme_checks(_names(expect.get("themes", [])), run.loaded, run.install_root)
     if kind == "mcp-config":
-        return mcp_config_checks(_names(expect.get("mcpServers", [])), run.loaded, ws)
+        return mcp_config_checks(
+            _names(expect.get("mcpServers", [])), run.loaded, ws, run.install_root
+        )
     args = pi_args(data, run.loaded, approve=run.approve)
     obs = observe(data, args, ws, run.cwd, tier=run.tier)
     checks = tier1_checks(data, obs, run.loaded) + tier2_checks(data, obs)
+    checks += behavior_coverage(data, obs, run.loaded)
     if expect.get("flags") and not obs.load_error and not obs.timed_out:
         checks += flag_checks(_names(expect["flags"]), args, ws, run.cwd)
     if expect.get("themes"):
