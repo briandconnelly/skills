@@ -575,7 +575,7 @@ def test_dot_dot_out_of_pi_directory_is_not_project_scoped(tmp_path):
     (tmp_path / "project" / "outside.md").write_text("x")
     artifact = tmp_path / "project" / ".pi" / ".." / "outside.md"
     with pytest.raises(pi_gate.GateError) as caught:
-        pi_gate.stage(pi_gate.lexical_path(artifact), "project", ws)
+        pi_gate.stage(artifact.absolute(), "project", ws)
     assert caught.value.code == "bad-gate"
 
 
@@ -613,6 +613,10 @@ def test_pi_shape_errors_name_the_offending_path():
     [
         ("get_commands", {"data": {"commands": [{"nope": 1}]}}),
         ("prompt", {"data": {}}),
+        (
+            "get_commands",
+            {"data": {"commands": [{"name": "x", "source": "prompt", "sourceInfo": "bad"}]}},
+        ),
     ],
 )
 def test_malformed_rpc_reply_fails_as_pi_shape_and_closes_pi(
@@ -649,3 +653,27 @@ def test_malformed_mcp_list_output_fails_as_pi_shape(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pi_gate.subprocess, "run", run)
     assert "pi-shape" in _fails(_run(tmp_path, "mcp-config/mcp.json"))
+
+
+# Codex review of the M2 to M4 diff (job d2a12940), pinned before each fix
+
+
+def test_symlink_then_dot_dot_gates_the_file_the_os_opens(tmp_path):
+    install = _install()
+    (tmp_path / "other" / "dir").mkdir(parents=True)
+    for name in ("word-count.ts", "word-count.gate.json"):
+        shutil.copy(GATE_FIXTURES / "tool" / name, tmp_path / "other" / name)
+    shutil.copy(GATE_FIXTURES / "negative" / "broken.ts", tmp_path / "word-count.ts")
+    (tmp_path / "link").symlink_to(tmp_path / "other" / "dir")
+    artifact = tmp_path / "link" / ".." / "word-count.ts"
+    options = pi_gate.GateOptions(tmp_path / "real-agent")
+    checks = pi_gate.gate(artifact, pi_gate.default_gate_path(artifact), install, options)
+    assert _fails(checks) == []
+
+
+def test_unreadable_inventory_fails_as_pi_shape(tmp_path, monkeypatch):
+    def broken(_path):
+        raise json.JSONDecodeError("Expecting value", "", 0)
+
+    monkeypatch.setattr(pi_gate, "_read_json", broken)
+    assert "pi-shape" in _fails(_run(tmp_path, "tool/word-count.ts"))

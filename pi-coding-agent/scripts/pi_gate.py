@@ -291,6 +291,7 @@ def _objects(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
 
 
 _STR = {"type": "string"}
+_SOURCE_INFO = {"type": "object", "properties": {"path": _STR, "origin": _STR}}
 # What the gate reads from Pi's output, and nothing more. A reply that lacks one of these
 # fields fails as pi-shape naming the path, instead of raising (MAINTAINING.md: run
 # check_drift.py against the new Pi). Extra fields are allowed.
@@ -306,7 +307,10 @@ PI_SHAPES: dict[str, dict[str, Any]] = {
             "data": {
                 "type": "object",
                 "properties": {
-                    "commands": _objects({"name": _STR, "source": _STR}, ["name", "source"])
+                    "commands": _objects(
+                        {"name": _STR, "source": _STR, "sourceInfo": _SOURCE_INFO},
+                        ["name", "source"],
+                    )
                 },
                 "required": ["commands"],
             }
@@ -329,7 +333,9 @@ PI_SHAPES: dict[str, dict[str, Any]] = {
     "inventory": {
         "type": "object",
         "properties": {
-            "tools": _objects({"name": _STR, "exposure": _STR}, ["name", "exposure"]),
+            "tools": _objects(
+                {"name": _STR, "exposure": _STR, "sourceInfo": _SOURCE_INFO}, ["name", "exposure"]
+            ),
             "activeTools": {"type": "array", "items": _STR},
             "mcpServers": _objects(
                 {"name": _STR, "extensionPath": _STR}, ["name", "extensionPath"]
@@ -498,22 +504,34 @@ def gate_env(workspace: Workspace) -> dict[str, str]:
     return env
 
 
-def lexical_path(path: Path) -> Path:
-    """Absolute, with `..` collapsed, but symlinks kept: a symlinked `.pi` keeps its name."""
-    return Path(os.path.normpath(path.absolute()))
+def _pi_directory(artifact: Path, real: Path) -> Path | None:
+    """The real `.pi` directory holding the artifact, found by name among its unresolved or
+    resolved parents (a symlinked `.pi` keeps its name only in the unresolved path), and
+    accepted only if the artifact really lives inside it (so `.pi/../x` does not count)."""
+    for parent in [*artifact.parents, *real.parents]:
+        if parent.name == ".pi":
+            candidate = parent.resolve()
+            if real.is_relative_to(candidate) and real != candidate:
+                return candidate
+    return None
 
 
 def stage(artifact: Path, scope: str, workspace: Workspace) -> tuple[Path, Path]:
-    """Return (path Pi loads the artifact from, working directory for the run)."""
+    """Return (path Pi loads the artifact from, working directory for the run).
+
+    `artifact` is absolute but unresolved; the file loaded is the one the OS opens for it.
+    """
+    real = artifact.resolve()
     if scope != "project":
-        return artifact, workspace.work
-    pi_dir = next((parent for parent in artifact.parents if parent.name == ".pi"), None)
+        return real, workspace.work
+    pi_dir = _pi_directory(artifact, real)
     if pi_dir is None:
         raise GateError(
             "bad-gate", f"scope is project but {artifact} is not under a .pi/ directory"
         )
     project = workspace.root / "project"
-    target = project / ".pi" / artifact.relative_to(pi_dir)
+    target = project / ".pi" / real.relative_to(pi_dir)
+    artifact = real
     target.parent.mkdir(parents=True)
     if artifact.is_dir():
         shutil.copytree(artifact, target)
@@ -697,7 +715,10 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 def _inventory(session: RpcSession, workspace: Workspace) -> dict[str, Any] | None:
     workspace.inventory.unlink(missing_ok=True)
     session.prompt(INVENTORY_COMMAND)
-    inventory = _read_json(workspace.inventory)
+    try:
+        inventory = _read_json(workspace.inventory)
+    except json.JSONDecodeError as error:
+        raise PiShapeError(f"inventory is not valid JSON: {error}") from error
     return None if inventory is None else require_shape("inventory", inventory)
 
 
@@ -1257,7 +1278,7 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
     with tempfile.TemporaryDirectory(prefix="pi-gate-") as tmp:
         ws = Workspace.create(Path(tmp), pi_command(install.root))
         try:
-            loaded, cwd = stage(lexical_path(artifact), data.get("scope", "temporary"), ws)
+            loaded, cwd = stage(artifact.absolute(), data.get("scope", "temporary"), ws)
         except GateError as error:
             return [failed("-", error.code, str(error))]
         run = Staged(loaded, cwd, tier, options.approve, install.root)
