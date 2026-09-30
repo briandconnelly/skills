@@ -21,6 +21,14 @@ interface Step {
 	expectTranscript?: string;
 }
 
+// Every string inside a value, so a marker is matched as text, not in its JSON-escaped form.
+function strings(value: unknown): string[] {
+	if (typeof value === "string") return [value];
+	if (Array.isArray(value)) return value.flatMap(strings);
+	if (value && typeof value === "object") return Object.values(value).flatMap(strings);
+	return [];
+}
+
 interface HarnessSpec {
 	inventoryPath: string;
 	providers: { provider: string; models: string[] }[];
@@ -57,7 +65,7 @@ export default function (pi: ExtensionAPI) {
 					// Scripted assistant replies are the gate's own text; only what Pi and the artifact
 					// sent (system, user, and tool messages) can satisfy the expectation.
 					const sent = context.messages.filter((m) => m.role !== "assistant");
-					if (!JSON.stringify(sent).includes(expected)) transcriptMisses.push(expected);
+					if (!strings(sent).some((text) => text.includes(expected))) transcriptMisses.push(expected);
 					return reply(step);
 				}
 			: reply(step);

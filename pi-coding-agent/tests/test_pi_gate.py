@@ -336,6 +336,7 @@ POSITIVE_REVIEW = [
     ("review/dialog.ts", {"event message_end"}),
     ("review/dir-ext", {"tool word_count"}),
     ("review/two-lines.ts", {"tool result two_lines"}),
+    ("review/quoted-skill", {"transcript"}),
 ]
 
 
@@ -529,3 +530,10 @@ def test_every_gate_fixture_and_recipe_passes_strict_validation():
 def test_gate_supplied_content_does_not_count_for_the_artifact(tmp_path, artifact, gate, code):
     checks = _run(tmp_path, artifact, gate)
     assert code in _fails(checks)
+
+
+# Copilot review round 2 (PR #188), pinned before its fix
+
+
+def test_malformed_mcp_config_fails_without_a_traceback(tmp_path):
+    assert "mcp-config" in _fails(_run(tmp_path, "negative/mcp-list.json"))

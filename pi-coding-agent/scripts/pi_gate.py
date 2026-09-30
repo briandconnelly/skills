@@ -1082,7 +1082,11 @@ def mcp_config_checks(expected: list[str], target: Path, ws: Workspace) -> list[
         config = json.loads(target.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         return [failed("1", "load-error", f"{target} is not valid JSON: {error}")]
-    for server in (config.get("mcpServers") or {}).values():
+    servers = config.get("mcpServers") if isinstance(config, dict) else None
+    if not isinstance(servers, dict):
+        detail = f"{target} must be a JSON object with an mcpServers object (docs/mcp.md)"
+        return [failed("1", "mcp-config", detail)]
+    for server in servers.values():
         if isinstance(server, dict):
             server["enabled"] = False
     (ws.agent / "mcp.json").write_text(json.dumps(config), encoding="utf-8")
