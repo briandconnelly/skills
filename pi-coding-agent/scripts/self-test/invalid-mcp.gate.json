@@ -1,0 +1,4 @@
+{
+  "kind": "mcp-config",
+  "expect": { "mcpServers": ["gate-invalid"] }
+}

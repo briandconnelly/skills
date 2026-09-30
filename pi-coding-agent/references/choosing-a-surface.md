@@ -3,7 +3,7 @@
 Pi's own chooser, docs/quickstart.md#choose-how-to-customize-pi, is the normative cross-surface chooser; start there and do not reproduce its mapping.
 Pi's pages also carry in-page choosers (docs/extensions.md#choose-an-integration-point, docs/models.md#choose-a-connection, docs/custom-provider.md#choose-the-smallest-integration, docs/tui.md#choose-an-integration-point).
 This file covers only choices no installed page makes.
-MAINTAINING.md says when each entry is re-checked; delete an entry once Pi's docs make its choice, and point to that page instead.
+The lifecycle of these entries is governed by [MAINTAINING.md, update procedure](../MAINTAINING.md#update-procedure).
 
 ## Extension tool or MCP server
 
