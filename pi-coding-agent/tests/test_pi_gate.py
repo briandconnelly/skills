@@ -981,3 +981,23 @@ def test_override_entry_in_a_user_level_file_fails(tmp_path):
     gate.write_text(json.dumps({"kind": "mcp-config", "expect": {"mcpServers": ["docs"]}}))
     checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
     assert "mcp-config" in _fails(checks)
+
+
+@pytest.mark.parametrize("unreadable", ["directory", "not-utf8"])
+def test_unreadable_user_mcp_config_fails_without_a_traceback(tmp_path, unreadable):
+    real = tmp_path / "real-agent"
+    real.mkdir()
+    if unreadable == "directory":
+        (real / "mcp.json").mkdir()
+    else:
+        (real / "mcp.json").write_bytes(b"\xff\xfe{")
+    pi_dir = tmp_path / "repo" / ".pi"
+    pi_dir.mkdir(parents=True)
+    artifact = pi_dir / "mcp.json"
+    artifact.write_text(json.dumps({"mcpServers": {"docs": {"enabled": False}}}))
+    gate = pi_dir / "mcp.gate.json"
+    gate.write_text(
+        json.dumps({"kind": "mcp-config", "scope": "project", "expect": {"mcpServers": ["docs"]}})
+    )
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(real))
+    assert _fails(checks) == ["user-mcp-config"]

@@ -1357,7 +1357,10 @@ def original_mcp_checks(
 
 
 def _user_mcp_config(real_agent_dir: Path | None) -> str | None:
-    """The user-level mcp.json that project overrides merge onto; read only, never written."""
+    """The user-level mcp.json that project overrides merge onto; read only, never written.
+
+    Raises OSError or UnicodeDecodeError when the file exists but cannot be read as text.
+    """
     path = real_agent_dir / "mcp.json" if real_agent_dir else None
     try:
         return path.read_text(encoding="utf-8") if path else None
@@ -1430,7 +1433,15 @@ def mcp_config_checks(expected: list[str], ws: Workspace, run: Staged, scope: st
         config = json.loads(run.loaded.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         return [failed("1", "load-error", f"{run.loaded} is not valid JSON: {error}")]
-    project = ProjectLayer(_user_mcp_config(run.real_agent_dir)) if scope == "project" else None
+    try:
+        user_config = _user_mcp_config(run.real_agent_dir) if scope == "project" else None
+    except (OSError, UnicodeDecodeError) as error:
+        detail = (
+            f"cannot read the user-level {run.real_agent_dir}/mcp.json that project entries "
+            f"load on top of: {error}"
+        )
+        return [failed("1", "user-mcp-config", detail)]
+    project = ProjectLayer(user_config) if scope == "project" else None
     checks, loaded = original_mcp_checks(config, run.loaded, ws, run.install_root, project)
     if checks:
         return checks
