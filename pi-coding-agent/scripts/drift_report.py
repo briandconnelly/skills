@@ -5,8 +5,7 @@
 # ///
 """Turn a scheduled check_drift.py run into one GitHub issue per Pi version.
 
-An issue is open while the installed Pi differs from verified-against or check_drift fails;
-a passing run on the verified version closes it (MAINTAINING.md, Scheduled drift check).
+The issue lifecycle is defined in MAINTAINING.md, "Scheduled drift check".
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
@@ -21,6 +21,7 @@ from pathlib import Path
 
 LABEL = "pi-drift"
 TITLE = "pi-coding-agent: Pi {version} — {status}"
+TITLE_VERSION = re.compile(r"^pi-coding-agent: Pi (\S+) — ")
 MAX_BODY = 60_000  # GitHub's issue body limit is 65,536 characters
 EXIT_PASS, EXIT_DRIFT, EXIT_GH = 0, 1, 3
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +29,7 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 
 @dataclass(frozen=True)
 class Op:
-    kind: str  # create, edit, or close
+    kind: str  # create, edit, reopen (then edit), or close
     number: int | None
     title: str
     body: str  # the issue body, or the closing comment
@@ -55,9 +56,8 @@ def _body(run: DriftRun, links: str) -> str:
     head = (
         f"The scheduled drift check installed Pi {run.installed}; "
         f"`verified-against` is {run.verified}. {state} (exit {run.exit_code}).\n\n"
-        "Follow pi-coding-agent/MAINTAINING.md#update-procedure; "
-        "this issue closes on the first run after `verified-against` names this "
-        "version and check_drift.py passes.\n\n"
+        "What this issue means and how it closes: "
+        "pi-coding-agent/MAINTAINING.md#scheduled-drift-check.\n\n"
         f"{links}\n\n"
     )
     fence = "```"
@@ -68,10 +68,29 @@ def _body(run: DriftRun, links: str) -> str:
     return f"{head}{fence}\n{output}\n{fence}\n"
 
 
-def decide(run: DriftRun, open_issues: list[dict], links: str) -> Plan:
-    """What to do with the open pi-drift issues after one check_drift.py run."""
+def _version(issue: dict) -> str | None:
+    match = TITLE_VERSION.match(issue["title"])
+    return match.group(1) if match else None
+
+
+def _order(version: str | None) -> tuple[int, ...] | None:
+    """Numeric release order, or None for a version this script does not compare."""
+    parts = version.split(".") if version else []
+    return tuple(int(part) for part in parts) if parts and all(map(str.isdigit, parts)) else None
+
+
+def _own_issue(installed: str, issues: list[dict]) -> dict | None:
+    """The issue for this version: an open one first, else the most recent closed one."""
+    mine = [issue for issue in issues if _version(issue) == installed]
+    mine.sort(key=lambda issue: (issue["state"] == "OPEN", issue["number"]), reverse=True)
+    return mine[0] if mine else None
+
+
+def decide(run: DriftRun, issues: list[dict], links: str) -> Plan:
+    """What to do with the pi-drift issues, open and closed, after one check_drift.py run."""
     installed = run.installed
     plan = Plan(fail=run.exit_code != 0)
+    open_issues = [issue for issue in issues if issue["state"] == "OPEN"]
     if run.exit_code == 0 and installed == run.verified:
         comment = f"Pi {installed} is verified (verified-against) and check_drift.py passes."
         plan.ops = [Op("close", issue["number"], issue["title"], comment) for issue in open_issues]
@@ -79,18 +98,18 @@ def decide(run: DriftRun, open_issues: list[dict], links: str) -> Plan:
     status = "drift found" if run.exit_code else "update review owed"
     title = TITLE.format(version=installed, status=status)
     body = _body(run, links)
-    own_prefix = TITLE.format(version=installed, status="")
-    mine = [issue for issue in open_issues if issue["title"].startswith(own_prefix)]
-    if mine:
-        plan.ops.append(Op("edit", mine[0]["number"], title, body))
-    else:
+    mine = _own_issue(installed, issues)
+    if mine is None:
         plan.ops.append(Op("create", None, title, body))
+    else:
+        kind = "edit" if mine["state"] == "OPEN" else "reopen"
+        plan.ops.append(Op(kind, mine["number"], title, body))
+    current = _order(installed)
     superseded = f"Superseded by the issue for Pi {installed}."
-    plan.ops += [
-        Op("close", issue["number"], issue["title"], superseded)
-        for issue in open_issues
-        if issue not in mine[:1]
-    ]
+    for issue in open_issues:
+        older = _order(_version(issue))
+        if issue is not mine and current and older and older < current:
+            plan.ops.append(Op("close", issue["number"], issue["title"], superseded))
     return plan
 
 
@@ -105,8 +124,12 @@ def _gh(*args: str) -> str:
     return result.stdout
 
 
-def open_issues() -> list[dict]:
-    listed = _gh("issue", "list", "--label", LABEL, "--state", "open", "--json", "number,title")
+def version_issues() -> list[dict]:
+    """Every pi-drift issue, open and closed, so a version keeps one issue."""
+    listed = _gh(
+        "issue", "list", "--label", LABEL, "--state", "all", "--limit", "200",
+        "--json", "number,title,state",
+    )  # fmt: skip
     return json.loads(listed)
 
 
@@ -116,7 +139,9 @@ def apply(plan: Plan) -> None:
     for op in plan.ops:
         if op.kind == "create":
             _gh("issue", "create", "--title", op.title, "--body", op.body, "--label", LABEL)
-        elif op.kind == "edit":
+        elif op.kind in ("edit", "reopen"):
+            if op.kind == "reopen":
+                _gh("issue", "reopen", str(op.number))
             _gh("issue", "edit", str(op.number), "--title", op.title, "--body", op.body)
         else:
             _gh("issue", "close", str(op.number), "--comment", op.body)
@@ -140,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output.read_text(encoding="utf-8", errors="replace")
     try:
         run = DriftRun(args.installed, verified, args.exit_code, output)
-        plan = decide(run, open_issues(), _links())
+        plan = decide(run, version_issues(), _links())
         if args.dry_run:
             print(json.dumps(asdict(plan), indent=2))
         else:

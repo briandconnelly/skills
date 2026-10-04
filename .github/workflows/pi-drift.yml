@@ -14,16 +14,22 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: pi-drift-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  drift:
+  # Read-only: on pull requests this job runs the PR's own code, so it never gets a write token.
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      exit: ${{ steps.drift.outputs.exit }}
+      installed: ${{ steps.drift.outputs.installed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,13 +46,42 @@ jobs:
           echo "exit=$?" >> "$GITHUB_OUTPUT"
           echo "installed=$(pi --version)" >> "$GITHUB_OUTPUT"
           cat drift.txt
-      - name: Report to a pi-drift issue (dry run on pull requests)
+      - name: Dry-run the issue report
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           DRIFT_EXIT: ${{ steps.drift.outputs.exit }}
           PI_INSTALLED: ${{ steps.drift.outputs.installed }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          args=(--output drift.txt --exit-code "$DRIFT_EXIT" --installed "$PI_INSTALLED")
-          if [ "$EVENT" = pull_request ]; then args+=(--dry-run); fi
-          uv run pi-coding-agent/scripts/drift_report.py "${args[@]}"
+        run: >-
+          uv run pi-coding-agent/scripts/drift_report.py --dry-run
+          --output drift.txt --exit-code "$DRIFT_EXIT" --installed "$PI_INSTALLED"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: drift
+          path: drift.txt
+          retention-days: 7
+
+  # The only job with issues: write; it never runs on pull requests.
+  report:
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: drift
+      - name: Report to a pi-drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIFT_EXIT: ${{ needs.check.outputs.exit }}
+          PI_INSTALLED: ${{ needs.check.outputs.installed }}
+        run: >-
+          uv run pi-coding-agent/scripts/drift_report.py
+          --output drift.txt --exit-code "$DRIFT_EXIT" --installed "$PI_INSTALLED"
