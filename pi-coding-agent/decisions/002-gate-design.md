@@ -35,13 +35,17 @@ Observed: `fauxProvider({provider: "anthropic", models: [{id: "claude-sonnet-4-5
 `gate.json` `tier2.providers` therefore lists the physical models a router targets, and `tier2.assistantModels` lists which must answer each turn.
 Pinned by: the `virtual-model/router.ts` case of `test_rpc_surface_fixture_passes`.
 
-## `mcp.json` is checked with `pi mcp list`, every server disabled
+## `mcp.json` is validated before listing with every server disabled
 
 Observed: servers from `mcp.json` do not appear in `pi.getMcpServers()`, which lists extension-registered servers only.
 `pi mcp list --json` validates the file (exit 1 and an `errors` entry for an invalid server) and lists servers without connecting to disabled ones.
-The gate copies the file into the throwaway agent directory with `enabled: false` on every server and runs `pi mcp list --json` (the R3 surface table said "registered, with `builtin:mcp` loaded").
+The original gate copied the file into the throwaway agent directory with `enabled: false` on every server before running `pi mcp list --json` (the R3 surface table said "registered, with `builtin:mcp` loaded").
+The critical review on 2026-09-29 reproduced a false pass for `enabled: "not-a-boolean"`, because disabling the server repaired the invalid field before validation.
+The gate now validates original entries with the installed Pi's `validateMcpServerConfig` through `scripts/mcp-validator.mjs`, then lists a disabled copy.
+The internal module path and export are tracked by `GATE_DEPENDENCIES`, and an invalid-`enabled` self-test control catches changes in the validator's return contract.
+Validator failure recovery is documented in [MAINTAINING.md, Gate failure recovery](../MAINTAINING.md#gate-failure-recovery).
 A project `.pi/mcp.json` is checked the same way, as a global file; project trust for it is not exercised.
-Pinned by: the `mcp-config/mcp.json` case of `test_static_surface_fixture_passes` and the `negative/sse-mcp.json` case of `test_static_negative_fixture_fails_with_its_reason`.
+Pinned by: the `mcp-config/mcp.json` case of `test_static_surface_fixture_passes`, the `negative/sse-mcp.json` case of `test_static_negative_fixture_fails_with_its_reason`, `test_mcp_enabled_is_validated_before_disabling_servers`, `test_valid_mcp_configs_are_checked_without_starting_servers`, and the `invalid MCP enabled value` self-test control.
 
 ## Extension dialogs are answered "cancelled"
 

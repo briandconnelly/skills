@@ -137,6 +137,10 @@ def dependency_sources(root: Path, help_text: str) -> dict[str, tuple[str, str |
             "dist/core/extensions/types.d.ts",
             _read(root / "dist" / "core" / "extensions" / "types.d.ts"),
         ),
+        "mcp_exports": (
+            "dist/core/mcp-servers.d.ts",
+            _read(root / "dist/core/mcp-servers.d.ts"),
+        ),
         "faux_exports": (
             f"@earendil-works/pi-ai/{FAUX_DTS.as_posix()}",
             _read(pi_ai / FAUX_DTS if pi_ai else None),
