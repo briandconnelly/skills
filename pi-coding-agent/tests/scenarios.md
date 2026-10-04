@@ -14,7 +14,7 @@ Gate self-tests are script tests (`tests/test_pi_gate.py`), not scenarios.
 1. Before the first run, archive the real agent directory: `tar -czf .eval-tmp/pi-agent-backup.tgz -C ~/.pi agent`, and record `find ~/.pi/agent -type f | sort | xargs shasum -a 256`.
 2. Give every agent, in both arms, this preamble, with `<dir>` a fresh directory under `.eval-tmp/pi-scenarios/`:
 
-   > Pi 0.99.1 is installed (`pi` on PATH).
+   > Pi 1.0.1 is installed (`pi` on PATH).
    > Work only in `<dir>`.
    > In every shell command that runs `pi`, first run `export PI_CODING_AGENT_DIR=<dir>/pi-agent`.
 

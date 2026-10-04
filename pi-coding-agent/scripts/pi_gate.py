@@ -63,7 +63,7 @@ EXPECT_KEYS = (
 ACTIVE_EXPOSURES = ("direct", "model-only")
 DIALOG_METHODS = ("select", "confirm", "input", "editor")
 THEME_SCHEMA = Path("dist/modes/interactive/theme/theme-schema.json")
-MCP_VALIDATOR_MODULE = Path("dist/core/mcp-servers.js")
+MCP_VALIDATOR_MODULE = Path("dist/extensions/mcp/config.js")
 MCP_VALIDATOR = SCRIPTS / "mcp-validator.mjs"
 EXTENSION_FLAGS_HEADING = "Extension CLI Flags:"
 DEFAULT_TIMEOUT = 60.0
@@ -129,7 +129,7 @@ GATE_DEPENDENCIES: dict[str, list[str]] = {
         "fauxAssistantMessage",
         "getPendingResponseCount",
     ],
-    "mcp_exports": ["validateMcpServerConfig"],
+    "mcp_exports": ["loadMcpConfig"],
     "files": [THEME_SCHEMA.as_posix(), MCP_VALIDATOR_MODULE.as_posix()],
 }
 
@@ -370,7 +370,16 @@ PI_SHAPES: dict[str, dict[str, Any]] = {
         },
         "required": ["errors", "servers"],
     },
-    "MCP validation": _STRINGS,
+    "MCP validation": {
+        "type": "object",
+        "properties": {
+            "errors": {"type": "array", "items": _STR},
+            "servers": _objects(
+                {"name": _STR, "override": {"type": "boolean"}}, ["name", "override"]
+            ),
+        },
+        "required": ["errors", "servers"],
+    },
 }
 
 
@@ -1288,59 +1297,98 @@ def theme_checks(expected: list[str], target: Path, install_root: Path) -> list[
     return checks
 
 
+@dataclass(frozen=True)
+class ProjectLayer:
+    """A project mcp.json loads on top of the user-level file; `user_config` is that file's text."""
+
+    user_config: str | None
+
+
 def original_mcp_checks(
-    config: Any, target: Path, ws: Workspace, install_root: Path
-) -> list[Check]:
-    """Validate the original entries without starting or connecting to any server."""
+    config: Any,
+    target: Path,
+    ws: Workspace,
+    install_root: Path,
+    project: ProjectLayer | None = None,
+) -> tuple[list[Check], list[dict[str, Any]]]:
+    """Load the original entries with Pi's own config loader, without starting any server.
+
+    Returns the artifact's errors as checks and the servers the loader kept from it.
+    """
     servers = config.get("mcpServers") if isinstance(config, dict) else None
     if not isinstance(servers, dict):
         detail = f"{target} must be a JSON object with an mcpServers object (docs/mcp.md)"
-        return [failed("1", "mcp-config", detail)]
+        return [failed("1", "mcp-config", detail)], []
+    root = ws.root / "mcp-validation"
+    root.mkdir(exist_ok=True)
+    payload = {
+        "config": config,
+        "scope": "project" if project else "user",
+        "base": project.user_config if project else None,
+    }
     try:
         validation = subprocess.run(
-            ["node", str(MCP_VALIDATOR), str(install_root / MCP_VALIDATOR_MODULE)],
+            ["node", str(MCP_VALIDATOR), str(install_root / MCP_VALIDATOR_MODULE), str(root)],
             env=gate_env(ws),
             cwd=ws.work,
-            input=json.dumps(config),
+            input=json.dumps(payload),
             capture_output=True,
             text=True,
             timeout=DEFAULT_TIMEOUT,
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return [failed("1", "timeout", "installed Pi MCP validator did not finish in time")]
+        return [failed("1", "timeout", "installed Pi MCP validator did not finish in time")], []
     except OSError as error:
         detail = (
             f"could not start installed Pi MCP validator: {error}; "
             "see MAINTAINING.md#gate-failure-recovery"
         )
-        return [failed("1", "gate-environment", detail)]
+        return [failed("1", "gate-environment", detail)], []
     if validation.returncode:
-        return [
-            failed(
-                "1",
-                "gate-dependency",
-                f"installed Pi validator failed: {validation.stderr.strip()}; run check_drift.py",
-            )
-        ]
+        detail = f"installed Pi validator failed: {validation.stderr.strip()}; run check_drift.py"
+        return [failed("1", "gate-dependency", detail)], []
     try:
-        errors = require_shape("MCP validation", json.loads(validation.stdout))
+        result = require_shape("MCP validation", json.loads(validation.stdout))
     except (json.JSONDecodeError, PiShapeError) as error:
-        return [failed("1", "pi-shape", f"installed Pi validator: {error}; run check_drift.py")]
-    return [failed("1", "mcp-config", error) for error in errors]
+        detail = f"installed Pi validator: {error}; run check_drift.py"
+        return [failed("1", "pi-shape", detail)], []
+    return [failed("1", "mcp-config", error) for error in result["errors"]], result["servers"]
 
 
-def mcp_config_checks(
-    expected: list[str], target: Path, ws: Workspace, install_root: Path
-) -> list[Check]:
-    """Validate original entries, then list a copy with every server disabled."""
+def _user_mcp_config(real_agent_dir: Path | None) -> str | None:
+    """The user-level mcp.json that project overrides merge onto; read only, never written.
+
+    Raises OSError or UnicodeDecodeError when the file exists but cannot be read as text.
+    """
+    path = real_agent_dir / "mcp.json" if real_agent_dir else None
     try:
-        config = json.loads(target.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        return [failed("1", "load-error", f"{target} is not valid JSON: {error}")]
-    checks = original_mcp_checks(config, target, ws, install_root)
-    if checks:
-        return checks
+        return path.read_text(encoding="utf-8") if path else None
+    except FileNotFoundError:
+        return None
+
+
+def _loaded_mcp_checks(
+    expected: list[str], loaded: list[dict[str, Any]], real_agent_dir: Path | None
+) -> list[Check]:
+    """Project servers as Pi's config loader kept them, overrides merged."""
+    by_name = {server["name"]: server for server in loaded}
+    return [
+        passed(
+            "1",
+            f"MCP server {name}",
+            f"valid override of the user-level server in {real_agent_dir}/mcp.json"
+            if by_name[name]["override"]
+            else "valid and loaded as a project server by Pi's MCP config loader",
+        )
+        if name in by_name
+        else failed("1", "missing-resource", f"MCP server {name} is not loaded by Pi")
+        for name in expected
+    ]
+
+
+def _listed_mcp_checks(expected: list[str], config: dict[str, Any], ws: Workspace) -> list[Check]:
+    """List a user-level copy with every server disabled, so nothing connects."""
     for server in config["mcpServers"].values():
         if isinstance(server, dict):
             server["enabled"] = False
@@ -1375,6 +1423,33 @@ def mcp_config_checks(
     return checks
 
 
+def mcp_config_checks(expected: list[str], ws: Workspace, run: Staged, scope: str) -> list[Check]:
+    """Validate original entries, then list the servers without starting any.
+
+    `pi mcp list` reads a project file only once Pi's trust store trusts the project, so project
+    files are listed from Pi's config loader, which also merges their overrides.
+    """
+    try:
+        config = json.loads(run.loaded.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return [failed("1", "load-error", f"{run.loaded} is not valid JSON: {error}")]
+    try:
+        user_config = _user_mcp_config(run.real_agent_dir) if scope == "project" else None
+    except (OSError, UnicodeDecodeError) as error:
+        detail = (
+            f"cannot read the user-level {run.real_agent_dir}/mcp.json that project entries "
+            f"load on top of: {error}"
+        )
+        return [failed("1", "user-mcp-config", detail)]
+    project = ProjectLayer(user_config) if scope == "project" else None
+    checks, loaded = original_mcp_checks(config, run.loaded, ws, run.install_root, project)
+    if checks:
+        return checks
+    if project:
+        return _loaded_mcp_checks(expected, loaded, run.real_agent_dir)
+    return _listed_mcp_checks(expected, config, ws)
+
+
 # Orchestration
 
 
@@ -1392,6 +1467,7 @@ class Staged:
     tier: int
     approve: bool
     install_root: Path
+    real_agent_dir: Path | None = None  # read only, for the user-level mcp.json
 
 
 def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) -> list[Check]:
@@ -1408,7 +1484,7 @@ def gate(artifact: Path, gate_path: Path, install: Any, options: GateOptions) ->
             loaded, cwd = stage(artifact.absolute(), data.get("scope", "temporary"), ws)
         except GateError as error:
             return [failed("-", error.code, str(error))]
-        run = Staged(loaded, cwd, tier, options.approve, install.root)
+        run = Staged(loaded, cwd, tier, options.approve, install.root, options.real_agent_dir)
         checks = _run_checks(data, ws, run)
     if not any(check.status in ("PASS", "FAIL") for check in checks):
         detail = f"no check ran: gate.json's expect declares nothing a {data['kind']} gate checks"
@@ -1433,7 +1509,7 @@ def _run_checks(data: dict[str, Any], ws: Workspace, run: Staged) -> list[Check]
         return theme_checks(_names(expect.get("themes", [])), run.loaded, run.install_root)
     if kind == "mcp-config":
         return mcp_config_checks(
-            _names(expect.get("mcpServers", [])), run.loaded, ws, run.install_root
+            _names(expect.get("mcpServers", [])), ws, run, data.get("scope", "temporary")
         )
     args = pi_args(data, run.loaded, approve=run.approve)
     obs = observe(data, args, ws, run.cwd, tier=run.tier)

@@ -1,0 +1,1 @@
+{ "kind": "mcp-config", "scope": "project", "expect": { "mcpServers": ["project-docs"] } }

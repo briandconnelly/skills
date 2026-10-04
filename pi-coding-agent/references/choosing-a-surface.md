@@ -7,7 +7,7 @@ The lifecycle of these entries is governed by [MAINTAINING.md, update procedure]
 
 ## Extension tool or MCP server
 
-Pi supports both: extension tools (docs/extensions.md#tools) and MCP servers configured in `mcp.json` or registered by an extension (docs/mcp.md#configure-servers, docs/mcp.md#servers-from-extensions).
+Pi supports both: extension tools (docs/extensions.md#tools) and MCP servers configured in `mcp.json` or registered by an extension (docs/mcp.md#configure-servers, docs/mcp.md#add-servers-from-extensions).
 No installed page says when to prefer one.
 
 - Choose an MCP server when the capability should also work in other harnesses, or already exists as an MCP server.
