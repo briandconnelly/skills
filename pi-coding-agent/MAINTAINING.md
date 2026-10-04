@@ -23,4 +23,8 @@ This file is the home of gate failure recovery and the procedure for updating th
 
 ## Scheduled drift check
 
-Not set up yet: a CI job that installs the latest Pi and runs `check_drift.py` is deferred until `check_drift.py` has been run against a real Pi release upgrade.
+`.github/workflows/pi-drift.yml` installs the latest Pi from npm daily and runs `check_drift.py`; `scripts/drift_report.py` reports the result in one GitHub issue labeled `pi-drift` per Pi version.
+An issue titled "update review owed" means the installed Pi differs from `verified-against` and every stage passed; follow **Update procedure** for that version.
+An issue titled "drift found" means `check_drift.py` failed; the scheduled run also fails, and the issue holds its output.
+The first scheduled run after `verified-against` names the installed version with a passing `check_drift.py` closes the open issues; an issue for an older version closes when a newer version's issue opens.
+On a pull request that changes the workflow or `drift_report.py`, the job runs as a dry run that prints the planned issue changes without writing them.
