@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "project-docs": { "url": "https://example.com/mcp", "exposure": "deferred" }
+  }
+}

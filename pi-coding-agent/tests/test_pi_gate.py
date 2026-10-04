@@ -278,6 +278,7 @@ def test_json_report_is_machine_readable(tmp_path, capsys):
 POSITIVE_STATIC = [
     ("flag/verbose.ts", {"flag --gate-verbose"}),
     ("mcp-config/mcp.json", {"MCP server filesystem", "MCP server docs"}),
+    ("project/.pi/mcp.json", {"MCP server project-docs"}),
     ("theme/gate-theme.json", {"theme gate-theme"}),
     (
         "package/team-kit",
@@ -885,13 +886,14 @@ def test_mcp_validator_infrastructure_failures_are_not_artifact_errors(
         return pi_gate.subprocess.CompletedProcess(command, 0, '[{"error":"changed contract"}]', "")
 
     monkeypatch.setattr(pi_gate.subprocess, "run", run)
-    checks = pi_gate.original_mcp_checks(
+    checks, servers = pi_gate.original_mcp_checks(
         {"mcpServers": {"docs": {"url": "https://example.com/mcp"}}},
         tmp_path / "mcp.json",
         ws,
         install.root,
     )
     assert _fails(checks) == [code]
+    assert servers == []
 
 
 def test_self_test_detects_validator_drift_that_accepts_invalid_enabled(tmp_path, monkeypatch):
@@ -900,7 +902,8 @@ def test_self_test_detects_validator_drift_that_accepts_invalid_enabled(tmp_path
 
     def run(command, **kwargs):
         if str(pi_gate.MCP_VALIDATOR) in command:
-            return pi_gate.subprocess.CompletedProcess(command, 0, "[]", "")
+            output = '{"errors": [], "servers": [{"name": "docs", "override": false}]}'
+            return pi_gate.subprocess.CompletedProcess(command, 0, output, "")
         return real_run(command, **kwargs)
 
     monkeypatch.setattr(pi_gate.subprocess, "run", run)
@@ -913,3 +916,68 @@ def test_explicit_model_sequence_counts_as_router_behavior_assertion(tmp_path):
     checks = _run(tmp_path, "virtual-model/router.ts")
     assert _fails(checks) == []
     assert "Tier 2 behavior" not in _unchecked(checks)
+
+
+# Pi 1.0.1: project mcp.json files load on top of the user-level file, with their own rules.
+
+
+def _project_mcp(tmp_path, servers, *, user=None):
+    """Gate a project .pi/mcp.json; `user` is the real user-level mcp.json, if any."""
+    real = tmp_path / "real-agent"
+    real.mkdir()
+    if user is not None:
+        (real / "mcp.json").write_text(json.dumps({"mcpServers": user}))
+    pi_dir = tmp_path / "repo" / ".pi"
+    pi_dir.mkdir(parents=True)
+    artifact = pi_dir / "mcp.json"
+    artifact.write_text(json.dumps({"mcpServers": servers}))
+    gate = pi_dir / "mcp.gate.json"
+    names = list(servers)
+    gate.write_text(
+        json.dumps({"kind": "mcp-config", "scope": "project", "expect": {"mcpServers": names}})
+    )
+    before = (real / "mcp.json").read_text() if user is not None else None
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(real))
+    after = (real / "mcp.json").read_text() if user is not None else None
+    assert before == after
+    return checks
+
+
+USER_DOCS = {"docs": {"url": "https://example.com/mcp", "headers": {"X-Team": "a"}}}
+
+
+@pytest.mark.parametrize(
+    "override", [{"enabled": False}, {"exposure": "direct"}, {"toolExposure": {"*": "hidden"}}]
+)
+def test_project_override_of_a_user_level_server_passes(tmp_path, override):
+    checks = _project_mcp(tmp_path, {"docs": override}, user=USER_DOCS)
+    assert _fails(checks) == [], [c for c in checks if c.status == "FAIL"]
+    assert any("valid override" in c.detail for c in checks if c.status == "PASS")
+
+
+@pytest.mark.parametrize(
+    ("servers", "user", "message"),
+    [
+        ({"docs": {"enabled": False}}, None, "a global server to override"),
+        ({"docs": {"enabled": "no"}}, USER_DOCS, "enabled must be a boolean"),
+        ({"docs": {"enabled": False, "headers": {}}}, USER_DOCS, "an override can only set"),
+        (
+            {"gh": {"url": "https://example.com/mcp", "auth": {"provider": "anthropic"}}},
+            None,
+            "auth is only allowed in the global mcp.json",
+        ),
+    ],
+)
+def test_project_mcp_rules_fail(tmp_path, servers, user, message):
+    checks = _project_mcp(tmp_path, servers, user=user)
+    assert "mcp-config" in _fails(checks)
+    assert any(message in check.detail for check in checks if check.status == "FAIL")
+
+
+def test_override_entry_in_a_user_level_file_fails(tmp_path):
+    artifact = tmp_path / "mcp.json"
+    artifact.write_text(json.dumps({"mcpServers": {"docs": {"enabled": False}}}))
+    gate = tmp_path / "mcp.gate.json"
+    gate.write_text(json.dumps({"kind": "mcp-config", "expect": {"mcpServers": ["docs"]}}))
+    checks = pi_gate.gate(artifact, gate, _install(), pi_gate.GateOptions(tmp_path / "real"))
+    assert "mcp-config" in _fails(checks)

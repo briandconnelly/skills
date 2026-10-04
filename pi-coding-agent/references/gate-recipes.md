@@ -362,7 +362,8 @@ Fixture: `tests/fixtures/gate/mcp/register.gate.json`
 
 ## MCP servers in `mcp.json`
 
-Original server entries are validated by the installed Pi's `validateMcpServerConfig` before a copy is listed by `pi mcp list` with every server disabled, so nothing connects.
+The original file is loaded by the installed Pi's MCP config loader (`loadMcpConfig`), which starts no server.
+A user-level file is then listed by `pi mcp list` from a copy with every server disabled, so nothing connects.
 
 Fixture: `tests/fixtures/gate/mcp-config/mcp.gate.json`
 
@@ -373,6 +374,23 @@ Fixture: `tests/fixtures/gate/mcp-config/mcp.gate.json`
     "mcpServers": [
       "filesystem",
       "docs"
+    ]
+  }
+}
+```
+
+A `.pi/mcp.json` file takes `"scope": "project"`, so the loader applies the project rules (docs/mcp.md#configure-servers).
+It loads on top of a read-only copy of the real user-level `mcp.json`, so an entry without `command`, `url`, or `type` passes only as an override of a server defined there.
+
+Fixture: `tests/fixtures/gate/project/.pi/mcp.gate.json`
+
+```json
+{
+  "kind": "mcp-config",
+  "scope": "project",
+  "expect": {
+    "mcpServers": [
+      "project-docs"
     ]
   }
 }
