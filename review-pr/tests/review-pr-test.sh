@@ -44,7 +44,8 @@ if [ "$1 $2" = "repo clone" ]; then dest="$4"; shift 4; [ "${1:-}" != -- ] || sh
 if [ "$1 $2" = "pr view" ]; then
   for arg in "$@"; do [ "$arg" != -q ] || { printf '%s\n' "$FAKE_HEAD_SHA"; exit 0; }; done
   jq -n --arg base "$FAKE_BASE_SHA" --arg head "$FAKE_HEAD_SHA" \
-    '{number:12,title:"Fixture PR",body:"Fixture body",baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/12"),
+    '{number:12,title:"Fixture PR",body:(if env.FAKE_PR_BODY_BYTES then ("x" * (env.FAKE_PR_BODY_BYTES | tonumber)) else "Fixture body" end),
+      baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/12"),
       state:(env.FAKE_PR_STATE // "OPEN"), isDraft:((env.FAKE_PR_DRAFT // "false") == "true"), mergedAt:(env.FAKE_PR_MERGED_AT // null),
       author:{login:(env.FAKE_PR_AUTHOR // "octocat"), is_bot:((env.FAKE_PR_AUTHOR_BOT // "false") == "true")}}'
   exit 0
@@ -152,6 +153,14 @@ out="$(FAKE_PR_STATE=MERGED FAKE_PR_MERGED_AT=2026-10-01T12:00:00Z REVIEW_PR_SCR
 jq -e '.exit == 0 and .pr_state == "MERGED" and .pr_merged_at == "2026-10-01T12:00:00Z" and .pr_is_draft == false' <<<"$out" >/dev/null \
   || { echo "FAIL: merged PR status not relayed: $out"; FAIL=1; }
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: merged PR was not reviewed: $out"; FAIL=1; }
+
+# PR metadata must never ride a process argument: GitHub allows 65,536 body characters, which can exceed
+# Linux's 128 KiB single-argument limit once JSON-escaped. This probe is sized past macOS's 1 MiB ARG_MAX
+# as well so it fails under either kernel when the body reaches argv.
+out="$(FAKE_PR_BODY_BYTES=1500000 REVIEW_PR_SCRATCH="$S/bigbody/" "$SRC/review-pr.sh" owner/repo 12 2>"$S/bigbody.stderr")" \
+  || { echo "FAIL: a large PR body aborted the checkout: $(tail -3 "$S/bigbody.stderr")"; FAIL=1; }
+jq -e '.exit == 0 and .pr_state == "OPEN" and .schema_valid == true' <<<"${out:-null}" >/dev/null \
+  || { echo "FAIL: large PR body was not reviewed with status relayed: ${out:-<no output>}"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "review-pr-test: OK"
 exit "$FAIL"

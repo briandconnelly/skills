@@ -73,9 +73,11 @@ CONTEXT_COUNT="$(jq -r length <<<"$CONTEXT_PATHS")"
 printf '%s\n' "$CONTEXT_PATHS" > "$JOB/policy-manifest.json"
 
 # Status is as observed at checkout. Booleans are copied with has(), since jq's // would turn false into null.
+# The metadata comes from pr.json on disk, never from argv: a PR body can exceed a single argument's size limit.
 jq -n --arg dir "$JOB" --arg runner "$RUNNER" --arg base "$BASE_SHA" --arg head "$HEAD_SHA" --arg mb "$MERGE_BASE_SHA" --arg hr "$HEAD_REPO" \
-  --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --arg context "$JOB/policy-manifest.json" --argjson changes "$CHANGES" --argjson pr "$META" \
-  '{dir:$dir, runner:$runner, base_sha:$base, head_sha:$head, merge_base_sha:$mb, head_repo:$hr, policy_changes:$changes,
+  --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --arg context "$JOB/policy-manifest.json" --argjson changes "$CHANGES" --slurpfile meta_doc "$JOB/pr.json" \
+  '$meta_doc[0] as $pr |
+   {dir:$dir, runner:$runner, base_sha:$base, head_sha:$head, merge_base_sha:$mb, head_repo:$hr, policy_changes:$changes,
     pr_state:($pr.state // null), pr_is_draft:(if ($pr | has("isDraft")) then $pr.isDraft else null end), pr_merged_at:($pr.mergedAt // null),
     pr_author:($pr.author.login // null), pr_author_is_bot:(if (($pr.author | type) == "object" and ($pr.author | has("is_bot"))) then $pr.author.is_bot else null end),
     diff_path:$diff, meta_path:$meta, policy_manifest_path:$context}'
