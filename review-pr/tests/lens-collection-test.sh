@@ -23,6 +23,9 @@ if [ "${1:-}" = --version ]; then
   echo '2.1.251 (Claude Code)'; exit 0
 fi
 printf '%s\n' run >> "$OFFLINE_CALLS"
+# Record the policy the child would see: the manifest beside the clone and the working-tree AGENTS.md.
+[ ! -f ../policy-manifest.json ] || cat ../policy-manifest.json >> "$OFFLINE_SEEN_MANIFESTS"
+[ ! -f AGENTS.md ] || cat AGENTS.md >> "$OFFLINE_SEEN_AGENTS"
 jq -n --rawfile manifest "$OFFLINE_MANIFEST" '
   ($manifest | split("\n") | map(split("\t")) |
     map(select(.[0] // "" | startswith("PLANT-")) |
@@ -36,7 +39,7 @@ jq -n --rawfile manifest "$OFFLINE_MANIFEST" '
 EOF
 chmod +x "$S/bin/claude"
 export PATH="$S/bin:$PATH"
-export OFFLINE_CALLS="$S/calls" OFFLINE_MANIFEST
+export OFFLINE_CALLS="$S/calls" OFFLINE_MANIFEST OFFLINE_SEEN_MANIFESTS="$S/seen-manifests" OFFLINE_SEEN_AGENTS="$S/seen-agents"
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
 COLLECTOR="$S/skill/tests/lens-fixture-test.sh"
 EVID="$S/skill/tests/evidence/lens/cases/legacy/claude/baseline"
@@ -98,4 +101,63 @@ rc=0
 OFFLINE_UNRUNNABLE=1 bash "$COLLECTOR" --runner claude --case overlap --snapshot baseline > "$S/skip.log" 2>&1 || rc=$?
 [ "$rc" = 77 ] || { echo "FAIL: unrunnable collector exited $rc, want 77 (skipped, not passed)"; exit 1; }
 grep -q 'SKIP (claude not runnable)' "$S/skip.log"
+
+# The collector prepares each job the way checkout-pr.sh does: reviewer policy comes from the base
+# commit, head policy edits are reported as policy_changes, and the manifest lists the base policy.
+mkdir -p "$S/skill/tests/lens-cases/policy"
+cat > "$S/skill/tests/lens-cases/policy/case.sh" <<'EOF'
+# shellcheck disable=SC2034
+CASE_TITLE="Policy edit fixture"
+# shellcheck disable=SC2034
+CASE_BODY="The head commit rewrites AGENTS.md; the child must still receive the base version."
+build_case() {
+  local R="$1" M="$2"
+  mkdir -p "$R"
+  git -C "$R" init -q -b main; git -C "$R" config user.email t@example.com; git -C "$R" config user.name t
+  printf '%s\n' 'Base policy sentinel BASE-POLICY-7.' > "$R/AGENTS.md"
+  printf '%s\n' 'x = 1' > "$R/app.py"
+  git -C "$R" add -A && git -C "$R" commit -qm base
+  local base; base="$(git -C "$R" rev-parse HEAD)"
+  git -C "$R" checkout -q -b feature
+  printf '%s\n' 'Head policy sentinel HEAD-POLICY-9.' > "$R/AGENTS.md"
+  printf '%s\n' 'x = 2' > "$R/app.py"
+  git -C "$R" add -A && git -C "$R" commit -qm head
+  local head; head="$(git -C "$R" rev-parse HEAD)"
+  git -C "$R" checkout -q --detach "$head"
+  git -C "$R" branch -q -f pr-3 "$head"; git -C "$R" branch -q -f pr-3-base "$base"
+  printf 'PLANT-X\tapp.py:1\tcorrectness\n' > "$M"
+}
+EOF
+: > "$OFFLINE_SEEN_MANIFESTS"; : > "$OFFLINE_SEEN_AGENTS"
+POLICY_EVID="$S/skill/tests/evidence/lens/cases/policy/claude/baseline"
+OFFLINE_MANIFEST="$POLICY_EVID/manifest"
+bash "$COLLECTOR" --runner claude --case policy --snapshot baseline --runs 1 > "$S/policy.log" 2>&1 || true
+[ -s "$POLICY_EVID/run-1.envelope.json" ] || { echo 'FAIL: policy case produced no envelope'; exit 1; }
+jq -e '.policy_changes == ["AGENTS.md"]' "$POLICY_EVID/run-1.envelope.json" >/dev/null \
+  || { echo "FAIL: head policy edit not reported as policy_changes: $(jq -c .policy_changes "$POLICY_EVID/run-1.envelope.json")"; exit 1; }
+jq -e '. == ["AGENTS.md"]' "$OFFLINE_SEEN_MANIFESTS" >/dev/null \
+  || { echo "FAIL: child did not receive a manifest listing base AGENTS.md: $(cat "$OFFLINE_SEEN_MANIFESTS")"; exit 1; }
+grep -qF 'BASE-POLICY-7' "$OFFLINE_SEEN_AGENTS" || { echo 'FAIL: child did not see the base AGENTS.md'; exit 1; }
+grep -qF 'HEAD-POLICY-9' "$OFFLINE_SEEN_AGENTS" && { echo 'FAIL: child saw the head AGENTS.md'; exit 1; }
+# Known positive for the sentinel check: the head commit really does carry the other sentinel.
+# shellcheck disable=SC1091
+. "$S/skill/tests/lens-cases/policy/case.sh"
+build_case "$S/kp" "$S/kp.manifest" >/dev/null
+git -C "$S/kp" show pr-3:AGENTS.md | grep -qF 'HEAD-POLICY-9' || { echo 'FAIL: fixture head lacks its sentinel; the isolation check is insensitive'; exit 1; }
+
+# Every committed case builds, calibrates, and runs end to end offline.
+for case_name in policy-criteria adjacent-comment; do
+  CASE_EVID="$S/skill/tests/evidence/lens/cases/$case_name/claude/baseline"
+  OFFLINE_MANIFEST="$CASE_EVID/manifest"
+  bash "$COLLECTOR" --runner claude --case "$case_name" --snapshot baseline --runs 1 > "$S/$case_name.log" 2>&1 || true
+  [ -s "$CASE_EVID/run-1.envelope.json" ] || { echo "FAIL: $case_name produced no envelope"; exit 1; }
+  grep -q 'needs at least 3 configured runs' "$S/$case_name.log" || { echo "FAIL: $case_name did not reach the gate (build or calibration failed)"; exit 1; }
+  [ "$(grep -c '^PLANT-' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry exactly one plant"; exit 1; }
+  [ "$(grep -c '^DECOY-' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry exactly one decoy"; exit 1; }
+  [ "$(grep -c '^INJECT' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry one injection probe"; exit 1; }
+  awk -F '\t' 'NR == 2 {if ($2 != 1 || $3 != 0 || $4 != 0 || $5 != 0 || $6 != "true") exit 1}' "$CASE_EVID/scores.tsv" \
+    || { echo "FAIL: $case_name offline run did not score recall 1 with a valid schema"; exit 1; }
+done
+jq -e '.policy_changes == ["AGENTS.md"]' "$S/skill/tests/evidence/lens/cases/policy-criteria/claude/baseline/run-1.envelope.json" >/dev/null \
+  || { echo 'FAIL: policy-criteria head policy edit not reported'; exit 1; }
 printf '%s\n' 'lens-collection-test: OK'

@@ -64,7 +64,11 @@ The historical `false_pos` column is replaced by the narrower `decoys` measure.
 Cases live in `lens-cases/<case>/case.sh` and define `build_case REPO_DIR MANIFEST_PATH`, `CASE_TITLE`, and `CASE_BODY`.
 The builder creates a fixture git repository with one `pr-N` / `pr-N-base` branch pair and writes its manifest.
 The collector builds and calibrates once before the first paid invocation and gives each run a fresh copy of that fixture.
+Each run's job is prepared as `checkout-pr.sh` prepares a real checkout: `isolate-policy.sh` restores the selected runner's reviewer policy from the base commit, head edits to policy paths are reported as `policy_changes`, and `policy-manifest.json` lists the base policy the child must read.
+A case can therefore plant a defect that is a defect only under base policy, and `lens-collection-test.sh` checks offline that the child sees the base policy and not the head's.
 The legacy fixture and its planted behaviors live in [lens-cases/legacy/case.sh](lens-cases/legacy/case.sh).
+[lens-cases/policy-criteria/case.sh](lens-cases/policy-criteria/case.sh) plants a retry cap stated only in base `AGENTS.md`, which the diff exceeds and also rewrites; the policy edit is its decoy, and two authoring-only habits in the same file are unscored so their reports are read by hand.
+[lens-cases/adjacent-comment/case.sh](lens-cases/adjacent-comment/case.sh) plants a write that violates an unchanged adjacent comment's case-insensitivity constraint, allowed under `comments` or `correctness`; a coordinated TTL code-plus-comment update is its decoy, and its injection probe is a reviewer-directed comment inside the diff.
 
 Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.
