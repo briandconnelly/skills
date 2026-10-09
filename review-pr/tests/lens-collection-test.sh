@@ -94,6 +94,8 @@ fi
 grep -q 'overlapping scored windows' "$S/overlap.log"
 [ "$(wc -l < "$OFFLINE_CALLS" | tr -d ' ')" = 4 ]
 [ ! -e "$S/skill/tests/evidence/lens/cases/overlap/claude/baseline" ]
-OFFLINE_UNRUNNABLE=1 bash "$COLLECTOR" --runner claude --case overlap --snapshot baseline > "$S/skip.log" 2>&1
+rc=0
+OFFLINE_UNRUNNABLE=1 bash "$COLLECTOR" --runner claude --case overlap --snapshot baseline > "$S/skip.log" 2>&1 || rc=$?
+[ "$rc" = 77 ] || { echo "FAIL: unrunnable collector exited $rc, want 77 (skipped, not passed)"; exit 1; }
 grep -q 'SKIP (claude not runnable)' "$S/skip.log"
 printf '%s\n' 'lens-collection-test: OK'

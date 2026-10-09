@@ -2,7 +2,8 @@
 # Live: checkout-pr.sh pins and clones a real PR for the selected adapter.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
-if ! gh auth status >/dev/null 2>&1; then echo "checkout-pr-test: SKIP (gh not authenticated)"; exit 0; fi
+# Exit 77 marks a skip so an unrun gate is never mistaken for a pass (RC7).
+if ! gh auth status >/dev/null 2>&1; then echo "checkout-pr-test: SKIP (gh not authenticated)"; exit 77; fi
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 # shellcheck disable=SC1091

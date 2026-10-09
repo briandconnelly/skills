@@ -28,6 +28,14 @@ STDERR="$DIR/runner.stderr"
 KEEP=""
 keep_requested && KEEP=1
 
+# From here on the result envelope is emitted on exit, so failures before the child starts must
+# land in the runner stderr file that becomes stderr_tail, not only on this script's stderr.
+die() { # die CODE MESSAGE...
+  local code="$1"; shift
+  printf 'review-pr: %s\n' "$*" | tee -a "$STDERR" >&2
+  exit "$code"
+}
+
 normalize_native() {
   [ -s "$NATIVE" ] || return 1
   adapter_normalize "$NATIVE" "${CHILD_EXIT:-1}" "$NORMALIZED" || return 1
@@ -142,7 +150,7 @@ wait "$CHILD_PID" || CHILD_EXIT=$?
 kill "$WATCHDOG" 2>/dev/null || true
 pkill -P "$WATCHDOG" 2>/dev/null || true
 mv -f "$NATIVE_TMP" "$NATIVE"
-normalize_native || printf 'review-pr: runner output did not match the normalized adapter contract\n' >&2
+normalize_native || printf 'review-pr: runner output did not match the normalized adapter contract\n' | tee -a "$STDERR" >&2
 printf '%s\n' "$CHILD_EXIT" > "$DIR/runner.exit"
 FINISHED=1
 trap - INT TERM

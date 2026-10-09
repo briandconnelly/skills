@@ -161,5 +161,56 @@ fi
 [ "$(cat "$outside/AGENTS.md")" = 'outside sentinel' ] \
   || { echo "FAIL: policy restoration wrote through an ancestor symlink"; FAIL=1; }
 
+# A policy file changed only on the base branch after the PR branched is not reported as a PR change.
+fixture="$S/base-moved"
+mkdir -p "$fixture"
+git -C "$fixture" init -q -b main
+git -C "$fixture" config user.email t@example.com
+git -C "$fixture" config user.name t
+printf '%s\n' v1 > "$fixture/CLAUDE.md"; printf '%s\n' a > "$fixture/app.py"
+git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm root
+git -C "$fixture" checkout -qb feature
+printf '%s\n' b >> "$fixture/app.py"
+git -C "$fixture" -c commit.gpgsign=false commit -qam pr
+head="$(git -C "$fixture" rev-parse HEAD)"
+git -C "$fixture" checkout -q main
+printf '%s\n' v2 > "$fixture/CLAUDE.md"
+git -C "$fixture" -c commit.gpgsign=false commit -qam "base moves policy"
+base="$(git -C "$fixture" rev-parse HEAD)"
+git -C "$fixture" checkout -q --detach "$head"
+out="$("$SRC/isolate-policy.sh" claude "$fixture" "$base" "$head")"
+[ "$out" = '[]' ] || { echo "FAIL: base-only policy change reported as a PR change: $out"; FAIL=1; }
+[ "$(cat "$fixture/CLAUDE.md")" = v2 ] || { echo "FAIL: policy was not restored from the pinned base tip"; FAIL=1; }
+
+# Inherited repository-routing variables (as inside a git hook) must not reach another repository.
+routed_case() { # routed_case NAME VAR=VALUE...; SENTINEL names the other repository
+  local name="$1" fixture="$S/routed-$1" base head rc=0 index_before; shift
+  index_before="$(git -C "$SENTINEL" ls-files --stage)"
+  mkdir -p "$fixture"
+  git -C "$fixture" init -q -b main
+  git -C "$fixture" config user.email t@example.com
+  git -C "$fixture" config user.name t
+  printf '%s\n' 'base policy' > "$fixture/CLAUDE.md"
+  git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm base
+  base="$(git -C "$fixture" rev-parse HEAD)"
+  printf '%s\n' 'head policy' > "$fixture/CLAUDE.md"
+  git -C "$fixture" -c commit.gpgsign=false commit -qam head
+  head="$(git -C "$fixture" rev-parse HEAD)"
+  env "$@" "$SRC/isolate-policy.sh" claude "$fixture" "$base" "$head" >/dev/null 2>&1 || rc=$?
+  [ "$rc" = 0 ] || { echo "FAIL: $name: isolate-policy.sh failed under inherited routing variables (exit $rc)"; FAIL=1; }
+  [ "$(git -C "$SENTINEL" ls-files --stage)" = "$index_before" ] \
+    || { echo "FAIL: $name: isolation rewrote another repository's index"; FAIL=1; }
+  [ ! -e "$SENTINEL/CLAUDE.md" ] || { echo "FAIL: $name: isolation wrote into another repository's work tree"; FAIL=1; }
+  [ "$(cat "$fixture/CLAUDE.md")" = 'base policy' ] \
+    || { echo "FAIL: $name: base policy was not restored in the target checkout"; FAIL=1; }
+}
+SENTINEL="$S/sentinel"
+mkdir -p "$SENTINEL"
+git -C "$SENTINEL" init -q -b main
+printf '%s\n' staged > "$SENTINEL/staged.txt"
+git -C "$SENTINEL" add staged.txt
+routed_case index GIT_INDEX_FILE="$SENTINEL/.git/index"
+routed_case gitdir GIT_DIR="$SENTINEL/.git" GIT_WORK_TREE="$SENTINEL"
+
 [ "$FAIL" = 0 ] && echo "isolate-policy-test: OK"
 exit "$FAIL"
