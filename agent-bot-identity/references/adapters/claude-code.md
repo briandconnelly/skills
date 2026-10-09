@@ -143,6 +143,7 @@ Personal-repo commands pay only local git queries.
 The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
 Wrong-host requests remain silent.
 Do not clear askpass or terminal-prompt variables globally because a personal verdict cannot safely restore caller- or IDE-provided values.
+Two more refusals, for competing HTTP credentials, are in the decision table below; the static adapters cannot refuse, so Phase 5 carries the matching probes.
 
 The decision rules and their fail direction:
 
@@ -159,6 +160,8 @@ The decision rules and their fail direction:
 | A raw config record is valueless or malformed | Bot if otherwise undetermined, one stderr warning | Ambiguous — a record without the key/value separator cannot establish non-org affiliation |
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | A remote's effective fetch or push URL is still a non-HTTPS `github.com` URL after the bot rewrites (a rule in your own config matches its complete URL) | Command aborts, stderr names the remote and URL | A push there would ride the personal SSH key under the bot's authorship; remove the rule — destinations on other hosts are not checked |
+| A git config `http.extraHeader` (any URL scope matching github.com) sets `Authorization:` | Command aborts, stderr names the key | git sends the header on every request, so the bot helper is never asked; remove the rule |
+| `~/.netrc` (or `_netrc`) has a `machine github.com` or `default` entry | Command aborts, stderr names the file | git enables curl's netrc lookup, which answers before any credential helper |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
 

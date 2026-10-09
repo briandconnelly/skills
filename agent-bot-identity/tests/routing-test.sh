@@ -49,7 +49,7 @@ export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv
 
 cp "$SRC/git-credential-bot" "$DIR/"
 awk '{ if ($0 == "acme:REPLACE") print "acme:111"; else print }' "$SRC/bot-env" > "$DIR/bot-env"
-printf '#!/usr/bin/env bash\necho "ghs_stub-${BOT_INSTALL_ID:-none}"\n' > "$DIR/bot-token"
+printf '#!/usr/bin/env bash\n[ -n "${BOT_TOKEN_CALLS:-}" ] && : >> "$BOT_TOKEN_CALLS"\necho "ghs_stub-${BOT_INSTALL_ID:-none}"\n' > "$DIR/bot-token"
 chmod +x "$DIR"/git-credential-bot "$DIR"/bot-env "$DIR"/bot-token
 
 fail() { echo "FAIL: $*"; FAIL=1; }
@@ -462,6 +462,94 @@ rm -rf "$R"
 # 41. An IPv6 literal is another host, never an alias-shaped abort.
 R="$(mkrepo 'ssh://git@[::1]:2222/me/x.git')"
 [ "$(verdict "$R")" = PERSONAL ] || fail "IPv6 literal remote did not resolve personal: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 42. A user http.extraHeader carrying Authorization for github.com
+#     authenticates before the helper is consulted; refuse to route, name
+#     the key, never the value, and do not mint.
+HDR="$DIR/global-authz"
+printf '[http "https://github.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$HDR" BOT_TOKEN_CALLS="$DIR/calls" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization extraHeader for github.com did not abort"
+[ -z "$out" ] || fail "extraHeader abort still emitted env lines"
+grep -q 'http.https://github.com/.extraheader' "$DIR/err" || fail "extraHeader abort did not name the key: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "extraHeader abort printed the header value"
+[ ! -e "$DIR/calls" ] || fail "a refused command still minted a token"
+rm -rf "$R"
+
+# 43. A plain (host-less) http.extraHeader with Authorization also aborts.
+HDR2="$DIR/global-authz-plain"
+printf '[http]\n\textraHeader = Authorization: bearer REDACTED\n' > "$HDR2"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR2" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "plain Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 44. A rule more specific than the host (the shape a command-scope clear
+#     cannot beat) aborts too.
+HDR3="$DIR/global-authz-specific"
+printf '[http "https://github.com/acme/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR3"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR3" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "account-specific Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 45. git keeps the URL subsection's case and matches hosts
+#     case-insensitively, so a rule written for `GitHub.com` or with an
+#     explicit :443 must abort too.
+HDR4="$DIR/global-authz-mixedcase"
+printf '[http "https://GitHub.com:443/"]\n\tExtraHeader = authorization: basic REDACTED\n' > "$HDR4"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR4" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "mixed-case GitHub.com:443 Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 46. A non-Authorization header, or an Authorization header for another
+#     host, is not a competing credential.
+HDR5="$DIR/global-benign"
+printf '[http "https://github.com/"]\n\textraHeader = X-Trace: 1\n[http "https://gitlab.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR5"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$HDR5" "$DIR/bot-env" 2>/dev/null)" || fail "benign extraHeaders aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "benign extraHeaders did not resolve bot"
+rm -rf "$R"
+
+# 47. A ~/.netrc github.com entry: git's HTTP transport lets curl use it
+#     before any helper runs. Refuse to route.
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+printf 'machine github.com login me password REDACTED\n' > "$HOME/.netrc"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail ".netrc github.com entry did not abort"
+grep -q '\.netrc' "$DIR/err" || fail ".netrc abort did not name the file: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail ".netrc abort printed the entry"
+
+# 48. Multi-line and `default` forms are entries too; another machine is not.
+printf 'machine\n  github.com\n  login me\n  password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "multi-line .netrc github.com entry did not abort"
+printf 'default login me password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail ".netrc default entry did not abort"
+printf 'machine gitlab.com login me password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail ".netrc gitlab.com entry aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail ".netrc gitlab.com entry did not resolve bot"
+rm -f "$HOME/.netrc"
+rm -rf "$R"
+
+# 49. Personal verdicts never look at either: a competing credential is the
+#     human's business in the human's repos.
+printf 'machine github.com login me password REDACTED\n' > "$HOME/.netrc"
+R="$(mkrepo git@gitlab.com:me/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "personal verdict was affected by .netrc"
+rm -f "$HOME/.netrc"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

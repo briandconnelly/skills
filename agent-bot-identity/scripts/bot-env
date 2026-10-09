@@ -312,17 +312,6 @@ if [ -n "$matched_org" ]; then
   bot_install_id="$(install_id_for_org "$matched_org")"
 fi
 
-# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
-# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
-# The mint must see the same installation selection the emitted env exports —
-# and never a stale BOT_INSTALL_ID inherited from a previously visited repo.
-if [ -n "$matched_org" ]; then
-  token="$(BOT_INSTALL_ID="$bot_install_id" "$SCRIPT_DIR/bot-token")" || token=""
-else
-  token="$(env -u BOT_INSTALL_ID "$SCRIPT_DIR/bot-token")" || token=""
-fi
-[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
-
 # Under a bot verdict every github.com transport in this command must go
 # through HTTPS, and so through the host-gated bot credential helper: a remote
 # left on SSH would push with the personal key under the bot's authorship.
@@ -392,6 +381,46 @@ $effective
 EOF3
   done
 done
+
+# Routing every GitHub transport through HTTPS only proves the bot
+# authenticated if nothing else answers first. Two things do: an
+# http.extraHeader carrying Authorization (git sends it on every request, and
+# a user rule more specific than the host survives any command-scope clear),
+# and a ~/.netrc entry for github.com (git enables curl's netrc lookup, which
+# runs before the credential helper). Neither can be neutralised from here,
+# so refuse to route and name what to remove — never the value.
+# git lower-cases the section and variable names but keeps a URL subsection
+# as written, and its URL match compares hosts case-insensitively, so the
+# key is lower-cased here before the host test.
+authz_keys="$(git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) == "authorization:" { print $1 }' || true)"
+for k in $authz_keys; do
+  k_lc="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]')"
+  case "$k_lc" in
+    http.extraheader) ;;
+    http.https://github.com/*|http.https://github.com|http.https://github.com:443/*|http.https://github.com:443|http.http://github.com/*|http.https://*@github.com/*|http.https://*@github.com:443/*) ;;
+    *) continue ;;
+  esac
+  echo "bot-env: git config key '${k}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
+  exit 1
+done
+for netrc in "$HOME/.netrc" "$HOME/_netrc"; do
+  [ -r "$netrc" ] || continue
+  if tr -s '[:space:]' '\n' <"$netrc" | awk 'BEGIN { found = 0 } tolower($0) == "default" { found = 1 } prev == "machine" && tolower($0) == "github.com" { found = 1 } { prev = tolower($0) } END { exit !found }'; then
+    echo "bot-env: ${netrc} has a github.com (or default) entry; git's HTTP transport consults it before the credential helper, so a push would authenticate as that login. Remove the entry; refusing to run with a competing credential" >&2
+    exit 1
+  fi
+done
+
+# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
+# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
+# The mint must see the same installation selection the emitted env exports —
+# and never a stale BOT_INSTALL_ID inherited from a previously visited repo.
+if [ -n "$matched_org" ]; then
+  token="$(BOT_INSTALL_ID="$bot_install_id" "$SCRIPT_DIR/bot-token")" || token=""
+else
+  token="$(env -u BOT_INSTALL_ID "$SCRIPT_DIR/bot-token")" || token=""
+fi
+[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
 
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'
