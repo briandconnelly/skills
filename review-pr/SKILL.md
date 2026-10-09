@@ -67,7 +67,9 @@ Print the result inside a fenced block headed `Review of OWNER/REPO#N at <head_s
 
 Use a fence longer than the longest run of backticks inside the result.
 
-Add `Head permalinks: https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<line>; a citation marked [base] uses <merge_base_sha> in place of <head_sha>.`.
+Add `Head permalinks: https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<line>, with each segment of <path> percent-encoded and `/` kept; a citation marked [base] uses <merge_base_sha> in place of <head_sha>.`.
+
+Cited paths may contain spaces and URL-reserved characters, so a path copied verbatim into a URL can truncate or change meaning.
 
 When `pr_is_draft` is true, add `This PR is a draft.`.
 
