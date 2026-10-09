@@ -1,0 +1,10 @@
+{
+  "collection_id": "3c4b3802f091215b69fd31387648a135dad36793",
+  "runner": "claude",
+  "case": "policy-criteria",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "1d2b5cbea423491064710daeb17b52c1e09d03cb7385f3514701e11feb8c3a42"
+}

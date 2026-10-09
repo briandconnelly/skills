@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.162.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds a bounded retry helper and tests for success, exhaustion, and attempt validation. Its ten-attempt limit conflicts with the loaded project requirement of five attempts and must be corrected before merge.\n\n## Critical\n- app/net.py:19 — correctness — When an upstream repeatedly raises OSError, the helper permits ten attempts by default, exceeding the loaded AGENTS.md requirement that retry helpers cap attempts at five — A failed request generates twice the permitted upstream calls and prolongs failure handling during outages.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Exhaustion re-raises the final exception, preserving failure details.\n- Tests exercise recovery, exhaustion, default attempt count, and out-of-range rejection.\n\n## Not reviewed\n- Runtime test results; execution was prohibited by the review procedure.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.20NSdbVdGp/review-pr.vqaN6l",
+  "head_sha": "89d96c37de6dc34b5972edfd1e23d633ff603976",
+  "base_sha": "fe1b8e7a08a76a0d23ab0eaab6b5cc5adc1d3e03",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e2a11a9a31fa66bf92050ee21e44f12d2c35b332"
+}
