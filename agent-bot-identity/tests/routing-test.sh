@@ -447,6 +447,16 @@ printf '#!/bin/sh\nexec ssh -F "%s" "$@"\n' "$HOME/.ssh/work_config" > "$DIR/mys
 chmod +x "$DIR/myssh"
 out="$(cd "$R" && GIT_SSH="$DIR/myssh" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH wrapper alias aborted"
 echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH wrapper alias did not give the bot verdict"
+# 40c. core.sshCommand outranks GIT_SSH (git's connect.c order); only when it is unset does GIT_SSH decide.
+printf 'Host work\n  HostName gitlab.com\n  User git\n' > "$HOME/.ssh/other_config"
+printf '#!/bin/sh\nexec ssh -F "%s" "$@"\n' "$HOME/.ssh/other_config" > "$DIR/myssh-other"
+chmod +x "$DIR/myssh-other"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/work_config"
+out="$(cd "$R" && GIT_SSH="$DIR/myssh-other" "$DIR/bot-env" 2>/dev/null)" || fail "core.sshCommand with a disagreeing GIT_SSH aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH outranked core.sshCommand"
+git -C "$R" config --unset core.sshCommand
+out="$(cd "$R" && GIT_SSH="$DIR/myssh-other" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH alone aborted"
+echo "$out" | grep -q '^unset GH_TOKEN$' || fail "GIT_SSH alone did not decide the destination"
 rm -rf "$R"
 
 # 41. An IPv6 literal is another host, never an alias-shaped abort.

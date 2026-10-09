@@ -82,7 +82,7 @@ url_host_lc() {
 }
 
 # Resolve an ssh host the way git's own ssh would: GIT_SSH_COMMAND, then
-# GIT_SSH, then core.sshCommand, then plain ssh. `-G` prints the client
+# core.sshCommand, then GIT_SSH, then plain ssh. `-G` prints the client
 # configuration without connecting, which is how a `Host gh` alias becomes
 # `hostname github.com`. Canonicalisation is off so no DNS lookup happens
 # here, and stdin is closed so a `Match exec` block cannot read this
@@ -91,16 +91,18 @@ url_host_lc() {
 git_ssh_resolve() {
   local host="$1" cmd
   case "$host" in -*|""|*:*|\[*) return 1 ;; esac
+  # git's order (connect.c): GIT_SSH_COMMAND, else core.sshCommand, both run
+  # through a shell; only when neither is set, GIT_SSH (no shell), else ssh.
   if [ -n "${GIT_SSH_COMMAND:-}" ]; then
     cmd="$GIT_SSH_COMMAND"
-  elif [ -n "${GIT_SSH:-}" ]; then
-    cmd="\"$GIT_SSH\""
   else
     cmd="$(git config --get core.sshCommand 2>/dev/null || true)"
-    [ -n "$cmd" ] || cmd=ssh
   fi
-  sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "$host" 2>/dev/null </dev/null \
-    | awk '$1 == "hostname" { print tolower($2); exit }'
+  if [ -n "$cmd" ]; then
+    sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "$host" 2>/dev/null </dev/null
+  else
+    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no "$host" 2>/dev/null </dev/null
+  fi | awk '!done && $1 == "hostname" { print tolower($2); done = 1 }'
 }
 
 # github_destination <url> -> "github" when the URL reaches GitHub over ssh
