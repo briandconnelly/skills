@@ -27,7 +27,9 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
 - RC5: The adapter must reject an unsupported review level rather than silently changing its meaning.
 - RC6: The adapter must normalize native output into the result envelope before the calling session reads it.
 - RC7: Each adapter reference must name its offline interface test, runner-backed hostile-fixture test, and multi-run review-quality gate, and every named gate must pass before the adapter is advertised as supported.
+  A runner-backed gate that cannot run its runner exits 77 and prints `SKIP`; a skipped gate has not passed.
 - RC8: The checkout must list every adapter-selected passive policy file in `policy-manifest.json`, and the child must read every listed file before reviewing the diff.
+  The review lens instructs these reads, and each runner-backed hostile fixture checks that base-policy sentinels reach the child; individual review runs do not verify that every listed file was read.
 - RC9: The checkout must fail before review when the policy manifest exceeds `REVIEW_PR_MAX_POLICY_FILES`, which defaults to 40, rather than silently omitting policy or exhausting the child turn budget.
 - RC10: A runner reference must document its command capability and whether filesystem reads are technically confined, while the review lens must limit commands to read-only inspection and forbid builds, tests, and other execution of repository code.
 - RC11: Base policy files, passive resources, and adapter policy roots must not be symlinks; the checkout must fail before policy restoration when any are found.

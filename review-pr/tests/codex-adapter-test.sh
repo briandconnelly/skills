@@ -132,9 +132,13 @@ cat > "$FAKEBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 exit 1
 EOF
-skip="$(bash "$ROOT/tests/lens-fixture-test.sh" --runner codex --case legacy --snapshot baseline --runs 1)" || { echo "FAIL: unavailable Codex lens gate did not skip"; FAIL=1; skip=''; }
+rc=0
+skip="$(bash "$ROOT/tests/lens-fixture-test.sh" --runner codex --case legacy --snapshot baseline --runs 1)" || rc=$?
+[ "$rc" = 77 ] || { echo "FAIL: unavailable Codex lens gate exited $rc, want 77 (skipped, not passed)"; FAIL=1; }
 grep -qF 'SKIP (codex not runnable)' <<<"$skip" || { echo "FAIL: unavailable Codex lens gate lacks a skip message"; FAIL=1; }
-skip="$(bash "$ROOT/tests/codex-hostile-fixture-test.sh")" || { echo "FAIL: unavailable Codex hostile gate did not skip"; FAIL=1; skip=''; }
+rc=0
+skip="$(bash "$ROOT/tests/codex-hostile-fixture-test.sh")" || rc=$?
+[ "$rc" = 77 ] || { echo "FAIL: unavailable Codex hostile gate exited $rc, want 77 (skipped, not passed)"; FAIL=1; }
 grep -qF 'SKIP (codex not runnable)' <<<"$skip" || { echo "FAIL: unavailable Codex hostile gate lacks a skip message"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "codex-adapter-test: OK"

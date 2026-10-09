@@ -29,8 +29,11 @@ while IFS= read -r -d '' entry; do
   [ -z "$selected" ] || die 1 "base reviewer policy must not be a symlink: $p"
 done < <(g ls-tree -r -z "$BASE")
 
+# Compare from the merge base, like pr.diff: a policy file changed only on the base branch is not a PR change.
+# Resolve it first so a missing merge base fails here instead of yielding an empty list.
+MERGE_BASE="$(g merge-base "$BASE" "$HEAD")" || die 1 "no merge base for $BASE and $HEAD"
 changes="$(
-  while IFS= read -r -d '' p; do if adapter_is_policy_path "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only "$BASE" "$HEAD") \
+  while IFS= read -r -d '' p; do if adapter_is_policy_path "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only "$MERGE_BASE" "$HEAD") \
     | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
 )"
 

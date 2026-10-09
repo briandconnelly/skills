@@ -71,6 +71,8 @@ When `review.denials` is nonempty, add `<N> runner tool calls were denied.`.
 
 Finish with `runner <review.engine> <review.engine_version> · cost $<review.cost_usd> · <review.duration_ms as minutes> min · exit <exit> · scratch removed`.
 
+When `review` is null, use the top-level `runner` field in place of `review.engine`.
+
 Omit unavailable version, cost, or duration segments.
 
 Use `scratch kept <dir>` instead of `scratch removed` when `kept` is true.
@@ -79,7 +81,7 @@ Use `scratch kept <dir>` instead of `scratch removed` when `kept` is true.
 
 See [Runner selection](#runner-selection) for adapter selection.
 
-`REVIEW_PR_BUDGET`, `REVIEW_PR_MAX_TURNS`, and `REVIEW_PR_TIMEOUT` default to `5`, `60`, and `900` seconds respectively.
+`REVIEW_PR_BUDGET` defaults to `5` USD, `REVIEW_PR_MAX_TURNS` to `60` turns, and `REVIEW_PR_TIMEOUT` to `900` seconds.
 
 Runner references state whether the selected adapter can enforce the budget and turn settings.
 

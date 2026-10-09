@@ -67,7 +67,7 @@ The legacy fixture and its planted behaviors live in [lens-cases/legacy/case.sh]
 
 Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.
-The collector skips with exit 0 and `SKIP` if the runner is not runnable, and otherwise scores the collected reports and applies the gate.
+When the runner is not runnable the collector skips as RC7 in [the runner adapter contract](../references/runner-contract.md#execution-invariants) specifies; otherwise it scores the collected reports and applies the gate.
 A collection of fewer than three runs saves evidence but cannot pass the gate.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.

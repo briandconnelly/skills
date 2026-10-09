@@ -2,6 +2,11 @@
 # Shared helpers for review-pr scripts. Sourced, not executed.
 # Exit codes: 0 ok, 1 tool failure, 2 usage, 3 prerequisite (spec: Components).
 
+# An inherited repository-routing variable (set, for example, when invoked from a git hook) would
+# redirect every `git -C` below, and the child's git, into the caller's repository and index.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE GIT_PREFIX
+
 die() { # die CODE MESSAGE...
   local code="$1"; shift
   printf 'review-pr: %s\n' "$*" >&2
