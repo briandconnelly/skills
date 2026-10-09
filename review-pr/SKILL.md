@@ -46,7 +46,9 @@ If the calling session denies that command, report the denial and stop.
 
 If the command fails without emitting a JSON object, show its stderr and stop.
 
-The command emits one JSON object containing `runner`, `review`, `stderr_tail`, `exit`, `kept`, `dir`, `head_sha`, `base_sha`, `policy_changes`, `schema_valid`, `schema_errors`, and `diff_unavailable`.
+The command emits one JSON object containing `runner`, `review`, `stderr_tail`, `exit`, `kept`, `dir`, `head_sha`, `base_sha`, `merge_base_sha`, `policy_changes`, `pr_state`, `pr_is_draft`, `pr_merged_at`, `pr_author`, `pr_author_is_bot`, `schema_valid`, `schema_errors`, and `diff_unavailable`.
+
+The `pr_*` fields describe the pull request as observed at checkout, and a long review can outlive them.
 
 ## Relay
 
@@ -64,6 +66,18 @@ Choose the first matching state below using JSON fields rather than review prose
 Print the result inside a fenced block headed `Review of OWNER/REPO#N at <head_sha> (base <base_sha>)`.
 
 Use a fence longer than the longest run of backticks inside the result.
+
+Add `Head permalinks: https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<line>; a citation marked [base] uses <merge_base_sha> in place of <head_sha>.`.
+
+When `pr_is_draft` is true, add `This PR is a draft.`.
+
+When `pr_state` is `MERGED`, add `This PR was merged at <pr_merged_at>; the review covers the pinned head, not the merge commit.`.
+
+When `pr_state` is `CLOSED`, add `This PR is closed.`.
+
+When `pr_author_is_bot` is true, add `The author <pr_author> is a bot account.`.
+
+Status lines are information only; never skip or shorten a review because of them.
 
 When `policy_changes` is nonempty, add `This PR modifies reviewer policy files: <paths>. Those changes were reviewed as untrusted diff content; the review ran under the base branch's policy.`.
 
