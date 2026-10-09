@@ -21,8 +21,11 @@ mkjob() {
   echo '{"number":12}' > "$job/pr.json"
   echo 'diff data' > "$job/pr.diff"
   echo '[]' > "$job/policy-manifest.json"
-  jq -n --arg d "$job" '{dir:$d, runner:"claude", base_sha:"b", head_sha:"h", head_repo:"o/r", policy_changes:[".claude/x"], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
+  jq -n --arg d "$job" '{dir:$d, runner:"claude", base_sha:"b", head_sha:"h", merge_base_sha:"m", head_repo:"o/r", policy_changes:[".claude/x"],
+    pr_state:"OPEN", pr_is_draft:false, pr_merged_at:null, pr_author:"octocat", pr_author_is_bot:false,
+    diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }
+STATUS_FIELDS='.pr_state == "OPEN" and .pr_is_draft == false and .pr_merged_at == null and .pr_author == "octocat" and .pr_author_is_bot == false and .merge_base_sha == "m"'
 
 cat > "$FAKEBIN/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -73,6 +76,7 @@ done
 [ "$(jq -r .review.cost_usd <<<"$out")" = 1.5 ] || { echo "FAIL: normalized cost missing: $out"; FAIL=1; }
 [ "$(jq -r .schema_valid <<<"$out")" = false ] || { echo "FAIL: malformed review should fail schema validation"; FAIL=1; }
 grep -q 'diag line' <<<"$(jq -r .stderr_tail <<<"$out")" || { echo "FAIL: stderr tail not embedded"; FAIL=1; }
+jq -e "$STATUS_FIELDS" <<<"$out" >/dev/null || { echo "FAIL: checkout status fields not relayed: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: job directory survived normal cleanup"; FAIL=1; }
 
 # Omitted level does not add an effort flag.
@@ -100,7 +104,14 @@ dir="$(jq -r .dir <<<"$J")"
 out="$(printf '%s' "$J" | FAKE_EXIT=7 "$SRC/run-child.sh")"
 [ "$(jq -r .exit <<<"$out")" = 7 ] || { echo "FAIL: runner exit 7 not reported"; FAIL=1; }
 [ "$(jq -r .review.status <<<"$out")" = error ] || { echo "FAIL: runner exit 7 not normalized as error"; FAIL=1; }
+jq -e "$STATUS_FIELDS" <<<"$out" >/dev/null || { echo "FAIL: status fields lost on a failed runner: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: failed runner job was not removed"; FAIL=1; }
+
+# A checkout object without status fields yields nulls, not a missing or failed envelope.
+J="$(mkjob | jq -c 'del(.pr_state, .pr_is_draft, .pr_merged_at, .pr_author, .pr_author_is_bot, .merge_base_sha)')"
+out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
+jq -e '.exit == 0 and has("pr_state") and .pr_state == null and .pr_is_draft == null and .pr_merged_at == null and .pr_author == null and .pr_author_is_bot == null and .merge_base_sha == null' <<<"$out" >/dev/null \
+  || { echo "FAIL: absent status fields are not relayed as null: $out"; FAIL=1; }
 
 # The watchdog terminates the runner process group.
 J="$(mkjob)"

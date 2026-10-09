@@ -62,6 +62,14 @@ esac
 jq -e '.policy_changes | type == "array"' <<<"$out" >/dev/null || { echo "FAIL: policy_changes not array"; FAIL=1; }
 # The head repository is a complete owner/name slug.
 [ "$(jq -r .head_repo <<<"$out")" = "$SLUG" ] || { echo "FAIL: head_repo != $SLUG: $(jq -r .head_repo <<<"$out")"; FAIL=1; }
+# Pull-request status as observed at checkout, with gh's own state vocabulary.
+jq -e '(.pr_state | IN("OPEN","CLOSED","MERGED")) and (.pr_is_draft | type == "boolean") and (.pr_author | type == "string" and length > 0)
+  and (.pr_author_is_bot | type == "boolean") and (.pr_merged_at == null or (.pr_merged_at | type == "string"))
+  and ((.pr_state == "MERGED") == (.pr_merged_at != null))' <<<"$out" >/dev/null \
+  || { echo "FAIL: pull-request status fields malformed: $out"; FAIL=1; }
+# The merge base the pinned diff and [base] citations refer to.
+[ "$(jq -r .merge_base_sha <<<"$out")" = "$(git -C "$clone" merge-base "$base" "$head")" ] \
+  || { echo "FAIL: merge_base_sha != git merge-base: $(jq -r .merge_base_sha <<<"$out")"; FAIL=1; }
 
 # Non-existent PR -> exit 1 with gh stderr
 rc=0; err="$("$SRC/checkout-pr.sh" "$SLUG" 999999 2>&1 >/dev/null)" || rc=$?

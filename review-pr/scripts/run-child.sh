@@ -66,7 +66,11 @@ finish() {
     --argjson input "$IN" \
     --argjson validation "$validation" \
     '{runner:$runner, review:$review, stderr_tail:$stderr_tail, exit:$ex, kept:$kept, dir:$dir,
-      head_sha:$input.head_sha, base_sha:$input.base_sha, policy_changes:($input.policy_changes // []),
+      head_sha:$input.head_sha, base_sha:$input.base_sha, merge_base_sha:($input.merge_base_sha // null),
+      policy_changes:($input.policy_changes // []),
+      pr_state:($input.pr_state // null), pr_is_draft:(if ($input | has("pr_is_draft")) then $input.pr_is_draft else null end),
+      pr_merged_at:($input.pr_merged_at // null), pr_author:($input.pr_author // null),
+      pr_author_is_bot:(if ($input | has("pr_author_is_bot")) then $input.pr_author_is_bot else null end),
       schema_valid:$validation.schema_valid, schema_errors:$validation.schema_errors,
       diff_unavailable:$validation.diff_unavailable}')"
 
