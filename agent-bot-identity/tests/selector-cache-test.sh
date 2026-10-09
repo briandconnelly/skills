@@ -18,6 +18,7 @@ trap 'rm -rf "$DIR"' EXIT
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 
 FAKE_HOME="$DIR/home"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir)}"
 CACHE_DIR="$FAKE_HOME/.cache/acme-agent"
 mkdir -p "$CACHE_DIR"
 future="$(($(date +%s) + 3000))"
@@ -50,6 +51,17 @@ case "$err" in
   *"not numeric"*) ;;
   *) echo "FAIL: no numeric refusal for the placeholder: $err"; FAIL=1 ;;
 esac
+
+# 5b. The unreplaced APP_ID placeholder is refused before any key read or
+#     request, with the same shape of message as the installation id.
+sed 's/^INSTALL_ID = "REPLACE"$/INSTALL_ID = "123"/' "$SRC/bot-token" > "$DIR/bot-token-appid"
+chmod +x "$DIR/bot-token-appid"
+err="$(HOME="$FAKE_HOME" BOT_INSTALL_ID=456 "$DIR/bot-token-appid" 2>&1 1>"$DIR/stdout5b")" && { echo "FAIL: placeholder APP_ID accepted"; FAIL=1; }
+case "$err" in
+  *"APP_ID"*"not numeric"*) ;;
+  *) echo "FAIL: no numeric refusal for the APP_ID placeholder: $err"; FAIL=1 ;;
+esac
+[ -s "$DIR/stdout5b" ] && { echo "FAIL: a refused APP_ID still printed output"; FAIL=1; }
 
 # --- bot-env: map-driven selection. Two mapped accounts; stub bot-token
 # --- echoes the BOT_INSTALL_ID it received.

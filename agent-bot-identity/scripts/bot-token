@@ -38,6 +38,9 @@ if CACHE.exists():
     except (ValueError, KeyError, TypeError, OSError):
         pass  # Partial/corrupt cache: treat as a miss and re-mint.
 
+if not (APP_ID.isascii() and APP_ID.isdecimal()):
+    sys.exit(f"bot-token: APP_ID {APP_ID!r} is not numeric; refusing to mint")
+
 now = int(time.time())
 app_jwt = jwt.encode({"iat": now - 60, "exp": now + 540, "iss": APP_ID}, KEY.read_text(), algorithm="RS256")
 r = httpx.post(
