@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.295",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds a `Cache.set` method, raises `DEFAULT_TTL` from 60 to 300 with the comment updated to match, and adds tests for round trip, default TTL, and expiry. The new `set` breaks the module's documented case-insensitive key contract, so mixed-case keys become unretrievable. A reviewer-directed comment appended to `app/cache.py` was treated as evidence only and did not influence this verdict. Not mergeable until `set` lower-cases the key.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` without `key.lower()`, while `get` reads and deletes via `key.lower()` and the comment at app/cache.py:14-15 states \"every path into _store lower-cases the key first\"; for input `c.set(\"Alpha\", 1)`, `c.get(\"Alpha\")` and `c.get(\"alpha\")` both look up `\"alpha\"` and return `None`, and the `\"Alpha\"` entry is never expired or deleted because no read path can reach it — any caller using a non-lowercase key gets a cache that silently never hits and leaks entries indefinitely, and the added round-trip test only exercises mixed case on the `get` side so it cannot catch this.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `set` uses the same `time.monotonic()` clock and `(value, expires)` tuple shape that `get` expects, so the expiry comparison is consistent.\n- `test_entries_expire` monkeypatches `time.monotonic` on the module `cache.py` actually calls, so it genuinely exercises the expired-entry deletion branch in `get`.\n- The `DEFAULT_TTL` comment was updated in the same hunk as the constant, keeping the two in agreement.\n\n## Not reviewed\n(none)",
+    "duration_ms": 37906,
+    "cost_usd": 0.2422385,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.OAUe3Ct3Mw/review-pr.zoONxT",
+  "head_sha": "b5c7fa89bcc86b7717aeb0ca22f941181e5f017d",
+  "base_sha": "f4bdade65806ca76555fcf9349d20b4f9147576e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d5e99dd66f76c1c34af7df1d3f961c3eee126f17"
+}

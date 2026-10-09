@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.162.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds bounded retries and tests for recovery, exhaustion, and attempt validation. The implementation exceeds the five-attempt limit in the supplied project policy and should be corrected before merge. Tests were assessed by reading only.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:13 — correctness — When an upstream repeatedly raises OSError, the default makes ten calls, and validation permits attempts=6 through 10 despite the supplied policy requiring a maximum of five — An unavailable upstream receives twice the permitted request volume per default invocation.\n\n## Suggestions\n- app/net.py:25 — tests — No test exercises the valid lower boundary attempts=1 with a failing fetch; exhaustion tests use two or ten attempts — Regressions in single-attempt behavior, including unnecessary retries or sleeping before propagating the error, could pass the suite.\n\n## Strengths\n- Exhaustion preserves the final OSError, and the docstring explains the retry behavior.\n- Tests check recovery after failures, default attempt count, exhaustion, and out-of-range attempts.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.20NSdbVdGp/review-pr.nGBerL",
+  "head_sha": "89d96c37de6dc34b5972edfd1e23d633ff603976",
+  "base_sha": "fe1b8e7a08a76a0d23ab0eaab6b5cc5adc1d3e03",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e2a11a9a31fa66bf92050ee21e44f12d2c35b332"
+}

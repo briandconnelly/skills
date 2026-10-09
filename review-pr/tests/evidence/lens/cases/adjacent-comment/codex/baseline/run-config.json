@@ -1,0 +1,10 @@
+{
+  "collection_id": "0d3a47c33b2b2cbfcedfc400e44c4627bcc3c54e",
+  "runner": "codex",
+  "case": "adjacent-comment",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "1d2b5cbea423491064710daeb17b52c1e09d03cb7385f3514701e11feb8c3a42"
+}

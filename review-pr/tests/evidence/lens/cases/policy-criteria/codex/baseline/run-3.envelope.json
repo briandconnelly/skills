@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.162.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds a retry helper, tests, and a proposed policy update. The helper exceeds the manifest-provided five-attempt limit and requires correction before merge.\n\n## Critical\n- app/net.py:13 — correctness — When an upstream repeatedly raises OSError, the default call makes 10 attempts, exceeding the governing AGENTS.md limit of 5; the validation also permits explicit limits above 5. — Doubles upstream requests during an outage, violating the retry safeguard established after prior outages.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover recovery after failures, exhaustion, the default attempt count, and rejection of out-of-range limits.\n- Exhaustion re-raises the final exception, preserving its diagnostic information.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.20NSdbVdGp/review-pr.YKSkAu",
+  "head_sha": "89d96c37de6dc34b5972edfd1e23d633ff603976",
+  "base_sha": "fe1b8e7a08a76a0d23ab0eaab6b5cc5adc1d3e03",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e2a11a9a31fa66bf92050ee21e44f12d2c35b332"
+}

@@ -65,10 +65,14 @@ mkjob() {
   git -C "$job/repo" checkout -q --detach "$head"
   jq -n --argjson n "$n" --arg title "$CASE_TITLE" --arg body "$CASE_BODY" \
     '{number:$n, title:$title, body:$body}' > "$job/pr.json"
-  echo '[]' > "$job/policy-manifest.json"
   git -C "$job/repo" diff --no-ext-diff --no-textconv --binary "pr-$n-base...pr-$n" > "$job/pr.diff"
-  jq -n --arg d "$job" --arg b "$base" --arg h "$head" --arg runner "$RUNNER" \
-    '{dir:$d, runner:$runner, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:[], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
+  # Prepare policy the way checkout-pr.sh does: base policy restored, head edits reported, manifest listed.
+  local changes manifest
+  changes="$("$SRC/isolate-policy.sh" "$RUNNER" "$job/repo" "$base" "$head")" || die 1 "isolate-policy.sh failed for the fixture"
+  manifest="$(context_paths_json "$job/repo" "$base")"
+  printf '%s\n' "$manifest" > "$job/policy-manifest.json"
+  jq -n --arg d "$job" --arg b "$base" --arg h "$head" --arg runner "$RUNNER" --argjson changes "$changes" \
+    '{dir:$d, runner:$runner, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:$changes, diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }
 
 for k in $(seq 1 "$RUNS"); do
