@@ -337,5 +337,29 @@ out="$(cd "$R" && GIT_CONFIG_PARAMETERS="'credential.helper=human'" "$DIR/bot-en
 echo "$out" | grep -q '^unset GIT_CONFIG_PARAMETERS$' || fail "personal verdict left GIT_CONFIG_PARAMETERS exported"
 rm -rf "$R"
 
+# 31. A remote defined in a file pulled in by include.path is a raw remote
+#     git uses; `git config --local` hides it without --includes, so the
+#     verdict was "no remotes, ambiguous" (bot by luck) instead of a
+#     recognised org remote with its exact rewrite pair.
+R="$(mkrepo)"
+printf '[remote "origin"]\n\turl = git@github.com:acme/inc.git\n' > "$R/.git/remotes.inc"
+git -C "$R" config include.path remotes.inc
+[ "$(verdict "$R")" = BOT ] || fail "included org remote did not resolve bot"
+grep -q 'no raw remote URLs' "$DIR/err" && fail "included org remote was reported as no remotes"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/inc.git push=https://github.com/acme/inc.git' ] || fail "included org remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 32. A visible personal remote plus an includeIf-gated org remote must
+#     still be the org's repo. git realpaths the git dir before matching the
+#     gitdir pattern, so the pattern is built from `pwd -P`.
+R="$(mkrepo git@gitlab.com:me/x.git)"
+RP="$(cd "$R" && pwd -P)"
+printf '[remote "work"]\n\turl = git@github.com:acme/inc.git\n' > "$R/.git/remotes.inc"
+git -C "$R" config "includeIf.gitdir:$RP/.elsewhere/.path" remotes.inc
+[ "$(verdict "$R")" = PERSONAL ] || fail "a non-matching includeIf changed the verdict"
+git -C "$R" config "includeIf.gitdir:$RP/.path" remotes.inc
+[ "$(verdict "$R")" = BOT ] || fail "included org remote behind a visible personal remote resolved personal"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"

@@ -103,17 +103,20 @@ if [ "$rc" -eq 0 ]; then
   worktree_remotes="$(mktemp)"
   trap 'rm -f "$raw_remotes" "$worktree_remotes"' EXIT
   remote_rc=0
-  git config --local --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
+  # `--includes` is needed because git disables include processing when a
+  # scope is named; a remote defined through `include.path` or `includeIf` is
+  # one git will push to.
+  git config --local --includes --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
   if [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
     remote_rc=0
   fi
   if [ "$remote_rc" -eq 0 ]; then
     worktree_enabled=""
     worktree_flag_rc=0
-    worktree_enabled="$(git config --local --bool --get extensions.worktreeConfig 2>/dev/null)" || worktree_flag_rc=$?
+    worktree_enabled="$(git config --local --includes --bool --get extensions.worktreeConfig 2>/dev/null)" || worktree_flag_rc=$?
     if [ "$worktree_flag_rc" -eq 0 ] && [ "$worktree_enabled" = true ]; then
       worktree_rc=0
-      git config --worktree --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$worktree_remotes" 2>/dev/null || worktree_rc=$?
+      git config --worktree --includes --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$worktree_remotes" 2>/dev/null || worktree_rc=$?
       if [ "$worktree_rc" -eq 0 ]; then
         cat "$worktree_remotes" >>"$raw_remotes"
       elif [ "$worktree_rc" -ne 1 ] || [ -s "$worktree_remotes" ]; then
