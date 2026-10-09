@@ -1,0 +1,1 @@
+{ "kind": "skill", "expect": { "skills": ["gate-skill"] }, "tier2": { "prompts": ["/skill:gate-skill"], "steps": [{ "expectTranscript": "NOT-IN-THE-SKILL", "text": "ok" }] } }

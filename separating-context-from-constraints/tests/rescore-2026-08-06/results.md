@@ -24,7 +24,7 @@ It ran no new arms; these are the 2026-07-11 outputs re-read against different e
 | 7 | with skill | 1/1 | n/a | preserved | 4/4 |
 | 8 | baseline | 1/1 | n/a | silent-selection | 0/4 |
 | 8 | with skill | 1/1 | n/a | preserved | 4/4 |
-| **Total** | **baseline** | **8/8** | **9** | 2 preserved, 2 silent | **1/36** |
+| **Total** | **baseline** | **8/8** | **9** | 1 preserved, 3 silent | **1/36** |
 | **Total** | **with skill** | **8/8** | **0** | 4 preserved, 0 silent | **27/27** |
 
 Scenario 4 also: the with-skill arm reported the auditor-directed instruction as a separate note; the baseline reported it mixed among the document's substantive observations.
@@ -43,8 +43,8 @@ The original assertions recorded those same arms as failing, because they requir
 
 Two substantive gaps are real and survive re-scoring:
 
-- **False positives: 9 against 0.** Baselines criticized correctly-placed statements — four in scenario 1, four in scenario 2, one in scenario 3. With-skill arms criticized none anywhere.
-- **Rewrite safety: 2 silent selections against 0.** Baselines chose a reading on the author's behalf in scenarios 3 and 6, in one case inventing an override condition the target never stated and in the other inventing authorization, retention, logging, and recovery policy for a two-line document. With-skill arms preserved the choice in all four ambiguous cases.
+- **False positives: 9 against 0.** Baselines criticized correctly-placed statements — four in scenario 1, four in scenario 2, one in scenario 3. With-skill arms criticized none anywhere in this archive.
+- **Rewrite safety: 3 silent selections against 0.** Baselines chose a reading on the author's behalf in scenarios 3, 6, and 8; in one case inventing an override condition the target never stated, in another inventing authorization, retention, logging, and recovery policy for a two-line document, and in the third silently awarding precedence to the specific rule. With-skill arms preserved the choice in all four ambiguous cases.
 
 The skill's measured value is **discipline, not detection**: it stops an auditor from inventing problems and from silently rewriting policy.
 It does not help an auditor find defects in a twenty-line document, because nothing was stopping them.
@@ -72,6 +72,13 @@ Three are worth carrying:
 
 Beyond scoring: every fixture is under twenty-five lines, each cell is a single archived run, and no execution metadata survives.
 This re-score says what these sixteen outputs did. It does not establish variance, and it says nothing about documents unlike these.
+
+The comparison is whole-skill against no skill: it does not isolate which parts of the output contract — the six-field finding format, severity labels, secondary rule ids, or the dual per-rule/per-severity counting — produce the false-positive and rewrite-safety gains.
+Those value-bearing endpoints (E2 and E3) have not been systematically re-measured on the current `SKILL.md` wording; the 2026-08-23 confirmation cells scored each cell's confirmation questions plus the scenario's standing assertions, which overlap E2 and E3 only where an assertion happens to name the same behavior (scenario 8's assertion 4 is an E3-class check, and scenario 2's assertion 2 caught the E2-class false positive below as a scored FAIL).
+The contract's added complexity is therefore unvalidated, and the gain should be read as an association with the skill as a whole rather than a demonstrated effect of any one component.
+
+The E2 total is a figure for this archive, not a standing property of the skill: `tests/runs/2026-08-23-scenario2-with-skill.md` records a later with-skill material R3 finding against a preregistration-protected sentence, which that run's own scorer calls a false positive under E2.
+That fixture was later rerun on both wordings, three reps each; the cells are in the results table in [`../scenarios.md`](../scenarios.md#results).
 
 Redaction was never exercised: both scenario-4 arms declined to quote the example credential at all, so the conditional assertion passed without the behavior running.
 
@@ -118,8 +125,13 @@ Written before the scorer was dispatched, held outside its inputs, reproduced he
 > If E1, E2, and E3 all show large gaps on scenarios 1 and 6, the narrowing is wrong and those scenarios' original totals were closer to honest than I claimed.
 > If E3 shows no gap on scenarios 3, 7, or 8, then the author-decision contract — which the plan calls the skill's best idea — is not doing the work I attributed to it, and W11's premise changes.
 
-The stated falsification conditions did not fire.
-E1 showed no gap anywhere, and E3 showed a gap on scenarios 3 and 8, so the author-decision contract is doing measurable work — though scenario 7 shows it is not always needed.
+The first falsification condition did not fire: E1 showed no gap anywhere.
+The second is ambiguous as sealed.
+Read literally, "no gap on scenarios 3, 7, or 8" fired, because scenario 7 shows no E3 gap (both arms preserved).
+Read as intended, no gap on any of the three, it did not, because scenarios 3 and 8 show gaps.
+Both readings are recorded here rather than resolved in the author's favor.
+E3 also showed a gap on scenario 6, which the condition did not name.
+The author-decision contract is consistent with the improvement, though no ablation isolates it, and scenario 7 shows it is not always needed.
 
 ## Unblinding key
 

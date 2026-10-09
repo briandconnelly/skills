@@ -1,0 +1,12 @@
+{
+  "kind": "extension",
+  "expect": { "tools": [{ "name": "word_count", "exposure": "direct" }] },
+  "tier2": {
+    "prompts": ["count the words in 'one two three'"],
+    "steps": [
+      { "toolCall": { "name": "word_count", "arguments": { "text": "one two three" } } },
+      { "text": "three words" }
+    ],
+    "expect": { "toolResults": [{ "toolName": "word_count", "isError": false, "contains": "3 words" }] }
+  }
+}

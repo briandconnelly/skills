@@ -1,0 +1,1 @@
+{ "kind": "extension", "expect": { "commands": ["ask"] }, "tier2": { "prompts": ["/ask"], "expect": { "events": [{ "type": "message_end", "message": { "customType": "asked" } }] } } }

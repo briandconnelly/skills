@@ -1,0 +1,13 @@
+{
+  "kind": "package",
+  "expect": {
+    "tools": [{ "name": "word_count", "exposure": "direct" }],
+    "skills": ["kit-skill"],
+    "prompts": ["kit-prompt"],
+    "themes": ["kit-theme"]
+  },
+  "tier2": {
+    "prompts": ["/kit-prompt"],
+    "steps": [{ "expectTranscript": "KIT-MARKER-9A4C", "text": "ok" }]
+  }
+}

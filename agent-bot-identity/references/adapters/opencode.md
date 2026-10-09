@@ -2,12 +2,12 @@
 
 Core setup — App registration, token minting, the credential helper, and `as-me` (Phases 1–3) — is harness-neutral and lives in the [agent-bot-identity SKILL](../../SKILL.md).
 This reference is the OpenCode implementation of the SKILL's Phase 4 routing contract.
-Mechanism claims trace to the opencode 1.18.22 source (`packages/opencode/src/tool/shell.ts`, `packages/opencode/src/plugin/index.ts`) and to the live verification run recorded below; where something is untested, this doc says so.
+Mechanism claims trace to the opencode 1.18.32 source (`packages/opencode/src/tool/shell.ts`, `plugin/index.ts`, `plugin/pty-environment.ts`, `config/plugin.ts`, `session/prompt.ts`, `server/routes/instance/httpapi/handlers/pty.ts`, `cli/cmd/run.ts`, and `packages/core/src/tool/bash.ts`), re-read on 2026-09-23 after the original 1.18.22 verification, and to the live verification runs recorded below; where something is untested, this doc says so.
 
 ## Status
 
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
-Variant A is **tested end-to-end on 1.18.22**, including the GitHub write path (push and PR creation) — see Verification.
+Variant A is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
 Variant B differs only in where the plugin file is installed; its org-gated behavior is the same code path as Variant A's, so it inherits everything except a live run of the global install location — that one delta is untested.
 Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) works here with no extra code: the routing decision is delegated to `bot-env`, which implements it.
 `as-me` works under OpenCode (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path is fully available.
@@ -16,7 +16,9 @@ Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract)
 
 OpenCode fires a `shell.env` plugin hook before every shell-tool command with that command's `cwd`, and builds the command's env fresh each time as `{...process.env, ...hookEnv}`.
 Identity is therefore re-decided per command, in the directory the command actually runs in, and a personal-verdict command carries no bot variables — there is no persistent shell to scrub, so this adapter needs no guard line and emits no unsets of its own.
-The hook fires for tool commands only: PTY spawns (interactive terminal surfaces) pass no `sessionID`/`callID`, and the plugin returns empty env for them, keeping user-facing terminals personal — the same invariant the other adapters' verification enforces.
+Three callers trigger the hook, and the plugin routes on the ids they pass.
+The bash tool (`tool/shell.ts`) and the TUI's `!` shell command (`session/prompt.ts`) pass `sessionID`/`callID`, so both run with the bot identity where the verdict is bot — a human typing `!git commit` in the TUI commits as the bot, which follows the SKILL's "the bot stays the session default" rule (Mixed Contribution) but must not surprise anyone.
+PTY spawns (interactive terminal tabs, `handlers/pty.ts` and `plugin/pty-environment.ts`) pass only `cwd`, and the plugin returns empty env for them, keeping those terminals personal — the same invariant the other adapters' verification enforces.
 A throwing hook fails the shell command before it runs (`Plugin.trigger` does not swallow `shell.env` errors), which is this adapter's fail-closed path: every undetermined-identity outcome raises, and the command never executes.
 
 One difference from the Claude Code adapter to be plain about: the hook can only add or override variables, never delete ones exported by the *server* process env.
@@ -77,11 +79,18 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 
 There is one nuance versus Claude's Variant B worth stating: the verdict binds to the bash tool's `workdir` parameter.
 A compound command that crosses repos (`cd <org-repo> && git commit` issued with a personal workdir) carries the starting directory's identity into the target repo, same as Claude's per-command guard.
-Change directory in one command and commit in the next.
+`cd` does not carry over between bash tool calls either — every call is a fresh process started in `workdir` (verified live: `cd <subdir>` then `pwd` in the next call prints the project root) — so the fix is to set `workdir` to the target repo on the committing call itself.
 
 ## Verification
 
 Run these together with the SKILL's Phase 5 checks through a headless `opencode run --auto` in an enrolled repo (or an interactive session after a restart).
+Two launch rules for the headless form:
+
+- Redirect stdin from `/dev/null` whenever the launcher is not a terminal (a script, another agent's shell tool): `run` reads a non-TTY stdin to EOF before it creates the session (`cli/cmd/run.ts`), so an open pipe that never closes hangs opencode at startup with nothing in the log after `init`.
+- Keep every step inside the repo or pass `--auto`: without it, headless bash calls inside the project are auto-approved, but any `external_directory` target (`cd /tmp`, a `workdir` outside the project) is auto-rejected and the run stops there.
+
+Score each check from the bash tool's recorded state (`--format json`, or `opencode export <session>`), never from the model's summary of it: in the 2026-09-23 run the model reported the fail-closed command as having printed its output when the tool state showed the call aborted before it ran.
+
 The 2026-08-24 run on opencode 1.18.22 exercised all of the following against a two-installation App (org + personal account); every item passed.
 
 1. Agent bash: `echo "${GH_TOKEN:0:4}"` → `ghs_`. (PASS)
@@ -96,8 +105,18 @@ The 2026-08-24 run on opencode 1.18.22 exercised all of the following against a 
 10. `bun test tests/opencode-hook.test.ts` → the parse/fail-closed suite passes, with `BOT_ENV` + `BOT_ENV_CWD` set for the live integration case. (PASS)
 11. Write path: a branch push and `gh pr create` executed from a headless opencode session in an enrolled personal-account repo attribute to the bot. (PASS — this adapter's own pull request)
 
+The 2026-09-23 re-run on opencode 1.18.32, after the routing changes in the shared `bot-env` (PR #180), used a Variant A forwarder in a scratch clone of an enrolled personal-account repo with the server env scrubbed of every identity variable; tool inputs and outputs were extracted from the session events rather than the model's narration.
+
+- Items 1, 2, 3, 4, 5, 6, 8 above: PASS (item 3 on a public repo proves the rewrite, not the token).
+  In that repo (one mapped account, one raw remote value) the bot verdict carried 15 `GIT_CONFIG_*` entries: the fixed three, the four host-wide `insteadOf`/`pushInsteadOf` pairs, the account pair, and one exact pair per raw remote value.
+- Item 9 with the flip expressed as `workdir` pointed at a nested repo whose remote is on another host: `GH_TOKEN` unset and the human author in that call, `ghs_` again in the next call at the default workdir (PASS).
+- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS).
+- Item 7 (private non-enrolled probe), item 11 (write path), and the Variant B location: not re-run; the 1.18.22 results stand for those.
+- Trigger: with the skill installed under `~/.claude/skills/`, an in-domain prompt in a non-enrolled directory made the model load `agent-bot-identity` through the `skill` tool and summarize Phases 1–2 accurately.
+
 Audit smells specific to this adapter:
 
+- An opencode upgrade taken on trust: `packages/core/src/tool/bash.ts` (the V2 core shell tool) carries a TODO for `shell.env` and no hook as of 1.18.32, and it is not yet wired in; a release that routes bash through it fails open silently, so re-run check 1 after every upgrade and read its output as a discriminator — an empty `GH_TOKEN` means the hook did not fire (routing), `BOT-TOKEN-MINT-FAILED` means it fired and minting failed.
 - A customized `DEFAULT_BOT_ENV` pointing into a repo or a directory on the personal `PATH`.
 - A committed `.opencode/plugin/agent-bot-identity.ts` (machine-local routing config belongs in `.git/info/exclude`, and teammates without the install would hit fail-closed shell aborts).
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
@@ -115,4 +134,8 @@ Audit smells specific to this adapter:
 | Forking the plugin per repo with customized values | Ten customized copies drift; install one customized master and forward to it |
 | Committing the forwarder | It is machine-local (absolute path inside); exclude it via `.git/info/exclude` — committing also subjects teammates to fail-closed aborts |
 | Expecting interactive terminal surfaces to follow PTY-less routing | PTY spawns get no session/call id and stay personal deliberately; an hour-long-lived PTY could not honor the token's 1h lifetime anyway |
+| Assuming the TUI `!` shell is personal because it is user-typed | It is a hook caller with session/call ids — see Mechanism |
+| Changing directory in one bash call and committing in the next | The `cd` is gone by the next call — see Fail direction |
+| Headless `opencode run` hangs with nothing logged after `init` | It is waiting on stdin — see the launch rules under Verification |
+| Scoring a fail-closed check from the model's reply | Score from the tool call's recorded state — see Verification |
 | Reading a hook throw as a bug report against the repo | It is the fail-closed path: fix `bot-env` (or set `OPENCODE_PURE=1` to bypass the plugin entirely in an emergency) |

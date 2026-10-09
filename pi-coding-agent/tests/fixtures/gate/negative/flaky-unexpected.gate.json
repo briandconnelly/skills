@@ -1,0 +1,8 @@
+{
+  "kind": "extension",
+  "expect": { "tools": ["flaky"] },
+  "tier2": {
+    "prompts": ["call flaky"],
+    "steps": [{ "toolCall": { "name": "flaky", "arguments": { "fail": true } } }, { "text": "done" }]
+  }
+}

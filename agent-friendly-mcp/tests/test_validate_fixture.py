@@ -417,9 +417,7 @@ def test_serialized_json_fallback_matching_structured_payload_accepted():
     ok = copy.deepcopy(FIXTURE)
     for key in ("success_result", "error_result"):
         result = ok["wire"][key]
-        result["content"] = [
-            {"type": "text", "text": json.dumps(result["structuredContent"])}
-        ]
+        result["content"] = [{"type": "text", "text": json.dumps(result["structuredContent"])}]
     assert validate(ok) == []
 
 

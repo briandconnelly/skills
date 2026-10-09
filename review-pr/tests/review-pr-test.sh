@@ -16,7 +16,9 @@ git -C "$WORK" config user.email t@example.com
 git -C "$WORK" config user.name t
 printf '%s\n' base > "$WORK/file.txt"
 printf '%s\n' 'Review fixture policy.' > "$WORK/AGENTS.md"
-git -C "$WORK" add file.txt AGENTS.md
+# The default branch selects a filter by name; the clone must not run a caller-configured driver.
+printf '%s\n' '* filter=evil' > "$WORK/.gitattributes"
+git -C "$WORK" add file.txt AGENTS.md .gitattributes
 git -C "$WORK" commit -qm base
 BASE_SHA="$(git -C "$WORK" rev-parse HEAD)"
 git -C "$WORK" checkout -qb feature
@@ -30,12 +32,13 @@ git --git-dir="$ORIGIN" update-ref refs/pull/12/head "$HEAD_SHA"
 cat > "$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 if [ "$1 $2" = "auth status" ]; then exit 0; fi
-if [ "$1 $2" = "repo clone" ]; then exec git clone -q "file://$FAKE_ORIGIN" "$4"; fi
+if [ "$1 $2" = "repo clone" ]; then dest="$4"; shift 4; [ "${1:-}" != -- ] || shift; exec git clone "$@" "file://$FAKE_ORIGIN" "$dest"; fi
 if [ "$1 $2" = "pr view" ]; then
   for arg in "$@"; do [ "$arg" != -q ] || { printf '%s\n' "$FAKE_HEAD_SHA"; exit 0; }; done
   jq -n --arg base "$FAKE_BASE_SHA" --arg head "$FAKE_HEAD_SHA" \
-    '{number:12,title:"Fixture PR",body:"Fixture body",baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:"https://github.com/owner/repo/pull/12"}'
+    '{number:12,title:"Fixture PR",body:"Fixture body",baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/12")}'
   exit 0
 fi
 exit 2
@@ -70,6 +73,9 @@ for command in git jq bash sed awk grep tail pkill sleep; do
   [ -e "$FAKEBIN/$command" ] || ln -s "$path" "$FAKEBIN/$command"
 done
 export PATH="$FAKEBIN:/usr/bin:/bin" FAKE_ORIGIN="$ORIGIN" FAKE_BASE_SHA="$BASE_SHA" FAKE_HEAD_SHA="$HEAD_SHA"
+export FAKE_GH_LOG="$S/gh.log"
+# A caller's GH_HOST must not redirect a github.com review to another host.
+export GH_HOST=ghe.example.invalid
 
 rc=0
 err="$("$SRC/review-pr.sh" owner/repo 2>&1 >/dev/null)" || rc=$?
@@ -84,6 +90,32 @@ dir="$(jq -r .dir <<<"$out")"
 [ ! -e "$dir" ] || { echo "FAIL: wrapper leaked default scratch directory: $dir"; FAIL=1; }
 temp_real="$(cd -- "$S/temp" >/dev/null 2>&1 && pwd -P)"
 case "$dir" in "$temp_real"/*) ;; *) echo "FAIL: TMPDIR default was not normalized: $dir"; FAIL=1;; esac
+
+grep -qxF 'auth status --hostname github.com' "$FAKE_GH_LOG" \
+  || { echo "FAIL: gh auth status was not pinned to github.com: $(cat "$FAKE_GH_LOG")"; FAIL=1; }
+if grep -E '^(pr view|repo clone) ' "$FAKE_GH_LOG" | grep -vqF 'github.com/owner/repo'; then
+  echo "FAIL: a gh repository call was not host-qualified: $(cat "$FAKE_GH_LOG")"; FAIL=1
+fi
+[ "$(grep -cE '^(pr view|repo clone) ' "$FAKE_GH_LOG")" = 3 ] \
+  || { echo "FAIL: expected two pr view calls and one clone: $(cat "$FAKE_GH_LOG")"; FAIL=1; }
+
+# Inherited config injection must not run a smudge filter during clone or checkout.
+mark="$S/SMUDGE-RAN"
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=filter.evil.smudge GIT_CONFIG_VALUE_0="touch $mark; cat" \
+  REVIEW_PR_SCRATCH="$S/filter/" "$SRC/review-pr.sh" owner/repo 12 >/dev/null 2>&1 || true
+[ ! -e "$mark" ] || { echo "FAIL: an inherited smudge filter ran on untrusted repository content"; FAIL=1; }
+# Known positive: the same injection does run the filter on an ordinary checkout.
+git -C "$S" clone -q "file://$ORIGIN" filter-probe 2>/dev/null
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=filter.evil.smudge GIT_CONFIG_VALUE_0="touch $mark; cat" \
+  git -C "$S/filter-probe" checkout -q -f "$HEAD_SHA" -- file.txt
+[ -e "$mark" ] || { echo "FAIL: injected smudge filter never runs; the clone probe is insensitive"; FAIL=1; }
+rm -f "$mark"
+
+rc=0
+err="$(FAKE_PR_URL=https://ghe.example.invalid/owner/repo/pull/12 REVIEW_PR_SCRATCH="$S/offhost/" "$SRC/review-pr.sh" owner/repo 12 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 1 ] || { echo "FAIL: off-host pull request exit $rc"; FAIL=1; }
+grep -qF 'outside github.com' <<<"$err" || { echo "FAIL: off-host diagnostic missing: $err"; FAIL=1; }
+[ -z "$(find "$S/offhost" -name .review-pr -print -quit 2>/dev/null)" ] || { echo "FAIL: off-host rejection leaked a checkout"; FAIL=1; }
 
 rc=0
 err="$(REVIEW_PR_MAX_POLICY_FILES=0 REVIEW_PR_SCRATCH="$S/capped/" "$SRC/review-pr.sh" owner/repo 12 2>&1 >/dev/null)" || rc=$?

@@ -17,13 +17,17 @@ MAX_POLICY_FILES="${REVIEW_PR_MAX_POLICY_FILES:-40}"
 
 for c in git jq gh; do need_cmd "$c"; done
 
-gh auth status >/dev/null 2>&1 || die 3 "gh is not authenticated (run: gh auth login)"
+# Only github.com is supported: qualify every gh call with the host so GH_HOST cannot redirect it.
+REPO="github.com/$SLUG"
+gh auth status --hostname github.com >/dev/null 2>&1 || die 3 "gh is not authenticated to github.com (run: gh auth login)"
 
-META="$(gh pr view "$N" -R "$SLUG" --json number,title,body,baseRefOid,headRefOid,headRepository,headRefName,isCrossRepository,url 2>&1)" \
+META="$(gh pr view "$N" -R "$REPO" --json number,title,body,baseRefOid,headRefOid,headRepository,headRefName,isCrossRepository,url 2>&1)" \
   || die 1 "gh pr view failed: $META"
 BASE_SHA="$(jq -r .baseRefOid <<<"$META")"
 HEAD_SHA="$(jq -r .headRefOid <<<"$META")"
 HEAD_REPO="$(jq -r '.headRepository.nameWithOwner' <<<"$META")"
+PR_URL="$(jq -r '.url' <<<"$META")"
+[[ "$PR_URL" == "https://github.com/"* ]] || die 1 "gh returned a pull request outside github.com: $PR_URL"
 [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || die 1 "could not resolve base/head SHAs from gh: $META"
 
 mkdir -p "$REVIEW_PR_SCRATCH"
@@ -35,7 +39,9 @@ cleanup_on_fail() { keep_requested || { scratch_guard "$JOB" && rm -rf "$JOB"; }
 # shellcheck disable=SC2154 # rc is assigned by this same trap string; shellcheck doesn't track it.
 trap 'rc=$?; if [ $rc -ne 0 ]; then cleanup_on_fail; fi; exit $rc' EXIT
 
-gh repo clone "$SLUG" "$CLONE" -- --depth 50 --quiet >&2 || die 1 "gh repo clone failed for $SLUG"
+# --no-checkout: the default branch of a third-party repository is untrusted too, so only the
+# git_wt checkout below may populate the working tree (and run any .gitattributes filters).
+gh repo clone "$REPO" "$CLONE" -- --depth 50 --quiet --no-checkout >&2 || die 1 "gh repo clone failed for $SLUG"
 g() { git -C "$CLONE" "$@"; }
 g fetch --quiet --depth 50 origin "refs/pull/$N/head" || die 1 "git fetch refs/pull/$N/head failed"
 g cat-file -e "$HEAD_SHA^{commit}" 2>/dev/null || die 1 "pinned head $HEAD_SHA is not the current refs/pull/$N/head (PR moved?)"
@@ -52,7 +58,7 @@ g branch -q -f "pr-$N-base" "$BASE_SHA" || die 1 "git branch pr-$N-base failed"
 git_wt -C "$CLONE" diff --no-ext-diff --no-textconv --binary "$BASE_SHA...$HEAD_SHA" > "$JOB/pr.diff" \
   || die 1 "git diff failed for pinned base/head"
 printf '%s\n' "$META" > "$JOB/pr.json"
-NOW_HEAD="$(gh pr view "$N" -R "$SLUG" --json headRefOid -q .headRefOid 2>&1)" \
+NOW_HEAD="$(gh pr view "$N" -R "$REPO" --json headRefOid -q .headRefOid 2>&1)" \
   || die 1 "gh pr view failed: $NOW_HEAD"
 [ "$NOW_HEAD" = "$HEAD_SHA" ] || die 1 "PR head changed during checkout ($HEAD_SHA -> $NOW_HEAD); re-run"
 

@@ -30,7 +30,8 @@ load_adapter "$RUNNER"
 [ -f "$ROOT/tests/lens-cases/$CASE/case.sh" ] || die 2 "unknown lens case: $CASE"
 # shellcheck disable=SC1090
 . "$ROOT/tests/lens-cases/$CASE/case.sh"
-if ! (adapter_check) >/dev/null 2>&1; then echo "lens-fixture-test: SKIP ($RUNNER not runnable)"; exit 0; fi
+# Skip exit status: RC7 in references/runner-contract.md.
+if ! (adapter_check) >/dev/null 2>&1; then echo "lens-fixture-test: SKIP ($RUNNER not runnable)"; exit 77; fi
 [ "$RUNS" -ge 3 ] || echo "lens-fixture-test: WARNING: the quality gate needs 3 runs; $RUNS will fail it" >&2
 EVID="$ROOT/tests/evidence/lens/cases/$CASE/$RUNNER/$SNAPSHOT"
 [ ! -e "$EVID" ] || die 1 "snapshot already exists: $EVID"

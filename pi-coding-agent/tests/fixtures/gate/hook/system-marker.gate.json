@@ -1,0 +1,8 @@
+{
+  "kind": "extension",
+  "expect": { "commands": ["marker-status"] },
+  "tier2": {
+    "prompts": ["hello"],
+    "steps": [{ "expectTranscript": "SYSTEM-MARKER-7F3A", "text": "hi" }]
+  }
+}

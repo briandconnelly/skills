@@ -1,0 +1,87 @@
+name: pi-drift
+
+# Scheduled drift check for the pi-coding-agent skill; see
+# pi-coding-agent/MAINTAINING.md, "Scheduled drift check".
+
+on:
+  schedule:
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/pi-drift.yml
+      - pi-coding-agent/scripts/drift_report.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pi-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Read-only: on pull requests this job runs the PR's own code, so it never gets a write token.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      exit: ${{ steps.drift.outputs.exit }}
+      installed: ${{ steps.drift.outputs.installed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@v6
+      - name: Install the latest Pi
+        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
+      - name: Run check_drift.py
+        id: drift
+        run: |
+          set +e
+          uv run pi-coding-agent/scripts/check_drift.py > drift.txt 2>&1
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          echo "installed=$(pi --version)" >> "$GITHUB_OUTPUT"
+          cat drift.txt
+      - name: Dry-run the issue report
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIFT_EXIT: ${{ steps.drift.outputs.exit }}
+          PI_INSTALLED: ${{ steps.drift.outputs.installed }}
+        run: >-
+          uv run pi-coding-agent/scripts/drift_report.py --dry-run
+          --output drift.txt --exit-code "$DRIFT_EXIT" --installed "$PI_INSTALLED"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: drift
+          path: drift.txt
+          retention-days: 7
+
+  # The only job with issues: write; it never runs on pull requests.
+  report:
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: drift
+      - name: Report to a pi-drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIFT_EXIT: ${{ needs.check.outputs.exit }}
+          PI_INSTALLED: ${{ needs.check.outputs.installed }}
+        run: >-
+          uv run pi-coding-agent/scripts/drift_report.py
+          --output drift.txt --exit-code "$DRIFT_EXIT" --installed "$PI_INSTALLED"

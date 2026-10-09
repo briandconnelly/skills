@@ -1,0 +1,8 @@
+{
+  "kind": "prompt",
+  "expect": { "prompts": ["gate-prompt"] },
+  "tier2": {
+    "prompts": ["/gate-prompt"],
+    "steps": [{ "expectTranscript": "PROMPT-MARKER-5E1B", "text": "ok" }]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "prompt",
+  "scope": "project",
+  "expect": { "prompts": ["project-prompt"] },
+  "tier2": {
+    "prompts": ["/project-prompt"],
+    "steps": [{ "expectTranscript": "PROJECT-MARKER-3D8E", "text": "ok" }]
+  }
+}

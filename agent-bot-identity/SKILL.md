@@ -37,7 +37,7 @@ Never present this setup as a sandbox.
 | Identity | Org-owned GitHub App, webhook disabled | True `[bot]` attribution, fine-grained scopes, short-lived tokens, audit trail |
 | Blast radius | App installed on "Only select repositories" | Token cannot touch non-enrolled **private** repos or push to any non-enrolled repo, even if config leaks; public-repo surfaces open to any actor (e.g. filing issues) stay open |
 | Local routing | harness adapter — see Phase 4 | Bot identity activates only where the adapter routes it — per-project opt-in or org-gated automatic; no shell dotfiles change |
-| git auth | `insteadOf` SSH→HTTPS rewrite + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
+| git auth | `insteadOf` + `pushInsteadOf` SSH→HTTPS rewrites + git credential helper (`GIT_CONFIG_*`) | Pushes use the installation token, not the personal SSH key or keychain |
 | gh auth | harness adapter — see Phase 4 | `gh` calls use the installation token, minted fresh per session/command rather than the personal login |
 | Collaborated work | `as-me` wrapper unsets the author/committer env per command | Human authorship on collaborated commits; pushes and PRs still ride the bot token |
 | Enforcement | Repo rulesets (Phase 6) | The only controls that bind a misbehaving agent |
@@ -132,7 +132,7 @@ An adapter for a local agent harness must supply all of the following, without e
 
 - Per-repo activation: explicit opt-in, or a gated automatic equivalent keyed on a repo-intrinsic signal such as the org remote.
 - The static git identity env (`GIT_AUTHOR_*`/`GIT_COMMITTER_*`).
-- Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, org-scoped `insteadOf`, `commit.gpgsign false`.
+- Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, SSH→HTTPS rewrites for the bot's GitHub remotes emitted as both `insteadOf` and `pushInsteadOf` and including identity pairs on the https prefix (so a user's global force-SSH rewrite cannot undo them), `commit.gpgsign false`.
 - A dynamic `GH_TOKEN` re-minted across hour-plus sessions.
 - A fail-closed substitute when minting fails: a non-empty invalid token, never an empty value.
 - When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract.
@@ -144,7 +144,7 @@ Implemented adapters:
 
 - [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision). Tested.
 - [Codex CLI](references/adapters/codex.md) — Variant A partially verified, with the GitHub write path not exercised and a documented `as-me` limitation; Variant B pending. Core routing probes were run against Codex 0.143.0, with activation behavior re-probed on 0.144.1.
-- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path on 1.18.22; Variant B is the same plugin file installed at user level, and its global-install location is untested live.
+- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path (versions and dates in the adapter's Status); Variant B is the same plugin file installed at user level, and its global-install location is untested live.
 
 | Capability | Claude Code | Codex CLI | OpenCode |
 | --- | --- | --- | --- |
@@ -165,12 +165,12 @@ In a fresh agent session in an opted-in repo:
 
 - Run your adapter's activation checks first — see the adapter doc.
 - Do not begin git or `gh` work until your adapter's token check and the command-scope credential-helper check pass — see the adapter doc for which token check applies.
-- If the adapter injects `GH_TOKEN` into the session env (Claude Code): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
-  This check does not port: under a per-invocation shim adapter (Codex CLI) a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
+- If the adapter injects `GH_TOKEN` into the command env (Claude Code, OpenCode): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
+  This check does not port to a per-invocation shim adapter (Codex CLI), where a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
 - Membership: `gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx 'acme/<this-repo>'` → prints the repo, proving the token belongs to the installation that covers this session's repo.
   Match case-insensitively (`-i`): GitHub's namespace is case-insensitive and `full_name` returns canonical casing, so a hand-written expected name that differs only in case would otherwise false-negative.
   Write the expected `owner/repo` from what you know the session repo to be; deriving it through the token under test (e.g. `gh repo view`) can fail before the assertion runs.
-  This is the harness-neutral token check both adapters share, and the only check here that a wrong-installation token fails: the `ghs_` prefix, an enrolled-repo *count*, and a direct `gh api repos/{owner}/{repo}` read on a public repo all pass for any valid installation token of the App — a count is a diagnostic, never a pass (`--paginate` matters: the endpoint pages at 30 repos).
+  This is the harness-neutral token check every adapter shares, and the only check here that a wrong-installation token fails: the `ghs_` prefix, an enrolled-repo *count*, and a direct `gh api repos/{owner}/{repo}` read on a public repo all pass for any valid installation token of the App — a count is a diagnostic, never a pass (`--paginate` matters: the endpoint pages at 30 repos).
   Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
@@ -278,6 +278,8 @@ Not enforced — the part everyone overstates:
 | Leaving the personal `gh` OAuth login on the agent's machine | Its token carries PR write, so the agent can approve bot PRs as the human in one command; auth personal `gh` with a fine-grained PAT lacking Pull requests write and approve in the browser |
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote; read git's stdin request and answer only `https://github.com` |
 | Deciding the org match by pattern-matching the raw remote line | Any boundary char you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host case-insensitively to `github.com`, then check the org path segment case-insensitively — don't regex the whole line |
+| Emitting `insteadOf` pairs only for SSH-form remotes, or without `pushInsteadOf` twins | git resolves rewrites by longest matching prefix across every config scope and consults `pushInsteadOf` first for pushes, so the common global force-SSH rewrite (`url.ssh://git@github.com/.insteadOf = https://github.com/` or its `pushInsteadOf` form) pulls an https org remote back onto the personal SSH key with the bot as author; the Phase 4 contract states the required pairs, and the check is `git ls-remote --get-url` / `git remote get-url --push`, never the emitted text |
+| Treating git exit 128 as "not a repository" | git exits 128 on every fatal error (corrupt config, unsupported repository format, dubious ownership, malformed inherited `GIT_CONFIG_*`), so a guard that resolves personal on 128 alone silently attributes org work to the human; only the `not a git repository` message is definitive, everything else resolves toward the bot |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure; gate on the org remote and let the installation boundary fail loudly for stragglers |
 | Defaulting agent sessions to personal credentials, with a bot subagent for autonomous work | Fails open — a forgotten switch attributes agent work to the human, the headline failure mode; keep the bot as the default and escape per task with `as-me` |
 | Letting the agent decide when to use `as-me` | Explicit user direction only; subagents and scheduled runs then stay bot-attributed by construction |

@@ -139,6 +139,9 @@ out="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=abc "$SRC/run-child.sh" 2>"$REVIEW_P
 [ ! -e "$dir" ] || { echo "FAIL: invalid timeout leaked the job"; FAIL=1; }
 grep -qF 'REVIEW_PR_TIMEOUT' "$REVIEW_PR_SCRATCH/bad.stderr" \
   || { echo "FAIL: invalid timeout diagnostic missing"; FAIL=1; }
+# The relay shows stderr_tail, not this script's stderr, once an envelope exists.
+jq -r .stderr_tail <<<"$out" | grep -qF 'REVIEW_PR_TIMEOUT must be' \
+  || { echo "FAIL: invalid timeout diagnostic missing from stderr_tail: $out"; FAIL=1; }
 J="$(mkjob)"
 dir="$(jq -r .dir <<<"$J")"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" bogus 2>"$REVIEW_PR_SCRATCH/bad-level.stderr")" || true
@@ -146,6 +149,8 @@ out="$(printf '%s' "$J" | "$SRC/run-child.sh" bogus 2>"$REVIEW_PR_SCRATCH/bad-le
 [ ! -e "$dir" ] || { echo "FAIL: invalid level leaked the job"; FAIL=1; }
 grep -qF 'LEVEL must be one of' "$REVIEW_PR_SCRATCH/bad-level.stderr" \
   || { echo "FAIL: invalid level diagnostic missing"; FAIL=1; }
+jq -r .stderr_tail <<<"$out" | grep -qF 'LEVEL must be one of' \
+  || { echo "FAIL: invalid level diagnostic missing from stderr_tail: $out"; FAIL=1; }
 
 # An absent pr.json and pr-N branch reaches the explicit error instead of aborting in the grep pipeline.
 job="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"
