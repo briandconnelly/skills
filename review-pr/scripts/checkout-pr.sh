@@ -39,7 +39,9 @@ cleanup_on_fail() { keep_requested || { scratch_guard "$JOB" && rm -rf "$JOB"; }
 # shellcheck disable=SC2154 # rc is assigned by this same trap string; shellcheck doesn't track it.
 trap 'rc=$?; if [ $rc -ne 0 ]; then cleanup_on_fail; fi; exit $rc' EXIT
 
-gh repo clone "$REPO" "$CLONE" -- --depth 50 --quiet >&2 || die 1 "gh repo clone failed for $SLUG"
+# --no-checkout: the default branch of a third-party repository is untrusted too, so only the
+# git_wt checkout below may populate the working tree (and run any .gitattributes filters).
+gh repo clone "$REPO" "$CLONE" -- --depth 50 --quiet --no-checkout >&2 || die 1 "gh repo clone failed for $SLUG"
 g() { git -C "$CLONE" "$@"; }
 g fetch --quiet --depth 50 origin "refs/pull/$N/head" || die 1 "git fetch refs/pull/$N/head failed"
 g cat-file -e "$HEAD_SHA^{commit}" 2>/dev/null || die 1 "pinned head $HEAD_SHA is not the current refs/pull/$N/head (PR moved?)"

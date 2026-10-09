@@ -9,7 +9,7 @@ SRC="$ROOT/scripts"
 # shellcheck disable=SC1091
 . "$SRC/lib.sh"
 load_adapter codex
-# Exit 77 marks a skip so an unrun RC7 gate is never mistaken for a pass.
+# Skip exit status: RC7 in references/runner-contract.md.
 if ! (adapter_check) >/dev/null 2>&1; then echo "codex-hostile-fixture-test: SKIP (codex not runnable)"; exit 77; fi
 
 help="$(codex exec --help)"

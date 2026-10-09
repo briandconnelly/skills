@@ -2,8 +2,8 @@
 # Live: checkout-pr.sh pins and clones a real PR for the selected adapter.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
-# Exit 77 marks a skip so an unrun gate is never mistaken for a pass (RC7).
-if ! gh auth status >/dev/null 2>&1; then echo "checkout-pr-test: SKIP (gh not authenticated)"; exit 77; fi
+# Skip exit status: RC7 in references/runner-contract.md.
+if ! gh auth status --hostname github.com >/dev/null 2>&1; then echo "checkout-pr-test: SKIP (gh not authenticated)"; exit 77; fi
 FAIL=0
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 # shellcheck disable=SC1091
@@ -22,7 +22,7 @@ want_runner="${REVIEW_PR_RUNNER:-claude}"
 [ "$(git -C "$clone" rev-parse HEAD)" = "$head" ] || { echo "FAIL: HEAD != head_sha"; FAIL=1; }
 git -C "$clone" symbolic-ref -q HEAD >/dev/null && { echo "FAIL: HEAD is not detached"; FAIL=1; }
 # A later push is reported without making this live probe flaky.
-gh_head="$(gh pr view "$N" -R "$SLUG" --json headRefOid -q .headRefOid)"
+gh_head="$(gh pr view "$N" -R "github.com/$SLUG" --json headRefOid -q .headRefOid)"
 [ "$gh_head" = "$head" ] || echo "NOTE: PR head moved during test ($gh_head vs $head)"
 # The merge base is available locally.
 git -C "$clone" merge-base "$base" "$head" >/dev/null || { echo "FAIL: merge-base missing"; FAIL=1; }

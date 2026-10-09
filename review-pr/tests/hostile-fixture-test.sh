@@ -46,7 +46,7 @@ locked_probe() { # locked_probe DIR -> prints model answer
   jq -r .result <<<"$envelope"
 }
 
-# Exit 77 marks a skip so an unrun RC7 gate is never mistaken for a pass.
+# Skip exit status: RC7 in references/runner-contract.md.
 claude --version >/dev/null 2>&1 || { echo "hostile-fixture-test: SKIP (claude not runnable)"; exit 77; }
 help="$(claude --help)"
 for flag in --restricted --tools --add-dir --strict-mcp-config --permission-mode --no-session-persistence; do
