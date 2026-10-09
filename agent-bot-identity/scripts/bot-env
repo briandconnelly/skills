@@ -391,18 +391,28 @@ done
 # so refuse to route and name what to remove — never the value.
 # git lower-cases the section and variable names but keeps a URL subsection
 # as written, and its URL match compares hosts case-insensitively, so the
-# key is lower-cased here before the host test.
-authz_keys="$(git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) == "authorization:" { print $1 }' || true)"
-for k in $authz_keys; do
-  k_lc="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]')"
-  case "$k_lc" in
-    http.extraheader) ;;
-    http.https://github.com/*|http.https://github.com|http.https://github.com:443/*|http.https://github.com:443|http.http://github.com/*|http.https://*@github.com/*|http.https://*@github.com:443/*) ;;
+# URL part of the key is lower-cased here before the host test. A header
+# token is matched by prefix: `Authorization:basic x` is a valid header too.
+authz_keys="$(git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' || true)"
+while IFS= read -r k; do
+  [ -n "$k" ] || continue
+  url_lc="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]')"
+  url_lc="${url_lc#http.}"
+  url_lc="${url_lc%.extraheader}"
+  # a host-less rule is the bare key http.extraheader, which has no dot left to strip
+  if [ "$url_lc" = extraheader ]; then url_lc=""; fi
+  case "$url_lc" in
+    "") ;;
+    https://github.com|https://github.com:443|https://github.com/*|https://github.com:443/*) ;;
+    http://github.com|http://github.com/*) ;;
+    https://*@github.com|https://*@github.com:443|https://*@github.com/*|https://*@github.com:443/*) ;;
     *) continue ;;
   esac
   echo "bot-env: git config key '${k}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
   exit 1
-done
+done <<EOF4
+$authz_keys
+EOF4
 for netrc in "$HOME/.netrc" "$HOME/_netrc"; do
   [ -r "$netrc" ] || continue
   if tr -s '[:space:]' '\n' <"$netrc" | awk 'BEGIN { found = 0 } tolower($0) == "default" { found = 1 } prev == "machine" && tolower($0) == "github.com" { found = 1 } { prev = tolower($0) } END { exit !found }'; then

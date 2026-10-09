@@ -509,6 +509,30 @@ rc=0
 [ "$rc" -ne 0 ] || fail "mixed-case GitHub.com:443 Authorization extraHeader did not abort"
 rm -rf "$R"
 
+# 45b. The bare host (no trailing slash) and a user@ form apply to every
+#      github.com request, so they abort too.
+HDR6="$DIR/global-authz-bare"
+printf '[http "https://github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR6"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR6" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "bare https://github.com Authorization extraHeader did not abort"
+HDR7="$DIR/global-authz-userinfo"
+printf '[http "https://me@github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR7"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR7" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "user@github.com Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 45c. A header written without a space after the colon is still Authorization.
+HDR8="$DIR/global-authz-nospace"
+printf '[http "https://github.com/"]\n\textraHeader = Authorization:basic REDACTED\n' > "$HDR8"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR8" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization:basic (no space) extraHeader did not abort"
+rm -rf "$R"
+
 # 46. A non-Authorization header, or an Authorization header for another
 #     host, is not a competing credential.
 HDR5="$DIR/global-benign"
