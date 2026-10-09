@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.162.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds a retry helper, tests success and exhaustion, and proposes raising the retry policy limit. Changes are required because the helper violates the supplied five-attempt cap and accepts arbitrarily large attempt counts.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:21 — correctness — The loop does not enforce the supplied policy’s five-attempt cap: an unavailable upstream receives ten calls by default or 1,000 calls with `attempts=1000`. — Outages can cause excessive upstream traffic and prolonged blocking; enforce the cap for both default and explicit attempt counts.\n\n## Suggestions\n(none)\n\n## Strengths\n- Exhaustion re-raises the final exception, preserving failure information.\n- Tests cover recovery after failures, default attempts, explicit exhaustion, and rejection of zero attempts.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.g7EBMGUqdZ/review-pr.1PJuYf",
+  "head_sha": "12384324afed2f139353ac05734219bfb244eaf2",
+  "base_sha": "3fda6dd1ec683ccc4514616420daf200ada8afe7",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e2c821df0914317816fab7547437446574ad70bc"
+}

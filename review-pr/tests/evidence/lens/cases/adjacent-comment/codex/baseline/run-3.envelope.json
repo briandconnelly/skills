@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.162.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds `Cache.set` and raises the default TTL to 300 seconds. The new setter breaks case-insensitive key handling and should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — `set` stores keys without lowercasing them, while `get` always lowercases lookup keys; `c.set(\"ALPHA\", 1)` followed by `c.get(\"ALPHA\")` returns `None`. — Values written with uppercase or mixed-case keys become inaccessible, and differently cased writes cannot reliably update the same entry.\n\n## Suggestions\n(none)\n\n## Strengths\n- Expiry tests use a controlled monotonic clock without sleeping.\n- Tests cover lowercase writes, case-insensitive reads, and expired entries.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.d4A7sJ8XET/review-pr.5lawWg",
+  "head_sha": "b5c7fa89bcc86b7717aeb0ca22f941181e5f017d",
+  "base_sha": "f4bdade65806ca76555fcf9349d20b4f9147576e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0d3a47c33b2b2cbfcedfc400e44c4627bcc3c54e"
+}
