@@ -71,10 +71,59 @@ done
 url_host_lc() {
   local u="$1" rest auth host=""
   case "$u" in
-    *://*) rest="${u#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}" ;;
+    *://*) rest="${u#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"
+           case "$auth" in
+             \[*\]*) host="${auth#[}"; host="${host%%]*}" ;;
+             *) host="${auth%%:*}" ;;
+           esac ;;
     *:*) case "${u%%:*}" in */*) ;; *) rest="${u#*@}"; host="${rest%%:*}" ;; esac ;;
   esac
   printf '%s' "$host" | tr '[:upper:]' '[:lower:]'
+}
+
+# Resolve an ssh host the way git's own ssh would: GIT_SSH_COMMAND, then
+# GIT_SSH, then core.sshCommand, then plain ssh. `-G` prints the client
+# configuration without connecting, which is how a `Host gh` alias becomes
+# `hostname github.com`. Canonicalisation is off so no DNS lookup happens
+# here, and stdin is closed so a `Match exec` block cannot read this
+# script's input. Prints the lower-cased hostname; prints nothing when the
+# lookup fails.
+git_ssh_resolve() {
+  local host="$1" cmd
+  case "$host" in -*|""|*:*|\[*) return 1 ;; esac
+  if [ -n "${GIT_SSH_COMMAND:-}" ]; then
+    cmd="$GIT_SSH_COMMAND"
+  elif [ -n "${GIT_SSH:-}" ]; then
+    cmd="\"$GIT_SSH\""
+  else
+    cmd="$(git config --get core.sshCommand 2>/dev/null || true)"
+    [ -n "$cmd" ] || cmd=ssh
+  fi
+  sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "$host" 2>/dev/null </dev/null \
+    | awk '$1 == "hostname" { print tolower($2); exit }'
+}
+
+# github_destination <url> -> "github" when the URL reaches GitHub over ssh
+# or https (github.com, GitHub's ssh.github.com endpoint, or an ssh alias
+# resolving to either), "other" for any other destination including local
+# paths and IP literals. Returns 1 when the destination cannot be determined:
+# an alias-shaped host (no dot) that ssh could not resolve.
+github_destination() {
+  local u="$1" host eff
+  host="$(url_host_lc "$u")"
+  if [ -z "$host" ]; then printf 'other'; return 0; fi
+  case "$host" in github.com|ssh.github.com) printf 'github'; return 0 ;; esac
+  case "$host" in *:*|\[*) printf 'other'; return 0 ;; esac
+  case "$u" in
+    ssh://*|git+ssh://*|ssh+git://*) ;;
+    *://*) printf 'other'; return 0 ;;
+    *) ;;
+  esac
+  eff="$(git_ssh_resolve "$host")" || eff=""
+  if [ -z "$eff" ]; then
+    case "$host" in *.*) printf 'other'; return 0 ;; *) return 1 ;; esac
+  fi
+  case "$eff" in github.com|ssh.github.com) printf 'github' ;; *) printf 'other' ;; esac
 }
 
 verdict=personal
@@ -158,8 +207,11 @@ if [ "$rc" -eq 0 ]; then
         # path segment decides the account. A leading slash in an scp-style
         # path (`git@github.com:/acme/x.git`) is tolerated by GitHub, so it is
         # stripped before both decisions.
-        host_lc="$(url_host_lc "$url")"
-        [ "$host_lc" = github.com ] || continue
+        dest="$(github_destination "$url")" || {
+          echo "bot-env: remote '${name}' in $PWD uses ssh host '$(url_host_lc "$url")', which the ssh git would use could not resolve; refusing to run with undetermined transport" >&2
+          exit 1
+        }
+        [ "$dest" = github ] || continue
         case "$url" in
           *://*)
             rest="${url#*://}"
@@ -288,6 +340,9 @@ add_pair 'https://github.com/' 'git@github.com:'
 add_pair 'https://github.com/' 'github.com:'
 add_pair 'https://github.com/' 'ssh://git@github.com/'
 add_pair 'https://github.com/' 'https://github.com/'
+add_pair 'https://github.com/' 'ssh://git@ssh.github.com:443/'
+add_pair 'https://github.com/' 'git@ssh.github.com:'
+add_pair 'https://github.com/' 'ssh.github.com:'
 for _line in $ORG_INSTALLS; do
   add_pair "https://github.com/${_line%%:*}/" "https://github.com/${_line%%:*}/"
 done
@@ -326,7 +381,8 @@ for name in "${github_names[@]+"${github_names[@]}"}"; do
       # Only github.com destinations are held to HTTPS; a remote that pushes
       # to another host is that host's business and the helper ignores it.
       case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
-      [ "$(url_host_lc "$resolved")" = github.com ] || continue
+      dest="$(github_destination "$resolved")" || dest=github
+      [ "$dest" = github ] || continue
       echo "bot-env: remote '${name}' still resolves to ${resolved} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3

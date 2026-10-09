@@ -29,6 +29,20 @@ export HOME="$DIR/home"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 [ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# OpenSSH reads its default user config from the passwd home directory, not
+# $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
+# decide alias cases. This shim points ssh at the scratch config unless the
+# caller passes its own -F.
+REAL_SSH="$(command -v ssh)"
+mkdir -p "$DIR/ssh-shim"
+cat > "$DIR/ssh-shim/ssh" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = -F ] && exec "$REAL_SSH" "\$@"; done
+exec "$REAL_SSH" -F "$HOME/.ssh/config" "\$@"
+EOF
+: > "$HOME/.ssh/config"
+chmod +x "$DIR/ssh-shim/ssh"
+export PATH="$DIR/ssh-shim:$PATH"
 # UV is not used by the stub bot-token, but keep uv's cache where it was in
 # case a later case runs the real one.
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
@@ -359,6 +373,85 @@ git -C "$R" config "includeIf.gitdir:$RP/.elsewhere/.path" remotes.inc
 [ "$(verdict "$R")" = PERSONAL ] || fail "a non-matching includeIf changed the verdict"
 git -C "$R" config "includeIf.gitdir:$RP/.path" remotes.inc
 [ "$(verdict "$R")" = BOT ] || fail "included org remote behind a visible personal remote resolved personal"
+rm -rf "$R"
+
+printf 'Host gh\n  HostName github.com\n  User git\nHost gh443\n  HostName ssh.github.com\n  Port 443\n  User git\nHost github.com-work\n  HostName github.com\nHost gl\n  HostName gitlab.com\n' > "$HOME/.ssh/config"
+
+# 33. GitHub's documented SSH-over-443 endpoint is GitHub: bot verdict and an
+#     HTTPS target on github.com.
+R="$(mkrepo ssh://git@ssh.github.com:443/acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "ssh.github.com:443 sole remote resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "ssh.github.com remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 34. The scp spelling of the same endpoint.
+R="$(mkrepo git@ssh.github.com:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "git@ssh.github.com scp remote resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "git@ssh.github.com scp remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 35. An ~/.ssh/config alias that resolves to github.com is GitHub.
+R="$(mkrepo gh:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "ssh alias to github.com resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "ssh alias remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 36. An alias whose name contains a dot is still resolved, not trusted literally.
+R="$(mkrepo github.com-work:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "dotted ssh alias to github.com resolved personal"
+rm -rf "$R"
+
+# 37. An alias that resolves elsewhere is another host: personal, untouched.
+R="$(mkrepo gl:me/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "ssh alias to gitlab.com did not resolve personal"
+rm -rf "$R"
+
+# 38. Org origin plus an aliased ssh.github.com upstream: the upstream must
+#     reach HTTPS too, or a push there rides the personal key.
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add upstream gh443:acme/y.git
+[ "$(verdict "$R")" = BOT ] || fail "org repo with aliased upstream aborted or resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" upstream)" = 'fetch=https://github.com/acme/y.git push=https://github.com/acme/y.git' ] || fail "aliased ssh.github.com upstream left on SSH: $(effective "$R" upstream)"
+rm -rf "$R"
+
+# 39. ssh cannot answer: an alias-shaped host is undeterminable (abort), a
+#     dotted literal host is taken literally (personal).
+mkdir -p "$DIR/no-ssh"
+printf '#!/usr/bin/env bash\nexit 255\n' > "$DIR/no-ssh/ssh"
+chmod +x "$DIR/no-ssh/ssh"
+R="$(mkrepo gh:acme/x.git)"
+rc=0
+(cd "$R" && PATH="$DIR/no-ssh:$PATH" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "unresolvable ssh alias did not abort"
+grep -q "'gh'" "$DIR/err" || fail "unresolvable-alias abort did not name the host: $(cat "$DIR/err")"
+rm -rf "$R"
+R="$(mkrepo git@gitlab.com:me/x.git)"
+out="$(cd "$R" && PATH="$DIR/no-ssh:$PATH" "$DIR/bot-env" 2>/dev/null)" || fail "dotted non-GitHub host aborted when ssh was unavailable"
+echo "$out" | grep -q '^unset GH_TOKEN$' || fail "dotted non-GitHub host did not resolve personal when ssh was unavailable"
+rm -rf "$R"
+
+# 40. git's ssh is not the default ssh: the alias lives only in the config
+#     core.sshCommand points at, and must be resolved through that command.
+printf 'Host work\n  HostName github.com\n  User git\n' > "$HOME/.ssh/work_config"
+R="$(mkrepo work:acme/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "alias known only to a non-default ssh config did not resolve personal without the override: $(verdict "$R")"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/work_config"
+[ "$(verdict "$R")" = BOT ] || fail "alias resolved through core.sshCommand did not give the bot verdict: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "core.sshCommand alias not rewritten: $(effective "$R" origin)"
+git -C "$R" config --unset core.sshCommand
+# 40b. GIT_SSH_COMMAND in the environment outranks core.sshCommand, and a
+#      GIT_SSH program wrapper works the same way.
+out="$(cd "$R" && GIT_SSH_COMMAND="ssh -F $HOME/.ssh/work_config" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH_COMMAND alias aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH_COMMAND alias did not give the bot verdict"
+printf '#!/bin/sh\nexec ssh -F "%s" "$@"\n' "$HOME/.ssh/work_config" > "$DIR/myssh"
+chmod +x "$DIR/myssh"
+out="$(cd "$R" && GIT_SSH="$DIR/myssh" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH wrapper alias aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH wrapper alias did not give the bot verdict"
+rm -rf "$R"
+
+# 41. An IPv6 literal is another host, never an alias-shaped abort.
+R="$(mkrepo 'ssh://git@[::1]:2222/me/x.git')"
+[ "$(verdict "$R")" = PERSONAL ] || fail "IPv6 literal remote did not resolve personal: $(cat "$DIR/err")"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
