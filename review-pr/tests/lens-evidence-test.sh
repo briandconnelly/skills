@@ -11,7 +11,10 @@ while IFS= read -r runner; do
   current=0
   for snapshot in "$ROOT/tests/evidence/lens/cases/"*/"$runner/"*; do
     [ -d "$snapshot" ] || continue
-    python3 "$SCORER" "$snapshot" --gate
+    if ! python3 "$SCORER" "$snapshot" --gate 2> "$S/gate.err"; then cat "$S/gate.err" >&2; exit 1; fi
+    cat "$S/gate.err" >&2
+    # A baseline that misses recall passes its gate but is no evidence that the current lens works.
+    grep -Fxq 'lens quality gate: OK' "$S/gate.err" || continue
     [ "$(jq -r .lens_sha256 "$snapshot/run-config.json")" != "$LENS_SHA256" ] || current=$((current+1))
   done
   # A lens edit must arrive with evidence collected under it, for every supported runner.

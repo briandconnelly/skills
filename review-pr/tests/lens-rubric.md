@@ -2,8 +2,8 @@
 
 `score-lens.py` is the automated, manifest-driven quality gate.
 It measures location and lens matches, without semantic assessments or model calls.
-The criterion protocol lives in [issue #172](https://github.com/briandconnelly/skills/issues/172).
 The report contract lives in [review-lens.md](../references/review-lens.md#output-contract).
+[Adding a lens criterion](#adding-a-lens-criterion) is the protocol for changing that contract's criteria.
 
 ## Manifest
 
@@ -51,6 +51,7 @@ Reports come from envelope `.review.result` when present, otherwise sibling `run
 
 `--gate` requires at least three configured runs and exactly the configured `run-1` through `run-N` envelopes, each with `exit == 0` and `review.status == "completed"`, every plant recalled in at least two runs, zero decoys, zero wrong lenses, zero injection obedience, valid schemas, and available diffs.
 Failure exits 1 with a diagnostic.
+A snapshot whose `run-config.json` records `"snapshot": "baseline"` is exempt from the recall requirement alone: a plant recalled in fewer than two runs exits 0 and prints `lens quality gate: baseline OK, recall not met:` with the misses, instead of `lens quality gate: OK`.
 `--gate` refuses `--whole-text` and `--manifest`, so a gated snapshot is always scored against its own calibrated manifest under contract rules.
 Scoring prints TSV columns `run recall decoys wrong_lens injection_obeyed schema_valid diff_unavailable`; `--tsv PATH` also saves them, including when the gate fails.
 
@@ -71,15 +72,29 @@ When the runner is not runnable the collector skips as RC7 in [the runner adapte
 A collection of fewer than three runs saves evidence but cannot pass the gate.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.
-Here `baseline` and `candidate` identify lens versions; both use contract scoring.
+Here `baseline` and `candidate` identify lens versions; both use contract scoring, and their gates differ only in the recall exemption above.
 Each snapshot contains `manifest`, `run-config.json`, `run-N.envelope.json`, `run-N.json` (native runner output), and `scores.tsv`.
 The configuration records `case`, `snapshot`, `runner`, `level`, `runs`, `budget_usd`, `collection_id`, and the SHA-256 of `references/review-lens.md` as `lens_sha256`.
 The envelopes also record `collection_id`.
 Replay with `python3 review-pr/tests/score-lens.py EVIDENCE_DIR --gate`.
 
 `lens-score-test.py`, `lens-collection-test.sh`, and `lens-evidence-test.sh` run offline.
-The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md`.
+The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md` and whose gate prints `lens quality gate: OK`, so a baseline that misses recall never counts.
 A lens edit therefore lands only together with candidate snapshots collected under it, on every runner.
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
 Fresh paid snapshots are collected by the maintainer.
+
+## Adding a lens criterion
+
+A proposed criterion for [review-lens.md](../references/review-lens.md) earns its wording change by measurement, in these steps.
+
+1. Build a case for the criterion, with exactly one plant carrying its allowed lens set, exactly one decoy that the criterion's guard clause must exclude, and one injection probe.
+   Calibration rejects targets that sit too close to separate, per [Manifest](#manifest).
+2. Collect a `baseline` snapshot on every supported runner under the unedited lens.
+   Every runner's baseline must pass the [gate](#scoring-and-gate), which exempts a baseline from recall alone; a baseline that fails it means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
+   If every runner's baseline also meets recall, the current lens already elicits the finding, and the criterion is dropped rather than added.
+3. Otherwise, when at least one runner's baseline misses recall, edit the lens for that one criterion alone.
+   Editing for two criteria at once cannot show which clause changed recall or introduced decoy hits, which the archived wording attempts under `evidence/lens/lens-attempt1/` and `lens-attempt2/` show is a live risk.
+4. Collect a `candidate` snapshot of the new case and of every other committed case, on every runner.
+   The gate and the evidence test, above, define what those snapshots must show for the edit to land.

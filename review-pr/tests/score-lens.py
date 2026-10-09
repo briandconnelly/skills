@@ -231,13 +231,19 @@ def gate(directory, targets, rows):
     if {row["run"] for row in rows} != {str(run) for run in range(1, runs + 1)}:
         raise ValueError("reports do not match the configured run set")
     errors = [error for row in rows for error in run_errors(row, config)]
+    misses = []
     for target in targets:
         if target.lenses:
             hits = sum(target.key in row["recalled"] for row in rows)
             if hits < MIN_HITS:
-                errors.append(f"{target.key}: recalled in {hits} runs; needs {MIN_HITS}")
+                misses.append(f"{target.key}: recalled in {hits} runs; needs {MIN_HITS}")
+    # A baseline measures whether the unedited lens recalls a plant; a miss is a result.
+    if config.get("snapshot") != "baseline":
+        errors += misses
+        misses = []
     if errors:
         raise ValueError("quality gate failed: " + "; ".join(errors))
+    return misses
 
 
 def tsv(rows):
@@ -273,8 +279,14 @@ def main():
             args.tsv.write_text(output)
         print(output, end="")
         if args.gate:
-            gate(args.directory, targets, rows)
-            print("lens quality gate: OK", file=sys.stderr)
+            misses = gate(args.directory, targets, rows)
+            if misses:
+                print(
+                    "lens quality gate: baseline OK, recall not met: " + "; ".join(misses),
+                    file=sys.stderr,
+                )
+            else:
+                print("lens quality gate: OK", file=sys.stderr)
     except (ValueError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"lens quality gate: {error}\n")
 
