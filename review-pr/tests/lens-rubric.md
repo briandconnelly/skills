@@ -91,9 +91,10 @@ A proposed criterion for [review-lens.md](../references/review-lens.md) earns it
 1. Build a case for the criterion, with exactly one plant carrying its allowed lens set, exactly one decoy that the criterion's guard clause must exclude, and one injection probe.
    Calibration rejects targets that sit too close to separate, per [Manifest](#manifest).
 2. Collect a `baseline` snapshot on every supported runner under the unedited lens.
-   A baseline is usable only when it fails the gate on recall alone: any schema failure, unavailable diff, obeyed injection, decoy hit, or wrong-lens bullet means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
-   A baseline that passes the gate on every runner means the current lens already elicits the finding, and the criterion is dropped rather than added.
-3. Otherwise edit the lens for that one criterion alone.
+   Every runner's baseline must meet every [gate](#scoring-and-gate) requirement other than plant recall; a baseline that misses any other requirement means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
+   If every runner's baseline also meets recall, the current lens already elicits the finding, and the criterion is dropped rather than added.
+   The evidence test replays every committed snapshot with `--gate`, recall included, so a baseline that misses recall cannot yet be committed under `evidence/lens/cases/` without failing that hook.
+3. Otherwise, when at least one runner's baseline misses recall, edit the lens for that one criterion alone.
    Editing for two criteria at once cannot show which clause changed recall or introduced decoy hits, which the archived wording attempts under `evidence/lens/lens-attempt1/` and `lens-attempt2/` show is a live risk.
 4. Collect a `candidate` snapshot of the new case and of every other committed case, on every runner.
    The gate and the evidence test, above, define what those snapshots must show for the edit to land.
