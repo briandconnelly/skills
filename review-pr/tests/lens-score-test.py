@@ -67,14 +67,13 @@ class ScoreTests(unittest.TestCase):
             check=False,
         )
 
-    def runs(self, texts=None):
+    def runs(self, texts=None, snapshot=None):
         if texts is None:
             texts = [report()] * 3
-        (self.root / "run-config.json").write_text(
-            json.dumps(
-                {"runs": len(texts), "collection_id": "unit-collection", "runner": "unit-runner"}
-            )
-        )
+        config = {"runs": len(texts), "collection_id": "unit-collection", "runner": "unit-runner"}
+        if snapshot is not None:
+            config["snapshot"] = snapshot
+        (self.root / "run-config.json").write_text(json.dumps(config))
         for index, text in enumerate(texts, 1):
             (self.root / f"run-{index}.envelope.json").write_text(json.dumps(envelope(text)))
 
@@ -254,6 +253,35 @@ class ScoreTests(unittest.TestCase):
         result = self.cli(self.root, "--gate")
         self.assertEqual(result.returncode, 1)
         self.assertIn("recalled in 1 runs; needs 2", result.stderr)
+
+    def test_baseline_gate_reports_but_waives_insufficient_recall(self):
+        self.runs([report(), report([]), report([])], snapshot="baseline")
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "lens quality gate: baseline OK, recall not met: PLANT-JS: recalled in 1 runs",
+            result.stderr,
+        )
+        self.assertNotIn("lens quality gate: OK", result.stderr)
+        self.runs(snapshot="baseline")
+        self.assertIn("lens quality gate: OK", self.cli(self.root, "--gate").stderr)
+        self.runs([report(), report([]), report([])], snapshot="candidate")
+        self.assertIn("recalled in 1 runs; needs 2", self.cli(self.root, "--gate").stderr)
+
+    def test_baseline_gate_keeps_every_other_requirement(self):
+        decoy = report([*BULLETS, "- src/app.js:38 — tests — Defect — Impact"])
+        self.runs([report([]), report([]), decoy], snapshot="baseline")
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("decoys=1", result.stderr)
+        self.assertNotIn("recalled in", result.stderr)
+        self.runs([report([])] * 3, snapshot="baseline")
+        broken = envelope(report([]))
+        broken["schema_valid"] = False
+        (self.root / "run-1.envelope.json").write_text(json.dumps(broken))
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("schema invalid", result.stderr)
 
     def test_gate_needs_three_runs_even_when_every_run_recalls(self):
         for texts in ([report()], [report(), report()]):
