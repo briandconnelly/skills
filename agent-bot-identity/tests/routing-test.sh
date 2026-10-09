@@ -22,6 +22,17 @@ EMPTY_GLOBAL="$DIR/global-empty"
 : > "$EMPTY_GLOBAL"
 export GIT_CONFIG_GLOBAL="$EMPTY_GLOBAL"
 
+# Later cases write ~/.netrc and ~/.ssh/config, so the whole suite runs under
+# a scratch HOME; the guard below is what protects the developer's real
+# files if this block is ever moved or removed.
+export HOME="$DIR/home"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# UV is not used by the stub bot-token, but keep uv's cache where it was in
+# case a later case runs the real one.
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
+
 cp "$SRC/git-credential-bot" "$DIR/"
 awk '{ if ($0 == "acme:REPLACE") print "acme:111"; else print }' "$SRC/bot-env" > "$DIR/bot-env"
 printf '#!/usr/bin/env bash\necho "ghs_stub-${BOT_INSTALL_ID:-none}"\n' > "$DIR/bot-token"
@@ -305,6 +316,25 @@ rm -rf "$R"
 # 28. A repo whose only remote is a local path named github.com is personal.
 R="$(mkrepo github.com)"
 [ "$(verdict "$R")" = PERSONAL ] || fail "sole local remote named github.com did not resolve personal"
+rm -rf "$R"
+
+# --- Cases from the 2026-10-09 dual review --------------------------------
+
+# 29. Inherited GIT_CONFIG_PARAMETERS is applied by git after the
+#     GIT_CONFIG_COUNT entries, so a personal helper there would be the last
+#     helper and win. A bot verdict must neutralise it; a personal verdict
+#     must unset it.
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_PARAMETERS="'credential.helper=human'" "$DIR/bot-env" 2>/dev/null)" || fail "inherited GIT_CONFIG_PARAMETERS aborted bot-env"
+echo "$out" | grep -q "^export GIT_CONFIG_PARAMETERS=''$" || fail "bot verdict did not neutralise GIT_CONFIG_PARAMETERS"
+last="$(cd "$R" && export GIT_CONFIG_PARAMETERS="'credential.helper=human'" && eval "$out" && git config --get-all credential.helper | tail -1)"
+[ "$last" = "!$DIR/git-credential-bot" ] || fail "inherited GIT_CONFIG_PARAMETERS still supplies the last helper: $last"
+rm -rf "$R"
+
+# 30. Personal verdict unsets it like the other identity variables.
+R="$(mkrepo git@gitlab.com:me/x.git)"
+out="$(cd "$R" && GIT_CONFIG_PARAMETERS="'credential.helper=human'" "$DIR/bot-env" 2>/dev/null)"
+echo "$out" | grep -q '^unset GIT_CONFIG_PARAMETERS$' || fail "personal verdict left GIT_CONFIG_PARAMETERS exported"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

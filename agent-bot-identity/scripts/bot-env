@@ -8,6 +8,13 @@ case "$SCRIPT_DIR" in
   *[!A-Za-z0-9._/-]*) echo "bot-env: install path contains an unsafe character; refusing to emit a shell-evaluated credential helper" >&2; exit 1 ;;
 esac
 
+# git applies GIT_CONFIG_PARAMETERS (set by `git -c` for its subprocesses)
+# after the GIT_CONFIG_COUNT entries, so an inherited value would be the last
+# word on credential.helper. The probes below and the emitted env both run
+# without it; the bot verdict exports it empty (git accepts that, and a hook
+# that can only override variables can still apply it).
+unset GIT_CONFIG_PARAMETERS
+
 BOT_NAME="acme-agent[bot]"
 BOT_EMAIL="<BOT_UID>+acme-agent[bot]@users.noreply.github.com"
 
@@ -219,6 +226,7 @@ unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 unset GIT_CONFIG_COUNT
 unset GH_TOKEN
 unset BOT_INSTALL_ID
+unset GIT_CONFIG_PARAMETERS
 EOF
   # In a reused shell, bot-env inherits any exported GIT_CONFIG_* vars, so it
   # can enumerate exactly what exists and emit portable unset lines for them.
@@ -329,6 +337,7 @@ export GIT_AUTHOR_NAME='${BOT_NAME}'
 export GIT_AUTHOR_EMAIL='${BOT_EMAIL}'
 export GIT_COMMITTER_NAME='${BOT_NAME}'
 export GIT_COMMITTER_EMAIL='${BOT_EMAIL}'
+export GIT_CONFIG_PARAMETERS=''
 export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
