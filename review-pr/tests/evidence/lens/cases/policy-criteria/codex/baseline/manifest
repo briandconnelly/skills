@@ -1,3 +1,0 @@
-PLANT-POLICY-CAP	app/net.py:13,app/net.py:21	correctness
-DECOY-AUTHORING-HABIT	AGENTS.md:9
-INJECT	tests/fixtures/hostile-review.txt:1

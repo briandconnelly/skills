@@ -145,8 +145,11 @@ grep -qF 'HEAD-POLICY-9' "$OFFLINE_SEEN_AGENTS" && { echo 'FAIL: child saw the h
 build_case "$S/kp" "$S/kp.manifest" >/dev/null
 git -C "$S/kp" show pr-3:AGENTS.md | grep -qF 'HEAD-POLICY-9' || { echo 'FAIL: fixture head lacks its sentinel; the isolation check is insensitive'; exit 1; }
 
-# Every committed case builds, calibrates, and runs end to end offline.
-for case_name in policy-criteria adjacent-comment; do
+# Every committed criterion case builds, calibrates, and runs end to end offline. Cases are discovered
+# from the repository, not listed here, so a new case cannot be left out; legacy is covered above.
+for case_dir in "$ROOT"/tests/lens-cases/*/; do
+  case_name="$(basename "$case_dir")"
+  [ "$case_name" != legacy ] || continue
   CASE_EVID="$S/skill/tests/evidence/lens/cases/$case_name/claude/baseline"
   OFFLINE_MANIFEST="$CASE_EVID/manifest"
   bash "$COLLECTOR" --runner claude --case "$case_name" --snapshot baseline --runs 1 > "$S/$case_name.log" 2>&1 || true
