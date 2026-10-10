@@ -252,7 +252,13 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
             if (parsed.GIT_CONFIG_KEY_0 !== "credential.helper" || parsed.GIT_CONFIG_VALUE_0 !== "") {
               problems.push("helper reset at GIT_CONFIG index 0")
             }
-            if (parsed.GIT_CONFIG_KEY_1 !== "credential.helper" || !parsed.GIT_CONFIG_VALUE_1?.startsWith("!")) {
+            // bot-env emits `!<install dir>/git-credential-bot` and refuses an
+            // install path outside this character set; any other `!` helper
+            // (`!true`) returns nothing and lets git fall through to a prompt.
+            if (
+              parsed.GIT_CONFIG_KEY_1 !== "credential.helper" ||
+              !/^!\/[A-Za-z0-9._\/-]*\/git-credential-bot$/.test(parsed.GIT_CONFIG_VALUE_1 ?? "")
+            ) {
               problems.push("bot credential helper at GIT_CONFIG index 1")
             }
             if (parsed.GIT_CONFIG_KEY_2 !== "commit.gpgsign" || parsed.GIT_CONFIG_VALUE_2 !== "false") {

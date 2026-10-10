@@ -204,6 +204,21 @@ describe("shell.env hook", () => {
     await expect(call(botEnv, gitRepo("no-helper"))).rejects.toThrow(/partial identity block/)
   })
 
+  test("fail closed: a shell helper other than git-credential-bot at GIT_CONFIG index 1", async () => {
+    for (const [name, value] of [
+      ["bang-true", "!true"],
+      ["bang-relative", "!git-credential-bot"],
+      ["bang-suffix", "!/home/u/bin/git-credential-bot; true"],
+      ["bang-other", "!/home/u/bin/git-credential-store"],
+    ]) {
+      const botEnv = fixture(
+        `bot-${name}`,
+        BOT_BLOCK.replace("GIT_CONFIG_VALUE_1='!/home/u/bin/git-credential-bot'", `GIT_CONFIG_VALUE_1='${value}'`),
+      )
+      await expect(call(botEnv, gitRepo(name))).rejects.toThrow(/partial identity block/)
+    }
+  })
+
   test("fail closed: a GIT_CONFIG_COUNT entry without its key/value", async () => {
     const botEnv = fixture("bot-short", BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", "GIT_CONFIG_COUNT=22"))
     await expect(call(botEnv, gitRepo("short"))).rejects.toThrow(/partial identity block/)
