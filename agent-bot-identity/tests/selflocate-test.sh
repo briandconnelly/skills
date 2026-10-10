@@ -7,6 +7,34 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 FAIL=0
 DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 trap 'rm -rf "$DIR"' EXIT
+# bot-env reads $HOME/.netrc and, through ssh -G, the ssh client config; keep
+# every run off the developer's real files. uv's cache stays where it was.
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
+export HOME="$DIR/home"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# bot-env resolves ssh hosts through GIT_SSH_COMMAND or GIT_SSH when they are
+# set, which would bypass the shim below; the precedence cases set them per
+# command themselves.
+unset GIT_SSH_COMMAND GIT_SSH
+# OpenSSH reads its default user config from the passwd home directory, not
+# $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
+# decide alias cases. This shim points ssh at the scratch config unless the
+# caller passes its own -F.
+REAL_SSH="$(command -v ssh)"
+mkdir -p "$DIR/ssh-shim"
+cat > "$DIR/ssh-shim/ssh" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = -F ] && exec "$REAL_SSH" "\$@"; done
+exec "$REAL_SSH" -F "$HOME/.ssh/config" "\$@"
+EOF
+: > "$HOME/.ssh/config"
+chmod +x "$DIR/ssh-shim/ssh"
+export PATH="$DIR/ssh-shim:$PATH"
+export GIT_CONFIG_NOSYSTEM=1
+: > "$DIR/global-empty"
+export GIT_CONFIG_GLOBAL="$DIR/global-empty"
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 
 cp "$SRC/git-credential-bot" "$SRC/bot-env" "$DIR/"

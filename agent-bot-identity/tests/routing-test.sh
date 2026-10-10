@@ -22,9 +22,38 @@ EMPTY_GLOBAL="$DIR/global-empty"
 : > "$EMPTY_GLOBAL"
 export GIT_CONFIG_GLOBAL="$EMPTY_GLOBAL"
 
+# Later cases write ~/.netrc and ~/.ssh/config, so the whole suite runs under
+# a scratch HOME; the guard below is what protects the developer's real
+# files if this block is ever moved or removed.
+# UV is not used by the stub bot-token, but keep uv's cache where it was in
+# case a later case runs the real one.
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
+export HOME="$DIR/home"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# bot-env resolves ssh hosts through GIT_SSH_COMMAND or GIT_SSH when they are
+# set, which would bypass the shim below; the precedence cases set them per
+# command themselves.
+unset GIT_SSH_COMMAND GIT_SSH
+# OpenSSH reads its default user config from the passwd home directory, not
+# $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
+# decide alias cases. This shim points ssh at the scratch config unless the
+# caller passes its own -F.
+REAL_SSH="$(command -v ssh)"
+mkdir -p "$DIR/ssh-shim"
+cat > "$DIR/ssh-shim/ssh" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = -F ] && exec "$REAL_SSH" "\$@"; done
+exec "$REAL_SSH" -F "$HOME/.ssh/config" "\$@"
+EOF
+: > "$HOME/.ssh/config"
+chmod +x "$DIR/ssh-shim/ssh"
+export PATH="$DIR/ssh-shim:$PATH"
+
 cp "$SRC/git-credential-bot" "$DIR/"
 awk '{ if ($0 == "acme:REPLACE") print "acme:111"; else print }' "$SRC/bot-env" > "$DIR/bot-env"
-printf '#!/usr/bin/env bash\necho "ghs_stub-${BOT_INSTALL_ID:-none}"\n' > "$DIR/bot-token"
+printf '#!/usr/bin/env bash\n[ -n "${BOT_TOKEN_CALLS:-}" ] && : >> "$BOT_TOKEN_CALLS"\necho "ghs_stub-${BOT_INSTALL_ID:-none}"\n' > "$DIR/bot-token"
 chmod +x "$DIR"/git-credential-bot "$DIR"/bot-env "$DIR"/bot-token
 
 fail() { echo "FAIL: $*"; FAIL=1; }
@@ -207,13 +236,14 @@ rm -rf "$R"
 #     remote still resolves to SSH and abort rather than route with the
 #     personal key.
 FULL_URL_RULE="$DIR/global-full-url"
-printf '[url "ssh://git@github.com/acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$FULL_URL_RULE"
+printf '[url "ssh://REDACTED@github.com/acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$FULL_URL_RULE"
 R="$(mkrepo https://github.com/acme/x.git)"
 rc=0
 out="$(cd "$R" && GIT_CONFIG_GLOBAL="$FULL_URL_RULE" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
 [ "$rc" -ne 0 ] || fail "remote still resolving to SSH after the rewrites did not abort"
 [ -z "$out" ] || fail "SSH-resolving remote abort still emitted env lines"
-grep -q 'origin' "$DIR/err" && grep -q 'ssh://git@github.com/acme/x.git' "$DIR/err" || fail "SSH-resolving remote abort did not name the remote and its effective URL: $(cat "$DIR/err")"
+grep -q 'origin' "$DIR/err" && grep -q 'ssh://\*\*\*@github.com/acme/x.git' "$DIR/err" || fail "SSH-resolving remote abort did not name the remote and its masked effective URL: $(cat "$DIR/err")"
+! grep -q REDACTED "$DIR/err" || fail "SSH-resolving remote abort echoed the URL's userinfo: $(cat "$DIR/err")"
 rm -rf "$R"
 
 # 20b. Same shape on the push side only (pushInsteadOf ties the same way).
@@ -305,6 +335,407 @@ rm -rf "$R"
 # 28. A repo whose only remote is a local path named github.com is personal.
 R="$(mkrepo github.com)"
 [ "$(verdict "$R")" = PERSONAL ] || fail "sole local remote named github.com did not resolve personal"
+rm -rf "$R"
+
+# --- Cases from the 2026-10-09 dual review --------------------------------
+
+# 29. Inherited GIT_CONFIG_PARAMETERS is applied by git after the
+#     GIT_CONFIG_COUNT entries, so a personal helper there would be the last
+#     helper and win. A bot verdict must neutralise it; a personal verdict
+#     must unset it.
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_PARAMETERS="'credential.helper=human'" "$DIR/bot-env" 2>/dev/null)" || fail "inherited GIT_CONFIG_PARAMETERS aborted bot-env"
+echo "$out" | grep -q "^export GIT_CONFIG_PARAMETERS=''$" || fail "bot verdict did not neutralise GIT_CONFIG_PARAMETERS"
+last="$(cd "$R" && export GIT_CONFIG_PARAMETERS="'credential.helper=human'" && eval "$out" && git config --get-all credential.helper | tail -1)"
+[ "$last" = "!$DIR/git-credential-bot" ] || fail "inherited GIT_CONFIG_PARAMETERS still supplies the last helper: $last"
+rm -rf "$R"
+
+# 30. Personal verdict unsets it like the other identity variables.
+R="$(mkrepo git@gitlab.com:me/x.git)"
+out="$(cd "$R" && GIT_CONFIG_PARAMETERS="'credential.helper=human'" "$DIR/bot-env" 2>/dev/null)"
+echo "$out" | grep -q '^unset GIT_CONFIG_PARAMETERS$' || fail "personal verdict left GIT_CONFIG_PARAMETERS exported"
+rm -rf "$R"
+
+# 31. A remote defined in a file pulled in by include.path is a raw remote
+#     git uses; `git config --local` hides it without --includes, so the
+#     verdict was "no remotes, ambiguous" (bot by luck) instead of a
+#     recognised org remote with its exact rewrite pair.
+R="$(mkrepo)"
+printf '[remote "origin"]\n\turl = git@github.com:acme/inc.git\n' > "$R/.git/remotes.inc"
+git -C "$R" config include.path remotes.inc
+[ "$(verdict "$R")" = BOT ] || fail "included org remote did not resolve bot"
+grep -q 'no raw remote URLs' "$DIR/err" && fail "included org remote was reported as no remotes"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/inc.git push=https://github.com/acme/inc.git' ] || fail "included org remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 32. A visible personal remote plus an includeIf-gated org remote must
+#     still be the org's repo. git realpaths the git dir before matching the
+#     gitdir pattern, so the pattern is built from `pwd -P`.
+R="$(mkrepo git@gitlab.com:me/x.git)"
+RP="$(cd "$R" && pwd -P)"
+printf '[remote "work"]\n\turl = git@github.com:acme/inc.git\n' > "$R/.git/remotes.inc"
+git -C "$R" config "includeIf.gitdir:$RP/.elsewhere/.path" remotes.inc
+[ "$(verdict "$R")" = PERSONAL ] || fail "a non-matching includeIf changed the verdict"
+git -C "$R" config "includeIf.gitdir:$RP/.path" remotes.inc
+[ "$(verdict "$R")" = BOT ] || fail "included org remote behind a visible personal remote resolved personal"
+rm -rf "$R"
+
+printf 'Host gh\n  HostName github.com\n  User git\nHost gh443\n  HostName ssh.github.com\n  Port 443\n  User git\nHost github.com-work\n  HostName github.com\nHost gl\n  HostName gitlab.com\n' > "$HOME/.ssh/config"
+
+# 33. GitHub's documented SSH-over-443 endpoint is GitHub: bot verdict and an
+#     HTTPS target on github.com.
+R="$(mkrepo ssh://git@ssh.github.com:443/acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "ssh.github.com:443 sole remote resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "ssh.github.com remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 34. The scp spelling of the same endpoint.
+R="$(mkrepo git@ssh.github.com:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "git@ssh.github.com scp remote resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "git@ssh.github.com scp remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 35. An ~/.ssh/config alias that resolves to github.com is GitHub.
+R="$(mkrepo gh:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "ssh alias to github.com resolved personal"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "ssh alias remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 36. An alias whose name contains a dot is still resolved, not trusted literally.
+R="$(mkrepo github.com-work:acme/x.git)"
+[ "$(verdict "$R")" = BOT ] || fail "dotted ssh alias to github.com resolved personal"
+rm -rf "$R"
+
+# 37. An alias that resolves elsewhere is another host: personal, untouched.
+R="$(mkrepo gl:me/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "ssh alias to gitlab.com did not resolve personal"
+rm -rf "$R"
+
+# 38. Org origin plus an aliased ssh.github.com upstream: the upstream must
+#     reach HTTPS too, or a push there rides the personal key.
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add upstream gh443:acme/y.git
+[ "$(verdict "$R")" = BOT ] || fail "org repo with aliased upstream aborted or resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" upstream)" = 'fetch=https://github.com/acme/y.git push=https://github.com/acme/y.git' ] || fail "aliased ssh.github.com upstream left on SSH: $(effective "$R" upstream)"
+rm -rf "$R"
+
+# 39. ssh cannot answer: an alias-shaped host is undeterminable (abort), a
+#     dotted literal host is taken literally (personal).
+mkdir -p "$DIR/no-ssh"
+printf '#!/usr/bin/env bash\nexit 255\n' > "$DIR/no-ssh/ssh"
+chmod +x "$DIR/no-ssh/ssh"
+R="$(mkrepo gh:acme/x.git)"
+rc=0
+(cd "$R" && PATH="$DIR/no-ssh:$PATH" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "unresolvable ssh alias did not abort"
+grep -q "'gh'" "$DIR/err" || fail "unresolvable-alias abort did not name the host: $(cat "$DIR/err")"
+rm -rf "$R"
+R="$(mkrepo git@gitlab.com:me/x.git)"
+out="$(cd "$R" && PATH="$DIR/no-ssh:$PATH" "$DIR/bot-env" 2>/dev/null)" || fail "dotted non-GitHub host aborted when ssh was unavailable"
+echo "$out" | grep -q '^unset GH_TOKEN$' || fail "dotted non-GitHub host did not resolve personal when ssh was unavailable"
+rm -rf "$R"
+
+# 40. git's ssh is not the default ssh: the alias lives only in the config
+#     core.sshCommand points at, and must be resolved through that command.
+printf 'Host work\n  HostName github.com\n  User git\n' > "$HOME/.ssh/work_config"
+R="$(mkrepo work:acme/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "alias known only to a non-default ssh config did not resolve personal without the override: $(verdict "$R")"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/work_config"
+[ "$(verdict "$R")" = BOT ] || fail "alias resolved through core.sshCommand did not give the bot verdict: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "core.sshCommand alias not rewritten: $(effective "$R" origin)"
+git -C "$R" config --unset core.sshCommand
+# 40b. GIT_SSH_COMMAND in the environment outranks core.sshCommand, and a
+#      GIT_SSH program wrapper works the same way.
+out="$(cd "$R" && GIT_SSH_COMMAND="ssh -F $HOME/.ssh/work_config" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH_COMMAND alias aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH_COMMAND alias did not give the bot verdict"
+printf '#!/bin/sh\nexec ssh -F "%s" "$@"\n' "$HOME/.ssh/work_config" > "$DIR/myssh"
+chmod +x "$DIR/myssh"
+out="$(cd "$R" && GIT_SSH="$DIR/myssh" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH wrapper alias aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH wrapper alias did not give the bot verdict"
+# 40c. core.sshCommand outranks GIT_SSH (git's connect.c order); only when it is unset does GIT_SSH decide.
+printf 'Host work\n  HostName gitlab.com\n  User git\n' > "$HOME/.ssh/other_config"
+printf '#!/bin/sh\nexec ssh -F "%s" "$@"\n' "$HOME/.ssh/other_config" > "$DIR/myssh-other"
+chmod +x "$DIR/myssh-other"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/work_config"
+out="$(cd "$R" && GIT_SSH="$DIR/myssh-other" "$DIR/bot-env" 2>/dev/null)" || fail "core.sshCommand with a disagreeing GIT_SSH aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "GIT_SSH outranked core.sshCommand"
+git -C "$R" config --unset core.sshCommand
+out="$(cd "$R" && GIT_SSH="$DIR/myssh-other" "$DIR/bot-env" 2>/dev/null)" || fail "GIT_SSH alone aborted"
+echo "$out" | grep -q '^unset GH_TOKEN$' || fail "GIT_SSH alone did not decide the destination"
+rm -rf "$R"
+
+# 41. An IPv6 literal is another host, never an alias-shaped abort.
+R="$(mkrepo 'ssh://git@[::1]:2222/me/x.git')"
+[ "$(verdict "$R")" = PERSONAL ] || fail "IPv6 literal remote did not resolve personal: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 42. A user http.extraHeader carrying Authorization for github.com
+#     authenticates before the helper is consulted; refuse to route, name
+#     the key, never the value, and do not mint.
+HDR="$DIR/global-authz"
+printf '[http "https://github.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$HDR" BOT_TOKEN_CALLS="$DIR/calls" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization extraHeader for github.com did not abort"
+[ -z "$out" ] || fail "extraHeader abort still emitted env lines"
+grep -q 'http.https://github.com/.extraheader' "$DIR/err" || fail "extraHeader abort did not name the key: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "extraHeader abort printed the header value"
+[ ! -e "$DIR/calls" ] || fail "a refused command still minted a token"
+rm -rf "$R"
+
+# 42b. A key that carries userinfo must not be echoed in the refusal.
+HDRU="$DIR/global-authz-secret-key"
+printf '[http "https://me:REDACTED@github.com/"]\n\textraHeader = Authorization: basic X\n' > "$HDRU"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDRU" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+# (git's matcher does not apply a userinfo-scoped key to the username-free
+# URL, so this may not abort; either way the userinfo must never be printed)
+! grep -q REDACTED "$DIR/err" || fail "extraHeader abort echoed userinfo from the key: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 43. A plain (host-less) http.extraHeader with Authorization also aborts.
+HDR2="$DIR/global-authz-plain"
+printf '[http]\n\textraHeader = Authorization: bearer REDACTED\n' > "$HDR2"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR2" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "plain Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 44. A rule more specific than the host (the shape a command-scope clear
+#     cannot beat) aborts too.
+HDR3="$DIR/global-authz-specific"
+printf '[http "https://github.com/acme/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR3"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR3" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "account-specific Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 45. git keeps the URL subsection's case and matches hosts
+#     case-insensitively, so a rule written for `GitHub.com` or with an
+#     explicit :443 must abort too.
+HDR4="$DIR/global-authz-mixedcase"
+printf '[http "https://GitHub.com:443/"]\n\tExtraHeader = authorization: basic REDACTED\n' > "$HDR4"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR4" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "mixed-case GitHub.com:443 Authorization extraHeader did not abort"
+rm -rf "$R"
+
+# 45b. The bare host (no trailing slash) and a user@ form apply to every
+#      github.com request, so they abort too.
+HDR6="$DIR/global-authz-bare"
+printf '[http "https://github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR6"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR6" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "bare https://github.com Authorization extraHeader did not abort"
+HDR7="$DIR/global-authz-userinfo"
+printf '[http "https://me@github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR7"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR7" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+# (a username-scoped key does not apply to the username-free URL git uses; git's own matcher decides)
+[ "$rc" -eq 0 ] || fail "user@github.com-scoped extraHeader aborted though git does not apply it to a username-free URL"
+rm -rf "$R"
+
+# 45c. A header written without a space after the colon is still Authorization.
+HDR8="$DIR/global-authz-nospace"
+printf '[http "https://github.com/"]\n\textraHeader = Authorization:basic REDACTED\n' > "$HDR8"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR8" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization:basic (no space) extraHeader did not abort"
+rm -rf "$R"
+
+# 46. A non-Authorization header, or an Authorization header for another
+#     host, is not a competing credential.
+HDR5="$DIR/global-benign"
+printf '[http "https://github.com/"]\n\textraHeader = X-Trace: 1\n[http "https://gitlab.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR5"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$HDR5" "$DIR/bot-env" 2>/dev/null)" || fail "benign extraHeaders aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "benign extraHeaders did not resolve bot"
+rm -rf "$R"
+
+# 47. A ~/.netrc github.com entry: git's HTTP transport lets curl use it
+#     before any helper runs. Refuse to route.
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+printf 'machine github.com login me password REDACTED\n' > "$HOME/.netrc"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail ".netrc github.com entry did not abort"
+grep -q '\.netrc' "$DIR/err" || fail ".netrc abort did not name the file: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail ".netrc abort printed the entry"
+
+# 48. Multi-line and `default` forms are entries too; another machine is not.
+printf 'machine\n  github.com\n  login me\n  password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "multi-line .netrc github.com entry did not abort"
+printf 'default login me password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail ".netrc default entry did not abort"
+printf 'machine gitlab.com login me password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail ".netrc gitlab.com entry aborted"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail ".netrc gitlab.com entry did not resolve bot"
+rm -f "$HOME/.netrc"
+rm -rf "$R"
+
+# 49. Personal verdicts never look at either: a competing credential is the
+#     human's business in the human's repos.
+printf 'machine github.com login me password REDACTED\n' > "$HOME/.netrc"
+R="$(mkrepo git@gitlab.com:me/x.git)"
+[ "$(verdict "$R")" = PERSONAL ] || fail "personal verdict was affected by .netrc"
+rm -f "$HOME/.netrc"
+rm -rf "$R"
+
+# 50. A remote whose RAW value is not GitHub but which the user's own git
+#     config rewrites onto GitHub SSH (`ghx:` -> `git@github.com:`) must be
+#     caught by the effective-URL check too; before this fix only remotes
+#     with a GitHub raw value were checked, and the push rode the personal key.
+GIT_ALIAS="$DIR/global-git-alias"
+printf '[url "git@github.com:"]\n\tinsteadOf = ghx:\n' > "$GIT_ALIAS"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add upstream ghx:acme/y.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$GIT_ALIAS" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "git-insteadOf alias onto GitHub SSH on a second remote did not abort"
+grep -q "'upstream'" "$DIR/err" || fail "git-alias abort did not name the remote: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 51. A malformed inherited GIT_CONFIG_COUNT gives the ambiguous bot verdict
+#     (case 3) but must not blind the competing-credential check.
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR" GIT_CONFIG_COUNT=abc "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "malformed inherited GIT_CONFIG_COUNT blinded the extraHeader refusal"
+rm -rf "$R"
+
+# 52. ssh's `Match user` can make `git@work` resolve to github.com while a
+#     bare `work` does not; the lookup must carry the URL's user as git does.
+printf 'Match user git\n  HostName github.com\n' > "$HOME/.ssh/user_config"
+R="$(mkrepo git@work:acme/x.git)"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/user_config"
+[ "$(verdict "$R")" = BOT ] || fail "Match-user alias to github.com resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "Match-user alias remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 53. A wildcard-host scope git applies (`https://*.com/`) must be refused;
+#     the handwritten host list could not see it.
+HDR6="$DIR/global-authz-wildcard"
+printf '[http "https://*.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR6"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR6" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "wildcard-host Authorization extraHeader did not abort"
+grep -q 'REDACTED' "$DIR/err" && fail "wildcard abort printed the header value"
+rm -rf "$R"
+
+# 54. curl's netrc grammar: a quoted machine name is an entry; a login whose
+#     value happens to be `default` is not; a `#` comment and a macdef body
+#     are ignored.
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+R="$(mkrepo git@github.com:acme/x.git)"
+printf 'machine "github.com" login me password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "quoted .netrc github.com entry did not abort"
+printf 'machine gitlab.com login default password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail "a login named default was treated as a default entry"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "login-named-default entry did not resolve bot"
+printf '# machine github.com\nmacdef init\nmachine github.com\n\nmachine gitlab.com login me password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail "comment or macdef body was read as an entry"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "comment/macdef .netrc did not resolve bot"
+rm -f "$HOME/.netrc"
+rm -rf "$R"
+
+# 55. An effective URL in scp form carries its userinfo before the host;
+#     the abort message must mask it like the scheme form.
+SCP_TIE="$DIR/global-scp-tie"
+printf '[url "private-REDACTED@github.com:acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$SCP_TIE"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$SCP_TIE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "scp-form tie did not abort"
+grep -q '\*\*\*@github.com:acme/x.git' "$DIR/err" || fail "scp-form abort did not mask the userinfo: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "scp-form abort printed the userinfo"
+rm -rf "$R"
+
+# 56. A user rule that rewrites a non-GitHub raw remote onto a credentialed
+#     https github.com URL must be refused: git would use the URL's userinfo,
+#     never the bot helper. The raw-remote exact pair cannot help here because
+#     the raw value is not GitHub.
+CRED_RULE="$DIR/global-cred-rule"
+printf '[url "https://human:REDACTED@github.com/acme/x.git"]\n\tinsteadOf = mirror:acme/x.git\n' > "$CRED_RULE"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add mirror mirror:acme/x.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$CRED_RULE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "credentialed https rewrite of a non-GitHub remote did not abort"
+grep -q "'mirror'" "$DIR/err" || fail "credentialed-https abort did not name the remote: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "credentialed-https abort printed the credential"
+# A raw credentialed remote is still routed through its exact pair, not refused.
+R2="$(mkrepo 'https://REDACTED@github.com/acme/x.git')"
+[ "$(verdict "$R2")" = BOT ] || fail "raw credentialed https remote no longer routes: $(cat "$DIR/err")"
+[ "$(effective "$R2" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "raw credentialed https remote not rewritten to the clean target: $(effective "$R2" origin)"
+rm -rf "$R" "$R2"
+
+# 57. git passes an ssh:// URL's port to ssh as -p, and ssh config can turn
+#     on it; the lookup must carry the port so the verdict matches git's ssh.
+printf 'Match host work exec "test %%p = 443"\n  HostName github.com\n' > "$HOME/.ssh/port_config"
+R="$(mkrepo ssh://git@work:443/acme/x.git)"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/port_config"
+[ "$(verdict "$R")" = BOT ] || fail "port-conditional alias to github.com resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "port-conditional alias remote not rewritten: $(effective "$R" origin)"
+git -C "$R" remote set-url origin ssh://git@work:22/acme/x.git
+[ "$(verdict "$R")" = PERSONAL ] || fail "port-conditional alias matched on the wrong port"
+rm -rf "$R"
+
+# 58. An Authorization header scoped to a path that is reached only through
+#     a user rewrite of a non-GitHub raw remote must still be refused.
+REWRITE_HDR="$DIR/global-rewrite-hdr"
+printf '[url "https://github.com/private/x.git"]\n\tinsteadOf = mirror:x.git\n[http "https://github.com/private/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$REWRITE_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add mirror mirror:x.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$REWRITE_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on a rewritten GitHub target was not refused"
+grep -q 'REDACTED' "$DIR/err" && fail "rewritten-target refusal printed the header value"
+rm -rf "$R"
+
+# 59. A remote defined only in the global config is pushable by git but was
+#     never in the effective-URL check; a complete-URL insteadOf tie on it
+#     kept the personal SSH key under the bot's authorship. Affiliation stays
+#     local-only (no local remotes here → ambiguous bot verdict).
+GLOBAL_REMOTE="$DIR/global-remote-tie"
+printf '[remote "corp"]\n\turl = https://github.com/acme/corp.git\n[url "ssh://git@github.com/acme/corp.git"]\n\tinsteadOf = https://github.com/acme/corp.git\n' > "$GLOBAL_REMOTE"
+R="$(mkrepo)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "global remote left on SSH by a tie did not abort"
+grep -q "remote 'corp' still resolves to" "$DIR/err" || fail "global-remote abort was not the still-resolves refusal naming the remote: $(cat "$DIR/err")"
+# Without the tie the same global remote routes to HTTPS and the command runs.
+printf '[remote "corp"]\n\turl = https://github.com/acme/corp.git\n' > "$GLOBAL_REMOTE"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" 2>"$DIR/err")" || fail "global remote without a tie aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "global remote without a tie did not keep the bot verdict"
+rm -rf "$R"
+
+# 60. A global remote section with no url or pushurl (prune = true) has no
+#     destination; it must neither abort bot-env nor disturb a local origin.
+URLLESS="$DIR/global-urlless"
+printf '[remote "origin"]\n\tprune = true\n' > "$URLLESS"
+R="$(mkrepo)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$URLLESS" "$DIR/bot-env" 2>"$DIR/err")" || fail "URL-less global remote section aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "URL-less global remote section lost the bot verdict"
+rm -rf "$R"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$URLLESS" "$DIR/bot-env" 2>"$DIR/err")" || fail "URL-less global section beside a local origin aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "URL-less global section beside a local origin lost the bot verdict"
+[ "$(effective "$R" origin "$URLLESS")" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "local origin not rewritten beside a URL-less global section: $(effective "$R" origin "$URLLESS")"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

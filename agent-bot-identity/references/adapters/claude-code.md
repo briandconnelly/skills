@@ -138,11 +138,13 @@ One shape rewrites cannot win: a rule in your own git config whose base is a rem
 So before emitting anything `bot-env` asks git, with exactly the rewrites it is about to emit, where every remote that carries a `github.com` URL resolves in each configured direction (`git remote get-url --all` for remotes with a fetch URL, `--all --push` for all), and aborts the command if any resolved URL is still a non-HTTPS `github.com` URL — the message names the remote and the URL, and the fix is to remove that rule.
 Resolved URLs on other hosts pass through untouched, so a remote that fetches from GitHub and pushes elsewhere is not an error.
 URLs typed on the command line rather than configured as remotes are outside that check: the host-wide and account-prefix pairs cover them against host-wide rules, but a host-wide force-SSH rule ties the host-wide identity pair for a non-mapped account's URL, so prefer configured remotes in agent commands.
+An alias typed on the command line (`gh:acme/x.git`) has no host-wide pair either.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
 The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
 Wrong-host requests remain silent.
 Do not clear askpass or terminal-prompt variables globally because a personal verdict cannot safely restore caller- or IDE-provided values.
+Two more refusals, for competing HTTP credentials, are in the decision table below.
 
 The decision rules and their fail direction:
 
@@ -152,11 +154,16 @@ The decision rules and their fail direction:
 | Probe fails any other way (any other exit 128 — corrupt config, unsupported repository format, malformed inherited `GIT_CONFIG_*`, dubious ownership — or git missing, broken PATH) | Bot, stderr warning | Ambiguous — git exits 128 on every fatal error, so only the not-a-repository message may resolve personal |
 | Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
 | Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
+| A remote reaches GitHub through `ssh.github.com:443` or an ssh alias (`Host gh` → `HostName github.com`) known to the ssh git would use (`GIT_SSH_COMMAND`, else `core.sshCommand`, else `GIT_SSH`, else `ssh` — git's own order) | Same as a `github.com` remote | The destination, not the literal host, decides; `bot-env` asks that ssh with `-G` and canonicalisation off, so OpenSSH itself opens no connection and does no DNS lookup; a `Match exec` block still runs its command on every agent command, a non-OpenSSH `core.sshCommand` (plink, tsh) may misparse `-G` or try to connect, and an alias whose GitHub-ness appears only after DNS canonicalisation is not recognised; a literal `github.com` or `ssh.github.com` host is taken as GitHub without consulting ssh, so a `Host github.com` stanza that changes `HostName` is a transport override, not a different destination |
+| An ssh host with no dot in its name that the lookup cannot resolve (ssh missing or failing) | Command aborts, stderr names the remote and host | An alias-shaped host may be GitHub; routing it as another host would push with the personal key |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
 | Any raw local remote URL or push URL is empty | Bot if otherwise undetermined, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |
 | A raw config record is valueless or malformed | Bot if otherwise undetermined, one stderr warning | Ambiguous — a record without the key/value separator cannot establish non-org affiliation |
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | A remote's effective fetch or push URL is still a non-HTTPS `github.com` URL after the bot rewrites (a rule in your own config matches its complete URL) | Command aborts, stderr names the remote and URL | A push there would ride the personal SSH key under the bot's authorship; remove the rule — destinations on other hosts are not checked |
+| A remote's effective fetch or push URL is an https `github.com` URL with embedded credentials (a user `insteadOf` rule put them there) | Command aborts, stderr names the remote with the credentials masked | git authenticates from a URL's userinfo before consulting any helper, so the push would be the human's under the bot's authorship |
+| A git config `http.extraHeader` (any URL scope git applies to the host root, to a raw GitHub remote's target, or to an https github.com URL the rewrites produce) sets `Authorization:` | Command aborts, stderr names the key | git sends the header on every request, so the bot helper is never asked; remove the rule |
+| `~/.netrc` (or `_netrc`) has a `machine github.com` or `default` entry | Command aborts, stderr names the file | git enables curl's netrc lookup, which answers before any credential helper |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
 

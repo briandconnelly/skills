@@ -8,6 +8,13 @@ case "$SCRIPT_DIR" in
   *[!A-Za-z0-9._/-]*) echo "bot-env: install path contains an unsafe character; refusing to emit a shell-evaluated credential helper" >&2; exit 1 ;;
 esac
 
+# git applies GIT_CONFIG_PARAMETERS (set by `git -c` for its subprocesses)
+# after the GIT_CONFIG_COUNT entries, so an inherited value would be the last
+# word on credential.helper. The probes below and the emitted env both run
+# without it; the bot verdict exports it empty (git accepts that, and a hook
+# that can only override variables can still apply it).
+unset GIT_CONFIG_PARAMETERS
+
 BOT_NAME="acme-agent[bot]"
 BOT_EMAIL="<BOT_UID>+acme-agent[bot]@users.noreply.github.com"
 
@@ -64,10 +71,97 @@ done
 url_host_lc() {
   local u="$1" rest auth host=""
   case "$u" in
-    *://*) rest="${u#*://}"; auth="${rest%%/*}"; host="${auth#*@}"; host="${host%%:*}" ;;
+    *://*) rest="${u#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"
+           case "$auth" in
+             \[*\]*) host="${auth#[}"; host="${host%%]*}" ;;
+             *) host="${auth%%:*}" ;;
+           esac ;;
     *:*) case "${u%%:*}" in */*) ;; *) rest="${u#*@}"; host="${rest%%:*}" ;; esac ;;
   esac
   printf '%s' "$host" | tr '[:upper:]' '[:lower:]'
+}
+
+# Userinfo of an ssh-form URL (`git` in `git@github.com:x` or
+# `ssh://git@host/x`), or the empty string. ssh's `Match user` blocks can
+# change the resolved host, so the lookup must carry it as git would.
+url_user() {
+  local u="$1" rest auth
+  case "$u" in
+    *://*) rest="${u#*://}"; auth="${rest%%/*}"; case "$auth" in *@*) printf '%s' "${auth%@*}" ;; esac ;;
+    *:*) case "${u%%:*}" in */*) ;; *@*) printf '%s' "${u%%@*}" ;; esac ;;
+  esac
+}
+
+# Explicit port of an ssh:// URL (`ssh://host:2222/x` → 2222), or the empty
+# string. The scp form cannot carry a port. Digits only; anything else is
+# treated as absent rather than passed to ssh.
+url_port() {
+  local u="$1" rest auth
+  case "$u" in
+    *://*)
+      rest="${u#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"
+      case "$auth" in
+        \[*\]:*) auth="${auth##*]:}" ;;
+        \[*) auth="" ;;
+        *:*) auth="${auth##*:}" ;;
+        *) auth="" ;;
+      esac
+      case "$auth" in ""|*[!0-9]*) ;; *) printf '%s' "$auth" ;; esac ;;
+  esac
+}
+
+# Resolve an ssh host the way git's own ssh would: GIT_SSH_COMMAND, then
+# core.sshCommand, then GIT_SSH, then plain ssh. `-G` prints the client
+# configuration without connecting, which is how a `Host gh` alias becomes
+# `hostname github.com`. Canonicalisation is off so no DNS lookup happens
+# here, and stdin is closed so a `Match exec` block cannot read this
+# script's input. Prints the lower-cased hostname; prints nothing when the
+# lookup fails.
+git_ssh_resolve() {
+  local host="$1" user="${2:-}" port="${3:-}" cmd inner
+  case "$host" in -*|""|*:*|\[*) return 1 ;; esac
+  case "$user" in -*|*:*) return 1 ;; esac
+  case "$port" in ""|*[!0-9]*) port="" ;; esac
+  # git's order (connect.c): GIT_SSH_COMMAND, else core.sshCommand, both run
+  # through a shell; only when neither is set, GIT_SSH (no shell), else ssh.
+  if [ -n "${GIT_SSH_COMMAND:-}" ]; then
+    cmd="$GIT_SSH_COMMAND"
+  else
+    cmd="$(git config --get core.sshCommand 2>/dev/null || true)"
+  fi
+  if [ -n "$cmd" ]; then
+    inner="$cmd -G -o CanonicalizeHostname=no"
+    [ -n "$port" ] && inner="$inner -p \"\$2\""
+    inner="$inner \"\$1\""
+    sh -c "$inner" sh "${user:+$user@}$host" "$port" 2>/dev/null </dev/null
+  else
+    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no ${port:+-p "$port"} "${user:+$user@}$host" 2>/dev/null </dev/null
+  fi | awk '!done && $1 == "hostname" { print tolower($2); done = 1 }'
+}
+
+# github_destination <url> -> "github" when the URL reaches GitHub over ssh
+# or https (github.com, GitHub's ssh.github.com endpoint, or an ssh alias
+# resolving to either), "other" for any other destination including local
+# paths and IP literals. Returns 1 when the destination cannot be determined:
+# an alias-shaped host (no dot) that ssh could not resolve.
+github_destination() {
+  local u="$1" host eff user port
+  host="$(url_host_lc "$u")"
+  user="$(url_user "$u")"
+  port="$(url_port "$u")"
+  if [ -z "$host" ]; then printf 'other'; return 0; fi
+  case "$host" in github.com|ssh.github.com) printf 'github'; return 0 ;; esac
+  case "$host" in *:*|\[*) printf 'other'; return 0 ;; esac
+  case "$u" in
+    ssh://*|git+ssh://*|ssh+git://*) ;;
+    *://*) printf 'other'; return 0 ;;
+    *) ;;
+  esac
+  eff="$(git_ssh_resolve "$host" "$user" "$port")" || eff=""
+  if [ -z "$eff" ]; then
+    case "$host" in *.*) printf 'other'; return 0 ;; *) return 1 ;; esac
+  fi
+  case "$eff" in github.com|ssh.github.com) printf 'github' ;; *) printf 'other' ;; esac
 }
 
 verdict=personal
@@ -75,6 +169,7 @@ matched_orgs=""
 # Every remote name that carries a fetch URL, on any host: the effective-URL
 # check below asks git for the fetch direction only where one is configured,
 # because git answers a push-only remote's fetch URL with the remote's name.
+# Names known only to the global config are appended later with the same rule.
 names_with_url=()
 # Raw github.com remote values seen in this repo (deduplicated), their HTTPS
 # targets, and the remote names that carry them. On a bot verdict every raw
@@ -84,6 +179,7 @@ names_with_url=()
 github_raw=()
 github_target=()
 github_names=()
+all_names=()
 rc=0
 # Only stderr is captured, under a fixed locale: git exits 128 on *every*
 # fatal error, and only the "not a git repository" one is a definitive
@@ -96,17 +192,20 @@ if [ "$rc" -eq 0 ]; then
   worktree_remotes="$(mktemp)"
   trap 'rm -f "$raw_remotes" "$worktree_remotes"' EXIT
   remote_rc=0
-  git config --local --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
+  # `--includes` is needed because git disables include processing when a
+  # scope is named; a remote defined through `include.path` or `includeIf` is
+  # one git will push to.
+  git config --local --includes --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$raw_remotes" 2>/dev/null || remote_rc=$?
   if [ "$remote_rc" -eq 1 ] && [ ! -s "$raw_remotes" ]; then
     remote_rc=0
   fi
   if [ "$remote_rc" -eq 0 ]; then
     worktree_enabled=""
     worktree_flag_rc=0
-    worktree_enabled="$(git config --local --bool --get extensions.worktreeConfig 2>/dev/null)" || worktree_flag_rc=$?
+    worktree_enabled="$(git config --local --includes --bool --get extensions.worktreeConfig 2>/dev/null)" || worktree_flag_rc=$?
     if [ "$worktree_flag_rc" -eq 0 ] && [ "$worktree_enabled" = true ]; then
       worktree_rc=0
-      git config --worktree --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$worktree_remotes" 2>/dev/null || worktree_rc=$?
+      git config --worktree --includes --null --get-regexp '^remote\..*\.(url|pushurl)$' >"$worktree_remotes" 2>/dev/null || worktree_rc=$?
       if [ "$worktree_rc" -eq 0 ]; then
         cat "$worktree_remotes" >>"$raw_remotes"
       elif [ "$worktree_rc" -ne 1 ] || [ -s "$worktree_remotes" ]; then
@@ -134,6 +233,11 @@ if [ "$rc" -eq 0 ]; then
         # `remote.<name>.url` / `remote.<name>.pushurl`; the name may itself
         # contain dots, so strip exactly the final property, never a suffix.
         name="${key#remote.}"; name="${name%.*}"
+        seen=0
+        for existing in "${all_names[@]+"${all_names[@]}"}"; do
+          [ "$existing" = "$name" ] && { seen=1; break; }
+        done
+        [ "$seen" -eq 0 ] && all_names+=("$name")
         case "$key" in
           *.url)
             seen=0
@@ -148,8 +252,11 @@ if [ "$rc" -eq 0 ]; then
         # path segment decides the account. A leading slash in an scp-style
         # path (`git@github.com:/acme/x.git`) is tolerated by GitHub, so it is
         # stripped before both decisions.
-        host_lc="$(url_host_lc "$url")"
-        [ "$host_lc" = github.com ] || continue
+        dest="$(github_destination "$url")" || {
+          echo "bot-env: remote '${name}' in $PWD uses ssh host '$(url_host_lc "$url")', which the ssh git would use could not resolve; refusing to run with undetermined transport" >&2
+          exit 1
+        }
+        [ "$dest" = github ] || continue
         case "$url" in
           *://*)
             rest="${url#*://}"
@@ -213,12 +320,40 @@ else
   echo "bot-env: git probe failed (exit $rc) in $PWD; ambiguous, using the bot identity" >&2
 fi
 
+# git also honours remote.<name>.* from the global and system scopes. Those
+# never decide affiliation (a global remote says nothing about this repo),
+# but a push can still go to them, so the effective-transport check below
+# must see every remote name git knows, not only the locally configured ones.
+# A global remote with a fetch URL also gets its fetch direction checked.
+global_only=()
+while IFS= read -r gname; do
+  [ -n "$gname" ] || continue
+  # A section with neither url nor pushurl (a global `prune = true`, say) has
+  # no destination to push to, and `git remote -v` prints nothing for it.
+  [ -n "$(git config --get-all "remote.${gname}.url" 2>/dev/null)$(git config --get-all "remote.${gname}.pushurl" 2>/dev/null)" ] || continue
+  seen=0
+  for existing in "${all_names[@]+"${all_names[@]}"}"; do
+    [ "$existing" = "$gname" ] && { seen=1; break; }
+  done
+  [ "$seen" -eq 0 ] && { all_names+=("$gname"); global_only+=("$gname"); }
+  if [ -n "$(git config --get "remote.${gname}.url" 2>/dev/null)" ]; then
+    seen=0
+    for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
+      [ "$existing" = "$gname" ] && { seen=1; break; }
+    done
+    [ "$seen" -eq 0 ] && names_with_url+=("$gname")
+  fi
+done <<EOF5
+$(git remote 2>/dev/null || true)
+EOF5
+
 if [ "$verdict" != bot ]; then
   cat <<'EOF'
 unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 unset GIT_CONFIG_COUNT
 unset GH_TOKEN
 unset BOT_INSTALL_ID
+unset GIT_CONFIG_PARAMETERS
 EOF
   # In a reused shell, bot-env inherits any exported GIT_CONFIG_* vars, so it
   # can enumerate exactly what exists and emit portable unset lines for them.
@@ -247,17 +382,6 @@ if [ -n "$matched_org" ]; then
   bot_install_id="$(install_id_for_org "$matched_org")"
 fi
 
-# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
-# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
-# The mint must see the same installation selection the emitted env exports —
-# and never a stale BOT_INSTALL_ID inherited from a previously visited repo.
-if [ -n "$matched_org" ]; then
-  token="$(BOT_INSTALL_ID="$bot_install_id" "$SCRIPT_DIR/bot-token")" || token=""
-else
-  token="$(env -u BOT_INSTALL_ID "$SCRIPT_DIR/bot-token")" || token=""
-fi
-[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
-
 # Under a bot verdict every github.com transport in this command must go
 # through HTTPS, and so through the host-gated bot credential helper: a remote
 # left on SSH would push with the personal key under the bot's authorship.
@@ -277,6 +401,9 @@ add_pair 'https://github.com/' 'git@github.com:'
 add_pair 'https://github.com/' 'github.com:'
 add_pair 'https://github.com/' 'ssh://git@github.com/'
 add_pair 'https://github.com/' 'https://github.com/'
+add_pair 'https://github.com/' 'ssh://git@ssh.github.com:443/'
+add_pair 'https://github.com/' 'git@ssh.github.com:'
+add_pair 'https://github.com/' 'ssh.github.com:'
 for _line in $ORG_INSTALLS; do
   add_pair "https://github.com/${_line%%:*}/" "https://github.com/${_line%%:*}/"
 done
@@ -291,15 +418,18 @@ done
 # So ask git, with exactly the rewrites about to be emitted, where each
 # github.com remote actually resolves, and refuse to route if any direction
 # still leaves github.com over anything but HTTPS — a push there would ride
-# the personal key under the bot's authorship. URLs typed on the command line
+# the personal key under the bot's authorship. Every configured remote is
+# checked, not only those with a GitHub raw value, because a rule in the
+# user's own config can rewrite a non-GitHub raw value onto GitHub. URLs typed on the command line
 # are outside this check; the host-wide and account pairs are their only cover.
 cfg=()
+effective_https=()
 i=0
 while [ "$i" -lt "${#pair_base[@]}" ]; do
   cfg+=(-c "url.${pair_base[$i]}.insteadOf=${pair_value[$i]}" -c "url.${pair_base[$i]}.pushInsteadOf=${pair_value[$i]}")
   i=$((i + 1))
 done
-for name in "${github_names[@]+"${github_names[@]}"}"; do
+for name in "${all_names[@]+"${all_names[@]}"}"; do
   has_url=0
   for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
     [ "$existing" = "$name" ] && { has_url=1; break; }
@@ -307,6 +437,25 @@ for name in "${github_names[@]+"${github_names[@]}"}"; do
   for direction in "" --push; do
     [ "$direction" = "" ] && [ "$has_url" -eq 0 ] && continue
     effective="$(git "${cfg[@]}" remote get-url --all $direction "$name" 2>/dev/null)" || {
+      # `git remote get-url` only knows remotes configured in this repository,
+      # but git still pushes to a global-only one; `git remote -v` lists those
+      # with the same rewrites applied, so read the direction from there.
+      is_global_only=0
+      for existing in "${global_only[@]+"${global_only[@]}"}"; do
+        [ "$existing" = "$name" ] && { is_global_only=1; break; }
+      done
+      if [ "$is_global_only" -eq 1 ] && remote_v="$(git "${cfg[@]}" remote -v 2>/dev/null)"; then
+        tag="fetch"
+        [ "$direction" = --push ] && tag="push"
+        # A partial-clone remote prints "url (fetch) [blob:none]".
+        effective="$(printf '%s\n' "$remote_v" | awk -F'\t' -v n="$name" -v t="$tag" '
+          BEGIN { re = " \\(" t "\\)( \\[.*\\])?$" }
+          $1 == n && $2 ~ re { sub(re, "", $2); print $2 }')"
+        [ -n "$effective" ] && true
+      else
+        false
+      fi
+    } || {
       echo "bot-env: could not resolve the effective URL of remote '${name}' in $PWD; refusing to run with undetermined transport" >&2
       exit 1
     }
@@ -314,9 +463,27 @@ for name in "${github_names[@]+"${github_names[@]}"}"; do
       [ -n "$resolved" ] || continue
       # Only github.com destinations are held to HTTPS; a remote that pushes
       # to another host is that host's business and the helper ignores it.
-      case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
-      [ "$(url_host_lc "$resolved")" = github.com ] || continue
-      echo "bot-env: remote '${name}' still resolves to ${resolved} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
+      case "$resolved" in
+        [Hh][Tt][Tt][Pp][Ss]://*)
+          # An https destination is only safe when the bot helper is what
+          # authenticates it: userinfo embedded in the URL (a user insteadOf
+          # rule can put it there) would be used by git instead of the helper.
+          resolved_auth="${resolved#*://}"
+          resolved_auth="${resolved_auth%%/*}"
+          case "$resolved_auth" in
+            *@*)
+              [ "$(url_host_lc "$resolved")" = github.com ] || continue
+              resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
+              echo "bot-env: remote '${name}' resolves to ${resolved_shown}, an https github.com URL with embedded credentials; git would authenticate with them instead of the bot token. Remove the rule or the credentials; refusing to run with a competing credential" >&2
+              exit 1 ;;
+          esac
+          [ "$(url_host_lc "$resolved")" = github.com ] && effective_https+=("$resolved")
+          continue ;;
+      esac
+      dest="$(github_destination "$resolved")" || dest=github
+      [ "$dest" = github ] || continue
+      resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
+      echo "bot-env: remote '${name}' still resolves to ${resolved_shown} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3
 $effective
@@ -324,11 +491,97 @@ EOF3
   done
 done
 
+# Routing every GitHub transport through HTTPS only proves the bot
+# authenticated if nothing else answers first. Two things do: an
+# http.extraHeader carrying Authorization (git sends it on every request, and
+# a user rule more specific than the host survives any command-scope clear),
+# and a ~/.netrc entry for github.com (git enables curl's netrc lookup, which
+# runs before the credential helper). Neither can be neutralised from here,
+# so refuse to route and name what to remove — never the value.
+# Whether a key's URL scope applies is git's call (wildcard hosts, username
+# scopes, ports), so each Authorization-bearing scope is tested with a probe
+# variable under the same URL section against every target this command
+# routes to: the host root, every raw GitHub remote's target, and every
+# effective https github.com URL the rewrites produce. A malformed inherited GIT_CONFIG_COUNT must not
+# blind this.
+authz_targets=('https://github.com/')
+i=0
+while [ "$i" -lt "${#github_target[@]}" ]; do
+  authz_targets+=("${github_target[$i]}")
+  i=$((i + 1))
+done
+for t in "${effective_https[@]+"${effective_https[@]}"}"; do
+  authz_targets+=("$t")
+done
+authz_keys="$(env -u GIT_CONFIG_COUNT git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' | sort -u || true)"
+while IFS= read -r k; do
+  [ -n "$k" ] || continue
+  scope="${k#http.}"
+  scope="${scope%.extraheader}"
+  scope="${scope%.extraHeader}"
+  applies=""
+  if [ "$scope" = extraheader ] || [ "$scope" = extraHeader ] || [ -z "$scope" ]; then
+    applies=yes
+  else
+    for t in "${authz_targets[@]}"; do
+      probe="$(env -u GIT_CONFIG_COUNT git -c "http.${scope}.botenvprobe=yes" config --get-urlmatch http.botenvprobe "$t" 2>/dev/null)" || probe=""
+      case "$probe" in yes) applies=yes; break ;; esac
+    done
+  fi
+  [ -n "$applies" ] || continue
+  k_shown="$(printf '%s' "$k" | sed 's#//[^/@]*@#//***@#')"
+  echo "bot-env: git config key '${k_shown}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
+  exit 1
+done <<EOF4
+$authz_keys
+EOF4
+[ -n "${HOME:-}" ] || { echo "bot-env: HOME is unset, so ~/.netrc cannot be checked for a competing credential; refusing to run" >&2; exit 1; }
+for netrc in "$HOME/.netrc" "$HOME/_netrc"; do
+  [ -r "$netrc" ] || continue
+  if awk '
+    BEGIN { found = 0; want = ""; inmac = 0 }
+    inmac { if ($0 ~ /^[[:space:]]*$/) inmac = 0; next }
+    {
+      sub(/#.*/, "")
+      n = split($0, tok, /[[:space:]]+/)
+      for (i = 1; i <= n; i++) {
+        t = tok[i]
+        if (t == "") continue
+        gsub(/^"|"$/, "", t)
+        if (want != "") {
+          if (want == "machine" && tolower(t) == "github.com") found = 1
+          want = ""
+          continue
+        }
+        lt = tolower(t)
+        if (lt == "default") found = 1
+        else if (lt == "machine" || lt == "login" || lt == "password" || lt == "account") want = lt
+        else if (lt == "macdef") { inmac = 1; break }
+      }
+    }
+    END { exit !found }' "$netrc"; then
+    echo "bot-env: ${netrc} has a github.com (or default) entry; git's HTTP transport consults it before the credential helper, so a push would authenticate as that login. Remove the entry; refusing to run with a competing credential" >&2
+    exit 1
+  fi
+done
+
+# A mint that "succeeds" with empty output is as dangerous as a crash: gh treats
+# an empty GH_TOKEN as unset and falls back to the personal stored credentials.
+# The mint must see the same installation selection the emitted env exports —
+# and never a stale BOT_INSTALL_ID inherited from a previously visited repo.
+if [ -n "$matched_org" ]; then
+  token="$(BOT_INSTALL_ID="$bot_install_id" "$SCRIPT_DIR/bot-token")" || token=""
+else
+  token="$(env -u BOT_INSTALL_ID "$SCRIPT_DIR/bot-token")" || token=""
+fi
+[ -n "$token" ] || token="BOT-TOKEN-MINT-FAILED"
+
 cat <<EOF
 export GIT_AUTHOR_NAME='${BOT_NAME}'
 export GIT_AUTHOR_EMAIL='${BOT_EMAIL}'
 export GIT_COMMITTER_NAME='${BOT_NAME}'
 export GIT_COMMITTER_EMAIL='${BOT_EMAIL}'
+export GIT_CONFIG_PARAMETERS=''
 export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
