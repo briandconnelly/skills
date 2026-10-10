@@ -52,7 +52,7 @@ const call = async (
 }
 
 // The shape bot-env emits for a bot verdict since the transport-routing fix
-// (PR #180): helper reset + bot helper, gpgsign off, the four host-wide
+// (PR #180): helper reset + bot helper, gpgsign off, the seven host-wide
 // insteadOf/pushInsteadOf pairs, the account identity pair, and one exact pair
 // per raw remote value seen in the repo.
 const BOT_BLOCK = `#!/usr/bin/env bash
@@ -61,6 +61,7 @@ export GIT_AUTHOR_NAME='acme-agent[bot]'
 export GIT_AUTHOR_EMAIL='123+acme-agent[bot]@users.noreply.github.com'
 export GIT_COMMITTER_NAME='acme-agent[bot]'
 export GIT_COMMITTER_EMAIL='123+acme-agent[bot]@users.noreply.github.com'
+export GIT_CONFIG_PARAMETERS=''
 export GIT_CONFIG_KEY_0='credential.helper'
 export GIT_CONFIG_VALUE_0=''
 export GIT_CONFIG_KEY_1='credential.helper'
@@ -83,19 +84,32 @@ export GIT_CONFIG_KEY_9='url.https://github.com/.insteadOf'
 export GIT_CONFIG_VALUE_9='https://github.com/'
 export GIT_CONFIG_KEY_10='url.https://github.com/.pushInsteadOf'
 export GIT_CONFIG_VALUE_10='https://github.com/'
-export GIT_CONFIG_KEY_11='url.https://github.com/acme/.insteadOf'
-export GIT_CONFIG_VALUE_11='https://github.com/acme/'
-export GIT_CONFIG_KEY_12='url.https://github.com/acme/.pushInsteadOf'
-export GIT_CONFIG_VALUE_12='https://github.com/acme/'
-export GIT_CONFIG_KEY_13='url.https://github.com/acme/repo.git.insteadOf'
-export GIT_CONFIG_VALUE_13='git@github.com:acme/repo.git'
-export GIT_CONFIG_KEY_14='url.https://github.com/acme/repo.git.pushInsteadOf'
-export GIT_CONFIG_VALUE_14='git@github.com:acme/repo.git'
+export GIT_CONFIG_KEY_11='url.https://github.com/.insteadOf'
+export GIT_CONFIG_VALUE_11='ssh://git@ssh.github.com:443/'
+export GIT_CONFIG_KEY_12='url.https://github.com/.pushInsteadOf'
+export GIT_CONFIG_VALUE_12='ssh://git@ssh.github.com:443/'
+export GIT_CONFIG_KEY_13='url.https://github.com/.insteadOf'
+export GIT_CONFIG_VALUE_13='git@ssh.github.com:'
+export GIT_CONFIG_KEY_14='url.https://github.com/.pushInsteadOf'
+export GIT_CONFIG_VALUE_14='git@ssh.github.com:'
+export GIT_CONFIG_KEY_15='url.https://github.com/.insteadOf'
+export GIT_CONFIG_VALUE_15='ssh.github.com:'
+export GIT_CONFIG_KEY_16='url.https://github.com/.pushInsteadOf'
+export GIT_CONFIG_VALUE_16='ssh.github.com:'
+export GIT_CONFIG_KEY_17='url.https://github.com/acme/.insteadOf'
+export GIT_CONFIG_VALUE_17='https://github.com/acme/'
+export GIT_CONFIG_KEY_18='url.https://github.com/acme/.pushInsteadOf'
+export GIT_CONFIG_VALUE_18='https://github.com/acme/'
+export GIT_CONFIG_KEY_19='url.https://github.com/acme/repo.git.insteadOf'
+export GIT_CONFIG_VALUE_19='git@github.com:acme/repo.git'
+export GIT_CONFIG_KEY_20='url.https://github.com/acme/repo.git.pushInsteadOf'
+export GIT_CONFIG_VALUE_20='git@github.com:acme/repo.git'
 export BOT_INSTALL_ID='42'
-export GIT_CONFIG_COUNT=15
+export GIT_CONFIG_COUNT=21
 export GH_TOKEN='ghs_fixture'
 OUT
 `
+
 
 // The env a fixture's `export` lines describe, read independently of the
 // plugin's parser so a full-equality assertion can catch what spot checks miss.
@@ -127,8 +141,8 @@ describe("shell.env hook", () => {
     expect(env.BOT_INSTALL_ID).toBe("42")
     expect(env.GIT_CONFIG_VALUE_0).toBe("") // quoted empty survives
     expect(env.GIT_CONFIG_KEY_4).toBe("url.https://github.com/.pushInsteadOf") // push twin of a host-wide pair survives
-    expect(env.GIT_CONFIG_VALUE_14).toBe("git@github.com:acme/repo.git") // exact per-remote pair survives
-    expect(env.GIT_CONFIG_COUNT).toBe("15") // bare scalar survives
+    expect(env.GIT_CONFIG_VALUE_20).toBe("git@github.com:acme/repo.git") // exact per-remote pair survives
+    expect(env.GIT_CONFIG_COUNT).toBe("21") // bare scalar survives
     // The whole block round-trips: nothing dropped, added, renamed or shifted.
     expect(env).toEqual(expectedEnv(BOT_BLOCK))
     // And the fixture itself is coherent the way real bot-env output is: one
@@ -175,6 +189,34 @@ describe("shell.env hook", () => {
       `#!/usr/bin/env bash\nprintf '%s\\n' "export GIT_AUTHOR_NAME='acme-agent[bot]'"\n`,
     )
     await expect(call(botEnv, gitRepo("partial"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: identity block missing committer or GIT_CONFIG entries", async () => {
+    const botEnv = fixture(
+      "bot-two-fields",
+      `#!/usr/bin/env bash\nprintf '%s\\n' "export GIT_AUTHOR_NAME='acme-agent[bot]'" "export GH_TOKEN='ghs_x'"\n`,
+    )
+    await expect(call(botEnv, gitRepo("two-fields"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: bot helper is not at GIT_CONFIG index 1", async () => {
+    const botEnv = fixture("bot-no-helper", BOT_BLOCK.replace("GIT_CONFIG_VALUE_1='!", "GIT_CONFIG_VALUE_1='"))
+    await expect(call(botEnv, gitRepo("no-helper"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: a GIT_CONFIG_COUNT entry without its key/value", async () => {
+    const botEnv = fixture("bot-short", BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", "GIT_CONFIG_COUNT=22"))
+    await expect(call(botEnv, gitRepo("short"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: GIT_CONFIG_PARAMETERS absent", async () => {
+    const botEnv = fixture("bot-no-params", BOT_BLOCK.replace("export GIT_CONFIG_PARAMETERS=''\n", ""))
+    await expect(call(botEnv, gitRepo("no-params"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: GH_TOKEN without an identity", async () => {
+    const botEnv = fixture("bot-token-only", `#!/usr/bin/env bash\necho "export GH_TOKEN='ghs_x'"\n`)
+    await expect(call(botEnv, gitRepo("token-only"))).rejects.toThrow(/partial identity block/)
   })
 
   test("fail closed: bot-env not executable", async () => {

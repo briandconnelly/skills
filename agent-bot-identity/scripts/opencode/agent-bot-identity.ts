@@ -50,6 +50,18 @@ const EXPORT_QUOTED = /^export ([A-Z_][A-Z0-9_]*)='([^']*)'$/
 const EXPORT_BARE = /^export ([A-Z_][A-Z0-9_]*)=(\S+)$/
 const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
 
+// A bot verdict's identity block must carry all of these, plus the counted
+// GIT_CONFIG_KEY_i/VALUE_i pairs. GIT_CONFIG_PARAMETERS is expected to be empty.
+const REQUIRED_IDENTITY = [
+  "GIT_AUTHOR_NAME",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_COMMITTER_NAME",
+  "GIT_COMMITTER_EMAIL",
+  "GIT_CONFIG_COUNT",
+  "GH_TOKEN",
+  "GIT_CONFIG_PARAMETERS",
+]
+
 class BotEnvError extends Error {}
 
 // Collect a stream through a reader the deadline can cancel: a descendant
@@ -167,23 +179,24 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
           input.cwd,
         )
       }
+      // Parse into a local map and validate the whole block before anything
+      // reaches output.env, so a partial block merges no variable at all.
+      const parsed: Record<string, string> = {}
+      const unsets: string[] = []
       for (const line of lines) {
         let match = EXPORT_QUOTED.exec(line)
         if (match) {
-          output.env[match[1]] = match[2]
+          parsed[match[1]] = match[2]
           continue
         }
         match = EXPORT_BARE.exec(line)
         if (match) {
-          output.env[match[1]] = match[2]
+          parsed[match[1]] = match[2]
           continue
         }
         match = UNSET.exec(line)
         if (match) {
-          // Each command's env is built fresh from the server process env, so
-          // bot vars from earlier commands cannot linger; unsets only guard
-          // against collisions within this block.
-          for (const name of match[1].split(" ")) delete output.env[name]
+          unsets.push(...match[1].split(" "))
           continue
         }
         fail(
@@ -192,17 +205,42 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
         )
       }
 
-      // Contract check: bot-env emits the identity block only together with a
-      // non-empty GH_TOKEN (its fail-closed sentinel included). Anything else
-      // means the output shape changed; do not route with half an identity.
-      const hasIdentity = "GIT_AUTHOR_NAME" in output.env
-      const hasToken = "GH_TOKEN" in output.env
-      if (hasIdentity !== hasToken || (hasToken && output.env.GH_TOKEN === "")) {
-        fail(
-          new BotEnvError(`agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd}; refusing to route`),
-          input.cwd,
-        )
+      // Contract check: bot-env emits the identity block only whole. A bot
+      // block carries the author and committer identity, a non-empty GH_TOKEN
+      // (its fail-closed sentinel included), GIT_CONFIG_PARAMETERS (empty is
+      // the expected value), and GIT_CONFIG_COUNT key/value pairs with the bot
+      // credential helper at index 1 (index 0 is the helper reset). Anything
+      // else means the output shape changed; do not route with half an identity.
+      // The message names missing variables, never values: GH_TOKEN is one.
+      if ("GIT_AUTHOR_NAME" in parsed || "GH_TOKEN" in parsed) {
+        const missing = REQUIRED_IDENTITY.filter((name) => !(name in parsed))
+        const count = /^[0-9]+$/.test(parsed.GIT_CONFIG_COUNT ?? "") ? Number(parsed.GIT_CONFIG_COUNT) : NaN
+        if (Number.isNaN(count)) {
+          if ("GIT_CONFIG_COUNT" in parsed) missing.push("valid GIT_CONFIG_COUNT")
+        } else {
+          for (let i = 0; i < count; i++) {
+            for (const name of [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]) if (!(name in parsed)) missing.push(name)
+          }
+          if (count < 2 || parsed.GIT_CONFIG_KEY_1 !== "credential.helper" || !parsed.GIT_CONFIG_VALUE_1?.startsWith("!")) {
+            missing.push("bot credential helper at GIT_CONFIG index 1")
+          }
+        }
+        if ("GH_TOKEN" in parsed && parsed.GH_TOKEN === "") missing.push("non-empty GH_TOKEN")
+        if (missing.length > 0) {
+          fail(
+            new BotEnvError(
+              `agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd} (missing: ${missing.join(", ")}); refusing to route`,
+            ),
+            input.cwd,
+          )
+        }
       }
+
+      // Each command's env is built fresh from the server process env, so
+      // bot vars from earlier commands cannot linger; unsets only guard
+      // against collisions within this block.
+      Object.assign(output.env, parsed)
+      for (const name of unsets) delete output.env[name]
     },
   }
 }
