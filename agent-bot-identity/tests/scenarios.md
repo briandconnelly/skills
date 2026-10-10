@@ -335,6 +335,31 @@ Reading: in this small sample both descriptions showed the same two behaviours �
 
 Owed, outside this PR: a description clause that excludes CI runners and hosted workflows, measured with the same prompts; and an instrument whose suffix says that invoking an applicable skill is part of deciding.
 
+### Re-runs 2026-10-10 (PR 5: assertions track the current skill)
+
+Mechanics: each arm is a fresh general-purpose subagent (Claude Code 2.1.296, model sonnet).
+Baseline arms received the scenario prompt as their only input and were told not to invoke any skill or read any file.
+With-skill arms were pointed at the worktree's `agent-bot-identity/SKILL.md` and `references/` (the skill at this branch's head) and forbidden from `tests/`.
+Replies were saved verbatim to the session scratchpad and each was scored by a separate sonnet scorer against the assertion list, one evidence pointer per assertion, conjunct-strict.
+Skill text under test: main b9dbe39 (after #204), unchanged on this branch.
+
+| Date | Scenario | Run | Assertions passed | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-10-10 | 1 (set up) | with-skill (run 1) | 9/10 | Miss: assertion 4 — expiry from the response's `expires_at` never stated (the plan said the scripts were not read; atomic `0600` cache and short-lived tokens were present). Everything else satisfied, including the Phase 5 membership assertion (owed since 2026-07-30), Checks and Actions read with the rollup rationale, the approval-laundering statement, and the ruleset audit. Finding against the skill: the `expires_at` rule lives in Phase 3's helper description and a Common Mistakes row and was not surfaced in a plan that did not open the scripts. |
+| 2026-10-10 | 1 (set up) | with-skill (run 2) | 10/10 | All assertions satisfied; `expires_at` stated under "Behaviors to confirm when you review it". The assertion-4 miss is therefore intermittent at n=2. |
+| 2026-10-10 | 4 (user-level activation) | with-skill | 8/9 | Scored against the assertion 4 adopted in this PR. Miss: assertion 4 — the personal-verdict `unset` list named `GH_TOKEN`, the four identity variables, `BOT_INSTALL_ID` and "the command-scope `GIT_CONFIG_*`" but not `GIT_CONFIG_PARAMETERS` by name; every other conjunct (per-command mint with the invalid-token substitute, host/account/exact-URL pairs in both directions, abort on a remote still resolving to SSH, abort on a competing HTTP credential) was present. Finding against the skill: SKILL.md states the bot-side pin but not the personal-side `unset` of `GIT_CONFIG_PARAMETERS` (bot-env does emit it). All other assertions satisfied, including the compound-command gap with the 2.1.296 cwd qualification and the attribution-not-containment restatement. |
+
+Not re-run: scenarios 2, 3, 5 and C2 (their assertions were not changed by this PR).
+
+### Findings against the skill (2026-10-10)
+
+- Scenario 1 assertion 4: the `expires_at` rule is stated in Phase 3's helper-script description and a Common Mistakes row, and one of two with-skill runs omitted it from a plan that did not open the scripts.
+  Owed: surface it where the plan-writer reads (Phase 3's checklist), then re-run Scenario 1.
+- Scenario 4 assertion 4: SKILL.md states the bot-side `GIT_CONFIG_PARAMETERS` pin but not the personal-side `unset` (which `bot-env` emits), and the with-skill run omitted it.
+  Owed: state the personal-verdict unset list in Phase 4, then re-run Scenario 4.
+
+No skill text changes in this PR, by the suite's rule that a with-skill miss is reported, not patched in a test PR.
+
 ## Codex adapter scenarios
 
 These two scenarios exercise the **Codex CLI adapter** (`references/adapters/codex.md`), which implements the SKILL's Phase 4 routing contract for Codex CLI instead of Claude Code.
@@ -474,6 +499,8 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 | 2026-07-07 | C2 (Codex audit) | baseline | 2/4 | Caught the two config-literal flaws: static `GH_TOKEN` as Critical with hourly expiry and per-invocation-mint remediation (1); literal `$PATH` as Critical with the exact replace-no-expansion diagnosis and the full-literal-absolute fix (2). Missed: the `~/.zshrc` alias called "harmless… no action required" — the absolute-path bypass of the Codex-controlled routing surface never flagged (3); the network gap caught with the DNS/mint connection and the `network_access = true` fix, but no fail-closed sentinel expectation and no token/`uv` cache writable-roots coverage (4). Bonus insights: the two Critical bugs mask each other operationally; env-inheritance mode flagged as unverified. |
 | 2026-07-07 | C2 (Codex audit) | with-skill | 2/4 | Passed: stale `GH_TOKEN` as High citing the adapter's audit smell by name, `GH_TOKEN` only from the shim (1); literal `$PATH` as Critical with the execvp-breakage probe evidence and the full-literal fix (2). **Misses (findings against the skill, not the agent):** the alias classified Low/"no action needed" — mechanically defensible (aliases don't fire under `execvp`), but the adapter's "a shell alias … goes around the shim and reaches the personal credentials" sentence never surfaced (3); DNS/cold-mint diagnosis, `network_access = true`, token + `uv` cache writable roots, and the `sandbox_mode` force-apply quirk all caught, yet the fail-closed non-empty sentinel expectation on mint failure never appeared (4). Both missed facts live in `references/adapters/codex.md` (gh-auth section; Check 8) — recorded as retrieval misses to watch; if they recur, promote the sentinel and alias-bypass lines within the adapter doc. Unprompted bonus: made the captured notes' missing `GIT_CONFIG_*` block (helper reset, bot helper, org `insteadOf`, gpgsign false) its top Critical — pushes would ride personal credentials while commits display bot metadata. |
 | 2026-07-07 | C2 (Codex audit) | with-skill (re-run, after audit-smell promotion) | 4/4 | All assertions satisfied against the edited adapter doc. Stale `GH_TOKEN` as Critical citing the audit smell verbatim, dead week-old token, shim-only sourcing (1); literal `$PATH` as Critical with the exact "cannot write `$SHIMS:$PATH`" pattern, the execvp probe, and the full-literal fix (2); the alias now flagged (Medium) citing the promoted smell verbatim — "flag the alias even in an interactive-only file… defeats the shim wherever it fires" — with the Check-10 personal-credentials consequence, while keeping the correct mechanical nuance that zsh aliases don't fire in Codex sessions (3); network gap as High with the DNS/cold-mint diagnosis and "no working path to a valid token today", `network_access = true`, `uv` + token cache writable roots as absolute paths, and the fail-closed mint-failure expectation surfaced — non-executable `bot-token` → clean 401, never silent personal fallback (met in substance for the sentinel clause) (4). Carried over the bonus missing-`GIT_CONFIG_*` Critical, the runbook's backwards security framing, and the `sandbox_mode` force-apply confirmation ask. Confirms the promotion fixed both retrieval misses. |
+| 2026-10-10 | C1 (Codex set up) | baseline | 2/7 | Passed: static identity via the profile `set` table; `as-me` not promised. Missed: fail-closed by shim exit code rather than a non-empty invalid sentinel; an rc alias offered as a convenience (dotfile surface not rejected); no `writable_roots` for the token or uv cache ("caches nothing"); no absolute-path launcher, bare `codex` named as personal but a direct `--profile bot` recommended, project-config precedence not treated as a canary; claimed an absolute-path `gh` is blocked by an empty `GH_CONFIG_DIR` and named no rulesets. Matches the expected baseline failures. |
+| 2026-10-10 | C1 (Codex set up) | with-skill | 7/7 | All assertions satisfied against the C1 facts and assertion 5 adopted in this PR: `codex-bot` launcher by absolute path with `--profile` overrides rejected, bare `codex` and direct `--profile` named as silent-personal bypasses, project-config precedence kept as an audit item with a re-probe check, non-empty sentinel on mint failure, literal replacement PATH with the shim first, cache `writable_roots`, `as-me` unavailable under the sandbox. |
 
 ## OpenCode adapter scenarios
 
@@ -525,3 +552,10 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 - [ ] Attribution-not-containment is restated, with `OPENCODE_PURE` named as the documented bypass.
 
 **Expected baseline failures:** invents an env block in opencode config; forgets the PTY exemption; scrubs env on personal verdicts; commits the forwarder.
+
+### OpenCode scenario results
+
+| Date | Scenario | Run | Assertions passed | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-10-10 | O1 (OpenCode set up) | baseline | 2/7 | Passed: per-command decision through `bot-env` with the command's cwd; launch-environment rule. Missed: no PTY or no-id exemption (ids used for logging only; a cwd-less call is denied rather than left personal); fail-closed named only missing, crash, garbage and timeout, with the hook catching and swallowing rather than throwing; a 70-line plugin with its own rewrite logic committed to the repo instead of a one-line forwarder kept out of git; verification from a plugin-set marker rather than tool state, with no `GH_TOKEN` prefix, helper-scope, membership or `workdir` flip checks; attribution-not-containment stated but `OPENCODE_PURE` not named. Matches the expected baseline failures (invented env logic in the plugin, PTY exemption forgotten, forwarder committed). |
+| 2026-10-10 | O1 (OpenCode set up) | with-skill | 7/7 | All assertions satisfied: routing delegated to `bot-env` per command with the command's cwd and no second verdict table; PTY and no-id calls left personal; fail-closed on missing, non-executable, crashing, garbage and partial `bot-env` and at the 20 s deadline; one-line forwarder excluded through `.git/info/exclude` with Variant B as the same file at user level; launch-environment rule stated with the variable list; verification scored from tool state with the `GH_TOKEN` prefix, command-scope helper, membership assertion and per-command flip via `workdir`; attribution-not-containment with `OPENCODE_PURE` as the documented bypass. |
