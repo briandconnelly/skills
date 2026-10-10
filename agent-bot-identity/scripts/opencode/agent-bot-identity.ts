@@ -62,6 +62,10 @@ const REQUIRED_IDENTITY = [
   "GIT_CONFIG_PARAMETERS",
 ]
 
+// bot-env emits 3 fixed entries plus 2 per rewrite pair; this bounds the
+// validation loop against a corrupt value without limiting real output.
+const MAX_GIT_CONFIG_COUNT = 1000
+
 class BotEnvError extends Error {}
 
 // Collect a stream through a reader the deadline can cancel: a descendant
@@ -205,31 +209,49 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
         )
       }
 
-      // Contract check: bot-env emits the identity block only whole. A bot
-      // block carries the author and committer identity, a non-empty GH_TOKEN
-      // (its fail-closed sentinel included), GIT_CONFIG_PARAMETERS (empty is
-      // the expected value), and GIT_CONFIG_COUNT key/value pairs with the bot
-      // credential helper at index 1 (index 0 is the helper reset). Anything
-      // else means the output shape changed; do not route with half an identity.
-      // The message names missing variables, never values: GH_TOKEN is one.
-      if ("GIT_AUTHOR_NAME" in parsed || "GH_TOKEN" in parsed) {
-        const missing = REQUIRED_IDENTITY.filter((name) => !(name in parsed))
-        const count = /^[0-9]+$/.test(parsed.GIT_CONFIG_COUNT ?? "") ? Number(parsed.GIT_CONFIG_COUNT) : NaN
-        if (Number.isNaN(count)) {
-          if ("GIT_CONFIG_COUNT" in parsed) missing.push("valid GIT_CONFIG_COUNT")
-        } else {
-          for (let i = 0; i < count; i++) {
-            for (const name of [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]) if (!(name in parsed)) missing.push(name)
-          }
-          if (count < 2 || parsed.GIT_CONFIG_KEY_1 !== "credential.helper" || !parsed.GIT_CONFIG_VALUE_1?.startsWith("!")) {
-            missing.push("bot credential helper at GIT_CONFIG index 1")
+      // Contract check: bot-env emits the identity block only whole, in a fixed
+      // shape: author and committer identity, a non-empty GH_TOKEN (its
+      // fail-closed sentinel included), an empty GIT_CONFIG_PARAMETERS (git
+      // applies a non-empty one after the counted entries, so it could
+      // override the helper), and exactly GIT_CONFIG_COUNT key/value pairs
+      // starting with the helper reset (0), the bot credential helper (1) and
+      // commit.gpgsign=false (2). Entries at or beyond the count would be
+      // ignored by git, so they are refused too. Any identity-bearing export
+      // triggers the full check; unset-only (personal) blocks skip it. The
+      // message names missing variables, never values: GH_TOKEN is one.
+      const identityExport = (name: string): boolean =>
+        REQUIRED_IDENTITY.includes(name) || name === "BOT_INSTALL_ID" || /^GIT_CONFIG_(KEY|VALUE)_[0-9]+$/.test(name)
+      if (Object.keys(parsed).some(identityExport)) {
+        const problems = REQUIRED_IDENTITY.filter((name) => !(name in parsed))
+        if (parsed.GH_TOKEN === "") problems.push("non-empty GH_TOKEN")
+        if ("GIT_CONFIG_PARAMETERS" in parsed && parsed.GIT_CONFIG_PARAMETERS !== "") problems.push("empty GIT_CONFIG_PARAMETERS")
+        if ("GIT_CONFIG_COUNT" in parsed) {
+          const count = /^[0-9]{1,4}$/.test(parsed.GIT_CONFIG_COUNT) ? Number(parsed.GIT_CONFIG_COUNT) : NaN
+          if (Number.isNaN(count) || count < 3 || count > MAX_GIT_CONFIG_COUNT) {
+            problems.push(`GIT_CONFIG_COUNT between 3 and ${MAX_GIT_CONFIG_COUNT}`)
+          } else {
+            for (let i = 0; i < count; i++) {
+              for (const name of [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]) if (!(name in parsed)) problems.push(name)
+            }
+            for (const name of Object.keys(parsed)) {
+              const m = /^GIT_CONFIG_(?:KEY|VALUE)_([0-9]+)$/.exec(name)
+              if (m && Number(m[1]) >= count) problems.push(`${name} beyond GIT_CONFIG_COUNT`)
+            }
+            if (parsed.GIT_CONFIG_KEY_0 !== "credential.helper" || parsed.GIT_CONFIG_VALUE_0 !== "") {
+              problems.push("helper reset at GIT_CONFIG index 0")
+            }
+            if (parsed.GIT_CONFIG_KEY_1 !== "credential.helper" || !parsed.GIT_CONFIG_VALUE_1?.startsWith("!")) {
+              problems.push("bot credential helper at GIT_CONFIG index 1")
+            }
+            if (parsed.GIT_CONFIG_KEY_2 !== "commit.gpgsign" || parsed.GIT_CONFIG_VALUE_2 !== "false") {
+              problems.push("commit.gpgsign=false at GIT_CONFIG index 2")
+            }
           }
         }
-        if ("GH_TOKEN" in parsed && parsed.GH_TOKEN === "") missing.push("non-empty GH_TOKEN")
-        if (missing.length > 0) {
+        if (problems.length > 0) {
           fail(
             new BotEnvError(
-              `agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd} (missing: ${missing.join(", ")}); refusing to route`,
+              `agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd} (problems: ${problems.join(", ")}); refusing to route`,
             ),
             input.cwd,
           )

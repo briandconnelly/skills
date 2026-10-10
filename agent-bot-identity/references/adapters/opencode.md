@@ -110,7 +110,7 @@ The 2026-09-23 re-run on opencode 1.18.32, after the routing changes in the shar
 - Items 1, 2, 3, 4, 5, 6, 8 above: PASS (item 3 on a public repo proves the rewrite, not the token).
   In that repo (one mapped account, one raw remote value) the bot verdict carried 15 `GIT_CONFIG_*` entries: the fixed three, the four host-wide `insteadOf`/`pushInsteadOf` pairs, the account pair, and one exact pair per raw remote value.
 - Item 9 with the flip expressed as `workdir` pointed at a nested repo whose remote is on another host: `GH_TOKEN` unset and the human author in that call, `ghs_` again in the next call at the default workdir (PASS).
-- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS).
+- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, and every case passes with `BOT_ENV`/`BOT_ENV_CWD` set (PASS).
 - Item 7 (private non-enrolled probe), item 11 (write path), and the Variant B location: not re-run; the 1.18.22 results stand for those.
 - Trigger: with the skill installed under `~/.claude/skills/`, an in-domain prompt in a non-enrolled directory made the model load `agent-bot-identity` through the `skill` tool and summarize Phases 1–2 accurately.
 

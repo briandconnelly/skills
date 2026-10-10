@@ -219,6 +219,38 @@ describe("shell.env hook", () => {
     await expect(call(botEnv, gitRepo("token-only"))).rejects.toThrow(/partial identity block/)
   })
 
+  test("fail closed: an undercounted GIT_CONFIG_COUNT leaves entries git would ignore", async () => {
+    const botEnv = fixture("bot-undercount", BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", "GIT_CONFIG_COUNT=2"))
+    await expect(call(botEnv, gitRepo("undercount"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: a non-numeric or huge GIT_CONFIG_COUNT", async () => {
+    for (const [name, count] of [["nan", "abc"], ["huge", "99999999999"]]) {
+      const botEnv = fixture(`bot-count-${name}`, BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${count}`))
+      await expect(call(botEnv, gitRepo(`count-${name}`))).rejects.toThrow(/partial identity block/)
+    }
+  })
+
+  test("fail closed: a block with only GIT_CONFIG exports", async () => {
+    const botEnv = fixture(
+      "bot-config-only",
+      `#!/usr/bin/env bash\nprintf '%s\\n' "export GIT_CONFIG_COUNT=1" "export GIT_CONFIG_KEY_0='credential.helper'" "export GIT_CONFIG_VALUE_0=''"\n`,
+    )
+    await expect(call(botEnv, gitRepo("config-only"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: a non-empty GIT_CONFIG_PARAMETERS", async () => {
+    const botEnv = fixture("bot-params", BOT_BLOCK.replace("GIT_CONFIG_PARAMETERS=''", "GIT_CONFIG_PARAMETERS='x'"))
+    await expect(call(botEnv, gitRepo("params"))).rejects.toThrow(/partial identity block/)
+  })
+
+  test("fail closed: the fixed GIT_CONFIG entries are not the bot-env shape", async () => {
+    const noReset = fixture("bot-reset", BOT_BLOCK.replace("GIT_CONFIG_VALUE_0=''", "GIT_CONFIG_VALUE_0='x'"))
+    await expect(call(noReset, gitRepo("reset"))).rejects.toThrow(/partial identity block/)
+    const gpg = fixture("bot-gpg", BOT_BLOCK.replace("GIT_CONFIG_VALUE_2='false'", "GIT_CONFIG_VALUE_2='true'"))
+    await expect(call(gpg, gitRepo("gpg"))).rejects.toThrow(/partial identity block/)
+  })
+
   test("fail closed: bot-env not executable", async () => {
     const botEnv = fixture("bot-noexec", BOT_BLOCK, false)
     await expect(call(botEnv, gitRepo("noexec"))).rejects.toThrow()
