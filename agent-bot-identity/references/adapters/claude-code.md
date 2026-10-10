@@ -37,6 +37,7 @@ Replace `<BOT_UID>` with the user ID from Phase 2, `acme` with your org, and `<y
     "GIT_AUTHOR_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
     "GIT_COMMITTER_NAME": "acme-agent[bot]",
     "GIT_COMMITTER_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
+    "GIT_CONFIG_PARAMETERS": "",
     "GIT_CONFIG_COUNT": "7",
     "GIT_CONFIG_KEY_0": "credential.helper",
     "GIT_CONFIG_VALUE_0": "",
@@ -72,6 +73,7 @@ What each part does:
   Variant A's pairs are org-scoped by construction, so a non-org `github.com` remote in the same repo (a fork's `upstream`) stays on SSH and would push with the personal key; Variant B's `bot-env` routes every `github.com` remote instead.
   Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url origin git@github.com:acme/<repo>.git`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
   The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
+- `GIT_CONFIG_PARAMETERS` pinned empty, as the Phase 4 contract requires; Claude Code 2.1.296 exports an empty settings `env` value into Bash commands as set-but-empty (verified 2026-10-09).
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
 - The `SessionStart` hook injects `GH_TOKEN` for `gh` (the adapter's `session-env.sh`).
   The first time it runs, Claude Code prompts to approve the hook; approve it.
@@ -82,7 +84,8 @@ These env keys are static, so they live in `settings.local.json`.
 If this project's repos belong to an account other than `bot-token`'s default installation, also pin `"BOT_INSTALL_ID": "<numeric id>"` in the `env` block — the SKILL Phase 3 selection contract; it is a static per-project fact, so the static surface is the right home for it here.
 
 Static also means the env follows the session, not the directory: commands that leave the project mid-session (a scratch clone, an unrelated repo) still carry the bot author env, so commits there are bot-attributed until the work moves to its own session.
-That is the recoverable direction (amendable, and the org-scoped rewrite and host-gated helper do not activate elsewhere), but know it is Variant A behavior; Variant B re-decides per command instead.
+That is the recoverable direction (amendable, and the org-scoped rewrites do not apply elsewhere, but the host-gated bot helper still answers every github.com HTTPS request there and fails at the installation boundary, see [decisions/001](../../decisions/001-credential-helper-scope.md)), but know it is Variant A behavior; Variant B re-decides per command instead.
+The unscoped reset also removes your personal helpers for every other HTTPS host inside that session while the bot helper stays silent there, so an authenticated non-GitHub HTTPS fetch (a GitLab clone, for instance) fails as well until you return to a personal terminal.
 
 ### Variant B — user-level guard, automatic in org repos
 

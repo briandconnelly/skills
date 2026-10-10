@@ -132,7 +132,7 @@ An adapter for a local agent harness must supply all of the following, without e
 
 - Per-repo activation: explicit opt-in, or a gated automatic equivalent keyed on a repo-intrinsic signal such as the org remote.
 - The static git identity env (`GIT_AUTHOR_*`/`GIT_COMMITTER_*`).
-- Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, SSH→HTTPS rewrites for the bot's GitHub remotes emitted as both `insteadOf` and `pushInsteadOf` and including identity pairs on the https prefix (so a user's global force-SSH rewrite cannot undo them), `commit.gpgsign false`.
+- Command-scope `GIT_CONFIG_*`: an unscoped credential-helper reset (it empties the helper list for every host) plus the host-gated bot helper, which answers all of `https://github.com` and nothing else (never scoped to an account — [`decisions/001`](decisions/001-credential-helper-scope.md)) with `GIT_CONFIG_PARAMETERS` set empty so an inherited `git -c` value cannot follow the reset, SSH→HTTPS rewrites for the bot's GitHub remotes emitted as both `insteadOf` and `pushInsteadOf` and including identity pairs on the https prefix (so a user's global force-SSH rewrite cannot undo them), `commit.gpgsign false`.
 - A dynamic `GH_TOKEN` re-minted across hour-plus sessions.
 - A fail-closed substitute when minting fails: a non-empty invalid token, never an empty value.
 - When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract.
@@ -174,6 +174,11 @@ In a fresh agent session in an opted-in repo:
   Use this, not `gh api user` — an installation token has no user and 403s on `/user`.
 - `git config --show-scope credential.helper` → bot helper at `command` scope (proves env-scoped, no file changed).
 - `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` → succeeds, proving the HTTPS-rewrite-plus-token path is in use (SSH is disabled for that invocation).
+- Competing HTTP credentials, the two shapes `bot-env` refuses (see the Claude Code adapter's decision table) and the static adapters cannot: `git config --get-regexp '^http\.(.*\.)?extraheader$' | awk 'tolower($2) ~ /^authorization:/ {print $1}' | while read -r k; do s=${k#http.}; s=${s%.extraheader}; a=${s#*://}; a=${a%%/*}; u=${a%@*}; if [ "$u" = "$a" ]; then u=; else u="$u@"; fi; p=${s#*://}; p=${p#*/}; if [ "$s" = extraheader ] || [ "$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.$s.botenvprobe" GIT_CONFIG_VALUE_0=yes git config --get-urlmatch http.botenvprobe "https://${u}github.com/$p")" = yes ]; then echo "$k"; fi; done` → prints nothing, and `[ -f ~/.netrc ] && tr -s '[:space:]' '\n' < ~/.netrc | tr -d '"' | awk 'tolower($0)=="default"{f=1} p=="machine"&&tolower($0)=="github.com"{f=1} {p=tolower($0)} END{exit !f}' && echo COMPETING-NETRC` → prints nothing (an absent `~/.netrc` is a pass).
+  The header probe prints the matching key only, never its value.
+  The header probe rejects every Authorization scope that git's own URL matcher would apply to any `https://github.com/` destination, not only this repository's, because a static adapter's environment covers every GitHub command in the session; the netrc probe is a token scan that reads `~/.netrc` only (`bot-env` also scans `~/_netrc`, the Windows name) and does not parse `macdef` bodies.
+- `for r in $(git remote); do git remote get-url --all --push "$r"; done` → every `github.com` line is `https://github.com/...`, and, on a branch with at least one commit, `GIT_SSH_COMMAND=/usr/bin/false git push --dry-run origin HEAD` → succeeds.
+  `ls-remote` resolves the fetch URL only; a push-side rule or an SSH `pushurl` passes it and then pushes over the personal key under the bot's authorship, and GitHub-side authorship cannot tell the two apart.
 - Test commit → author `acme-agent[bot]`, unsigned (`git log -1 --format='%an <%ae> %G?'`).
   Once pushed, the commit shows no Verified badge — expected, because local commits pushed with an App token are never auto-verified; only commits created through the App's API path (e.g. GraphQL `createCommitOnBranch`) get the badge.
 - If the adapter supports `as-me` (see the Phase 4 support matrix) — collaborated path: `~/.config/acme-agent/bin/as-me git commit --allow-empty -m "as-me test"` → author is you, unsigned (`git log -1 --format='%an <%ae> %G?'`), while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
@@ -287,6 +292,7 @@ Not enforced — the part everyone overstates:
 | Expecting `as-me` commits to be signed or Verified | `gpgsign false` stays in effect and App-token pushes are never auto-verified; amend from a personal terminal if a signature is required |
 | Auditing Phase 6 rulesets with the bot token | A bot-token ruleset read succeeds with `bypass_actors` withheld (`--jq` prints `null`) rather than failing with 403 — the audit reports "no bypass actors" and looks clean while blind; read rulesets with a personal identity holding repo admin and run the Phase 6 positive control |
 | Assuming the installation list bounds everything the bot can write | It bounds git/content access and all private-repo access; issue creation on any public repo with Issues enabled is open to any authenticated actor, App tokens included |
+| Scoping the credential helper to the mapped account so unrelated private fetches keep working | Every unmapped github.com HTTPS push would then ride the personal credential under the bot's authorship — the headline failure; keep the bot helper answering all of github.com (Phase 4 contract), and move session-wide interception problems to a per-command adapter (Claude Variant B, OpenCode) |
 
 Harness-mechanism-specific pitfalls (PATH-shim snapshots, `settings.local.json` static env, the per-command guard, `CwdChanged` plumbing) live with each adapter — see the adapter doc.
 
