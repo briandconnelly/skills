@@ -122,7 +122,7 @@ The unscoped reset also removes your personal helpers for every other HTTPS host
 One mechanism fact makes this variant work: **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
 Evidence: on 2.1.172 an env file exporting `"$PWD"` matched each command's own `pwd` (2026-06-11, recorded in `tests/scenarios.md`); on 2.1.296 a `SessionStart` hook writing `export PROBE_STAMP="$(date +%s%N)"` produced a new stamp on each of four Bash calls (2026-10-09, planning notes, not this repository), and the 2026-10-10 mid-session flip in Status re-decided identity from a persisted `cd` in both directions.
 The hooks reference documents only that variables written to `CLAUDE_ENV_FILE` persist into subsequent Bash commands, and that variables written by `CwdChanged` and `FileChanged` hooks are cleared at the next `CwdChanged`.
-The per-command evaluation is this skill's probe, not the reference's promise, so re-run the probe after every Claude Code upgrade (Verification list, last item).
+The per-command evaluation is this skill's probe, not the reference's promise; upgrade verification is specified in the Verification list's last item.
 So instead of static per-repo env, a user-level SessionStart hook installs a single *unevaluated* guard line, and the guard re-decides bot-vs-personal per command from the directory the command actually runs in.
 Mid-session directory changes flip identity on the next command; there is no session-level verdict to go stale, and no `CwdChanged` plumbing is needed.
 
