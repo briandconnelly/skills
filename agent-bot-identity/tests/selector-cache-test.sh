@@ -15,10 +15,19 @@ unset BOT_INSTALL_ID || true
 FAIL=0
 DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 trap 'rm -rf "$DIR"' EXIT
+# bot-env reads $HOME/.netrc and, through ssh -G, the ssh client config; keep
+# every run off the developer's real files. uv's cache stays where it was.
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
+export HOME="$DIR/home"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+export GIT_CONFIG_NOSYSTEM=1
+: > "$DIR/global-empty"
+export GIT_CONFIG_GLOBAL="$DIR/global-empty"
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/scripts"
 
 FAKE_HOME="$DIR/home"
-export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir)}"
 CACHE_DIR="$FAKE_HOME/.cache/acme-agent"
 mkdir -p "$CACHE_DIR"
 future="$(($(date +%s) + 3000))"

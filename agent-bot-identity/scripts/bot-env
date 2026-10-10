@@ -81,6 +81,17 @@ url_host_lc() {
   printf '%s' "$host" | tr '[:upper:]' '[:lower:]'
 }
 
+# Userinfo of an ssh-form URL (`git` in `git@github.com:x` or
+# `ssh://git@host/x`), or the empty string. ssh's `Match user` blocks can
+# change the resolved host, so the lookup must carry it as git would.
+url_user() {
+  local u="$1" rest auth
+  case "$u" in
+    *://*) rest="${u#*://}"; auth="${rest%%/*}"; case "$auth" in *@*) printf '%s' "${auth%@*}" ;; esac ;;
+    *:*) case "${u%%:*}" in */*) ;; *@*) printf '%s' "${u%%@*}" ;; esac ;;
+  esac
+}
+
 # Resolve an ssh host the way git's own ssh would: GIT_SSH_COMMAND, then
 # core.sshCommand, then GIT_SSH, then plain ssh. `-G` prints the client
 # configuration without connecting, which is how a `Host gh` alias becomes
@@ -89,8 +100,9 @@ url_host_lc() {
 # script's input. Prints the lower-cased hostname; prints nothing when the
 # lookup fails.
 git_ssh_resolve() {
-  local host="$1" cmd
+  local host="$1" user="${2:-}" cmd
   case "$host" in -*|""|*:*|\[*) return 1 ;; esac
+  case "$user" in -*|*:*) return 1 ;; esac
   # git's order (connect.c): GIT_SSH_COMMAND, else core.sshCommand, both run
   # through a shell; only when neither is set, GIT_SSH (no shell), else ssh.
   if [ -n "${GIT_SSH_COMMAND:-}" ]; then
@@ -99,9 +111,9 @@ git_ssh_resolve() {
     cmd="$(git config --get core.sshCommand 2>/dev/null || true)"
   fi
   if [ -n "$cmd" ]; then
-    sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "$host" 2>/dev/null </dev/null
+    sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "${user:+$user@}$host" 2>/dev/null </dev/null
   else
-    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no "$host" 2>/dev/null </dev/null
+    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no "${user:+$user@}$host" 2>/dev/null </dev/null
   fi | awk '!done && $1 == "hostname" { print tolower($2); done = 1 }'
 }
 
@@ -111,8 +123,9 @@ git_ssh_resolve() {
 # paths and IP literals. Returns 1 when the destination cannot be determined:
 # an alias-shaped host (no dot) that ssh could not resolve.
 github_destination() {
-  local u="$1" host eff
+  local u="$1" host eff user
   host="$(url_host_lc "$u")"
+  user="$(url_user "$u")"
   if [ -z "$host" ]; then printf 'other'; return 0; fi
   case "$host" in github.com|ssh.github.com) printf 'github'; return 0 ;; esac
   case "$host" in *:*|\[*) printf 'other'; return 0 ;; esac
@@ -121,7 +134,7 @@ github_destination() {
     *://*) printf 'other'; return 0 ;;
     *) ;;
   esac
-  eff="$(git_ssh_resolve "$host")" || eff=""
+  eff="$(git_ssh_resolve "$host" "$user")" || eff=""
   if [ -z "$eff" ]; then
     case "$host" in *.*) printf 'other'; return 0 ;; *) return 1 ;; esac
   fi
@@ -382,7 +395,7 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
       case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
       dest="$(github_destination "$resolved")" || dest=github
       [ "$dest" = github ] || continue
-      resolved_shown="$(printf '%s' "$resolved" | sed 's#//\([^/@:]*\):[^/@]*@#//\1:***@#')"
+      resolved_shown="$(printf '%s' "$resolved" | sed 's#//[^/@]*@#//***@#')"
       echo "bot-env: remote '${name}' still resolves to ${resolved_shown} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3
@@ -398,28 +411,33 @@ done
 # and a ~/.netrc entry for github.com (git enables curl's netrc lookup, which
 # runs before the credential helper). Neither can be neutralised from here,
 # so refuse to route and name what to remove — never the value.
-# git lower-cases the section and variable names but keeps a URL subsection
-# as written, and its URL match compares hosts case-insensitively, so the
-# URL part of the key is lower-cased here before the host test. A header
-# token is matched by prefix: `Authorization:basic x` is a valid header too.
-# A malformed inherited GIT_CONFIG_COUNT must not blind this check, so the
-# read runs without it (the emitted env replaces it anyway).
-authz_keys="$(env -u GIT_CONFIG_COUNT git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' || true)"
+# Whether a key's URL scope applies is git's call (wildcard hosts, username
+# scopes, ports), so each Authorization-bearing scope is tested with a probe
+# variable under the same URL section against every target this command
+# routes to. A malformed inherited GIT_CONFIG_COUNT must not blind this.
+authz_targets=('https://github.com/')
+i=0
+while [ "$i" -lt "${#github_target[@]}" ]; do
+  authz_targets+=("${github_target[$i]}")
+  i=$((i + 1))
+done
+authz_keys="$(env -u GIT_CONFIG_COUNT git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' | sort -u || true)"
 while IFS= read -r k; do
   [ -n "$k" ] || continue
-  url_lc="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]')"
-  url_lc="${url_lc#http.}"
-  url_lc="${url_lc%.extraheader}"
-  # a host-less rule is the bare key http.extraheader, which has no dot left to strip
-  if [ "$url_lc" = extraheader ]; then url_lc=""; fi
-  case "$url_lc" in
-    "") ;;
-    https://github.com|https://github.com:443|https://github.com/*|https://github.com:443/*) ;;
-    http://github.com|http://github.com/*) ;;
-    https://*@github.com|https://*@github.com:443|https://*@github.com/*|https://*@github.com:443/*) ;;
-    *) continue ;;
-  esac
-  k_shown="$(printf '%s' "$k" | sed 's#//\([^/@:]*\):[^/@]*@#//\1:***@#')"
+  scope="${k#http.}"
+  scope="${scope%.extraheader}"
+  scope="${scope%.extraHeader}"
+  applies=""
+  if [ "$scope" = extraheader ] || [ "$scope" = extraHeader ] || [ -z "$scope" ]; then
+    applies=yes
+  else
+    for t in "${authz_targets[@]}"; do
+      probe="$(env -u GIT_CONFIG_COUNT git -c "http.${scope}.botenvprobe=yes" config --get-urlmatch http.botenvprobe "$t" 2>/dev/null)" || probe=""
+      case "$probe" in yes) applies=yes; break ;; esac
+    done
+  fi
+  [ -n "$applies" ] || continue
+  k_shown="$(printf '%s' "$k" | sed 's#//[^/@]*@#//***@#')"
   echo "bot-env: git config key '${k_shown}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
   exit 1
 done <<EOF4
@@ -428,7 +446,28 @@ EOF4
 [ -n "${HOME:-}" ] || { echo "bot-env: HOME is unset, so ~/.netrc cannot be checked for a competing credential; refusing to run" >&2; exit 1; }
 for netrc in "$HOME/.netrc" "$HOME/_netrc"; do
   [ -r "$netrc" ] || continue
-  if tr -s '[:space:]' '\n' <"$netrc" | awk 'BEGIN { found = 0 } tolower($0) == "default" { found = 1 } prev == "machine" && tolower($0) == "github.com" { found = 1 } { prev = tolower($0) } END { exit !found }'; then
+  if awk '
+    BEGIN { found = 0; want = ""; inmac = 0 }
+    inmac { if ($0 ~ /^[[:space:]]*$/) inmac = 0; next }
+    {
+      sub(/#.*/, "")
+      n = split($0, tok, /[[:space:]]+/)
+      for (i = 1; i <= n; i++) {
+        t = tok[i]
+        if (t == "") continue
+        gsub(/^"|"$/, "", t)
+        if (want != "") {
+          if (want == "machine" && tolower(t) == "github.com") found = 1
+          want = ""
+          continue
+        }
+        lt = tolower(t)
+        if (lt == "default") found = 1
+        else if (lt == "machine" || lt == "login" || lt == "password" || lt == "account") want = lt
+        else if (lt == "macdef") { inmac = 1; break }
+      }
+    }
+    END { exit !found }' "$netrc"; then
     echo "bot-env: ${netrc} has a github.com (or default) entry; git's HTTP transport consults it before the credential helper, so a push would authenticate as that login. Remove the entry; refusing to run with a competing credential" >&2
     exit 1
   fi

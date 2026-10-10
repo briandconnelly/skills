@@ -25,6 +25,9 @@ export GIT_CONFIG_GLOBAL="$EMPTY_GLOBAL"
 # Later cases write ~/.netrc and ~/.ssh/config, so the whole suite runs under
 # a scratch HOME; the guard below is what protects the developer's real
 # files if this block is ever moved or removed.
+# UV is not used by the stub bot-token, but keep uv's cache where it was in
+# case a later case runs the real one.
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
 export HOME="$DIR/home"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
@@ -43,9 +46,6 @@ EOF
 : > "$HOME/.ssh/config"
 chmod +x "$DIR/ssh-shim/ssh"
 export PATH="$DIR/ssh-shim:$PATH"
-# UV is not used by the stub bot-token, but keep uv's cache where it was in
-# case a later case runs the real one.
-export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir 2>/dev/null || echo "$DIR/uv-cache")}"
 
 cp "$SRC/git-credential-bot" "$DIR/"
 awk '{ if ($0 == "acme:REPLACE") print "acme:111"; else print }' "$SRC/bot-env" > "$DIR/bot-env"
@@ -232,13 +232,14 @@ rm -rf "$R"
 #     remote still resolves to SSH and abort rather than route with the
 #     personal key.
 FULL_URL_RULE="$DIR/global-full-url"
-printf '[url "ssh://git@github.com/acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$FULL_URL_RULE"
+printf '[url "ssh://REDACTED@github.com/acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$FULL_URL_RULE"
 R="$(mkrepo https://github.com/acme/x.git)"
 rc=0
 out="$(cd "$R" && GIT_CONFIG_GLOBAL="$FULL_URL_RULE" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
 [ "$rc" -ne 0 ] || fail "remote still resolving to SSH after the rewrites did not abort"
 [ -z "$out" ] || fail "SSH-resolving remote abort still emitted env lines"
-grep -q 'origin' "$DIR/err" && grep -q 'ssh://git@github.com/acme/x.git' "$DIR/err" || fail "SSH-resolving remote abort did not name the remote and its effective URL: $(cat "$DIR/err")"
+grep -q 'origin' "$DIR/err" && grep -q 'ssh://\*\*\*@github.com/acme/x.git' "$DIR/err" || fail "SSH-resolving remote abort did not name the remote and its masked effective URL: $(cat "$DIR/err")"
+! grep -q REDACTED "$DIR/err" || fail "SSH-resolving remote abort echoed the URL's userinfo: $(cat "$DIR/err")"
 rm -rf "$R"
 
 # 20b. Same shape on the push side only (pushInsteadOf ties the same way).
@@ -485,7 +486,8 @@ printf '[http "https://me:REDACTED@github.com/"]\n\textraHeader = Authorization:
 R="$(mkrepo https://github.com/acme/x.git)"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$HDRU" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
-[ "$rc" -ne 0 ] || fail "userinfo-keyed Authorization extraHeader did not abort"
+# (git's matcher does not apply a userinfo-scoped key to the username-free
+# URL, so this may not abort; either way the userinfo must never be printed)
 ! grep -q REDACTED "$DIR/err" || fail "extraHeader abort echoed userinfo from the key: $(cat "$DIR/err")"
 rm -rf "$R"
 
@@ -531,7 +533,8 @@ HDR7="$DIR/global-authz-userinfo"
 printf '[http "https://me@github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR7"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$HDR7" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
-[ "$rc" -ne 0 ] || fail "user@github.com Authorization extraHeader did not abort"
+# (a username-scoped key does not apply to the username-free URL git uses; git's own matcher decides)
+[ "$rc" -eq 0 ] || fail "user@github.com-scoped extraHeader aborted though git does not apply it to a username-free URL"
 rm -rf "$R"
 
 # 45c. A header written without a space after the colon is still Authorization.
@@ -606,6 +609,44 @@ R="$(mkrepo git@github.com:acme/x.git)"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$HDR" GIT_CONFIG_COUNT=abc "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
 [ "$rc" -ne 0 ] || fail "malformed inherited GIT_CONFIG_COUNT blinded the extraHeader refusal"
+rm -rf "$R"
+
+# 52. ssh's `Match user` can make `git@work` resolve to github.com while a
+#     bare `work` does not; the lookup must carry the URL's user as git does.
+printf 'Match user git\n  HostName github.com\n' > "$HOME/.ssh/user_config"
+R="$(mkrepo git@work:acme/x.git)"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/user_config"
+[ "$(verdict "$R")" = BOT ] || fail "Match-user alias to github.com resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "Match-user alias remote not rewritten: $(effective "$R" origin)"
+rm -rf "$R"
+
+# 53. A wildcard-host scope git applies (`https://*.com/`) must be refused;
+#     the handwritten host list could not see it.
+HDR6="$DIR/global-authz-wildcard"
+printf '[http "https://*.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR6"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR6" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "wildcard-host Authorization extraHeader did not abort"
+grep -q 'REDACTED' "$DIR/err" && fail "wildcard abort printed the header value"
+rm -rf "$R"
+
+# 54. curl's netrc grammar: a quoted machine name is an entry; a login whose
+#     value happens to be `default` is not; a `#` comment and a macdef body
+#     are ignored.
+[ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+R="$(mkrepo git@github.com:acme/x.git)"
+printf 'machine "github.com" login me password REDACTED\n' > "$HOME/.netrc"
+rc=0
+(cd "$R" && "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "quoted .netrc github.com entry did not abort"
+printf 'machine gitlab.com login default password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail "a login named default was treated as a default entry"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "login-named-default entry did not resolve bot"
+printf '# machine github.com\nmacdef init\nmachine github.com\n\nmachine gitlab.com login me password REDACTED\n' > "$HOME/.netrc"
+out="$(cd "$R" && "$DIR/bot-env" 2>/dev/null)" || fail "comment or macdef body was read as an entry"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "comment/macdef .netrc did not resolve bot"
+rm -f "$HOME/.netrc"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
