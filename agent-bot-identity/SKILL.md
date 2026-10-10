@@ -155,7 +155,7 @@ Implemented adapters:
 | Automatic user-level routing | ✅ Variant B | ❌ pending | ✅ global plugin dir |
 | `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) | ✅ |
 | Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) | ✅ delegated to `bot-env` |
-| Verification record | [claude-code.md Status](references/adapters/claude-code.md) (B: 2026-10-10) | [codex.md Status](references/adapters/codex.md) (A partial: 2026-07-07, re-probed 2026-10-09 and 2026-10-10) | [opencode.md Status](references/adapters/opencode.md) (A: 2026-09-23) |
+| Verification record | [claude-code.md Status](references/adapters/claude-code.md#status) (B partial: 2026-10-10; A: mechanism 2026-06-11, Phase 5 unrecorded) | [codex.md Status](references/adapters/codex.md#status) (A partial: 2026-07-07, re-probed 2026-10-09 and 2026-10-10) | [opencode.md Status](references/adapters/opencode.md#status) (A: 2026-09-23) |
 
 ("Fail-closed" is scoped to routing, never containment.)
 

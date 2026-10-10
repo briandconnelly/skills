@@ -2,11 +2,12 @@
 
 Core setup — App registration, token minting, the credential helper, and `as-me` (Phases 1–3) — is harness-neutral and lives in the [agent-bot-identity SKILL](../../SKILL.md).
 This reference is the Codex CLI implementation of the SKILL's Phase 4 routing contract.
+The Status section also carries later re-probes (0.162.1).
 Most mechanism claims below trace to recorded probes against `codex-cli 0.143.0`, the profile-selection caveats include focused `0.144.1` probes, and the launcher behavior has automated shell coverage; where the evidence says something is impossible or untested, this doc says so plainly.
 
 ## Status
 
-Variant A is **partially verified; the GitHub write path was not exercised**, and it has a documented `as-me` limitation; Variant B is pending.
+Variant A is **partially verified; the GitHub write path was not exercised** (2026-07-07), and it has a documented `as-me` limitation; Variant B is pending.
 
 Checks 1, 3–5, 7, and 8 of the verification list below passed for PATH takeover, static identity env, the credential-helper rewrite, sandbox minting, fail-closed token handling, and the installation access boundary.
 Check 2 (the token-identity check) passed only in its superseded count form — proving the shim minted a valid installation token, not that it was the right installation's; its current membership form (SKILL Phase 5, changed for issue #135) has not been live-run under Codex.
@@ -19,12 +20,13 @@ Check 4 proved the authenticated HTTPS-rewrite path with `git ls-remote` and che
 Variant B (a user-level, automatic, per-command re-decision like Claude Code's) is **pending**, not shipped.
 It would require a mechanism that re-decides bot-vs-personal before every command with the same fail-closed properties, and no `$CLAUDE_ENV_FILE` equivalent — a file whose contents are evaluated in each command's own shell and working directory — was found in Codex 0.143.0.
 The profile mechanism Variant A uses is decided once per invocation, not per command, so it cannot back Variant B.
+This reasoning was formed on 0.143.0 and not re-examined on 0.162.1.
 
 Re-probed 2026-10-09 on codex-cli 0.162.1: `--profile <name>` still layers `$CODEX_HOME/<name>.config.toml`, and a project `.codex/config.toml` carrying `shell_environment_policy.set` still did not load under `codex exec` with a `-c projects.<dir>.trust_level="trusted"` override (persisted trust untested).
-After every Codex upgrade, re-run verification check 1 and the project-config probe before relying on the launcher; Codex's precedence documentation places trusted project config above profiles, which would let repository content override the identity values.
+The upgrade re-probe is Verification item 11.
 The membership check (check 2) and the write path remain unrun.
 
-Re-probed 2026-10-10 on codex-cli 0.162.1 through the guarded launcher and `codex sandbox`: the bot profile's `shell_environment_policy.set` reaches the sandboxed command, and an empty value (`GIT_CONFIG_PARAMETERS = ""`, supplied for the probe as a `-c` override rather than by editing the profile) arrives set-but-empty, so the `GIT_CONFIG_PARAMETERS` pin in the profile block is honoured; a non-empty control value arrived intact.
+Re-probed 2026-10-10 on codex-cli 0.162.1 through the guarded launcher and `codex sandbox`, with a scratch `CODEX_HOME` whose `bot.config.toml` carried `GIT_CONFIG_PARAMETERS = ""` in its `set` table: the value arrived set-but-empty (`params=[] set=yes`) alongside the bot author, and removing it from that profile made it unset, so the pin in the profile block is honoured.
 
 ## Activation surface — guarded launcher and named `bot` profile
 
@@ -233,6 +235,7 @@ Each check is one line with its expected result; the 2026-07-07 run exercised al
 8. Fail-closed: make `bot-token` non-executable → `gh` returns a loud `Bad credentials (HTTP 401)`, never a silent fall-through to the personal account; restore the exec bit afterward. (PASS)
 9. Untrusted fresh clone (a directory Codex has never trusted) → behaves identically to the enrolled clone; `codex sandbox` never gates on directory trust. **Recorded behavior, not a pass/fail gate.**
 10. Bypass smell: `/opt/homebrew/bin/gh api user --jq .login` (real `gh` by absolute path) → returns the **personal** account, confirming routing-not-enforcement. **Recorded behavior, not a pass/fail gate.**
+11. Upgrade re-probe: after every Codex upgrade, re-run check 1 and the project-config probe (create `.codex/config.toml` in a trusted scratch repo with a `shell_environment_policy.set` entry and confirm under `codex exec` that it does not override the profile) before relying on the launcher; Codex's precedence documentation places trusted project config above profiles, which would let repository content override the identity values.
 
 Checks 1, 3–5, 7, and 8 are the pass/fail gate and all pass; check 2 is pending in its current membership form, with only the superseded count form live-run; Check 6's failure is the documented limitation; Checks 9 and 10 are recorded behaviors, not gates.
 Branch push, `gh pr create`, `gh pr checks`, GitHub-side commit and PR actor verification, and a live run of check 2's membership form remain explicit completion gates before this adapter can be labeled fully verified.

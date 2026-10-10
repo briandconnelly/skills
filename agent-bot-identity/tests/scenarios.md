@@ -308,8 +308,10 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 ### Trigger check 2026-10-10 (description edit)
 
 Instrument: a fresh general-purpose subagent (Claude Code 2.1.296, model sonnet) per run, no skill preloaded, the installed skill copy at `~/.claude/skills/agent-bot-identity` carrying the description under test; the prompt plus a fixed suffix asking for a plan of at most ten lines, no commands, and a final line `Skills loaded: …`.
+A Skill invocation was told apart from other tool use by the `Skills loaded:` line and by the run's tool-use count (one call for the reply alone, two when a skill was invoked).
 "Loaded" means the agent invoked the skill while planning (its tool-use count shows the Skill call); "named" means its plan said it would load `agent-bot-identity` first but it had not.
 Treatment = the new description (names the three harnesses only); control = the previous description (status clauses for each adapter), run for the two prompts whose treatment result was not clean.
+The control ran on the installed copy from 2026-09-24, whose description is byte-identical to the one at main 1ab499b but whose body is older; the post-load 'CI out of scope' observations therefore come from that older body.
 
 | # | Prompt | Class | Description | Result |
 | --- | --- | --- | --- | --- |
@@ -322,7 +324,7 @@ Treatment = the new description (names the three harnesses only); control = the 
 | N2 | same | near-miss | old (control) | loaded in 1 of 2 runs (the other named it) |
 | N3 | How do I sign my git commits with GPG so GitHub shows the Verified badge? | near-miss | new | none |
 
-Reading: the two prompts that were not clean behave the same under the old and the new description, so the edit is trigger-neutral on this instrument; the audit prompt's deferral is a property of the plan-only suffix (all five audit agents named the skill as their first step), and the CI-runner prompt is a pre-existing precision weakness of the description (the skill's body then excludes CI, so the cost is one wasted load).
+Reading: in this small sample both descriptions showed the same two behaviours — the audit prompt named the skill but deferred loading in every run, and the CI-runner prompt loaded it in some runs (2 of 3 under the new description, 1 of 2 under the old) — so no difference attributable to the edit was observed; neutrality is not established at this sample size, and the deferral's cause is a hypothesis (the plan-only suffix) that no run varied.
 
 Owed, outside this PR: a description clause that excludes CI runners and hosted workflows, measured with the same prompts; and an instrument whose suffix says that invoking an applicable skill is part of deciding.
 
