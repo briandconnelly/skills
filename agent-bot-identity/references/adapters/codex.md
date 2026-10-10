@@ -76,7 +76,7 @@ set = { PATH = "/Users/<you>/.config/acme-agent/bin:/opt/homebrew/bin:/usr/local
 ```
 
 The `pushInsteadOf` twins and the two identity pairs (keys 3–5) were added on 2026-09-22 after the recorded verification run, which used the four-entry block; they change only which `url.*` rewrites git sees and were exercised through git's own resolution (`tests/routing-test.sh`), not re-run under Codex.
-The `GIT_CONFIG_PARAMETERS` pin was added on 2026-10-10, also after that run, and was exercised through `tests/static-block-test.sh`, not re-run under Codex.
+The `GIT_CONFIG_PARAMETERS` pin was added on 2026-10-10, also after that run; git's handling of it is exercised through `tests/static-block-test.sh`, and its transport through Codex was probed live on 0.162.1 (Status, 2026-10-10).
 
 What each part does (identical in intent to the Claude Variant A env):
 

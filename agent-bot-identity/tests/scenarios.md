@@ -309,6 +309,7 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 
 Instrument: a fresh general-purpose subagent (Claude Code 2.1.296, model sonnet) per run, no skill preloaded, the installed skill copy at `~/.claude/skills/agent-bot-identity` carrying the description under test; the prompt plus a fixed suffix asking for a plan of at most ten lines, no commands, and a final line `Skills loaded: …`.
 A Skill invocation was told apart from other tool use by the `Skills loaded:` line and by the run's tool-use count (one call for the reply alone, two when a skill was invoked).
+Fourteen runs in all: the six prompts once under the new description, two more runs each of I3 and N2 under the new description, and two control runs each of I3 and N2 under the old description.
 "Loaded" means the agent invoked the skill while planning (its tool-use count shows the Skill call); "named" means its plan said it would load `agent-bot-identity` first but it had not.
 Treatment = the new description (names the three harnesses only); control = the previous description (status clauses for each adapter), run for the two prompts whose treatment result was not clean.
 The control ran on the installed copy from 2026-09-24, whose description is byte-identical to the one at main 1ab499b but whose body is older; the post-load 'CI out of scope' observations therefore come from that older body.
