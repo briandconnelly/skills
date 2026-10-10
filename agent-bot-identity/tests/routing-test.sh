@@ -479,6 +479,16 @@ grep -q 'REDACTED' "$DIR/err" && fail "extraHeader abort printed the header valu
 [ ! -e "$DIR/calls" ] || fail "a refused command still minted a token"
 rm -rf "$R"
 
+# 42b. A key that carries userinfo must not be echoed in the refusal.
+HDRU="$DIR/global-authz-secret-key"
+printf '[http "https://me:REDACTED@github.com/"]\n\textraHeader = Authorization: basic X\n' > "$HDRU"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDRU" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "userinfo-keyed Authorization extraHeader did not abort"
+! grep -q REDACTED "$DIR/err" || fail "extraHeader abort echoed userinfo from the key: $(cat "$DIR/err")"
+rm -rf "$R"
+
 # 43. A plain (host-less) http.extraHeader with Authorization also aborts.
 HDR2="$DIR/global-authz-plain"
 printf '[http]\n\textraHeader = Authorization: bearer REDACTED\n' > "$HDR2"
@@ -574,6 +584,28 @@ printf 'machine github.com login me password REDACTED\n' > "$HOME/.netrc"
 R="$(mkrepo git@gitlab.com:me/x.git)"
 [ "$(verdict "$R")" = PERSONAL ] || fail "personal verdict was affected by .netrc"
 rm -f "$HOME/.netrc"
+rm -rf "$R"
+
+# 50. A remote whose RAW value is not GitHub but which the user's own git
+#     config rewrites onto GitHub SSH (`ghx:` -> `git@github.com:`) must be
+#     caught by the effective-URL check too; before this fix only remotes
+#     with a GitHub raw value were checked, and the push rode the personal key.
+GIT_ALIAS="$DIR/global-git-alias"
+printf '[url "git@github.com:"]\n\tinsteadOf = ghx:\n' > "$GIT_ALIAS"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add upstream ghx:acme/y.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$GIT_ALIAS" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "git-insteadOf alias onto GitHub SSH on a second remote did not abort"
+grep -q "'upstream'" "$DIR/err" || fail "git-alias abort did not name the remote: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 51. A malformed inherited GIT_CONFIG_COUNT gives the ambiguous bot verdict
+#     (case 3) but must not blind the competing-credential check.
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HDR" GIT_CONFIG_COUNT=abc "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "malformed inherited GIT_CONFIG_COUNT blinded the extraHeader refusal"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

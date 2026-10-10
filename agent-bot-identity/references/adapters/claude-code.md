@@ -137,13 +137,14 @@ Remotes on other hosts are left alone, because the credential helper is host-gat
 One shape rewrites cannot win: a rule in your own git config whose base is a remote's complete URL ties the exact pair on length, and git keeps the first-read rule, which is yours.
 So before emitting anything `bot-env` asks git, with exactly the rewrites it is about to emit, where every remote that carries a `github.com` URL resolves in each configured direction (`git remote get-url --all` for remotes with a fetch URL, `--all --push` for all), and aborts the command if any resolved URL is still a non-HTTPS `github.com` URL — the message names the remote and the URL, and the fix is to remove that rule.
 Resolved URLs on other hosts pass through untouched, so a remote that fetches from GitHub and pushes elsewhere is not an error.
-URLs typed on the command line rather than configured as remotes are outside that check: the host-wide and account-prefix pairs cover them against host-wide rules, an alias typed on the command line (`gh:acme/x.git`) has no host-wide pair, and a host-wide force-SSH rule ties the host-wide identity pair for a non-mapped account's URL, so prefer configured remotes in agent commands.
+URLs typed on the command line rather than configured as remotes are outside that check: the host-wide and account-prefix pairs cover them against host-wide rules, but a host-wide force-SSH rule ties the host-wide identity pair for a non-mapped account's URL, so prefer configured remotes in agent commands.
+An alias typed on the command line (`gh:acme/x.git`) has no host-wide pair either.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
 The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
 Wrong-host requests remain silent.
 Do not clear askpass or terminal-prompt variables globally because a personal verdict cannot safely restore caller- or IDE-provided values.
-Two more refusals, for competing HTTP credentials, are in the decision table below; the static adapters cannot refuse, so Phase 5 carries the matching probes.
+Two more refusals, for competing HTTP credentials, are in the decision table below.
 
 The decision rules and their fail direction:
 
@@ -153,7 +154,7 @@ The decision rules and their fail direction:
 | Probe fails any other way (any other exit 128 — corrupt config, unsupported repository format, malformed inherited `GIT_CONFIG_*`, dubious ownership — or git missing, broken PATH) | Bot, stderr warning | Ambiguous — git exits 128 on every fatal error, so only the not-a-repository message may resolve personal |
 | Raw local remote URLs exist, none in the org | Personal | Unambiguous, even if `insteadOf` makes an effective URL appear enrolled |
 | Any raw local remote URL or push URL is in the org | Bot | The raw remote is the repo-intrinsic signal and cannot be hidden by `insteadOf` output rewriting |
-| A remote reaches GitHub through `ssh.github.com:443` or an ssh alias (`Host gh` → `HostName github.com`) known to the ssh git would use (`GIT_SSH_COMMAND`, else `core.sshCommand`, else `GIT_SSH`, else `ssh` — git's own order) | Same as a `github.com` remote | The destination, not the literal host, decides; `bot-env` asks that ssh with `-G` and canonicalisation off, so no connection and no DNS lookup, and an alias whose GitHub-ness appears only after DNS canonicalisation is not recognised |
+| A remote reaches GitHub through `ssh.github.com:443` or an ssh alias (`Host gh` → `HostName github.com`) known to the ssh git would use (`GIT_SSH_COMMAND`, else `core.sshCommand`, else `GIT_SSH`, else `ssh` — git's own order) | Same as a `github.com` remote | The destination, not the literal host, decides; `bot-env` asks that ssh with `-G` and canonicalisation off, so OpenSSH itself opens no connection and does no DNS lookup; a `Match exec` block still runs its command on every agent command, a non-OpenSSH `core.sshCommand` (plink, tsh) may misparse `-G` or try to connect, and an alias whose GitHub-ness appears only after DNS canonicalisation is not recognised |
 | An ssh host with no dot in its name that the lookup cannot resolve (ssh missing or failing) | Command aborts, stderr names the remote and host | An alias-shaped host may be GitHub; routing it as another host would push with the personal key |
 | Git repo with zero remotes | Bot, stderr warning | Ambiguous — could be org work just initialized |
 | Any raw local remote URL or push URL is empty | Bot if otherwise undetermined, one stderr warning | Ambiguous — an empty configured value cannot establish non-org affiliation |

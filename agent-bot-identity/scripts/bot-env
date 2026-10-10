@@ -142,6 +142,7 @@ names_with_url=()
 github_raw=()
 github_target=()
 github_names=()
+all_names=()
 rc=0
 # Only stderr is captured, under a fixed locale: git exits 128 on *every*
 # fatal error, and only the "not a git repository" one is a definitive
@@ -195,6 +196,11 @@ if [ "$rc" -eq 0 ]; then
         # `remote.<name>.url` / `remote.<name>.pushurl`; the name may itself
         # contain dots, so strip exactly the final property, never a suffix.
         name="${key#remote.}"; name="${name%.*}"
+        seen=0
+        for existing in "${all_names[@]+"${all_names[@]}"}"; do
+          [ "$existing" = "$name" ] && { seen=1; break; }
+        done
+        [ "$seen" -eq 0 ] && all_names+=("$name")
         case "$key" in
           *.url)
             seen=0
@@ -348,7 +354,9 @@ done
 # So ask git, with exactly the rewrites about to be emitted, where each
 # github.com remote actually resolves, and refuse to route if any direction
 # still leaves github.com over anything but HTTPS — a push there would ride
-# the personal key under the bot's authorship. URLs typed on the command line
+# the personal key under the bot's authorship. Every configured remote is
+# checked, not only those with a GitHub raw value, because a rule in the
+# user's own config can rewrite a non-GitHub raw value onto GitHub. URLs typed on the command line
 # are outside this check; the host-wide and account pairs are their only cover.
 cfg=()
 i=0
@@ -356,7 +364,7 @@ while [ "$i" -lt "${#pair_base[@]}" ]; do
   cfg+=(-c "url.${pair_base[$i]}.insteadOf=${pair_value[$i]}" -c "url.${pair_base[$i]}.pushInsteadOf=${pair_value[$i]}")
   i=$((i + 1))
 done
-for name in "${github_names[@]+"${github_names[@]}"}"; do
+for name in "${all_names[@]+"${all_names[@]}"}"; do
   has_url=0
   for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
     [ "$existing" = "$name" ] && { has_url=1; break; }
@@ -374,7 +382,8 @@ for name in "${github_names[@]+"${github_names[@]}"}"; do
       case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
       dest="$(github_destination "$resolved")" || dest=github
       [ "$dest" = github ] || continue
-      echo "bot-env: remote '${name}' still resolves to ${resolved} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
+      resolved_shown="$(printf '%s' "$resolved" | sed 's#//\([^/@:]*\):[^/@]*@#//\1:***@#')"
+      echo "bot-env: remote '${name}' still resolves to ${resolved_shown} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3
 $effective
@@ -393,7 +402,9 @@ done
 # as written, and its URL match compares hosts case-insensitively, so the
 # URL part of the key is lower-cased here before the host test. A header
 # token is matched by prefix: `Authorization:basic x` is a valid header too.
-authz_keys="$(git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' || true)"
+# A malformed inherited GIT_CONFIG_COUNT must not blind this check, so the
+# read runs without it (the emitted env replaces it anyway).
+authz_keys="$(env -u GIT_CONFIG_COUNT git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' || true)"
 while IFS= read -r k; do
   [ -n "$k" ] || continue
   url_lc="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]')"
@@ -408,11 +419,13 @@ while IFS= read -r k; do
     https://*@github.com|https://*@github.com:443|https://*@github.com/*|https://*@github.com:443/*) ;;
     *) continue ;;
   esac
-  echo "bot-env: git config key '${k}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
+  k_shown="$(printf '%s' "$k" | sed 's#//\([^/@:]*\):[^/@]*@#//\1:***@#')"
+  echo "bot-env: git config key '${k_shown}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
   exit 1
 done <<EOF4
 $authz_keys
 EOF4
+[ -n "${HOME:-}" ] || { echo "bot-env: HOME is unset, so ~/.netrc cannot be checked for a competing credential; refusing to run" >&2; exit 1; }
 for netrc in "$HOME/.netrc" "$HOME/_netrc"; do
   [ -r "$netrc" ] || continue
   if tr -s '[:space:]' '\n' <"$netrc" | awk 'BEGIN { found = 0 } tolower($0) == "default" { found = 1 } prev == "machine" && tolower($0) == "github.com" { found = 1 } { prev = tolower($0) } END { exit !found }'; then
