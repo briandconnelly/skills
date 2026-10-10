@@ -371,7 +371,7 @@ The two owed items above (the `expires_at` prominence and the claude-code.md per
 | --- | --- | --- | --- | --- |
 | 2026-10-10 | 1 (set up) | with-skill, branch (run 1) | 7/10 | Misses: assertion 4 (`expires_at` not stated), 6 (`ZDOTDIR` detail of the snapshot rationale), 9 ("self-approval not counted" not stated as a ruleset requirement). |
 | 2026-10-10 | 1 (set up) | with-skill, branch (run 2) | 8/10 | Misses: assertion 6 (`ZDOTDIR` and the dynamic-token rationale), 10 (the API-path clause of the Verified-badge caveat). `expires_at` stated. |
-| 2026-10-10 | 1 (set up) | control, main (run 1) | 6/10 | Misses: assertions 4, 6, 10. |
+| 2026-10-10 | 1 (set up) | control, main (run 1) | 7/10 | Misses: assertions 4, 6, 10. (The scorer's verdict table has these three FAILs; its own total line read 6/10, a miscount.) |
 | 2026-10-10 | 1 (set up) | control, main (run 2) | 8/10 | Misses: assertions 4, 10. |
 | 2026-10-10 | 4 (user-level activation) | with-skill, branch (run 1) | 8/9 | Miss: assertion 6 (the trade-off against the per-project variant is not stated). |
 | 2026-10-10 | 4 (user-level activation) | with-skill, branch (run 2) | 7/9 | Misses: assertion 4 (the account-length rewrite tier and the personal-verdict unset list not named), 6. |
