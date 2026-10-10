@@ -3,6 +3,31 @@
 Core setup — App registration, token minting, the credential helper, and `as-me` (Phases 1–3) — is harness-neutral and lives in the [agent-bot-identity SKILL](../../SKILL.md).
 This reference is the Claude Code implementation of the SKILL's Phase 4 routing contract.
 
+## Status
+
+Variant A: the `CLAUDE_ENV_FILE` mechanism was verified on Claude Code 2.1.172 when Variant B shipped (2026-06-11).
+No dated live run of the Phase 5 list under Variant A is recorded, so treat Variant A's Phase 5 as unverified since then.
+
+Variant B: live checks run 2026-10-10 on Claude Code 2.1.296 against `bot-env` as merged in #201/#203 (main 1ab499b), installed at `~/.claude/bot-shims`:
+
+- Token present (`echo "${GH_TOKEN:0:4}"`) — PASS: `ghs_`
+- Helper scope (`git config --show-scope credential.helper`) — PASS: `command  !/Users/bdc/.claude/bot-shims/git-credential-bot`
+- Fetch path without SSH (`GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin HEAD`) — PASS: `1ab499b… HEAD`, exit 0
+- The ls-remote check ran in a second headless session with permissions skipped, because the default permission classifier blocked it as "Credential Exploration".
+- Push URL (`git remote get-url --all --push origin`) — PASS: `https://github.com/briandconnelly/skills.git`
+- Membership (`gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx briandconnelly/skills`) — PASS: `briandconnelly/skills`
+- Author (`git var GIT_AUTHOR_IDENT`) — PASS: `briandconnelly-agent[bot] <292553156+briandconnelly-agent[bot]@users.noreply.github.com> …`
+- Parameters pin (`echo "[${GIT_CONFIG_PARAMETERS-unset}]"`) — PASS: `[]` (set-but-empty)
+- Broken guard (`chmod -x` on `bot-env`, then `echo alive` in a new session) — PASS: the Bash call failed with `bot-env missing or not executable — refusing to run with undetermined identity`
+- Tie (a scratch `GIT_CONFIG_GLOBAL` rewriting the origin URL to SSH, then `echo alive`) — PASS: the Bash call failed with `bot-env: remote 'origin' still resolves to ssh://***@github.com/briandconnelly/skills.git after the bot rewrites … refusing to run with a github.com remote outside the bot token`
+- Exit 128 (`[broken` appended to the clone's `.git/config`, then `echo "$GIT_AUTHOR_NAME"`) — PASS: stderr `bot-env: git probe failed (exit 128: fatal: bad config line 14 in file .git/config) …; ambiguous, using the bot identity`, stdout `briandconnelly-agent[bot]`
+- Per-command re-decision and `cd` (session started in a scratch non-git directory, `cd` into the enrolled clone and a personal directory) — PASS: Claude Code 2.1.296 resets the Bash cwd after every call, so a Bash `cd` cannot flip identity.
+- Each command's identity matched its actual cwd (`[unset]` and the personal identity outside the clone, the bot in the enrolled clone), so the `CwdChanged`-clearing question does not arise for a Bash `cd` on this version.
+
+The claude-code.md bullet on `GIT_CONFIG_PARAMETERS` cites a 2026-10-09 probe; the 2026-10-10 run above re-observed `[]` under Variant B and is the in-repo record.
+
+Behavioural scenarios 1–5 (`tests/scenarios.md`) are prose planning and audit runs; they evidence what the skill teaches, not that the guard routes.
+
 ## Glue scripts
 
 Two Claude Code glue scripts sit on top of the shared scripts:
@@ -89,7 +114,9 @@ The unscoped reset also removes your personal helpers for every other HTTPS host
 
 ### Variant B — user-level guard, automatic in org repos
 
-One mechanism fact makes this variant work, now documented in the Claude Code hooks reference ("Persist environment variables") and originally verified empirically on 2.1.172: **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
+One mechanism fact makes this variant work, verified empirically on Claude Code 2.1.172 (2026-06-11) and again on 2.1.296 (2026-10-09, a `SessionStart` hook writing `export PROBE_STAMP="$(date +%s%N)"` produced a new stamp on each of four Bash calls, recorded in the planning notes rather than this repository; and 2026-10-10, the Status run above, where each command's identity followed its own working directory): **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
+The hooks reference documents only that variables written to `CLAUDE_ENV_FILE` persist into subsequent Bash commands, and that variables written by `CwdChanged` and `FileChanged` hooks are cleared at the next `CwdChanged`.
+The per-command evaluation is this skill's probe, not the reference's promise, so re-run the probe after a Claude Code upgrade that changes the hooks reference.
 So instead of static per-repo env, a user-level SessionStart hook installs a single *unevaluated* guard line, and the guard re-decides bot-vs-personal per command from the directory the command actually runs in.
 Mid-session directory changes flip identity on the next command; there is no session-level verdict to go stale, and no `CwdChanged` plumbing is needed.
 
@@ -193,7 +220,7 @@ Consequences that defeat the rc-file approach:
 - Even a correctly-placed `PATH` prepend is frozen at snapshot time, before the per-project `env` (and any marker it sets) is applied.
 
 `CLAUDE_ENV_FILE` is the supported escape hatch: Claude Code provides it to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sources the file's contents before every Bash command, *after* the snapshot — so an `export GH_TOKEN=...` there reliably reaches `gh`.
-This per-command evaluation is now documented in the Claude Code hooks reference ("Persist environment variables"); it was originally verified empirically on Claude Code 2.1.172 with an env file exporting `"$PWD"`, which matched each command's own `pwd`.
+The hooks reference documents availability of `CLAUDE_ENV_FILE` for `SessionStart`, `Setup`, `CwdChanged`, and `FileChanged` hooks; the per-command evaluation is the probe above.
 
 Only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
 
