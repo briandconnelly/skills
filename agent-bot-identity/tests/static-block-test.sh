@@ -74,6 +74,7 @@ check_block() {
   local got
   got="$(remote_urls git@github.com:acme/x.git)"
   [ "${got%% *}" = https://github.com/acme/x.git ] || fail "$label: SSH org remote git@github.com:acme/x.git: push URL expected https://github.com/acme/x.git, got ${got%% *}"
+  [ "${got##* }" = https://github.com/acme/x.git ] || fail "$label: SSH org remote git@github.com:acme/x.git: fetch URL expected https://github.com/acme/x.git, got ${got##* }"
   got="$(remote_urls https://github.com/acme/x.git)"
   [ "${got%% *}" = https://github.com/acme/x.git ] || fail "$label: HTTPS org remote https://github.com/acme/x.git: push URL expected https://github.com/acme/x.git, got ${got%% *}"
   [ "${got##* }" = https://github.com/acme/x.git ] || fail "$label: HTTPS org remote https://github.com/acme/x.git: fetch URL expected https://github.com/acme/x.git, got ${got##* }"

@@ -6,6 +6,7 @@ Date: 2026-10-10. Status: accepted. Context: issue #141, PR #180, review 2026-10
 
 Every adapter installs the bot credential helper for all of `https://github.com`, after a host-wide reset, under a bot identity.
 Issue #141's proposal to scope the helper to each mapped account is declined.
+The rule itself lives in the Phase 4 contract of [SKILL.md](../SKILL.md); this file records the decision behind it and what would reopen it.
 
 ## Why
 
