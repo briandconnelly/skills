@@ -22,7 +22,7 @@ Variant B: live checks run 2026-10-10 on Claude Code 2.1.296 against `bot-env` a
 - Tie (a scratch `GIT_CONFIG_GLOBAL` rewriting the origin URL to SSH, then `echo alive`) — PASS: the Bash call failed with `bot-env: remote 'origin' still resolves to ssh://***@github.com/briandconnelly/skills.git after the bot rewrites … refusing to run with a github.com remote outside the bot token`
 - Exit 128 (`[broken` appended to the clone's `.git/config`, then `echo "$GIT_AUTHOR_NAME"`) — PASS: stderr `bot-env: git probe failed (exit 128: fatal: bad config line 14 in file .git/config) …; ambiguous, using the bot identity`, stdout `briandconnelly-agent[bot]`
 - Per-command re-decision and `cd` (session started in a scratch non-git directory, `cd` into the enrolled clone and a personal directory) — PASS: Claude Code 2.1.296 resets the Bash cwd after every call, so a Bash `cd` cannot flip identity.
-- Each command's identity matched its actual cwd (`[unset]` and the personal identity outside the clone, the bot in the enrolled clone), so the `CwdChanged`-clearing question does not arise for a Bash `cd` on this version.
+- Each command's identity matched its actual cwd (`[unset]` and the personal identity outside the clone, the bot in the enrolled clone in the main run above), so the `CwdChanged`-clearing question does not arise for a Bash `cd` on this version.
 
 The claude-code.md bullet on `GIT_CONFIG_PARAMETERS` cites a 2026-10-09 probe; the 2026-10-10 run above re-observed `[]` under Variant B and is the in-repo record.
 
