@@ -707,5 +707,22 @@ rc=0
 grep -q 'REDACTED' "$DIR/err" && fail "rewritten-target refusal printed the header value"
 rm -rf "$R"
 
+# 59. A remote defined only in the global config is pushable by git but was
+#     never in the effective-URL check; a complete-URL insteadOf tie on it
+#     kept the personal SSH key under the bot's authorship. Affiliation stays
+#     local-only (no local remotes here → ambiguous bot verdict).
+GLOBAL_REMOTE="$DIR/global-remote-tie"
+printf '[remote "corp"]\n\turl = https://github.com/acme/corp.git\n[url "ssh://git@github.com/acme/corp.git"]\n\tinsteadOf = https://github.com/acme/corp.git\n' > "$GLOBAL_REMOTE"
+R="$(mkrepo)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "global remote left on SSH by a tie did not abort"
+grep -q "'corp'" "$DIR/err" || fail "global-remote abort did not name the remote: $(cat "$DIR/err")"
+# Without the tie the same global remote routes to HTTPS and the command runs.
+printf '[remote "corp"]\n\turl = https://github.com/acme/corp.git\n' > "$GLOBAL_REMOTE"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" 2>"$DIR/err")" || fail "global remote without a tie aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "global remote without a tie did not keep the bot verdict"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"

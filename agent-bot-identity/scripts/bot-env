@@ -319,6 +319,30 @@ else
   echo "bot-env: git probe failed (exit $rc) in $PWD; ambiguous, using the bot identity" >&2
 fi
 
+# git also honours remote.<name>.* from the global and system scopes. Those
+# never decide affiliation (a global remote says nothing about this repo),
+# but a push can still go to them, so the effective-transport check below
+# must see every remote name git knows, not only the locally configured ones.
+# A global remote with a fetch URL also gets its fetch direction checked.
+global_only=()
+while IFS= read -r gname; do
+  [ -n "$gname" ] || continue
+  seen=0
+  for existing in "${all_names[@]+"${all_names[@]}"}"; do
+    [ "$existing" = "$gname" ] && { seen=1; break; }
+  done
+  [ "$seen" -eq 0 ] && { all_names+=("$gname"); global_only+=("$gname"); }
+  if [ -n "$(git config --get "remote.${gname}.url" 2>/dev/null)" ]; then
+    seen=0
+    for existing in "${names_with_url[@]+"${names_with_url[@]}"}"; do
+      [ "$existing" = "$gname" ] && { seen=1; break; }
+    done
+    [ "$seen" -eq 0 ] && names_with_url+=("$gname")
+  fi
+done <<EOF5
+$(git remote 2>/dev/null || true)
+EOF5
+
 if [ "$verdict" != bot ]; then
   cat <<'EOF'
 unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
@@ -409,6 +433,23 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
   for direction in "" --push; do
     [ "$direction" = "" ] && [ "$has_url" -eq 0 ] && continue
     effective="$(git "${cfg[@]}" remote get-url --all $direction "$name" 2>/dev/null)" || {
+      # `git remote get-url` only knows remotes configured in this repository,
+      # but git still pushes to a global-only one; `git remote -v` lists those
+      # with the same rewrites applied, so read the direction from there.
+      is_global_only=0
+      for existing in "${global_only[@]+"${global_only[@]}"}"; do
+        [ "$existing" = "$name" ] && { is_global_only=1; break; }
+      done
+      if [ "$is_global_only" -eq 1 ] && remote_v="$(git "${cfg[@]}" remote -v 2>/dev/null)"; then
+        tag="(fetch)"
+        [ "$direction" = --push ] && tag="(push)"
+        effective="$(printf '%s\n' "$remote_v" | awk -F'\t' -v n="$name" -v t=" $tag" '
+          $1 == n && length($2) > length(t) && substr($2, length($2) - length(t) + 1) == t { print substr($2, 1, length($2) - length(t)) }')"
+        [ -n "$effective" ] && true
+      else
+        false
+      fi
+    } || {
       echo "bot-env: could not resolve the effective URL of remote '${name}' in $PWD; refusing to run with undetermined transport" >&2
       exit 1
     }
