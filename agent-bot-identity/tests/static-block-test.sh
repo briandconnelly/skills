@@ -20,7 +20,9 @@ LOG="$DIR/helpers.log"
 printf '#!/bin/sh\necho personal >>"%s"\necho username=p\necho password=p\n' "$LOG" > "$DIR/personal-helper"
 printf '#!/bin/sh\necho bot >>"%s"\necho username=b\necho password=b\n' "$LOG" > "$DIR/git-credential-bot"
 chmod +x "$DIR/personal-helper" "$DIR/git-credential-bot"
-printf '[credential]\n\thelper = !%s\n' "$DIR/personal-helper" > "$DIR/global"
+# The global config holds a personal credential helper and the common force-SSH
+# rule in both directions, which the block's push-side entries must defeat.
+printf '[credential]\n\thelper = !%s\n[url "ssh://git@github.com/"]\n\tinsteadOf = https://github.com/\n\tpushInsteadOf = https://github.com/\n' "$DIR/personal-helper" > "$DIR/global"
 export GIT_CONFIG_GLOBAL="$DIR/global" GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/usr/bin/false
 fail() { echo "FAIL: $*"; FAIL=1; }
 
@@ -62,9 +64,24 @@ check_block() {
   # real git-credential-bot stays silent there (selflocate-test.sh case 8).
   [ "$(helpers_for https://gitlab.com/me/x.git)" = "bot " ] || fail "$label: the helper reset is not unscoped (all hosts): $(helpers_for https://gitlab.com/me/x.git)"
   [ "$(env "${envs[@]}" git config commit.gpgsign)" = false ] || fail "$label: commit.gpgsign is not false"
-  local r; r="$(mktemp -d "$DIR/repo.XXXXXX")"; git -C "$r" init -q; git -C "$r" remote add origin git@github.com:acme/x.git
-  [ "$(cd "$r" && env "${envs[@]}" git remote get-url --push origin)" = https://github.com/acme/x.git ] || fail "$label: canonical org SSH remote not rewritten for push"
-  rm -rf "$r"
+  # One scratch repo per remote shape; the block's env is applied to every git call.
+  remote_urls() {  # remote_urls <remote-url> -> "<push url> <fetch url>"
+    local r; r="$(mktemp -d "$DIR/repo.XXXXXX")"
+    git -C "$r" init -q; git -C "$r" remote add origin "$1"
+    (cd "$r" && printf '%s %s' "$(env "${envs[@]}" git remote get-url --push origin)" "$(env "${envs[@]}" git ls-remote --get-url origin)")
+    rm -rf "$r"
+  }
+  local got
+  got="$(remote_urls git@github.com:acme/x.git)"
+  [ "${got%% *}" = https://github.com/acme/x.git ] || fail "$label: SSH org remote git@github.com:acme/x.git: push URL expected https://github.com/acme/x.git, got ${got%% *}"
+  got="$(remote_urls https://github.com/acme/x.git)"
+  [ "${got%% *}" = https://github.com/acme/x.git ] || fail "$label: HTTPS org remote https://github.com/acme/x.git: push URL expected https://github.com/acme/x.git, got ${got%% *}"
+  [ "${got##* }" = https://github.com/acme/x.git ] || fail "$label: HTTPS org remote https://github.com/acme/x.git: fetch URL expected https://github.com/acme/x.git, got ${got##* }"
+  # Documentation anchor, not a protection: the static blocks are org-scoped by
+  # construction (claude-code.md: "Variant A's pairs are org-scoped by construction"),
+  # so the user's global force-SSH rule still rewrites a non-org github.com remote.
+  got="$(remote_urls https://github.com/other/x.git)"
+  [ "${got%% *}" = ssh://git@github.com/other/x.git ] || fail "$label: non-org HTTPS remote https://github.com/other/x.git: push URL expected ssh://git@github.com/other/x.git (global rule, org-scoped blocks), got ${got%% *}"
 }
 # Write each block to a file and redirect it in: a pipeline would run
 # check_block in a subshell and FAIL=1 would never reach this shell.
