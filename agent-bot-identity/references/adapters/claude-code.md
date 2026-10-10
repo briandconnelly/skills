@@ -85,6 +85,7 @@ If this project's repos belong to an account other than `bot-token`'s default in
 
 Static also means the env follows the session, not the directory: commands that leave the project mid-session (a scratch clone, an unrelated repo) still carry the bot author env, so commits there are bot-attributed until the work moves to its own session.
 That is the recoverable direction (amendable, and the org-scoped rewrites do not apply elsewhere, but the host-wide helper still answers every github.com HTTPS request there and fails at the installation boundary, see [decisions/001](../../decisions/001-credential-helper-scope.md)), but know it is Variant A behavior; Variant B re-decides per command instead.
+The unscoped reset also removes your personal helpers for every other HTTPS host inside that session while the bot helper stays silent there, so an authenticated non-GitHub HTTPS fetch (a GitLab clone, for instance) fails as well until you return to a personal terminal.
 
 ### Variant B — user-level guard, automatic in org repos
 

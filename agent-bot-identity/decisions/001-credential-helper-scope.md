@@ -1,10 +1,10 @@
-# 001 — the credential helper stays host-wide in every adapter
+# 001 — the bot credential helper answers all of github.com in every adapter
 
 Date: 2026-10-10. Status: accepted. Context: issue #141, PR #180, review 2026-10-09 finding 7, plan critique 2026-10-09.
 
 ## Decision
 
-Every adapter installs the bot credential helper for all of `https://github.com`, after a host-wide reset, under a bot identity.
+Every adapter installs the bot credential helper for all of `https://github.com`, after an unscoped reset that empties the helper list for every host, under a bot identity.
 Issue #141's proposal to scope the helper to each mapped account is declined.
 The rule itself lives in the Phase 4 contract of [SKILL.md](../SKILL.md); this file records the decision behind it and what would reopen it.
 
@@ -21,6 +21,7 @@ The same holds for the OpenCode adapter, whose hook fires per shell command.
 ## Consequences
 
 Inside an agent command in a mapped repository, every github.com HTTPS request — including a dependency install from another organisation's private repository — is answered with the bot credential and fails outside the installation list; the workaround is a personal terminal.
+The reset is unscoped, so inside such a command no personal helper remains for any other HTTPS host either, and the bot helper stays silent there; an authenticated GitLab or Bitbucket HTTPS operation fails in the same way, with the same workaround.
 Users who launch MCP servers or installers from private repositories under Claude Code should prefer Variant B over Variant A.
 #142's current-code diagnosis is wrong: `bot-token` has no cwd-based installation lookup; its uncontrolled-cwd point is kept as a hazard note only.
 
