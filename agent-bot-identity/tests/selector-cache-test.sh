@@ -22,6 +22,10 @@ export HOME="$DIR/home"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 [ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# bot-env resolves ssh hosts through GIT_SSH_COMMAND or GIT_SSH when they are
+# set, which would bypass the shim below; the precedence cases set them per
+# command themselves.
+unset GIT_SSH_COMMAND GIT_SSH
 # OpenSSH reads its default user config from the passwd home directory, not
 # $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
 # decide alias cases. This shim points ssh at the scratch config unless the

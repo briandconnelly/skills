@@ -392,7 +392,22 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
       [ -n "$resolved" ] || continue
       # Only github.com destinations are held to HTTPS; a remote that pushes
       # to another host is that host's business and the helper ignores it.
-      case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
+      case "$resolved" in
+        [Hh][Tt][Tt][Pp][Ss]://*)
+          # An https destination is only safe when the bot helper is what
+          # authenticates it: userinfo embedded in the URL (a user insteadOf
+          # rule can put it there) would be used by git instead of the helper.
+          resolved_auth="${resolved#*://}"
+          resolved_auth="${resolved_auth%%/*}"
+          case "$resolved_auth" in
+            *@*)
+              [ "$(url_host_lc "$resolved")" = github.com ] || continue
+              resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
+              echo "bot-env: remote '${name}' resolves to ${resolved_shown}, an https github.com URL with embedded credentials; git would authenticate with them instead of the bot token. Remove the rule or the credentials; refusing to run with a competing credential" >&2
+              exit 1 ;;
+          esac
+          continue ;;
+      esac
       dest="$(github_destination "$resolved")" || dest=github
       [ "$dest" = github ] || continue
       resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"

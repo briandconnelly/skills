@@ -32,6 +32,10 @@ export HOME="$DIR/home"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 [ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# bot-env resolves ssh hosts through GIT_SSH_COMMAND or GIT_SSH when they are
+# set, which would bypass the shim below; the precedence cases set them per
+# command themselves.
+unset GIT_SSH_COMMAND GIT_SSH
 # OpenSSH reads its default user config from the passwd home directory, not
 # $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
 # decide alias cases. This shim points ssh at the scratch config unless the
@@ -660,6 +664,25 @@ rc=0
 grep -q '\*\*\*@github.com:acme/x.git' "$DIR/err" || fail "scp-form abort did not mask the userinfo: $(cat "$DIR/err")"
 grep -q 'REDACTED' "$DIR/err" && fail "scp-form abort printed the userinfo"
 rm -rf "$R"
+
+# 56. A user rule that rewrites a non-GitHub raw remote onto a credentialed
+#     https github.com URL must be refused: git would use the URL's userinfo,
+#     never the bot helper. The raw-remote exact pair cannot help here because
+#     the raw value is not GitHub.
+CRED_RULE="$DIR/global-cred-rule"
+printf '[url "https://human:REDACTED@github.com/acme/x.git"]\n\tinsteadOf = mirror:acme/x.git\n' > "$CRED_RULE"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add mirror mirror:acme/x.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$CRED_RULE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "credentialed https rewrite of a non-GitHub remote did not abort"
+grep -q "'mirror'" "$DIR/err" || fail "credentialed-https abort did not name the remote: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "credentialed-https abort printed the credential"
+# A raw credentialed remote is still routed through its exact pair, not refused.
+R2="$(mkrepo 'https://REDACTED@github.com/acme/x.git')"
+[ "$(verdict "$R2")" = BOT ] || fail "raw credentialed https remote no longer routes: $(cat "$DIR/err")"
+[ "$(effective "$R2" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "raw credentialed https remote not rewritten to the clean target: $(effective "$R2" origin)"
+rm -rf "$R" "$R2"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"
