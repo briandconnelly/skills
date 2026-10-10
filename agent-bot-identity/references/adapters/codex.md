@@ -42,7 +42,7 @@ chmod +x ~/.config/acme-agent/bin/codex-bot
 ```
 
 Start work with `/Users/<you>/.config/acme-agent/bin/codex-bot sandbox ...` or `/Users/<you>/.config/acme-agent/bin/codex-bot exec ...`.
-Do not invoke bare `codex` for bot work, and do not add the install directory to personal `PATH`.
+Do not invoke bare `codex` for bot work, and keep the install directory off your personal `PATH` (SKILL Phase 3 Rules).
 
 **Read this first — the fail direction is weaker than Claude Variant A.**
 Because activation is a per-invocation launcher, **invoking bare `codex` silently runs the personal identity** — commits attribute to the human, `gh` uses the personal login.
