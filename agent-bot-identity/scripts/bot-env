@@ -500,10 +500,17 @@ done
 # so refuse to route and name what to remove — never the value.
 # Whether a key's URL scope applies is git's call (wildcard hosts, username
 # scopes, ports), so each Authorization-bearing scope is tested with a probe
-# variable under the same URL section against every target this command
-# routes to: the host root, every raw GitHub remote's target, and every
-# effective https github.com URL the rewrites produce. A malformed inherited GIT_CONFIG_COUNT must not
-# blind this.
+# variable under the same URL section. Any command may name any github.com
+# URL (git push https://github.com/other/x.git), so the first target is the
+# scope's own path on github.com, with the scope's userinfo (SKILL.md Phase 5
+# is the probe's home); every raw GitHub remote's target and every effective
+# https github.com URL the rewrites produce are tested as well, a stricter
+# superset kept for targets a rewrite reaches.
+# The probe variable travels in the GIT_CONFIG_COUNT/KEY_0/VALUE_0 env form,
+# not `git -c`, which splits at the first `=` and would skip a scope whose
+# path contains one; setting the count explicitly also replaces any inherited
+# value (GIT_CONFIG_PARAMETERS was unset at the top). A probe that errors
+# (neither a match nor "no match") refuses rather than passes.
 authz_targets=('https://github.com/')
 i=0
 while [ "$i" -lt "${#github_target[@]}" ]; do
@@ -519,17 +526,32 @@ while IFS= read -r k; do
   scope="${k#http.}"
   scope="${scope%.extraheader}"
   scope="${scope%.extraHeader}"
+  k_shown="$(printf '%s' "$k" | sed 's#//[^/@]*@#//***@#')"
   applies=""
   if [ "$scope" = extraheader ] || [ "$scope" = extraHeader ] || [ -z "$scope" ]; then
     applies=yes
   else
+    s_auth="${scope#*://}"
+    s_auth="${s_auth%%/*}"
+    s_user="${s_auth%@*}"
+    if [ "$s_user" = "$s_auth" ]; then s_user=""; else s_user="${s_user}@"; fi
+    s_path="${scope#*://}"
+    s_path="${s_path#*/}"
+    targets=("https://${s_user}github.com/${s_path}")
     for t in "${authz_targets[@]}"; do
-      probe="$(env -u GIT_CONFIG_COUNT git -c "http.${scope}.botenvprobe=yes" config --get-urlmatch http.botenvprobe "$t" 2>/dev/null)" || probe=""
-      case "$probe" in yes) applies=yes; break ;; esac
+      targets+=("$t")
+    done
+    for t in "${targets[@]}"; do
+      prc=0
+      probe="$(env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.${scope}.botenvprobe" GIT_CONFIG_VALUE_0=yes git config --get-urlmatch http.botenvprobe "$t" 2>/dev/null)" || prc=$?
+      case "$prc" in
+        0) if [ "$probe" = yes ]; then applies=yes; break; fi ;;
+        1) ;;
+        *) echo "bot-env: git could not test whether the Authorization header in config key '${k_shown}' applies to github.com; refusing to run with a possible competing credential" >&2; exit 1 ;;
+      esac
     done
   fi
   [ -n "$applies" ] || continue
-  k_shown="$(printf '%s' "$k" | sed 's#//[^/@]*@#//***@#')"
   echo "bot-env: git config key '${k_shown}' sets an Authorization header for github.com; a push would authenticate with it instead of the bot token. Remove the rule; refusing to run with a competing credential" >&2
   exit 1
 done <<EOF4
