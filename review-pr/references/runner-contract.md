@@ -32,8 +32,10 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
   The review lens instructs these reads, and each runner-backed hostile fixture checks that base-policy sentinels reach the child; individual review runs do not verify that every listed file was read.
 - RC9: The checkout must fail before review when the policy manifest exceeds `REVIEW_PR_MAX_POLICY_FILES`, which defaults to 40, rather than silently omitting policy or exhausting the child turn budget.
 - RC10: A runner reference must document its command capability and whether filesystem reads are technically confined, while the review lens must limit commands to read-only inspection and forbid builds, tests, and other execution of repository code.
-- RC11: A base policy file, passive resource, or adapter policy root that is a symlink must name, by its link text resolved against the base tree alone, a regular file or a directory inside that tree that is reached only through directories and contains no symlink or submodule.
-  The checkout restores such a link as its target's base content at the link path and reports PR changes under the target as policy changes, and it must fail before policy restoration when any base policy symlink does not qualify.
+- RC11: A base policy file, passive resource, or adapter policy root that is a symlink qualifies only when its exact link text, resolved against the base tree alone, names a regular file or a directory inside that tree.
+  The target must be reached only through directories, and a directory target must contain no symlink or submodule.
+  The checkout must fail before policy restoration when any base policy symlink does not qualify.
+  It restores a qualifying link as its target's base content at the link path and reports PR changes under the target as policy changes.
 
 ## Normalized result envelope
 

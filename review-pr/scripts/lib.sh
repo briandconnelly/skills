@@ -105,9 +105,14 @@ policy_link_selected() {
 # Implements RC11's resolution: the link text is resolved lexically against TREEISH, never through a working
 # tree, so a head checkout cannot supply the target. On refusal it prints the reason and returns 1.
 policy_link_target() {
-  local dir="$1" tree="$2" link="$3" text part prefix="" mode
+  local dir="$1" tree="$2" link="$3" text size part prefix="" mode modes
   local -a comps=() parts=()
-  text="$(git -C "$dir" cat-file blob "$4")" || { echo "link text is unreadable"; return 1; }
+  # The trailing sentinel keeps trailing newlines that command substitution would strip.
+  text="$(git -C "$dir" cat-file blob "$4" && printf x)" || { echo "link text is unreadable"; return 1; }
+  text="${text%x}"
+  size="$(git -C "$dir" cat-file -s "$4")" || { echo "link text is unreadable"; return 1; }
+  # Bash drops NUL bytes from command substitution, so a byte count below the blob size means one.
+  [ "$(LC_ALL=C; printf '%s' "${#text}")" = "$size" ] || { echo "link text contains a NUL byte"; return 1; }
   case "$text" in
     '') echo "link text is empty"; return 1;;
     /*) echo "link text is absolute"; return 1;;
@@ -137,7 +142,11 @@ policy_link_target() {
     100644|100755) ;;
     040000)
       # A symlink or submodule inside the target would put content outside the base tree at the link path.
-      if git -C "$dir" --literal-pathspecs ls-tree -r --format='%(objectmode)' "$tree" -- "$prefix/" | grep -qE '^(120000|160000)$'; then
+      # Capture the listing before matching: under pipefail, `ls-tree | grep -q` fails open when grep's early
+      # exit gives a large listing SIGPIPE.
+      modes="$(git -C "$dir" --literal-pathspecs ls-tree -r --format='%(objectmode)' "$tree" -- "$prefix/")" \
+        || { echo "target directory cannot be listed: $prefix"; return 1; }
+      if grep -qE '^(120000|160000)$' <<<"$modes"; then
         echo "target directory contains a symlink or submodule: $prefix"; return 1
       fi;;
     '') echo "target does not exist: $prefix"; return 1;;
