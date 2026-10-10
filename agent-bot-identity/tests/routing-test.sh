@@ -717,11 +717,25 @@ R="$(mkrepo)"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
 [ "$rc" -ne 0 ] || fail "global remote left on SSH by a tie did not abort"
-grep -q "'corp'" "$DIR/err" || fail "global-remote abort did not name the remote: $(cat "$DIR/err")"
+grep -q "remote 'corp' still resolves to" "$DIR/err" || fail "global-remote abort was not the still-resolves refusal naming the remote: $(cat "$DIR/err")"
 # Without the tie the same global remote routes to HTTPS and the command runs.
 printf '[remote "corp"]\n\turl = https://github.com/acme/corp.git\n' > "$GLOBAL_REMOTE"
 out="$(cd "$R" && GIT_CONFIG_GLOBAL="$GLOBAL_REMOTE" "$DIR/bot-env" 2>"$DIR/err")" || fail "global remote without a tie aborted: $(cat "$DIR/err")"
 echo "$out" | grep -q '^export GH_TOKEN=' || fail "global remote without a tie did not keep the bot verdict"
+rm -rf "$R"
+
+# 60. A global remote section with no url or pushurl (prune = true) has no
+#     destination; it must neither abort bot-env nor disturb a local origin.
+URLLESS="$DIR/global-urlless"
+printf '[remote "origin"]\n\tprune = true\n' > "$URLLESS"
+R="$(mkrepo)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$URLLESS" "$DIR/bot-env" 2>"$DIR/err")" || fail "URL-less global remote section aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "URL-less global remote section lost the bot verdict"
+rm -rf "$R"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$URLLESS" "$DIR/bot-env" 2>"$DIR/err")" || fail "URL-less global section beside a local origin aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "URL-less global section beside a local origin lost the bot verdict"
+[ "$(effective "$R" origin "$URLLESS")" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "local origin not rewritten beside a URL-less global section: $(effective "$R" origin "$URLLESS")"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

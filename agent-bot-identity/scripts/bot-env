@@ -169,6 +169,7 @@ matched_orgs=""
 # Every remote name that carries a fetch URL, on any host: the effective-URL
 # check below asks git for the fetch direction only where one is configured,
 # because git answers a push-only remote's fetch URL with the remote's name.
+# Names known only to the global config are appended later with the same rule.
 names_with_url=()
 # Raw github.com remote values seen in this repo (deduplicated), their HTTPS
 # targets, and the remote names that carry them. On a bot verdict every raw
@@ -327,6 +328,9 @@ fi
 global_only=()
 while IFS= read -r gname; do
   [ -n "$gname" ] || continue
+  # A section with neither url nor pushurl (a global `prune = true`, say) has
+  # no destination to push to, and `git remote -v` prints nothing for it.
+  [ -n "$(git config --get-all "remote.${gname}.url" 2>/dev/null)$(git config --get-all "remote.${gname}.pushurl" 2>/dev/null)" ] || continue
   seen=0
   for existing in "${all_names[@]+"${all_names[@]}"}"; do
     [ "$existing" = "$gname" ] && { seen=1; break; }
@@ -441,10 +445,12 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
         [ "$existing" = "$name" ] && { is_global_only=1; break; }
       done
       if [ "$is_global_only" -eq 1 ] && remote_v="$(git "${cfg[@]}" remote -v 2>/dev/null)"; then
-        tag="(fetch)"
-        [ "$direction" = --push ] && tag="(push)"
-        effective="$(printf '%s\n' "$remote_v" | awk -F'\t' -v n="$name" -v t=" $tag" '
-          $1 == n && length($2) > length(t) && substr($2, length($2) - length(t) + 1) == t { print substr($2, 1, length($2) - length(t)) }')"
+        tag="fetch"
+        [ "$direction" = --push ] && tag="push"
+        # A partial-clone remote prints "url (fetch) [blob:none]".
+        effective="$(printf '%s\n' "$remote_v" | awk -F'\t' -v n="$name" -v t="$tag" '
+          BEGIN { re = " \\(" t "\\)( \\[.*\\])?$" }
+          $1 == n && $2 ~ re { sub(re, "", $2); print $2 }')"
         [ -n "$effective" ] && true
       else
         false
