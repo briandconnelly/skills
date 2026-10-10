@@ -10,7 +10,7 @@ An adapter must define these functions after it is sourced:
 
 - `adapter_check` verifies the runner executable and every runner-specific prerequisite.
 - `adapter_is_policy_path PATH` returns success when `PATH` is reviewer policy that must come from the base commit.
-- `adapter_context_paths DIR TREEISH` emits the NUL-separated restored passive policy paths that must be supplied to the reviewer.
+- `adapter_context_paths DIR TREEISH` emits the NUL-separated restored passive policy paths that must be supplied to the reviewer, selected from `restored_policy_paths DIR TREEISH` so a symlinked policy path contributes its target's files (RC11).
 - `adapter_build_command PROMPT LEVEL BUDGET TURNS EVIDENCE_DIR` sets the `ADAPTER_COMMAND` array to the complete child command.
 - `adapter_normalize RAW_PATH EXIT OUTPUT_PATH` converts native output into the normalized result envelope below.
 
@@ -32,7 +32,8 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
   The review lens instructs these reads, and each runner-backed hostile fixture checks that base-policy sentinels reach the child; individual review runs do not verify that every listed file was read.
 - RC9: The checkout must fail before review when the policy manifest exceeds `REVIEW_PR_MAX_POLICY_FILES`, which defaults to 40, rather than silently omitting policy or exhausting the child turn budget.
 - RC10: A runner reference must document its command capability and whether filesystem reads are technically confined, while the review lens must limit commands to read-only inspection and forbid builds, tests, and other execution of repository code.
-- RC11: Base policy files, passive resources, and adapter policy roots must not be symlinks; the checkout must fail before policy restoration when any are found.
+- RC11: A base policy file, passive resource, or adapter policy root that is a symlink must name, by its link text resolved against the base tree alone, a regular file or a directory inside that tree that is reached only through directories and contains no symlink or submodule.
+  The checkout restores such a link as its target's base content at the link path and reports PR changes under the target as policy changes, and it must fail before policy restoration when any base policy symlink does not qualify.
 
 ## Normalized result envelope
 

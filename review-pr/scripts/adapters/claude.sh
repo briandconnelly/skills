@@ -24,7 +24,7 @@ adapter_context_paths() {
     if [[ "$p" =~ (^|/)(CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md)$|^\.claude/(skills/.*/SKILL\.md|agents/.*\.md)$ ]]; then
       printf '%s\0' "$p"
     fi
-  done < <(policy_paths "$1" "$2")
+  done < <(restored_policy_paths "$1" "$2")
 }
 
 adapter_build_command() {

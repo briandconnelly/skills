@@ -20,7 +20,7 @@ adapter_is_policy_path() {
 
 adapter_context_paths() {
   local paths=() p peer q shadowed
-  while IFS= read -r -d '' p; do paths+=("$p"); done < <(policy_paths "$1" "$2")
+  while IFS= read -r -d '' p; do paths+=("$p"); done < <(restored_policy_paths "$1" "$2")
   [ "${#paths[@]}" -gt 0 ] || return 0
   for p in "${paths[@]}"; do
     case "$p" in
