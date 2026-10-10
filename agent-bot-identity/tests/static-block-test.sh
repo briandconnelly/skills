@@ -2,9 +2,10 @@
 # The static adapter env blocks (Claude Variant A JSON, Codex profile TOML)
 # are documentation, so nothing else checks them. This extracts both, loads
 # them as command-scope config, and asks git — never the text — which
-# credential helpers actually run for a mapped and an unmapped github.com
-# URL, what the push URL of an org SSH remote becomes, and whether signing
-# is off. Requires python3 >= 3.11 (tomllib).
+# credential helpers actually run for a mapped github.com URL (also with a
+# hostile inherited GIT_CONFIG_PARAMETERS), an unmapped one, and a non-GitHub
+# one (the reset is host-wide), what the push URL of an org SSH remote
+# becomes, and whether signing is off. Requires python3 >= 3.11 (tomllib).
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX GIT_CONFIG_PARAMETERS
 FAIL=0
@@ -50,16 +51,17 @@ check_block() {
   done
   local n keys
   n="$(printf '%s\n' "${envs[@]}" | sed -n 's/^GIT_CONFIG_COUNT=//p')"
-  keys="$(printf '%s\n' "${envs[@]}" | grep -c '^GIT_CONFIG_KEY_')"
+  keys="$(printf '%s\n' "${envs[@]}" | grep -c '^GIT_CONFIG_KEY_' || true)"
   [ "$n" = "$keys" ] || fail "$label: GIT_CONFIG_COUNT=$n but $keys keys"
   printf '%s\n' "${envs[@]}" | grep -q '^GIT_CONFIG_PARAMETERS=$' || fail "$label: GIT_CONFIG_PARAMETERS is not pinned empty"
+  [ "$(GIT_CONFIG_PARAMETERS="'credential.helper='" helpers_for https://github.com/acme/x.git)" = "bot " ] || fail "$label: an inherited GIT_CONFIG_PARAMETERS still resets the helper (the pin is not applied)"
   [ "$(helpers_for https://github.com/acme/x.git)" = "bot " ] || fail "$label: mapped URL ran helpers: $(helpers_for https://github.com/acme/x.git)"
   [ "$(helpers_for https://github.com/other/x.git)" = "bot " ] || fail "$label: unmapped github.com URL did not run only the bot helper (decisions/001): $(helpers_for https://github.com/other/x.git)"
   # The reset is host-wide, so another host runs the bot helper stub too; the
   # real git-credential-bot stays silent there (selflocate-test.sh case 8).
   [ "$(helpers_for https://gitlab.com/me/x.git)" = "bot " ] || fail "$label: the helper reset is not host-wide: $(helpers_for https://gitlab.com/me/x.git)"
   [ "$(env "${envs[@]}" git config commit.gpgsign)" = false ] || fail "$label: commit.gpgsign is not false"
-  local r; r="$(mktemp -d)"; git -C "$r" init -q; git -C "$r" remote add origin git@github.com:acme/x.git
+  local r; r="$(mktemp -d "$DIR/repo.XXXXXX")"; git -C "$r" init -q; git -C "$r" remote add origin git@github.com:acme/x.git
   [ "$(cd "$r" && env "${envs[@]}" git remote get-url --push origin)" = https://github.com/acme/x.git ] || fail "$label: canonical org SSH remote not rewritten for push"
   rm -rf "$r"
 }
