@@ -1,11 +1,11 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral; adapters — Claude Code (tested), Codex CLI (Variant A partially verified, GitHub write path not exercised; Variant B pending), OpenCode (Variant A tested end-to-end including the GitHub write path; Variant B is the same artifact relocated).
+description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral, with adapters for Claude Code, Codex CLI, and OpenCode.
 ---
 
 # Agent Bot Identity
 
-Core is harness-neutral; adapters ship for Claude Code (tested), Codex CLI — Variant A partially verified with its GitHub write path not exercised and a documented `as-me` limitation, Variant B pending — and OpenCode (Variant A tested end-to-end including the GitHub write path; Variant B is the same plugin file installed at user level) — see Phase 4.
+Core is harness-neutral; adapters ship for Claude Code, Codex CLI, and OpenCode, each with a dated verification record in its adapter doc's Status section (the Phase 4 table points at them).
 
 ## Overview
 
@@ -142,9 +142,9 @@ Do not port an adapter mechanically: Claude Code's per-command env-file evaluati
 
 Implemented adapters:
 
-- [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision). Tested.
-- [Codex CLI](references/adapters/codex.md) — Variant A partially verified, with the GitHub write path not exercised and a documented `as-me` limitation; Variant B pending. Core routing probes were run against Codex 0.143.0, with activation behavior re-probed on 0.144.1.
-- [OpenCode](references/adapters/opencode.md) — Variant A tested end-to-end including the GitHub write path (versions and dates in the adapter's Status); Variant B is the same plugin file installed at user level, and its global-install location is untested live.
+- [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision).
+- [Codex CLI](references/adapters/codex.md) — Variant A through the `codex-bot` launcher; Variant B pending.
+- [OpenCode](references/adapters/opencode.md) — one plugin file; Variant A per repo, Variant B at user level.
 
 | Capability | Claude Code | Codex CLI | OpenCode |
 | --- | --- | --- | --- |
@@ -155,7 +155,7 @@ Implemented adapters:
 | Automatic user-level routing | ✅ Variant B | ❌ pending | ✅ global plugin dir |
 | `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) | ✅ |
 | Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) | ✅ delegated to `bot-env` |
-| Verification status | Scenarios 1–5 tested | Partially verified; GitHub write path not exercised; scenarios C1–C2 tested | Variant A tested including write path; Variant B location untested |
+| Verification record | [claude-code.md Status](references/adapters/claude-code.md#status) | [codex.md Status](references/adapters/codex.md#status) | [opencode.md Status](references/adapters/opencode.md#status) |
 
 ("Fail-closed" is scoped to routing, never containment.)
 

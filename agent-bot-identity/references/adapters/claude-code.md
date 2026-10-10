@@ -3,6 +3,36 @@
 Core setup — App registration, token minting, the credential helper, and `as-me` (Phases 1–3) — is harness-neutral and lives in the [agent-bot-identity SKILL](../../SKILL.md).
 This reference is the Claude Code implementation of the SKILL's Phase 4 routing contract.
 
+## Status
+
+Variant A: the `CLAUDE_ENV_FILE` mechanism was verified on Claude Code 2.1.172 when Variant B shipped (2026-06-11).
+No dated live run of the Phase 5 list under Variant A is recorded, so treat Variant A's Phase 5 as unverified since then.
+
+Variant B: live checks run 2026-10-10 on Claude Code 2.1.296 against `bot-env` as merged in #201/#203 (main 1ab499b), installed at `~/.claude/bot-shims`:
+
+- Token present (`echo "${GH_TOKEN:0:4}"`) — PASS: `ghs_`
+- Helper scope (`git config --show-scope credential.helper`) — PASS: `command  !/Users/bdc/.claude/bot-shims/git-credential-bot`
+- Fetch path without SSH (`GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin HEAD`) — PASS: `1ab499b… HEAD`, exit 0
+  The ls-remote check ran in a second headless session with permissions skipped, because the default permission classifier blocked it as "Credential Exploration".
+- Push URL (`git remote get-url --all --push origin`) — PASS: `https://github.com/briandconnelly/skills.git`
+- Membership (`gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx briandconnelly/skills`) — PASS: `briandconnelly/skills`
+- Author (`git var GIT_AUTHOR_IDENT`) — PASS: `briandconnelly-agent[bot] <292553156+briandconnelly-agent[bot]@users.noreply.github.com> …`
+- Parameters pin (`echo "[${GIT_CONFIG_PARAMETERS-unset}]"`) — PASS: `[]` (set-but-empty)
+- Broken guard (`chmod -x` on `bot-env`, then `echo alive` in a new session) — PASS: the Bash call failed with `bot-env missing or not executable — refusing to run with undetermined identity`
+- Tie (a scratch `GIT_CONFIG_GLOBAL` rewriting the origin URL to SSH, then `echo alive`) — PASS: the Bash call failed with `bot-env: remote 'origin' still resolves to ssh://***@github.com/briandconnelly/skills.git after the bot rewrites … refusing to run with a github.com remote outside the bot token`
+- Exit 128 (`[broken` appended to the clone's `.git/config`, then `echo "$GIT_AUTHOR_NAME"`) — PASS: stderr `bot-env: git probe failed (exit 128: fatal: bad config line 14 in file .git/config) …; ambiguous, using the bot identity`, stdout `briandconnelly-agent[bot]`
+- Mid-session flip — PASS: a session started in a scratch parent directory (not a repository) ran `cd skills-clone && pwd`, the cwd persisted, and the next command showed `ghs_`, the bot author and the bot helper at `command` scope; `cd ../personal && pwd` persisted likewise and the next command showed `[unset]` and the personal author.
+  The guard line written by the `SessionStart` hook survived both cwd changes, so `CwdChanged` clearing did not remove it (this user has no `CwdChanged` hook).
+- `cd` scope on 2.1.296: a `cd` that stays inside the session's directory tree persists to the next Bash call.
+  A `cd` to a directory outside that tree is reset by the tool after the call (observed as `Shell cwd was reset to <session dir>`), so such a `cd` cannot flip identity and the next command runs where the session started.
+- Compound-command gap — reproduced: `cd ../skills-clone && pwd; echo "[${GH_TOKEN:0:4}]"; git var GIT_AUTHOR_IDENT` issued from the personal directory printed the clone path with `[]` and the personal author, which is the documented gap (the verdict binds to the directory a command starts in).
+- Variant A settings-env transport — PASS (2026-10-10, 2.1.296): a scratch non-repository project with `.claude/settings.local.json` `env` `{"PROBE_EMPTY": "", "PROBE_FULL": "full"}` gave `empty=[] set=yes full=[full]` in a Bash call.
+  An empty settings value therefore arrives set-but-empty, so the Variant A block's `"GIT_CONFIG_PARAMETERS": ""` pin is delivered by the settings transport itself.
+  The Variant B `[]` above comes from `bot-env`'s own export and is not evidence for this.
+- Not run on 2026-10-10: the push `--dry-run` and the two competing-credential probes from Phase 5, a test commit, `as-me` under the guard, branch push and `gh pr create`, `gh pr checks`, the negative boundary check, and from the list below the non-org helper-scope check, zero-setup enrollment, the mixed-case and force-SSH regressions.
+
+Behavioural scenarios 1–5 (`tests/scenarios.md`) are prose planning and audit runs; they evidence what the skill teaches, not that the guard routes.
+
 ## Glue scripts
 
 Two Claude Code glue scripts sit on top of the shared scripts:
@@ -73,7 +103,7 @@ What each part does:
   Variant A's pairs are org-scoped by construction, so a non-org `github.com` remote in the same repo (a fork's `upstream`) stays on SSH and would push with the personal key; Variant B's `bot-env` routes every `github.com` remote instead.
   Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url origin git@github.com:acme/<repo>.git`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
   The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
-- `GIT_CONFIG_PARAMETERS` pinned empty, as the Phase 4 contract requires; Claude Code 2.1.296 exports an empty settings `env` value into Bash commands as set-but-empty (verified 2026-10-09).
+- `GIT_CONFIG_PARAMETERS` pinned empty, as the Phase 4 contract requires; Claude Code 2.1.296 exports an empty settings `env` value into Bash commands as set-but-empty (verified 2026-10-09 and again 2026-10-10; see Status).
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
 - The `SessionStart` hook injects `GH_TOKEN` for `gh` (the adapter's `session-env.sh`).
   The first time it runs, Claude Code prompts to approve the hook; approve it.
@@ -89,7 +119,10 @@ The unscoped reset also removes your personal helpers for every other HTTPS host
 
 ### Variant B — user-level guard, automatic in org repos
 
-One mechanism fact makes this variant work, now documented in the Claude Code hooks reference ("Persist environment variables") and originally verified empirically on 2.1.172: **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
+One mechanism fact makes this variant work: **the contents of `$CLAUDE_ENV_FILE` are evaluated before every Bash command, in that command's shell and working directory** — not once at session start.
+Evidence: on 2.1.172 an env file exporting `"$PWD"` matched each command's own `pwd` (2026-06-11, recorded in `tests/scenarios.md`); on 2.1.296 a `SessionStart` hook writing `export PROBE_STAMP="$(date +%s%N)"` produced a new stamp on each of four Bash calls (2026-10-09, planning notes, not this repository), and the 2026-10-10 mid-session flip in Status re-decided identity from a persisted `cd` in both directions.
+The hooks reference documents only that variables written to `CLAUDE_ENV_FILE` persist into subsequent Bash commands, and that variables written by `CwdChanged` and `FileChanged` hooks are cleared at the next `CwdChanged`.
+The per-command evaluation is this skill's probe, not the reference's promise; upgrade verification is specified in the Verification list's last item.
 So instead of static per-repo env, a user-level SessionStart hook installs a single *unevaluated* guard line, and the guard re-decides bot-vs-personal per command from the directory the command actually runs in.
 Mid-session directory changes flip identity on the next command; there is no session-level verdict to go stale, and no `CwdChanged` plumbing is needed.
 
@@ -177,6 +210,7 @@ Do not check the installation list per command over the network: slow, flaky, an
 
 One gap the guard cannot see: the verdict binds to the directory a command *starts* in, so a compound command that crosses repos — `cd <org-repo> && git commit` from a personal directory, or `git -C <org-repo> ...` — carries the starting directory's identity into the target repo, and the personal→org direction of that is silent human attribution.
 Keep cross-repo git commands out of agent sessions: change directory in one command, commit in the next, and the per-command re-decision covers it.
+The split works when the `cd` stays inside the session's directory tree; a `cd` outside it is reset on 2.1.296, so start the session in the repository instead (Status).
 
 Migrating from Variant A: delete the bot stanza from every per-repo `.claude/settings.local.json` (the whole file if that is all it held) and retire the per-repo `session-env.sh` hook registration — leftovers would pin a stale static identity regardless of what the guard decides.
 The idempotence check matches the exact guard-line text, so after changing `bot-env-hook.sh` start fresh sessions: a resumed session appends the new line while the old one still runs.
@@ -193,7 +227,7 @@ Consequences that defeat the rc-file approach:
 - Even a correctly-placed `PATH` prepend is frozen at snapshot time, before the per-project `env` (and any marker it sets) is applied.
 
 `CLAUDE_ENV_FILE` is the supported escape hatch: Claude Code provides it to `SessionStart`/`CwdChanged`/`Setup`/`FileChanged` hooks and sources the file's contents before every Bash command, *after* the snapshot — so an `export GH_TOKEN=...` there reliably reaches `gh`.
-This per-command evaluation is now documented in the Claude Code hooks reference ("Persist environment variables"); it was originally verified empirically on Claude Code 2.1.172 with an env file exporting `"$PWD"`, which matched each command's own `pwd`.
+The hooks reference documents availability of `CLAUDE_ENV_FILE` for `SessionStart`, `Setup`, `CwdChanged`, and `FileChanged` hooks; the per-command evaluation is the probe above.
 
 Only fall back to a PATH shim if the harness sources a predictable rc file without freezing `PATH`.
 
@@ -214,10 +248,12 @@ Variant B additionally (the gate and its fail direction):
 - Broken-guard regression: temporarily move or chmod away `~/.config/acme-agent/bin/bot-env`; the next Bash command in a Claude Code session must abort with the guard error instead of running with personal credentials.
 - Ambiguity direction: in a scratch `git init` repo with no remotes, the next command warns on stderr and `git var GIT_AUTHOR_IDENT` shows the bot — ambiguity resolved toward the bot, never silently personal.
 - Mid-session flip: move the session's working directory from a personal repo to an org repo — the very next command shows `ghs_` and the bot author; the reverse direction shows them gone.
+  Inside the session's directory tree only (Status).
 - Mixed-case remote regression: in an org repo whose remote spells the host or org with different case (`git@github.com:Acme/x.git`), `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin` still succeeds — `bot-env` emitted a literal rewrite pair for that remote, covering git's case-sensitive `insteadOf` match.
 - Force-SSH rewrite regression (network-free): with `url.ssh://git@github.com/.insteadOf = https://github.com/` in your global git config and an org remote written as `https://github.com/acme/x.git`, an agent command's `git ls-remote --get-url origin` and `git remote get-url --push origin` both print the https URL — the exact pairs outrank the global rule.
 - Exit-128 regression: in an org repo, append `[broken` to `.git/config`; the next agent command warns `ambiguous, using the bot identity` and `echo "$GIT_AUTHOR_NAME"` prints the bot (git itself cannot read the broken config, so `git var` would fail here); restore the file afterward.
 - Tie regression (network-free): add `[url "ssh://git@github.com/acme/x.git"] insteadOf = https://github.com/acme/x.git` to your global git config in a repo whose origin is that https URL; the next agent command aborts naming `origin` and the ssh URL, and removing the rule restores routing.
+- Upgrade re-probe: after every Claude Code upgrade, re-run the per-command evaluation probe (a `SessionStart` hook writing a fresh stamp to `$CLAUDE_ENV_FILE`, four Bash calls, four different stamps) and the mid-session flip before relying on Variant B; the hooks reference does not promise per-command evaluation, so a release can change it without changing the reference.
 
 ## Common Mistakes — Claude Code mechanisms
 
@@ -232,6 +268,6 @@ These pitfalls name Claude Code mechanisms specifically; the harness-neutral mis
 | Treating a failing `SessionStart` preflight as a blocking control | Claude Code can continue after hook startup failure; install the guard first, and make the guard fail inside each Bash command when `bot-env` is unavailable |
 | A bare `eval "$(bot-env)"` guard line | Fails open: a crashed or missing script evals the empty string and the session silently runs personal in an enrolled repo; capture the output and abort the command on script failure |
 | Trusting the canonical `insteadOf` pair against mixed-case SSH remotes | git's `insteadOf` match is literal and case-sensitive while GitHub accepts `git@github.com:Acme/`, so the repo gets the bot verdict but pushes ride the personal SSH key; normalize remotes in Variant A, and in Variant B `bot-env` emits a verbatim pair for every raw `github.com` remote |
-| Compound agent commands that cross repos (`cd <org-repo> && git commit`, `git -C <org-repo>`) | The Variant B verdict binds to the directory the command starts in, so the personal→org direction is silent human attribution; change directory in one command and commit in the next |
+| Compound agent commands that cross repos (`cd <org-repo> && git commit`, `git -C <org-repo>`) | The Variant B verdict binds to the directory the command starts in, so the personal→org direction is silent human attribution; the remedy and its cwd scope are stated once in the Variant B section above (see also Status) |
 | Re-deciding identity with `CwdChanged`/stdin-cwd plumbing | Unneeded — `$CLAUDE_ENV_FILE` contents run before every Bash command in that command's shell and cwd, so a per-command guard tracks directory changes by construction |
 | Running Variant A and Variant B together | The per-repo static env pins a stale identity regardless of what the guard decides; pick one and migrate by deleting the per-repo stanzas |
