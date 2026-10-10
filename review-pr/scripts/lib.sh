@@ -91,6 +91,117 @@ policy_paths() {
     < <(git -C "$1" ls-tree -r -z --name-only "$2")
 }
 
+# policy_link_selected PATH -> success when a symlink at PATH would be read as reviewer policy.
+policy_link_selected() {
+  adapter_is_policy_path "$1" && return 0
+  local root
+  if [ "${#ADAPTER_POLICY_ROOTS[@]}" -gt 0 ]; then
+    for root in "${ADAPTER_POLICY_ROOTS[@]}"; do [ "$1" != "$root" ] || return 0; done
+  fi
+  return 1
+}
+
+# policy_link_target DIR TREEISH LINK OID -> the path inside TREEISH that symlink LINK (blob OID) names.
+# Implements RC11's resolution: the link text is resolved lexically against TREEISH, never through a working
+# tree, so a head checkout cannot supply the target. On refusal it prints the reason and returns 1.
+policy_link_target() {
+  local dir="$1" tree="$2" link="$3" text size part prefix="" mode modes
+  local -a comps=() parts=()
+  # The trailing sentinel keeps trailing newlines that command substitution would strip.
+  text="$(git -C "$dir" cat-file blob "$4" && printf x)" || { echo "link text is unreadable"; return 1; }
+  text="${text%x}"
+  size="$(git -C "$dir" cat-file -s "$4")" || { echo "link text is unreadable"; return 1; }
+  # Bash drops NUL bytes from command substitution, so a byte count below the blob size means one.
+  [ "$(LC_ALL=C; printf '%s' "${#text}")" = "$size" ] || { echo "link text contains a NUL byte"; return 1; }
+  case "$text" in
+    '') echo "link text is empty"; return 1;;
+    /*) echo "link text is absolute"; return 1;;
+    *$'\n'*) echo "link text contains a newline"; return 1;;
+  esac
+  case "$link" in */*) text="${link%/*}/$text";; esac
+  IFS=/ read -r -a comps <<<"$text"
+  for part in "${comps[@]}"; do
+    case "$part" in
+      ''|.) ;;
+      ..) [ "${#parts[@]}" -gt 0 ] || { echo "target leaves the repository"; return 1; }
+          unset "parts[$((${#parts[@]} - 1))]";;
+      *) parts+=("$part");;
+    esac
+  done
+  [ "${#parts[@]}" -gt 0 ] || { echo "target is the repository root"; return 1; }
+  # Every ancestor must be a directory of TREEISH: an intermediate symlink would need a second resolution.
+  for part in "${parts[@]}"; do
+    if [ -n "$prefix" ]; then
+      mode="$(git -C "$dir" --literal-pathspecs ls-tree --format='%(objectmode)' "$tree" -- "$prefix")"
+      [ "$mode" = 040000 ] || { echo "target is not reached through directories only: $prefix"; return 1; }
+    fi
+    prefix="${prefix:+$prefix/}$part"
+  done
+  mode="$(git -C "$dir" --literal-pathspecs ls-tree --format='%(objectmode)' "$tree" -- "$prefix")"
+  case "$mode" in
+    100644|100755) ;;
+    040000)
+      # A symlink or submodule inside the target would put content outside the base tree at the link path.
+      # Capture the listing before matching: under pipefail, `ls-tree | grep -q` fails open when grep's early
+      # exit gives a large listing SIGPIPE.
+      modes="$(git -C "$dir" --literal-pathspecs ls-tree -r --format='%(objectmode)' "$tree" -- "$prefix/")" \
+        || { echo "target directory cannot be listed: $prefix"; return 1; }
+      if grep -qE '^(120000|160000)$' <<<"$modes"; then
+        echo "target directory contains a symlink or submodule: $prefix"; return 1
+      fi;;
+    '') echo "target does not exist: $prefix"; return 1;;
+    *) echo "target is neither a regular file nor a directory: $prefix"; return 1;;
+  esac
+  printf '%s\n' "$prefix"
+}
+
+# policy_links DIR TREEISH -> NUL-separated LINK TARGET pairs, one per policy symlink in TREEISH.
+# Dies on a symlink RC11 does not admit, so call it in the current shell, not a process substitution,
+# before anything is restored.
+policy_links() {
+  local entry p oid target
+  while IFS= read -r -d '' entry; do
+    [ "${entry%% *}" = 120000 ] || continue
+    p="${entry#*$'\t'}"
+    policy_link_selected "$p" || continue
+    oid="${entry%%$'\t'*}"; oid="${oid##* }"
+    target="$(policy_link_target "$1" "$2" "$p" "$oid")" \
+      || die 1 "base reviewer policy symlink must name a file or directory inside the base tree: $p ($target)"
+    printf '%s\0%s\0' "$p" "$target"
+  done < <(git -C "$1" ls-tree -r -z "$2")
+}
+
+# policy_index DIR TREEISH -> NUL-separated `git update-index -z --index-info` records of TREEISH's policy.
+# Each policy symlink is replaced by its target's blobs placed under the link path, so restored policy is
+# base content wherever the link pointed. Callers validate with policy_links first: a refusal here happens
+# inside a process substitution and cannot stop the caller.
+policy_index() {
+  local entry p link target i
+  local -a links=() targets=()
+  while IFS= read -r -d '' link && IFS= read -r -d '' target; do
+    links+=("$link"); targets+=("$target")
+  done < <(policy_links "$1" "$2")
+  while IFS= read -r -d '' entry; do
+    p="${entry#*$'\t'}"
+    if [ "${entry%% *}" = 120000 ] && policy_link_selected "$p"; then continue; fi
+    if adapter_is_policy_path "$p"; then printf '%s\0' "$entry"; fi
+  done < <(git -C "$1" ls-tree -r -z "$2")
+  [ "${#links[@]}" -gt 0 ] || return 0
+  for i in "${!links[@]}"; do
+    while IFS= read -r -d '' entry; do
+      p="${entry#*$'\t'}"
+      if [ "$p" = "${targets[$i]}" ]; then p="${links[$i]}"; else p="${links[$i]}/${p#"${targets[$i]}"/}"; fi
+      printf '%s\t%s\0' "${entry%%$'\t'*}" "$p"
+    done < <(git -C "$1" --literal-pathspecs ls-tree -r -z "$2" -- "${targets[$i]}")
+  done
+}
+
+# restored_policy_paths DIR TREEISH -> NUL-separated paths that policy restoration writes from TREEISH.
+restored_policy_paths() {
+  local entry
+  while IFS= read -r -d '' entry; do printf '%s\0' "${entry#*$'\t'}"; done < <(policy_index "$1" "$2")
+}
+
 # context_paths_json DIR TREEISH -> JSON array of adapter-selected passive policy paths.
 context_paths_json() {
   adapter_context_paths "$1" "$2" \
