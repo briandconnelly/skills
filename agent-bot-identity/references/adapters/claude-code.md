@@ -37,6 +37,7 @@ Replace `<BOT_UID>` with the user ID from Phase 2, `acme` with your org, and `<y
     "GIT_AUTHOR_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
     "GIT_COMMITTER_NAME": "acme-agent[bot]",
     "GIT_COMMITTER_EMAIL": "<BOT_UID>+acme-agent[bot]@users.noreply.github.com",
+    "GIT_CONFIG_PARAMETERS": "",
     "GIT_CONFIG_COUNT": "7",
     "GIT_CONFIG_KEY_0": "credential.helper",
     "GIT_CONFIG_VALUE_0": "",
@@ -72,6 +73,8 @@ What each part does:
   Variant A's pairs are org-scoped by construction, so a non-org `github.com` remote in the same repo (a fork's `upstream`) stays on SSH and would push with the personal key; Variant B's `bot-env` routes every `github.com` remote instead.
   Normalize each enrolled repo's remote to canonical lowercase (`git remote set-url origin git@github.com:acme/<repo>.git`) before relying on the rewrite: `insteadOf` matching is literal and case-sensitive while GitHub accepts any case, so `git@github.com:Acme/` silently misses the rewrite and pushes over the personal SSH key with the bot as author.
   The Phase 5 `GIT_SSH_COMMAND=/usr/bin/false` check catches a miss.
+- `GIT_CONFIG_PARAMETERS` pinned empty: git applies that variable after the `GIT_CONFIG_COUNT` entries, so an inherited `git -c` value would otherwise be the last word on the helper;
+  Claude Code 2.1.296 exports an empty settings `env` value into Bash commands as set-but-empty (verified 2026-10-09).
 - `commit.gpgsign false` prevents bot-authored commits being signed with the personal GPG key — a signature from the human on a bot-authored commit is an attribution mismatch.
 - The `SessionStart` hook injects `GH_TOKEN` for `gh` (the adapter's `session-env.sh`).
   The first time it runs, Claude Code prompts to approve the hook; approve it.
