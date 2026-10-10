@@ -33,8 +33,9 @@ is_policy_change() {
   fi
   return 1
 }
+# --no-renames: a rename reports only its destination, which would hide a policy file renamed out of policy.
 changes="$(
-  while IFS= read -r -d '' p; do if is_policy_change "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only "$MERGE_BASE" "$HEAD") \
+  while IFS= read -r -d '' p; do if is_policy_change "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only --no-renames "$MERGE_BASE" "$HEAD") \
     | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
 )"
 

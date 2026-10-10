@@ -203,6 +203,8 @@ in_tree_fixture() { # in_tree_fixture DIR -> prints "BASE HEAD"; the amicus layo
   printf -- '---\nname: evil\ndescription: head skill\n---\n' > "$fixture/.agents/skills/evil/SKILL.md"
   printf '%s\n' 'HEAD agents' > "$fixture/AGENTS.md"
   printf '%s\n' 'head file' > "$fixture/sub/file.txt"
+  # A policy file renamed out of the link target: rename detection would report only the destination.
+  mkdir -p "$fixture/docs" && mv "$fixture/.agents/skills/zebra/reference.md" "$fixture/docs/zebra-reference.md"
   git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm head
   git -C "$fixture" rev-parse HEAD
   git -C "$fixture" checkout -q --detach HEAD
@@ -227,7 +229,7 @@ grep -q 'HEAD INSTRUCTION' "$fixture/.agents/skills/zebra/SKILL.md" || { echo "F
 [ -f "$fixture/.agents/skills/evil/SKILL.md" ] || { echo "FAIL: head-only file at the link target was removed"; FAIL=1; }
 grep -q 'head file' "$fixture/sub/file.txt" || { echo "FAIL: non-policy head content was changed"; FAIL=1; }
 [ "$(git -C "$fixture" ls-files --stage)" = "$index_before" ] || { echo "FAIL: restoration rewrote the repository index"; FAIL=1; }
-want="$(jq -nc '[".agents/skills/evil/SKILL.md",".agents/skills/zebra/SKILL.md","AGENTS.md"] | sort')"
+want="$(jq -nc '[".agents/skills/evil/SKILL.md",".agents/skills/zebra/SKILL.md",".agents/skills/zebra/reference.md","AGENTS.md"] | sort')"
 [ "$(jq -c 'sort' <<<"$out")" = "$want" ] || { echo "FAIL: policy_changes under link targets=$out"; FAIL=1; }
 manifest="$(context_paths_json "$fixture" "$base")"
 manifest_want="$(jq -nc '[".claude/skills/zebra/SKILL.md","AGENTS.md","CLAUDE.md"] | sort')"
