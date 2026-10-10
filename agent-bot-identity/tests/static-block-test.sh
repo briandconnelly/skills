@@ -4,10 +4,11 @@
 # them as command-scope config, and asks git — never the text — which
 # credential helpers actually run for a mapped github.com URL (also with a
 # hostile inherited GIT_CONFIG_PARAMETERS), an unmapped one, and a non-GitHub
-# one (the reset is host-wide), what the push URL of an org SSH remote
+# one (the reset is unscoped (all hosts)), what the push URL of an org SSH remote
 # becomes, and whether signing is off. Requires python3 >= 3.11 (tomllib).
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX GIT_CONFIG_PARAMETERS
+python3 -c 'import tomllib' 2>/dev/null || { echo "static-block-test: needs python3 >= 3.11 (tomllib) on PATH"; exit 1; }
 FAIL=0
 DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 trap 'rm -rf "$DIR"' EXIT
@@ -57,9 +58,9 @@ check_block() {
   [ "$(GIT_CONFIG_PARAMETERS="'credential.helper='" helpers_for https://github.com/acme/x.git)" = "bot " ] || fail "$label: an inherited GIT_CONFIG_PARAMETERS still resets the helper (the pin is not applied)"
   [ "$(helpers_for https://github.com/acme/x.git)" = "bot " ] || fail "$label: mapped URL ran helpers: $(helpers_for https://github.com/acme/x.git)"
   [ "$(helpers_for https://github.com/other/x.git)" = "bot " ] || fail "$label: unmapped github.com URL did not run only the bot helper (decisions/001): $(helpers_for https://github.com/other/x.git)"
-  # The reset is host-wide, so another host runs the bot helper stub too; the
+  # The reset is unscoped (all hosts), so another host runs the bot helper stub too; the
   # real git-credential-bot stays silent there (selflocate-test.sh case 8).
-  [ "$(helpers_for https://gitlab.com/me/x.git)" = "bot " ] || fail "$label: the helper reset is not host-wide: $(helpers_for https://gitlab.com/me/x.git)"
+  [ "$(helpers_for https://gitlab.com/me/x.git)" = "bot " ] || fail "$label: the helper reset is not unscoped (all hosts): $(helpers_for https://gitlab.com/me/x.git)"
   [ "$(env "${envs[@]}" git config commit.gpgsign)" = false ] || fail "$label: commit.gpgsign is not false"
   local r; r="$(mktemp -d "$DIR/repo.XXXXXX")"; git -C "$r" init -q; git -C "$r" remote add origin git@github.com:acme/x.git
   [ "$(cd "$r" && env "${envs[@]}" git remote get-url --push origin)" = https://github.com/acme/x.git ] || fail "$label: canonical org SSH remote not rewritten for push"

@@ -9,12 +9,12 @@ Issue #141's proposal to scope the helper to each mapped account is declined.
 
 ## Why
 
-Scoping restores the personal helper for every unmapped github.com HTTPS destination: an https fork upstream, an ad-hoc `git push https://github.com/other/x.git`, a mixed-case `https://github.com/Acme/x.git` remote, or a session-static Variant A environment carried into another organisation's repository.
+Scoping restores the personal helper for every unmapped github.com HTTPS destination: an https fork upstream, an ad-hoc `git push https://github.com/other/x.git`, a mixed-case `https://github.com/Acme/x.git` remote, or an HTTPS remote in another organisation's repository reached by Claude Code's session-static Variant A environment.
 Each of those would push with the personal credential under the bot's authorship, silently, where today each fails loudly at the installation boundary.
 That silent outcome is the failure this skill exists to prevent, and the loud one is the documented "enroll me" signal.
 
-#141's incident — an MCP server installed from a private repository failing to start — is a consequence of Variant A's session-wide environment, which the harness process and its MCP children inherit.
-Variant B's environment exists only inside an agent Bash command in a repository whose remotes match a mapped account; MCP servers and other harness children never see it, so Variant B avoids the incident without weakening the guarantee.
+#141's incident — an MCP server installed from a private repository failing to start — is a consequence of the session-wide environment of Claude Code's Variant A, which the harness process and its MCP children inherit.
+The environment of Claude Code's Variant B exists only inside an agent Bash command where `bot-env` returns a bot verdict (a mapped remote, or one of the ambiguous cases the Claude Code adapter's decision table resolves to bot); MCP servers and other harness children never see it, so Variant B avoids the incident without weakening the guarantee.
 The same holds for the OpenCode adapter, whose hook fires per shell command.
 
 ## Consequences

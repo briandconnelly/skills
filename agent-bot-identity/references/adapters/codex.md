@@ -55,7 +55,7 @@ The profile lives at `$CODEX_HOME/bot.config.toml` (default `~/.codex/bot.config
 ## Static identity env
 
 Codex applies static identity through the profile's `shell_environment_policy.set` block, which `--profile bot` reads directly (verified: PATH and every `GIT_*` var below took effect under `--profile bot`).
-The block mirrors the Claude Variant A env — four identity vars, the `GIT_CONFIG_*` credential-helper reset plus bot helper, the org-scoped `insteadOf`/`pushInsteadOf` rewrite pairs, and `commit.gpgsign false`.
+The block mirrors the Claude Variant A env — four identity vars, the `GIT_CONFIG_*` credential-helper reset plus bot helper, the org-scoped `insteadOf`/`pushInsteadOf` rewrite pairs, the `GIT_CONFIG_PARAMETERS` pin, and `commit.gpgsign false`.
 
 Replace `<BOT_UID>` with the bot user ID from Phase 2, `acme` with your org, and `<you>` with your username (keep every path absolute).
 These examples use the recommended flat `~/.config/acme-agent/bin/` install location; existing `~/.claude/bot-shims/` installs keep working because the scripts self-locate — just keep every path consistent.
@@ -68,6 +68,7 @@ set = { PATH = "/Users/<you>/.config/acme-agent/bin:/opt/homebrew/bin:/usr/local
 ```
 
 The `pushInsteadOf` twins and the two identity pairs (keys 3–5) were added on 2026-09-22 after the recorded verification run, which used the four-entry block; they change only which `url.*` rewrites git sees and were exercised through git's own resolution (`tests/routing-test.sh`), not re-run under Codex.
+The `GIT_CONFIG_PARAMETERS` pin was added on 2026-10-10, also after that run; it changes which inherited `git -c` values survive, not which rewrites git sees.
 
 What each part does (identical in intent to the Claude Variant A env):
 
@@ -76,7 +77,7 @@ What each part does (identical in intent to the Claude Variant A env):
 - The `url.*` rewrites send org remotes to HTTPS inside the profile only, so pushes use the bot token instead of the personal SSH key.
   The four pairs are the same static set as the Claude adapter's Variant A block, and that adapter's bullet is the one explanation of why each rewrite is doubled and why the identity pairs exist; the same org-scoping limitation applies here.
   The match is literal and case-sensitive — normalize each enrolled repo's remote to canonical lowercase, and add `insteadOf` and `pushInsteadOf` pairs (bumping `GIT_CONFIG_COUNT`) for any `ssh://git@github.com/acme/` form.
-- `GIT_CONFIG_PARAMETERS` pinned empty: git applies that variable after the `GIT_CONFIG_COUNT` entries, so an inherited `git -c` value would otherwise be the last word on the helper; whether Codex exports an empty `set` value as set-but-empty is unverified until the Status section records that probe.
+- `GIT_CONFIG_PARAMETERS` pinned empty, as the Phase 4 contract requires; whether Codex exports an empty `set` value as set-but-empty is unverified until the Status section records that probe.
 - `commit.gpgsign false` keeps bot commits unsigned so the personal GPG key never signs bot-authored work.
 
 The `GIT_CONFIG_VALUE_1` helper value is `!$HOME/.config/acme-agent/bin/git-credential-bot`; `$HOME` there is expanded by git's shell when it runs the helper, not by Codex.
