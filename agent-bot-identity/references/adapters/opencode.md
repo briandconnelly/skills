@@ -30,7 +30,7 @@ One OpenCode glue file sits on top of the shared scripts:
 
 - `scripts/opencode/agent-bot-identity.ts` is the plugin: it spawns the shared `bot-env` in the command's cwd per command and translates its emitted shell (`export KEY='value'`, `export KEY=value`, `unset ...`) into the hook's env map.
   The routing verdict, the ambiguity table, the `insteadOf` derivation, and installation selection all live in `bot-env` alone; this file owns no decision logic.
-  It fails closed on: uncustomized path constant, missing/non-executable `bot-env`, non-zero exit, empty output, an unrecognized line, the 20 s deadline (enforced by the hook; a signal alone cannot bound a script waiting on a child), or a partial identity block (identity vars without a non-empty `GH_TOKEN`).
+  Every undetermined-identity outcome fails the shell command; the Fail direction table below is the one list of those outcomes and of what the deadline does.
 
 It also needs the shared `bot-env` installed (the Claude Variant B script) — Variant A installs that lack it must add it; see the SKILL Phase 3 layout.
 
