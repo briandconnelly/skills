@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Exercises the real bot-token mint path against a local stand-in for the
 # GitHub API: JWT construction (verified by the fake against the public key),
-# the request, expires_at parsing, atomic 0600 cache publication, a cache hit on
-# the second call, and the two failure shapes (empty token, 401).
+# the request, expires_at parsing, 0600 cache publication by rename over a private
+# temp file (proven by re-minting over a read-only corrupt cache, which a write in
+# place cannot replace), a cache hit on the second call, and the two failure
+# shapes (empty token, 401).
 # Network only for uv's one-time dependency warm-up; every mint runs offline
 # (UV_OFFLINE=1) and talks to 127.0.0.1 only.
 set -euo pipefail
@@ -76,6 +78,20 @@ ls "$FAKE_HOME/.cache/acme-agent/" | grep -q '\.tmp$' && fail "temp file left be
 out="$(mint)" || fail "warm call failed"
 [ "$out" = ghs_fakemint ] || fail "warm call printed '$out'"
 [ "$(wc -l < "$DIR/log")" -eq 1 ] || fail "warm call hit the API"
+
+# 2b. Publication is a rename over a private temp file, not a write in place.
+# Pre-create the cache path as a read-only (0400) file holding corrupt JSON: the
+# script must treat it as a miss and re-mint, and only a rename can replace it,
+# because opening a 0400 file for writing fails with EACCES even for its owner.
+# A write-in-place implementation (open the final path, write, then chmod) fails
+# here; the 0600 mode of the replacement comes from the temp file it was renamed from.
+printf '{' > "$CACHE"
+chmod 0400 "$CACHE"
+out="$(mint 2>"$DIR/err")" || fail "re-mint over a read-only corrupt cache failed: $(cat "$DIR/err")"
+[ "$out" = ghs_fakemint ] || fail "re-mint over a read-only corrupt cache printed '$out'"
+[ "$(wc -l < "$DIR/log")" -eq 2 ] || fail "re-mint over a read-only corrupt cache did not request a new token"
+[ "$(stat -c '%a' "$CACHE" 2>/dev/null || stat -f '%Lp' "$CACHE")" = 600 ] || fail "replaced cache mode is not 0600 (publication was not a rename of a fresh temp file)"
+grep -q '"token": "ghs_fakemint"' "$CACHE" || fail "replaced cache does not hold the new token"
 stop_server
 
 # 3. Empty token from the API: refuse, print nothing, leave no cache for that id.
