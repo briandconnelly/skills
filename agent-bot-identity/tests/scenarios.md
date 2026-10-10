@@ -7,7 +7,9 @@ An assertion the with-skill run misses is a finding against the skill, not again
 ## Current acceptance suite vs history
 
 Rows dated before 2026-10 are history: they scored the skill as it stood on their dates.
-The current suite is the set of scenarios whose assertions match the skill at this PR's merge commit, listed by id: 1, 2, 3, 4, 5, C1, C2, O1.
+The current suite is the set of scenarios whose assertions match the skill as of 2026-10-10, listed by id: 1, 2, 3, 4, 5, C1, C2, O1.
+Scenarios 2, 3, 5 and C2 are listed as current because their assertions were unchanged on 2026-10-10; they were not re-run that day.
+A PR that changes an assertion updates this list and adds a dated row.
 The Results tables' older rows are retained and labelled by their dates.
 
 ## How to run
@@ -150,7 +152,7 @@ The Results tables' older rows are retained and labelled by their dates.
 - [ ] Activation lives in a user-level `~/.claude/settings.json` `SessionStart` hook — not per-repo files, not shell dotfiles, and explicitly NOT a static `env` block in user settings (static env cannot be conditional, so it would activate the bot in every project including other orgs and personal repos).
 - [ ] The hook installs a single unevaluated decision line into `$CLAUDE_ENV_FILE` (idempotently — `SessionStart` re-fires on resume and clear), so the bot-or-personal decision re-runs before every Bash command in that command's shell and working directory; mid-session directory changes flip identity on the next command with no session-level cached verdict.
 - [ ] The decision line fails closed against script failure: the script's output is captured and the preamble aborts the command (non-zero exit) when the script errors, because `eval "$(script)"` directly turns a crash into an empty eval — a silently personal session in an enrolled repo, the headline failure mode.
-- [ ] On a bot verdict the script emits the complete bot env — identity vars, `GIT_CONFIG_*` (helper reset, bot helper, rewrites, `commit.gpgsign false`), and `GH_TOKEN` — minting per command through the existing cache and substituting a non-empty invalid token when the mint fails; on a personal verdict it emits explicit `unset`s of every bot variable (identity, `GIT_CONFIG_*`, `GH_TOKEN`, `BOT_INSTALL_ID`, `GIT_CONFIG_PARAMETERS`); on a bot verdict it routes every `github.com` remote through HTTPS with `insteadOf` and `pushInsteadOf` pairs at host, account, and exact-URL length and aborts when a remote still resolves to SSH or when a competing HTTP credential exists
+- [ ] On a bot verdict the script emits the complete bot env — identity vars, `GIT_CONFIG_*` (helper reset, bot helper, rewrites, `commit.gpgsign false`), and `GH_TOKEN` — minting per command through the existing cache and substituting a non-empty invalid token when the mint fails, routes every `github.com` remote through HTTPS with `insteadOf` and `pushInsteadOf` pairs at host, account, and exact-URL length, and aborts when a remote still resolves to SSH or when a competing HTTP credential exists; on a personal verdict it emits explicit `unset`s of every bot variable (identity, `GH_TOKEN`, `BOT_INSTALL_ID`, and every `GIT_CONFIG_*` variable including `GIT_CONFIG_PARAMETERS`).
 - [ ] The gate is an org match on the repo's remotes, justified by fail direction: ambiguity (remote query fails, repo has no remotes) resolves toward the bot, because a non-enrolled repo wrongly getting bot env fails loudly at push against the installation boundary, while the inverse — an enrolled repo silently staying personal — is the headline failure mode; a local allowlist file is rejected or explicitly warned against on exactly these grounds.
 - [ ] The trade-off against the per-project variant is stated: explicit per-repo opt-in disappears, the App installation list remains the only enforcement, and personal-authorship work inside org repos goes through a per-command authorship escape, not a personal-credentials session mode.
 - [ ] Migration is explicit: the per-repo `.claude/settings.local.json` stanzas and the per-repo SessionStart hook are removed so they cannot drift as a second source of truth.
@@ -341,30 +343,29 @@ Mechanics: each arm is a fresh general-purpose subagent (Claude Code 2.1.296, mo
 Baseline arms received the scenario prompt as their only input and were told not to invoke any skill or read any file.
 With-skill arms were pointed at the worktree's `agent-bot-identity/SKILL.md` and `references/` (the skill at this branch's head) and forbidden from `tests/`.
 Replies were saved verbatim to the session scratchpad and each was scored by a separate sonnet scorer against the assertion list, one evidence pointer per assertion, conjunct-strict.
-Skill text under test: main b9dbe39 (after #204), unchanged on this branch.
+Skill text under test: SKILL.md and references/ at main b9dbe39 (after #204), unchanged on this branch (scripts/bot-token gains a test-only environment variable).
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-10-10 | 1 (set up) | with-skill (run 1) | 9/10 | Miss: assertion 4 — expiry from the response's `expires_at` never stated (the plan said the scripts were not read; atomic `0600` cache and short-lived tokens were present). Everything else satisfied, including the Phase 5 membership assertion (owed since 2026-07-30), Checks and Actions read with the rollup rationale, the approval-laundering statement, and the ruleset audit. Finding against the skill: the `expires_at` rule lives in Phase 3's helper description and a Common Mistakes row and was not surfaced in a plan that did not open the scripts. |
 | 2026-10-10 | 1 (set up) | with-skill (run 2) | 10/10 | All assertions satisfied; `expires_at` stated under "Behaviors to confirm when you review it". The assertion-4 miss is therefore intermittent at n=2. |
-| 2026-10-10 | 4 (user-level activation) | with-skill | 8/9 | Scored against the assertion 4 adopted in this PR. Miss: assertion 4 — the personal-verdict `unset` list named `GH_TOKEN`, the four identity variables, `BOT_INSTALL_ID` and "the command-scope `GIT_CONFIG_*`" but not `GIT_CONFIG_PARAMETERS` by name; every other conjunct (per-command mint with the invalid-token substitute, host/account/exact-URL pairs in both directions, abort on a remote still resolving to SSH, abort on a competing HTTP credential) was present. Finding against the skill: SKILL.md states the bot-side pin but not the personal-side `unset` of `GIT_CONFIG_PARAMETERS` (bot-env does emit it). All other assertions satisfied, including the compound-command gap with the 2.1.296 cwd qualification and the attribution-not-containment restatement. |
+| 2026-10-10 | 4 (user-level activation) | with-skill | 9/9 | Scored against the assertion 4 adopted in this PR. All assertions satisfied: per-command mint with the invalid-token substitute, explicit `unset`s on a personal verdict covering `GH_TOKEN`, the identity variables, `BOT_INSTALL_ID` and the command-scope `GIT_CONFIG_*` (which includes `GIT_CONFIG_PARAMETERS`), host/account/exact-URL pairs in both directions, the two aborts, the compound-command gap with the 2.1.296 cwd qualification, and the attribution-not-containment restatement. First scored 8/9 by a scorer that required `GIT_CONFIG_PARAMETERS` to be named separately; rescored after review because the glob covers it. |
 
 Not re-run: scenarios 2, 3, 5 and C2 (their assertions were not changed by this PR).
 
 ### Findings against the skill (2026-10-10)
 
-- Scenario 1 assertion 4: the `expires_at` rule is stated in Phase 3's helper-script description and a Common Mistakes row, and one of two with-skill runs omitted it from a plan that did not open the scripts.
+- Scenario 1 assertion 4: the `expires_at` rule is stated in SKILL.md Phase 3's `bot-token` paragraph (the sentence beginning "It parses `expires_at`") and the Common Mistakes row "Assuming one-hour token life", and one of two with-skill runs omitted it from a plan that did not open the scripts.
   Owed: surface it where the plan-writer reads (Phase 3's checklist), then re-run Scenario 1.
-- Scenario 4 assertion 4: SKILL.md states the bot-side `GIT_CONFIG_PARAMETERS` pin but not the personal-side `unset` (which `bot-env` emits), and the with-skill run omitted it.
-  Owed: state the personal-verdict unset list in Phase 4, then re-run Scenario 4.
+- Doc nit, owed: `references/adapters/claude-code.md`'s personal-verdict description (the Verification bullet that says the guard emitted only `unset`s) could name `GIT_CONFIG_PARAMETERS` and `BOT_INSTALL_ID` explicitly.
 
-No skill text changes in this PR, by the suite's rule that a with-skill miss is reported, not patched in a test PR.
+SKILL.md and references/ are not edited in this PR, by the suite's rule that a with-skill miss is reported, not patched in a test PR.
 
 ## Codex adapter scenarios
 
 These two scenarios exercise the **Codex CLI adapter** (`references/adapters/codex.md`), which implements the SKILL's Phase 4 routing contract for Codex CLI instead of Claude Code.
 They follow the same baseline/with-skill methodology as Scenarios 1–5 (a baseline that satisfies every assertion means the scenario is too easy; tighten it).
-The Codex mechanism differs from Claude Code's: activation is a **named `bot` profile invoked per run** (`--profile bot`), static identity and `GIT_CONFIG_*` ride the profile's `[shell_environment_policy].set` block, `gh` routes through a Codex-controlled PATH shim, and the sandbox is configured via `sandbox_mode` / `[sandbox_workspace_write]`.
+The Codex mechanism differs from Claude Code's: activation goes through the **absolute-path `codex-bot` launcher**, which forces the `bot` profile and rejects `--profile` overrides, static identity and `GIT_CONFIG_*` ride the profile's `[shell_environment_policy].set` block, `gh` routes through a Codex-controlled PATH shim, and the sandbox is configured via `sandbox_mode` / `[sandbox_workspace_write]`.
 For the with-skill run, the treatment subagent reads both `SKILL.md` and `references/adapters/codex.md`.
 
 ### Scenario C1: Set up a Codex bot identity (application test)
@@ -492,6 +493,8 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 > Following the badge-caveat-relocation precedent (Scenario 1 history), the two facts were promoted into the adapter doc's audit-smells list as explicit smells — a `gh` alias or absolute-path invocation anywhere as a shim bypass, and silent mint failure / a "minting just works" runbook without the sandbox prerequisites — relocation of already-verified claims, no new claims.
 > C2's treatment was then re-run once against the edited doc — see the re-run row.
 
+Mechanics for the 2026-10-10 rows: see "Re-runs 2026-10-10" above.
+
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-07-07 | C1 (Codex set up) | baseline | 3/7 | Strong on the given facts: profile-based `[shell_environment_policy].set` wiring with identity vars, helper reset, gpgsign false, no Claude mechanisms; per-invocation mint shim, full literal replacement PATH, no static `GH_TOKEN`, fail-closed met in substance — refuses to exec the real `gh` on mint failure with the personal-fallback danger named, via exit-nonzero rather than the sentinel (2); no dotfile mechanism proposed (3, by construction). Missed: `insteadOf` host-wide (`url.https://github.com/.insteadOf`) instead of org-scoped, and the inline TOML `set` table written multi-line with comments — invalid TOML (1); `writable_roots` = repo dirs only, token cache and `uv` cache absent so the mint's own writes would be denied (4); invocation called "always explicit" but the forgotten-`--profile` → silently-personal fail direction never named (5); routing-by-convention and installation-list boundary stated but the absolute-path `gh` bypass never named (6); as-me inverted — claims a `git -c user.name=…` in-Codex identity override still works (unverified, contradicting the recorded wrapper denials) instead of sending collaborated authorship outside Codex (7). Confirms the scenario discriminates on the verification-derived facts. |
@@ -555,7 +558,9 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 
 ### OpenCode scenario results
 
+Mechanics for the 2026-10-10 rows: see "Re-runs 2026-10-10" above.
+
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
-| 2026-10-10 | O1 (OpenCode set up) | baseline | 2/7 | Passed: per-command decision through `bot-env` with the command's cwd; launch-environment rule. Missed: no PTY or no-id exemption (ids used for logging only; a cwd-less call is denied rather than left personal); fail-closed named only missing, crash, garbage and timeout, with the hook catching and swallowing rather than throwing; a 70-line plugin with its own rewrite logic committed to the repo instead of a one-line forwarder kept out of git; verification from a plugin-set marker rather than tool state, with no `GH_TOKEN` prefix, helper-scope, membership or `workdir` flip checks; attribution-not-containment stated but `OPENCODE_PURE` not named. Matches the expected baseline failures (invented env logic in the plugin, PTY exemption forgotten, forwarder committed). |
+| 2026-10-10 | O1 (OpenCode set up) | baseline | 2/7 | Passed: per-command decision through `bot-env` with the command's cwd; launch-environment rule. Missed: no PTY or no-id exemption (ids used for logging only; a cwd-less call is denied rather than left personal); fail-closed named only missing, crash, garbage and timeout, with the hook catching and swallowing rather than throwing; a 70-line plugin with its own rewrite logic committed to the repo instead of a one-line forwarder kept out of git; verification from a plugin-set marker rather than tool state, with no `GH_TOKEN` prefix, helper-scope, membership or `workdir` flip checks; attribution-not-containment stated but `OPENCODE_PURE` not named. Matches the expected baseline failures (invented env logic in the plugin, PTY exemption forgotten, forwarder committed). Assertions 1 and 5 are non-discriminating as written (the prompt names `bot-env` and the hook's cannot-delete fact); the other five discriminate. |
 | 2026-10-10 | O1 (OpenCode set up) | with-skill | 7/7 | All assertions satisfied: routing delegated to `bot-env` per command with the command's cwd and no second verdict table; PTY and no-id calls left personal; fail-closed on missing, non-executable, crashing, garbage and partial `bot-env` and at the 20 s deadline; one-line forwarder excluded through `.git/info/exclude` with Variant B as the same file at user level; launch-environment rule stated with the variable list; verification scored from tool state with the `GH_TOKEN` prefix, command-scope helper, membership assertion and per-command flip via `workdir`; attribution-not-containment with `OPENCODE_PURE` as the documented bypass. |
