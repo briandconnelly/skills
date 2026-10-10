@@ -815,5 +815,35 @@ grep -q 'remove or correct' "$DIR/err" || fail "probe-error refusal did not say 
 grep -q 'REDACTED' "$DIR/err" && fail "probe-error refusal printed the header value"
 rm -rf "$R"
 
+# 61h. An http:// scope applies to an ad-hoc `git push http://github.com/...`
+#      (no rewrite moves it to https), so the probe keeps the scheme.
+HTTP_HDR="$DIR/global-authz-http"
+printf '[http "http://github.com/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HTTP_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HTTP_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on an http:// github.com scope did not abort"
+grep -q 'http.http://github.com/other/.extraheader' "$DIR/err" || fail "http-scope refusal did not name the key: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 61i. A scope with an explicit non-default port applies to a URL naming that
+#      port, so the probe keeps the port.
+PORT_HDR="$DIR/global-authz-port"
+printf '[http "https://github.com:8443/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$PORT_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$PORT_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on an explicit-port github.com scope did not abort"
+rm -rf "$R"
+
+# 61j. Negative control: keeping the scheme and port does not turn a
+#      non-GitHub host into a refusal.
+EXP_HDR="$DIR/global-authz-example-port"
+printf '[http "http://example.com:8443/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$EXP_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$EXP_HDR" "$DIR/bot-env" 2>"$DIR/err")" || fail "non-GitHub http/port Authorization header aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "non-GitHub http/port Authorization header lost the bot verdict"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"

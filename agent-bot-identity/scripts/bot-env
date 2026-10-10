@@ -502,7 +502,8 @@ done
 # scopes, ports), so each Authorization-bearing scope is tested with a probe
 # variable under the same URL section. Any command may name any github.com
 # URL (git push https://github.com/other/x.git), so the first target is the
-# scope's own path on github.com, with the scope's userinfo (SKILL.md Phase 5
+# scope's own path on github.com, with the scope's userinfo, port and http
+# scheme (no rewrite moves a typed http:// URL to https; SKILL.md Phase 5
 # is the probe's home); every raw GitHub remote's target and every effective
 # https github.com URL the rewrites produce are tested as well, a stricter
 # superset kept for targets a rewrite reaches.
@@ -535,9 +536,17 @@ while IFS= read -r k; do
     s_auth="${s_auth%%/*}"
     s_user="${s_auth%@*}"
     if [ "$s_user" = "$s_auth" ]; then s_user=""; else s_user="${s_user}@"; fi
+    s_host="${s_auth##*@}"
+    s_port="${s_host##*:}"
+    case "$s_port" in
+      '' | *[!0-9]*) s_port="" ;;
+      *) s_port=":${s_port}" ;;
+    esac
+    s_scheme="$(printf '%s' "${scope%%://*}" | tr '[:upper:]' '[:lower:]')"
+    [ "$s_scheme" = http ] || s_scheme=https
     s_path="${scope#*://}"
     s_path="${s_path#*/}"
-    targets=("https://${s_user}github.com/${s_path}")
+    targets=("${s_scheme}://${s_user}github.com${s_port}/${s_path}")
     for t in "${authz_targets[@]}"; do
       targets+=("$t")
     done
