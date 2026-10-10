@@ -15,6 +15,10 @@ APP_ID = "REPLACE"
 # placeholder before it reaches the API or a cache path.
 INSTALL_ID = "REPLACE"
 KEY = Path.home() / ".config/acme-agent/key.pem"
+# BOT_TOKEN_API_BASE exists for the offline test and for GitHub Enterprise API
+# roots; anyone who controls this process's environment can already read
+# key.pem, so it adds no capability.
+API_BASE = os.environ.get("BOT_TOKEN_API_BASE") or "https://api.github.com"
 
 install_id = os.environ.get("BOT_INSTALL_ID") or INSTALL_ID
 if not (install_id.isascii() and install_id.isdecimal()):
@@ -44,7 +48,7 @@ if not (APP_ID.isascii() and APP_ID.isdecimal()):
 now = int(time.time())
 app_jwt = jwt.encode({"iat": now - 60, "exp": now + 540, "iss": APP_ID}, KEY.read_text(), algorithm="RS256")
 r = httpx.post(
-    f"https://api.github.com/app/installations/{install_id}/access_tokens",
+    f"{API_BASE}/app/installations/{install_id}/access_tokens",
     headers={"Authorization": f"Bearer {app_jwt}", "Accept": "application/vnd.github+json"},
     timeout=10,
 )
