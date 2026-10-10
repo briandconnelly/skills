@@ -305,6 +305,27 @@ An independent review (2026-06-10, finding H1) established that `gh pr checks` u
 | 2026-06-10 | 1 (set up) | baseline | 5/10 | Unusually strong (did web research): GitHub App + webhook-off + select-repos (1); bot noreply email with API-fetched UID (3); git isolation with no global/dotfile changes, via repo-local `.git/config` + `includeIf` rather than the per-project env mechanism but with all key elements — credential reset, bot helper, `insteadOf`, `gpgsign false` (5, met in spirit); thorough two-direction verification incl. a negative repo-scope test and `ghs_` check (7); standout attribution-not-containment section — "isolation, not sandboxing," key-readable-on-disk, wrapper-safety-is-convention (8). **Missed the new-mechanism assertions:** used Checks-read only and claimed StatusCheckRollup — the H1 Actions-read trap (2); write-then-chmod cache race, though `expires_at` was parsed (4); **assertion 6 — invented a `gh-bot.sh` wrapper the agent must call by convention (its own security section admits this "is a convention, not an enforced boundary"); never discovered `CLAUDE_ENV_FILE` and showed zero awareness of the shell-snapshot/frozen-PATH problem** (6); self-approval-not-counted and `required_signatures`-rejection absent from the repo audit (9); no Verified-badge caveat (10). Confirms the scenario discriminates on the hook mechanism. |
 | 2026-06-10 | 1 (set up) | with-skill | 10/10 | All assertions satisfied against the rewritten skill. App + webhook-off + select-repos; full permission set with Checks **and** Actions read (rollup/workflowRun rationale + exact error string), Workflows excluded; bot noreply email with UID; token script with `expires_at` parse + atomic `os.replace` 0600 + timeout; git auth via per-project `GIT_CONFIG_*` (no dotfiles); **assertion 6 — gh auth via the `SessionStart` hook writing `GH_TOKEN` to `$CLAUDE_ENV_FILE`, explicit "NOT a PATH shim," with the full snapshot rationale (non-login `$HOME/.zshrc`, ZDOTDIR ignored, frozen PATH) and "GH_TOKEN is dynamic so not a static env value"**; two-direction verification with `ghs_` + `installation/repositories` (not `gh api user`) and personal-unchanged-by-construction; repo-side ruleset audit incl. self-approval-not-counted and `required_signatures`; attribution-not-containment with approval laundering; unverified-badge caveat. |
 
+### Trigger check 2026-10-10 (description edit)
+
+Instrument: a fresh general-purpose subagent (Claude Code 2.1.296, model sonnet) per run, no skill preloaded, the installed skill copy at `~/.claude/skills/agent-bot-identity` carrying the description under test; the prompt plus a fixed suffix asking for a plan of at most ten lines, no commands, and a final line `Skills loaded: …`.
+"Loaded" means the agent invoked the skill while planning (its tool-use count shows the Skill call); "named" means its plan said it would load `agent-bot-identity` first but it had not.
+Treatment = the new description (names the three harnesses only); control = the previous description (status clauses for each adapter), run for the two prompts whose treatment result was not clean.
+
+| # | Prompt | Class | Description | Result |
+| --- | --- | --- | --- | --- |
+| I1 | Set up a GitHub App bot identity for Claude Code on my laptop, so the agent's commits and PRs are attributed to the bot rather than to me. | in-domain | new | loaded |
+| I2 | My coding agent's commits show my name and email on GitHub. Make them show up as a bot instead, without breaking my own git setup on the same machine. | in-domain | new | loaded |
+| I3 | Audit this dual-identity setup for over-trust. Fixture: the agent runs with a GitHub App installation token minted per session and pushes to main with a ruleset bypass granted to the App; my personal `gh` login (full repo scope) is also on the machine. | in-domain | new | named, not loaded (3 of 3 runs) |
+| I3 | same | in-domain | old (control) | named, not loaded (2 of 2 runs) |
+| N1 | Configure a GitHub Actions workflow to use a GitHub App token instead of GITHUB_TOKEN for cross-repo checkouts. | near-miss | new | none |
+| N2 | Set up `gh auth login` non-interactively for a CI runner that needs to open pull requests. | near-miss | new | loaded in 2 of 3 runs (the third named it); each loading run then said CI runners are out of the skill's scope and did not apply its setup |
+| N2 | same | near-miss | old (control) | loaded in 1 of 2 runs (the other named it) |
+| N3 | How do I sign my git commits with GPG so GitHub shows the Verified badge? | near-miss | new | none |
+
+Reading: the two prompts that were not clean behave the same under the old and the new description, so the edit is trigger-neutral on this instrument; the audit prompt's deferral is a property of the plan-only suffix (all five audit agents named the skill as their first step), and the CI-runner prompt is a pre-existing precision weakness of the description (the skill's body then excludes CI, so the cost is one wasted load).
+
+Owed, outside this PR: a description clause that excludes CI runners and hosted workflows, measured with the same prompts; and an instrument whose suffix says that invoking an applicable skill is part of deciding.
+
 ## Codex adapter scenarios
 
 These two scenarios exercise the **Codex CLI adapter** (`references/adapters/codex.md`), which implements the SKILL's Phase 4 routing contract for Codex CLI instead of Claude Code.
