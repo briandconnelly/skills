@@ -30,9 +30,13 @@ import type { Plugin } from "@opencode-ai/plugin"
 const DEFAULT_BOT_ENV = "REPLACE" // e.g. "/Users/<you>/.config/acme-agent/bin/bot-env"
 
 // bot-env's hot path is a few local git probes plus a cached-token read (well
-// under a second); a cold mint is bounded by bot-token's own 10s request
-// timeout. This bound exists so a wedged subprocess fails the command loudly
-// instead of hanging the session.
+// under a second); a cold mint is bounded by bot-token's own 10 s request
+// timeout. This deadline exists so a wedged subprocess fails the command
+// loudly instead of hanging the session. It is enforced by the hook, not by
+// a signal: bash defers SIGTERM while a foreground child runs, and a child
+// that outlives the script keeps these pipes open, so the hook stops waiting
+// at the deadline and SIGKILLs the script; a child it was waiting on is not
+// reaped here and may linger until it exits on its own.
 const TIMEOUT_MS = 20_000
 
 type ShellEnvInput = { cwd: string; sessionID?: string; callID?: string }
@@ -48,7 +52,23 @@ const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
 
 class BotEnvError extends Error {}
 
-async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string; stderr: string }> {
+// Collect a stream through a reader the deadline can cancel: a descendant
+// that inherited the pipes may outlive the SIGKILLed script, and a cancelled
+// reader releases this process's end of the pipe instead of buffering until
+// that descendant exits.
+async function collect(stream: ReadableStream<Uint8Array>, readers: ReadableStreamDefaultReader<Uint8Array>[]): Promise<string> {
+  const reader = stream.getReader()
+  readers.push(reader)
+  const chunks: Uint8Array[] = []
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks))
+}
+
+async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
   if (botEnv === "REPLACE") {
     throw new BotEnvError(
       "agent-bot-identity: DEFAULT_BOT_ENV is not customized; set it to the absolute path of the installed bot-env (see references/adapters/opencode.md)",
@@ -63,20 +83,33 @@ async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string;
       stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
     })
   } catch (err) {
     throw new BotEnvError(`agent-bot-identity: failed to spawn bot-env at ${botEnv}: ${err}`)
   }
+  const readers: ReadableStreamDefaultReader<Uint8Array>[] = []
+  const work = Promise.all([
+    collect(proc.stdout as ReadableStream<Uint8Array>, readers),
+    collect(proc.stderr as ReadableStream<Uint8Array>, readers),
+    proc.exited,
+  ])
+  // If the deadline wins, the readers are cancelled and `work` settles shortly
+  // after the race has already rejected; observe it so that late settlement is
+  // never an unhandled rejection.
+  work.catch(() => {})
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      proc.kill("SIGKILL")
+      for (const r of readers) r.cancel().catch(() => {})
+      reject(new BotEnvError(`agent-bot-identity: bot-env did not complete within ${timeoutMs}ms in ${cwd}; refusing to continue with undetermined identity`))
+    }, timeoutMs)
+  })
   let stdout: string, stderr: string, code: number
   try {
-    ;[stdout, stderr, code] = await Promise.all([
-      new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
-      new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
-      proc.exited,
-    ])
-  } catch (err) {
-    throw new BotEnvError(`agent-bot-identity: bot-env did not complete within ${TIMEOUT_MS}ms in ${cwd}: ${err}`)
+    ;[stdout, stderr, code] = await Promise.race([work, deadline])
+  } finally {
+    clearTimeout(timer)
   }
   if (code !== 0) {
     throw new BotEnvError(`agent-bot-identity: bot-env exited ${code} in ${cwd}: ${stderr.trim() || "(no stderr)"}`)
@@ -86,18 +119,29 @@ async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string;
 
 export const AgentBotIdentity: Plugin = async ({ client }, options) => {
   const botEnv = typeof options?.botEnv === "string" ? options.botEnv : DEFAULT_BOT_ENV
+  // A usable deadline is a finite number of at least 1 ms and at most 2^31−1 ms,
+  // floored to whole milliseconds (1.5 becomes 1); anything else (Infinity,
+  // NaN, a string, a negative, a fraction below 1) falls back to the default
+  // rather than being coerced into a 1 ms timer.
+  const requested = options?.timeoutMs
+  const timeoutMs =
+    typeof requested === "number" && Number.isFinite(requested) && requested >= 1 && requested <= 2_147_483_647
+      ? Math.floor(requested)
+      : TIMEOUT_MS
 
-  const log = async (level: "warn" | "error", message: string, extra?: Record<string, unknown>) => {
-    // Logging is best-effort; a log failure must never affect routing.
+  // Logging is best-effort and must never delay routing or a refusal: the
+  // call is started and never awaited, and any failure is swallowed.
+  const log = (level: "warn" | "error", message: string, extra?: Record<string, unknown>): void => {
     try {
-      await client.app.log({ body: { service: "agent-bot-identity", level, message, extra } })
+      void Promise.resolve(client.app.log({ body: { service: "agent-bot-identity", level, message, extra } })).catch(() => {})
     } catch {}
   }
 
-  const fail = async (err: unknown, cwd: string): Promise<never> => {
+  const fail = (err: unknown, cwd: string): never => {
     // A throwing hook fails the shell command before it runs: that is this
     // adapter's fail-closed path, so every undetermined-identity outcome raises.
-    await log("error", String(err), { cwd })
+    // The log is started but never awaited, so it cannot hold the rejection.
+    log("error", String(err), { cwd })
     throw err
   }
 
@@ -109,16 +153,16 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       // 1h token lifetime: a PTY env is fixed at spawn.
       if (!input.sessionID || !input.callID) return
 
-      const { stdout, stderr } = await runBotEnv(botEnv, input.cwd).catch((err) => fail(err, input.cwd))
+      const { stdout, stderr } = await runBotEnv(botEnv, input.cwd, timeoutMs).catch((err) => fail(err, input.cwd))
 
       // bot-env's stderr carries the ambiguity warnings (no remotes, probe
       // failures); their repetition is the signal, so forward every one.
       const warning = stderr.trim()
-      if (warning) await log("warn", warning, { cwd: input.cwd })
+      if (warning) log("warn", warning, { cwd: input.cwd })
 
       const lines = stdout.split("\n").filter((line) => line !== "")
       if (lines.length === 0) {
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted no output in ${input.cwd}; refusing to continue with undetermined identity`),
           input.cwd,
         )
@@ -142,7 +186,7 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
           for (const name of match[1].split(" ")) delete output.env[name]
           continue
         }
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted an unrecognized line in ${input.cwd}: ${JSON.stringify(line)}`),
           input.cwd,
         )
@@ -154,7 +198,7 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       const hasIdentity = "GIT_AUTHOR_NAME" in output.env
       const hasToken = "GH_TOKEN" in output.env
       if (hasIdentity !== hasToken || (hasToken && output.env.GH_TOKEN === "")) {
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd}; refusing to route`),
           input.cwd,
         )
