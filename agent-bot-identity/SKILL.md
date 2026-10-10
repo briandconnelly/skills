@@ -241,7 +241,9 @@ Rules:
 - Run the audit from a personal terminal, never through the bot token — not because the bot token fails loudly, but because it does not fail at all.
 - Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
 - `gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without admin access to the repo also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
-- Confirm `gh api repos/OWNER/REPO --jq .permissions.admin` returns `true` for each repo audited.
+- List each ruleset with its source first: `gh api repos/OWNER/REPO/rulesets --jq '.[] | [.id, .source_type, .source] | @tsv'`.
+- For a `Repository` source confirm `gh api repos/OWNER/REPO --jq .permissions.admin` is `true`; for an `Organization` source confirm `gh api orgs/ORG/memberships/$(gh api user --jq .login) --jq .role` is `admin`.
+- Then read each ruleset with `gh api repos/OWNER/REPO/rulesets/ID --jq 'has("bypass_actors")'` and treat `false` as unverified, never as empty.
 - File gaps with the repo's admins rather than working around them.
 
 Identity is Step 1 of the agent-friendly-github setup workflow; enforcement lives in each repo's ruleset, not in the App.
@@ -255,7 +257,7 @@ For every repo the App is installed on, walk that skill's checklist §2; the ite
 
 An installation-token ruleset read succeeds with `bypass_actors` silently withheld — `--jq '.bypass_actors'` prints `null` instead of the request failing with 403 — so a bot-token audit reports "no bypass actors" while blind to exactly the item most likely to be non-clean.
 A bot-token audit is therefore not merely incomplete; it is affirmatively misleading.
-Some checks (Actions settings, secret scanning) additionally need admin access.
+Some checks (Actions settings, secret scanning) also need repo admin access.
 
 ## What This Enforces — and What It Does Not
 
