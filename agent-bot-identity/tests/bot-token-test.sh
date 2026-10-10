@@ -15,8 +15,8 @@ trap '[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$D
 fail() { echo "FAIL: $*"; FAIL=1; }
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir)}"
-# An ambient BOT_INSTALL_ID would override the INSTALL_ID substituted below.
 export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$(uv python dir)}"
+# An ambient BOT_INSTALL_ID would override the INSTALL_ID substituted below.
 unset BOT_INSTALL_ID
 unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
 # A non-empty NO_PROXY also stops httpx consulting macOS system proxies.
