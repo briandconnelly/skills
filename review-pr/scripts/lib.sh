@@ -81,14 +81,27 @@ git_wt() {
     GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYSTEM=1 git "$@"
 }
 
+# tree_listing DIR TREEISH [--name-only] -> path of a new temporary file holding TREEISH's `ls-tree -r -z` output.
+# Whole-tree loops read this file rather than a pipe: bash reads a pipe one byte per system call but a regular
+# file in blocks, which is most of a large tree's walk time. The caller removes the file.
+tree_listing() {
+  local listing
+  listing="$(mktemp "${TMPDIR:-/tmp}/review-pr-tree.XXXXXX")" || die 1 "cannot create a temporary file"
+  git -C "$1" ls-tree -r -z ${3:+"$3"} "$2" > "$listing" || { rm -f "$listing"; die 1 "cannot list tree $2"; }
+  printf '%s\n' "$listing"
+}
+
 # policy_paths DIR TREEISH -> NUL-separated tracked policy paths at TREEISH (may be empty).
 # Paths stay NUL-delimited end to end (ls-tree -z), so names containing newlines or tabs are
 # neither split nor quoted.
 policy_paths() {
-  local p
+  local p listing
+  listing="$(tree_listing "$1" "$2" --name-only)" || exit "$?"
+  # The listing is unlinked once open, so a die mid-walk leaves nothing behind.
   # if/fi, not `&&`: under pipefail a non-matching final path would otherwise fail the whole loop.
-  while IFS= read -r -d '' p; do if adapter_is_policy_path "$p"; then printf '%s\0' "$p"; fi; done \
-    < <(git -C "$1" ls-tree -r -z --name-only "$2")
+  # shellcheck disable=SC2094 # Unlinking the open listing is deliberate.
+  { rm -f "$listing"; while IFS= read -r -d '' p; do if adapter_is_policy_path "$p"; then printf '%s\0' "$p"; fi; done; } \
+    < "$listing"
 }
 
 # policy_link_selected PATH -> success when a symlink at PATH would be read as reviewer policy.
@@ -155,39 +168,34 @@ policy_link_target() {
   printf '%s\n' "$prefix"
 }
 
-# policy_links DIR TREEISH -> NUL-separated LINK TARGET pairs, one per policy symlink in TREEISH.
-# Dies on a symlink RC11 does not admit, so call it in the current shell, not a process substitution,
-# before anything is restored.
-policy_links() {
-  local entry p oid target
-  while IFS= read -r -d '' entry; do
-    [ "${entry%% *}" = 120000 ] || continue
-    p="${entry#*$'\t'}"
-    policy_link_selected "$p" || continue
-    oid="${entry%%$'\t'*}"; oid="${oid##* }"
-    target="$(policy_link_target "$1" "$2" "$p" "$oid")" \
-      || die 1 "base reviewer policy symlink must name a file or directory inside the base tree: $p ($target)"
-    printf '%s\0%s\0' "$p" "$target"
-  done < <(git -C "$1" ls-tree -r -z "$2")
-}
-
-# policy_index DIR TREEISH -> NUL-separated `git update-index -z --index-info` records of TREEISH's policy.
-# Each policy symlink is replaced by its target's blobs placed under the link path, so restored policy is
-# base content wherever the link pointed. Callers validate with policy_links first: a refusal here happens
-# inside a process substitution and cannot stop the caller.
+# policy_index DIR TREEISH [LINKS_FILE] -> NUL-separated `git update-index -z --index-info` records of TREEISH's
+# policy, from one walk of TREEISH. Each policy symlink is replaced by its target's blobs placed under the link
+# path, so restored policy is base content wherever the link pointed; LINKS_FILE, when given, receives the
+# NUL-separated LINK TARGET pairs. Dies on a symlink RC11 does not admit, so a caller that must stop on refusal
+# runs it in the current shell, not a process substitution, before anything is restored.
 policy_index() {
-  local entry p link target i
+  local entry p oid target listing i
   local -a links=() targets=()
-  while IFS= read -r -d '' link && IFS= read -r -d '' target; do
-    links+=("$link"); targets+=("$target")
-  done < <(policy_links "$1" "$2")
-  while IFS= read -r -d '' entry; do
-    p="${entry#*$'\t'}"
-    if [ "${entry%% *}" = 120000 ] && policy_link_selected "$p"; then continue; fi
-    if adapter_is_policy_path "$p"; then printf '%s\0' "$entry"; fi
-  done < <(git -C "$1" ls-tree -r -z "$2")
+  listing="$(tree_listing "$1" "$2")" || exit "$?"
+  # shellcheck disable=SC2094 # Unlinking the open listing is deliberate: a die mid-walk leaves nothing behind.
+  {
+    rm -f "$listing"
+    while IFS= read -r -d '' entry; do
+      p="${entry#*$'\t'}"
+      if [ "${entry%% *}" = 120000 ] && policy_link_selected "$p"; then
+        oid="${entry%%$'\t'*}"; oid="${oid##* }"
+        target="$(policy_link_target "$1" "$2" "$p" "$oid")" \
+          || die 1 "base reviewer policy symlink must name a file or directory inside the base tree: $p ($target)"
+        links+=("$p"); targets+=("$target")
+      elif adapter_is_policy_path "$p"; then
+        printf '%s\0' "$entry"
+      fi
+    done
+  } < "$listing"
+  [ -z "${3:-}" ] || : > "$3"
   [ "${#links[@]}" -gt 0 ] || return 0
   for i in "${!links[@]}"; do
+    [ -z "${3:-}" ] || printf '%s\0%s\0' "${links[$i]}" "${targets[$i]}" >> "$3"
     while IFS= read -r -d '' entry; do
       p="${entry#*$'\t'}"
       if [ "$p" = "${targets[$i]}" ]; then p="${links[$i]}"; else p="${links[$i]}/${p#"${targets[$i]}"/}"; fi
