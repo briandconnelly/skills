@@ -243,6 +243,20 @@ describe("shell.env hook", () => {
     expect(err).not.toContain("ghs_")
   })
 
+  test("a legitimate GIT_CONFIG_COUNT above 1000 is accepted", async () => {
+    // bot-env has no cap: 2 entries per raw remote value, so many remotes exceed 1000.
+    const total = 1203
+    let extra = ""
+    for (let i = 21; i < total; i += 2) {
+      extra += `export GIT_CONFIG_KEY_${i}='url.https://github.com/r${i}/.insteadOf'\nexport GIT_CONFIG_VALUE_${i}='git@github.com:r${i}/'\n`
+      extra += `export GIT_CONFIG_KEY_${i + 1}='url.https://github.com/r${i}/.pushInsteadOf'\nexport GIT_CONFIG_VALUE_${i + 1}='git@github.com:r${i}/'\n`
+    }
+    const block = BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${total}`).replace("OUT\n", `${extra}OUT\n`)
+    const env = await call(fixture("bot-many", block), gitRepo("many"))
+    expect(env.GIT_CONFIG_COUNT).toBe(String(total))
+    expect(env.GH_TOKEN).toBeTruthy()
+  })
+
   test("fail closed: a non-numeric or huge GIT_CONFIG_COUNT", async () => {
     for (const [name, count] of [["nan", "abc"], ["huge", "99999999999"]]) {
       const botEnv = fixture(`bot-count-${name}`, BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${count}`))

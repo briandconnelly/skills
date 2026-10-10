@@ -62,10 +62,6 @@ const REQUIRED_IDENTITY = [
   "GIT_CONFIG_PARAMETERS",
 ]
 
-// bot-env emits 3 fixed entries plus 2 per rewrite pair; this bounds the
-// validation loop against a corrupt value without limiting real output.
-const MAX_GIT_CONFIG_COUNT = 1000
-
 class BotEnvError extends Error {}
 
 // Collect a stream through a reader the deadline can cancel: a descendant
@@ -239,9 +235,12 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
         if (parsed.GH_TOKEN === "") problems.push("non-empty GH_TOKEN")
         if ("GIT_CONFIG_PARAMETERS" in parsed && parsed.GIT_CONFIG_PARAMETERS !== "") problems.push("empty GIT_CONFIG_PARAMETERS")
         if ("GIT_CONFIG_COUNT" in parsed) {
-          const count = /^[0-9]{1,4}$/.test(parsed.GIT_CONFIG_COUNT) ? Number(parsed.GIT_CONFIG_COUNT) : NaN
-          if (Number.isNaN(count) || count < 3 || count > MAX_GIT_CONFIG_COUNT) {
-            problems.push(`GIT_CONFIG_COUNT between 3 and ${MAX_GIT_CONFIG_COUNT}`)
+          // Bound the count by the block itself: a count larger than the number
+          // of exported keys cannot be satisfied, and fails before any loop.
+          const keyCount = Object.keys(parsed).filter((name) => /^GIT_CONFIG_KEY_[0-9]+$/.test(name)).length
+          const count = /^[0-9]+$/.test(parsed.GIT_CONFIG_COUNT) ? Number(parsed.GIT_CONFIG_COUNT) : NaN
+          if (Number.isNaN(count) || count < 3 || count > keyCount) {
+            problems.push("GIT_CONFIG_COUNT between 3 and the number of GIT_CONFIG_KEY_n exports")
           } else {
             for (let i = 0; i < count; i++) {
               for (const name of [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]) if (!(name in parsed)) problems.push(name)
