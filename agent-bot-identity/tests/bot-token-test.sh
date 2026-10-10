@@ -9,12 +9,15 @@ FAIL=0
 DIR="$(cd -- "$(mktemp -d)" >/dev/null 2>&1 && pwd -P)"
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SERVER_PID=""
-trap 'rm -rf "$DIR"; [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true' EXIT
+trap '[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$DIR"' EXIT
 fail() { echo "FAIL: $*"; FAIL=1; }
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$(uv cache dir)}"
 # An ambient BOT_INSTALL_ID would override the INSTALL_ID substituted below.
+export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$(uv python dir)}"
 unset BOT_INSTALL_ID
+unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+python3 -c 'import datetime; datetime.UTC' 2>/dev/null || { echo "bot-token-test: needs python3 >= 3.11 for the fake API"; exit 1; }
 FAKE_HOME="$DIR/home"
 mkdir -p "$FAKE_HOME/.config/acme-agent"
 openssl genrsa -out "$FAKE_HOME/.config/acme-agent/key.pem" 2048 2>/dev/null
@@ -68,6 +71,7 @@ rc=0
 out="$(mint 2>/dev/null)" || rc=$?
 [ "$rc" -ne 0 ] || fail "401 did not fail"
 [ -z "$out" ] || fail "401 printed '$out'"
+[ "$(wc -l < "$DIR/log")" -eq 1 ] || fail "401 case never reached the fake"
 stop_server
 
 [ "$FAIL" -eq 0 ] && echo "bot-token-test: PASS"

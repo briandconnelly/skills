@@ -3,6 +3,7 @@
 Usage: fake_github_api.py <mode> <log-file>
 mode: ok | empty-token | unauthorized
 Prints the bound port on stdout once listening.
+Requires Python >= 3.11 (datetime.UTC).
 Every request appends one line to <log-file>: METHOD PATH AUTH-SCHEME JWT-SEGMENTS
 """
 
