@@ -30,9 +30,13 @@ import type { Plugin } from "@opencode-ai/plugin"
 const DEFAULT_BOT_ENV = "REPLACE" // e.g. "/Users/<you>/.config/acme-agent/bin/bot-env"
 
 // bot-env's hot path is a few local git probes plus a cached-token read (well
-// under a second); a cold mint is bounded by bot-token's own 10s request
-// timeout. This bound exists so a wedged subprocess fails the command loudly
-// instead of hanging the session.
+// under a second); a cold mint is bounded by bot-token's own 10 s request
+// timeout. This deadline exists so a wedged subprocess fails the command
+// loudly instead of hanging the session. It is enforced by the hook, not by
+// a signal: bash defers SIGTERM while a foreground child runs, and a child
+// that outlives the script keeps these pipes open, so the hook stops waiting
+// at the deadline and SIGKILLs the script; a child it was waiting on is not
+// reaped here and may linger until it exits on its own.
 const TIMEOUT_MS = 20_000
 
 type ShellEnvInput = { cwd: string; sessionID?: string; callID?: string }
@@ -48,7 +52,7 @@ const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
 
 class BotEnvError extends Error {}
 
-async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string; stderr: string }> {
+async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
   if (botEnv === "REPLACE") {
     throw new BotEnvError(
       "agent-bot-identity: DEFAULT_BOT_ENV is not customized; set it to the absolute path of the installed bot-env (see references/adapters/opencode.md)",
@@ -63,20 +67,30 @@ async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string;
       stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
     })
   } catch (err) {
     throw new BotEnvError(`agent-bot-identity: failed to spawn bot-env at ${botEnv}: ${err}`)
   }
+  const work = Promise.all([
+    new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
+    new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
+    proc.exited,
+  ])
+  // If the deadline wins, `work` stays pending until the child's pipes close;
+  // observe it so a late stream error is never an unhandled rejection.
+  work.catch(() => {})
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      proc.kill("SIGKILL")
+      reject(new BotEnvError(`agent-bot-identity: bot-env did not complete within ${timeoutMs}ms in ${cwd}; refusing to continue with undetermined identity`))
+    }, timeoutMs)
+  })
   let stdout: string, stderr: string, code: number
   try {
-    ;[stdout, stderr, code] = await Promise.all([
-      new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
-      new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
-      proc.exited,
-    ])
-  } catch (err) {
-    throw new BotEnvError(`agent-bot-identity: bot-env did not complete within ${TIMEOUT_MS}ms in ${cwd}: ${err}`)
+    ;[stdout, stderr, code] = await Promise.race([work, deadline])
+  } finally {
+    clearTimeout(timer)
   }
   if (code !== 0) {
     throw new BotEnvError(`agent-bot-identity: bot-env exited ${code} in ${cwd}: ${stderr.trim() || "(no stderr)"}`)
@@ -86,6 +100,7 @@ async function runBotEnv(botEnv: string, cwd: string): Promise<{ stdout: string;
 
 export const AgentBotIdentity: Plugin = async ({ client }, options) => {
   const botEnv = typeof options?.botEnv === "string" ? options.botEnv : DEFAULT_BOT_ENV
+  const timeoutMs = typeof options?.timeoutMs === "number" && options.timeoutMs > 0 ? options.timeoutMs : TIMEOUT_MS
 
   const log = async (level: "warn" | "error", message: string, extra?: Record<string, unknown>) => {
     // Logging is best-effort; a log failure must never affect routing.
@@ -109,7 +124,7 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       // 1h token lifetime: a PTY env is fixed at spawn.
       if (!input.sessionID || !input.callID) return
 
-      const { stdout, stderr } = await runBotEnv(botEnv, input.cwd).catch((err) => fail(err, input.cwd))
+      const { stdout, stderr } = await runBotEnv(botEnv, input.cwd, timeoutMs).catch((err) => fail(err, input.cwd))
 
       // bot-env's stderr carries the ambiguity warnings (no remotes, probe
       // failures); their repetition is the signal, so forward every one.

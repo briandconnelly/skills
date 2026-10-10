@@ -30,17 +30,22 @@ function gitRepo(name: string, remote?: string): string {
   return dir
 }
 
-const hooksOf = async (botEnv: string) => {
+const hooksOf = async (botEnv: string, extra: Record<string, unknown> = {}) => {
   const client = { app: { log: async () => ({}) } }
   const plugin = AgentBotIdentity as (input: unknown, options?: unknown) => Promise<Record<string, unknown>>
-  const hooks = (await plugin({ client } as never, { botEnv })) as {
+  const hooks = (await plugin({ client } as never, { botEnv, ...extra })) as {
     "shell.env": (input: { cwd: string; sessionID?: string; callID?: string }, output: { env: Record<string, string> }) => Promise<void>
   }
   return hooks["shell.env"]
 }
 
-const call = async (botEnv: string, cwd: string, ids: { sessionID?: string; callID?: string } = { sessionID: "s", callID: "c" }) => {
-  const hook = await hooksOf(botEnv)
+const call = async (
+  botEnv: string,
+  cwd: string,
+  ids: { sessionID?: string; callID?: string } = { sessionID: "s", callID: "c" },
+  extra: Record<string, unknown> = {},
+) => {
+  const hook = await hooksOf(botEnv, extra)
   const output = { env: {} as Record<string, string> }
   await hook({ cwd, ...ids }, output)
   return output.env
@@ -176,6 +181,16 @@ describe("shell.env hook", () => {
     const botEnv = fixture("bot-noexec", BOT_BLOCK, false)
     await expect(call(botEnv, gitRepo("noexec"))).rejects.toThrow()
   })
+
+  test("fail closed: a wedged bot-env is abandoned at the deadline, not awaited", async () => {
+    // bash defers SIGTERM while a foreground child runs and the child keeps
+    // the pipes open, so a signal alone never bounded this; the hook must
+    // reject at the deadline whatever the child does.
+    const botEnv = fixture("bot-wedged", `#!/usr/bin/env bash\nsleep 5\necho "export GH_TOKEN='x'"\n`)
+    const t0 = Date.now()
+    await expect(call(botEnv, gitRepo("wedged"), undefined, { timeoutMs: 300 })).rejects.toThrow(/did not complete within 300ms/)
+    expect(Date.now() - t0).toBeLessThan(2000)
+  }, 10_000)
 
   test("fail closed: DEFAULT_BOT_ENV placeholder left as REPLACE", async () => {
     const client = { app: { log: async () => ({}) } }
