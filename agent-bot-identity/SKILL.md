@@ -92,7 +92,8 @@ Rules:
 - For a wrong-host request it must stay silent so a typosquatted or mis-rewritten remote cannot coax out the installation token.
 - Normalize hostnames case-insensitively and strip any credential-protocol port suffix before comparing to `github.com`.
 - Do not globally override `GIT_ASKPASS`, `SSH_ASKPASS`, or terminal-prompt variables in Variant B because a personal verdict cannot safely reconstruct IDE-provided values that the guard inherited.
-- Use `as-me` only for commit authorship, always with a command — the script refuses zero arguments, because bare `env` would print the entire environment, `GH_TOKEN` included.
+- Always run `as-me` with a command — the script refuses zero arguments, because bare `env` would print the entire environment, `GH_TOKEN` included.
+- When and for what `as-me` may be used is set by Mixed Contribution.
 
 The helper scripts are bundled under `scripts/`; copy the needed files into a single flat directory, customize their placeholders, and `chmod +x` each copied file.
 `~/.config/acme-agent/bin/` is the recommended neutral location.
@@ -295,7 +296,7 @@ Not enforced — the part everyone overstates:
 | Calling the review gate "enforced against the agent" | The agent holds both identities; the gate binds the bot token (see approval laundering above) |
 | Leaving the personal `gh` OAuth login on the agent's machine | Its token carries PR write, so the agent can approve bot PRs as the human in one command; auth personal `gh` with a fine-grained PAT lacking Pull requests write and approve in the browser |
 | A credential helper that answers for any host | git invokes it for every host it authenticates to, so a host-blind helper hands the installation token to a typosquatted, mis-rewritten, or attacker-controlled remote — Phase 3 Rules |
-| Deciding the org match by pattern-matching the raw remote line | Any boundary character you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict — Claude Code adapter's decision table |
+| Deciding the org match by pattern-matching the raw remote line | Any boundary character you pick (`/`, `@`) also appears in URL *paths*, so `notgithub.com/acme/`, `example.com/@github.com/acme/`, or `github.com.evil.tld/acme/` can all spoof a bot verdict; parse each remote down to its authority (`[userinfo@]host[:port]`) and compare the host case-insensitively to `github.com`, then check the org path segment case-insensitively — don't regex the whole line, and for ssh aliases and `ssh.github.com` follow the Claude Code adapter's decision table |
 | Emitting `insteadOf` pairs only for SSH-form remotes, or without `pushInsteadOf` twins | git resolves rewrites by longest matching prefix across every config scope and consults `pushInsteadOf` first for pushes, so a global force-SSH rewrite pulls an https org remote back onto the personal SSH key with the bot as author — Phase 4 contract |
 | Treating git exit 128 as "not a repository" | git exits 128 on every fatal error (corrupt config, unsupported repository format, dubious ownership, malformed inherited `GIT_CONFIG_*`), so a guard that resolves personal on 128 alone silently attributes org work to the human — Claude Code adapter's decision table |
 | Gating user-level activation on a local repo allowlist | An enrolled repo missing from the list silently works as the human — the headline failure — Phase 4 contract |
