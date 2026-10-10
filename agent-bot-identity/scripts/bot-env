@@ -92,6 +92,24 @@ url_user() {
   esac
 }
 
+# Explicit port of an ssh:// URL (`ssh://host:2222/x` → 2222), or the empty
+# string. The scp form cannot carry a port. Digits only; anything else is
+# treated as absent rather than passed to ssh.
+url_port() {
+  local u="$1" rest auth
+  case "$u" in
+    *://*)
+      rest="${u#*://}"; auth="${rest%%/*}"; auth="${auth#*@}"
+      case "$auth" in
+        \[*\]:*) auth="${auth##*]:}" ;;
+        \[*) auth="" ;;
+        *:*) auth="${auth##*:}" ;;
+        *) auth="" ;;
+      esac
+      case "$auth" in ""|*[!0-9]*) ;; *) printf '%s' "$auth" ;; esac ;;
+  esac
+}
+
 # Resolve an ssh host the way git's own ssh would: GIT_SSH_COMMAND, then
 # core.sshCommand, then GIT_SSH, then plain ssh. `-G` prints the client
 # configuration without connecting, which is how a `Host gh` alias becomes
@@ -100,9 +118,10 @@ url_user() {
 # script's input. Prints the lower-cased hostname; prints nothing when the
 # lookup fails.
 git_ssh_resolve() {
-  local host="$1" user="${2:-}" cmd
+  local host="$1" user="${2:-}" port="${3:-}" cmd inner
   case "$host" in -*|""|*:*|\[*) return 1 ;; esac
   case "$user" in -*|*:*) return 1 ;; esac
+  case "$port" in ""|*[!0-9]*) port="" ;; esac
   # git's order (connect.c): GIT_SSH_COMMAND, else core.sshCommand, both run
   # through a shell; only when neither is set, GIT_SSH (no shell), else ssh.
   if [ -n "${GIT_SSH_COMMAND:-}" ]; then
@@ -111,9 +130,12 @@ git_ssh_resolve() {
     cmd="$(git config --get core.sshCommand 2>/dev/null || true)"
   fi
   if [ -n "$cmd" ]; then
-    sh -c "$cmd -G -o CanonicalizeHostname=no \"\$1\"" sh "${user:+$user@}$host" 2>/dev/null </dev/null
+    inner="$cmd -G -o CanonicalizeHostname=no"
+    [ -n "$port" ] && inner="$inner -p \"\$2\""
+    inner="$inner \"\$1\""
+    sh -c "$inner" sh "${user:+$user@}$host" "$port" 2>/dev/null </dev/null
   else
-    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no "${user:+$user@}$host" 2>/dev/null </dev/null
+    "${GIT_SSH:-ssh}" -G -o CanonicalizeHostname=no ${port:+-p "$port"} "${user:+$user@}$host" 2>/dev/null </dev/null
   fi | awk '!done && $1 == "hostname" { print tolower($2); done = 1 }'
 }
 
@@ -123,9 +145,10 @@ git_ssh_resolve() {
 # paths and IP literals. Returns 1 when the destination cannot be determined:
 # an alias-shaped host (no dot) that ssh could not resolve.
 github_destination() {
-  local u="$1" host eff user
+  local u="$1" host eff user port
   host="$(url_host_lc "$u")"
   user="$(url_user "$u")"
+  port="$(url_port "$u")"
   if [ -z "$host" ]; then printf 'other'; return 0; fi
   case "$host" in github.com|ssh.github.com) printf 'github'; return 0 ;; esac
   case "$host" in *:*|\[*) printf 'other'; return 0 ;; esac
@@ -134,7 +157,7 @@ github_destination() {
     *://*) printf 'other'; return 0 ;;
     *) ;;
   esac
-  eff="$(git_ssh_resolve "$host" "$user")" || eff=""
+  eff="$(git_ssh_resolve "$host" "$user" "$port")" || eff=""
   if [ -z "$eff" ]; then
     case "$host" in *.*) printf 'other'; return 0 ;; *) return 1 ;; esac
   fi
@@ -372,6 +395,7 @@ done
 # user's own config can rewrite a non-GitHub raw value onto GitHub. URLs typed on the command line
 # are outside this check; the host-wide and account pairs are their only cover.
 cfg=()
+effective_https=()
 i=0
 while [ "$i" -lt "${#pair_base[@]}" ]; do
   cfg+=(-c "url.${pair_base[$i]}.insteadOf=${pair_value[$i]}" -c "url.${pair_base[$i]}.pushInsteadOf=${pair_value[$i]}")
@@ -406,6 +430,7 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
               echo "bot-env: remote '${name}' resolves to ${resolved_shown}, an https github.com URL with embedded credentials; git would authenticate with them instead of the bot token. Remove the rule or the credentials; refusing to run with a competing credential" >&2
               exit 1 ;;
           esac
+          [ "$(url_host_lc "$resolved")" = github.com ] && effective_https+=("$resolved")
           continue ;;
       esac
       dest="$(github_destination "$resolved")" || dest=github
@@ -429,12 +454,17 @@ done
 # Whether a key's URL scope applies is git's call (wildcard hosts, username
 # scopes, ports), so each Authorization-bearing scope is tested with a probe
 # variable under the same URL section against every target this command
-# routes to. A malformed inherited GIT_CONFIG_COUNT must not blind this.
+# routes to: the host root, every raw GitHub remote's target, and every
+# effective https github.com URL the rewrites produce. A malformed inherited GIT_CONFIG_COUNT must not
+# blind this.
 authz_targets=('https://github.com/')
 i=0
 while [ "$i" -lt "${#github_target[@]}" ]; do
   authz_targets+=("${github_target[$i]}")
   i=$((i + 1))
+done
+for t in "${effective_https[@]+"${effective_https[@]}"}"; do
+  authz_targets+=("$t")
 done
 authz_keys="$(env -u GIT_CONFIG_COUNT git "${cfg[@]}" config --get-regexp '^http\.(.*\.)?extraheader$' 2>/dev/null | awk 'tolower($2) ~ /^authorization:/ { print $1 }' | sort -u || true)"
 while IFS= read -r k; do

@@ -684,5 +684,28 @@ R2="$(mkrepo 'https://REDACTED@github.com/acme/x.git')"
 [ "$(effective "$R2" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "raw credentialed https remote not rewritten to the clean target: $(effective "$R2" origin)"
 rm -rf "$R" "$R2"
 
+# 57. git passes an ssh:// URL's port to ssh as -p, and ssh config can turn
+#     on it; the lookup must carry the port so the verdict matches git's ssh.
+printf 'Match host work exec "test %%p = 443"\n  HostName github.com\n' > "$HOME/.ssh/port_config"
+R="$(mkrepo ssh://git@work:443/acme/x.git)"
+git -C "$R" config core.sshCommand "ssh -F $HOME/.ssh/port_config"
+[ "$(verdict "$R")" = BOT ] || fail "port-conditional alias to github.com resolved personal: $(cat "$DIR/err")"
+[ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "port-conditional alias remote not rewritten: $(effective "$R" origin)"
+git -C "$R" remote set-url origin ssh://git@work:22/acme/x.git
+[ "$(verdict "$R")" = PERSONAL ] || fail "port-conditional alias matched on the wrong port"
+rm -rf "$R"
+
+# 58. An Authorization header scoped to a path that is reached only through
+#     a user rewrite of a non-GitHub raw remote must still be refused.
+REWRITE_HDR="$DIR/global-rewrite-hdr"
+printf '[url "https://github.com/private/x.git"]\n\tinsteadOf = mirror:x.git\n[http "https://github.com/private/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$REWRITE_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+git -C "$R" remote add mirror mirror:x.git
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$REWRITE_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on a rewritten GitHub target was not refused"
+grep -q 'REDACTED' "$DIR/err" && fail "rewritten-target refusal printed the header value"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"
