@@ -395,7 +395,7 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
       case "$resolved" in [Hh][Tt][Tt][Pp][Ss]://*) continue ;; esac
       dest="$(github_destination "$resolved")" || dest=github
       [ "$dest" = github ] || continue
-      resolved_shown="$(printf '%s' "$resolved" | sed 's#//[^/@]*@#//***@#')"
+      resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
       echo "bot-env: remote '${name}' still resolves to ${resolved_shown} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3

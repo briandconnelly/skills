@@ -22,6 +22,20 @@ export HOME="$DIR/home"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 [ "$HOME" = "$DIR/home" ] || { echo "refusing: HOME is not the scratch dir"; exit 2; }
+# OpenSSH reads its default user config from the passwd home directory, not
+# $HOME, so a scratch HOME alone would let the developer's real ~/.ssh/config
+# decide alias cases. This shim points ssh at the scratch config unless the
+# caller passes its own -F.
+REAL_SSH="$(command -v ssh)"
+mkdir -p "$DIR/ssh-shim"
+cat > "$DIR/ssh-shim/ssh" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = -F ] && exec "$REAL_SSH" "\$@"; done
+exec "$REAL_SSH" -F "$HOME/.ssh/config" "\$@"
+EOF
+: > "$HOME/.ssh/config"
+chmod +x "$DIR/ssh-shim/ssh"
+export PATH="$DIR/ssh-shim:$PATH"
 export GIT_CONFIG_NOSYSTEM=1
 : > "$DIR/global-empty"
 export GIT_CONFIG_GLOBAL="$DIR/global-empty"

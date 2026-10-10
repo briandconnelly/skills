@@ -649,5 +649,17 @@ echo "$out" | grep -q '^export GH_TOKEN=' || fail "comment/macdef .netrc did not
 rm -f "$HOME/.netrc"
 rm -rf "$R"
 
+# 55. An effective URL in scp form carries its userinfo before the host;
+#     the abort message must mask it like the scheme form.
+SCP_TIE="$DIR/global-scp-tie"
+printf '[url "private-REDACTED@github.com:acme/x.git"]\n\tinsteadOf = https://github.com/acme/x.git\n' > "$SCP_TIE"
+R="$(mkrepo https://github.com/acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$SCP_TIE" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "scp-form tie did not abort"
+grep -q '\*\*\*@github.com:acme/x.git' "$DIR/err" || fail "scp-form abort did not mask the userinfo: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "scp-form abort printed the userinfo"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"
