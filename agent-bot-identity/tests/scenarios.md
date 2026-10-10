@@ -364,8 +364,8 @@ SKILL.md and references/ are not edited in this PR, by the suite's rule that a w
 ### Re-runs 2026-10-10 (PR 6: one home per rule)
 
 Mechanics as in the PR 5 re-runs above (fresh sonnet subagents, verbatim replies, a separate sonnet scorer per reply, conjunct-strict, one evidence pointer per assertion), with one addition: a same-session control arm pointed at the skill text on main (dc55c3d, before this PR) instead of a baseline, because the question is whether moving rules into Rules lists and shortening Common Mistakes rows lost anything a plan-writer reads.
-Skill text under test: SKILL.md and references/ at this branch's 094545e (Rules lists in Phases 3, 5 and 6; `expires_at` surfaced in Phase 3 Rules; Common Mistakes rows shortened to pointers; Phase 6 control per ruleset source).
-The two owed items above (the `expires_at` prominence and the claude-code.md personal-verdict bullet) are addressed by this PR's skill edits.
+Skill text under test: SKILL.md and references/ at this branch's 094545e (Rules lists in Phases 3, 5 and 6; `expires_at` surfaced in Phase 3 Rules; Common Mistakes rows shortened to pointers; Phase 6 control per ruleset source); `references/adapters/opencode.md` changed later in 495d057, which Scenarios 1 and 4 do not read.
+The two owed items above (the `expires_at` prominence and the claude-code.md personal-verdict bullet) were edited by this PR but are not yet shown to land: `expires_at` was stated in 1 of 2 branch runs of Scenario 1 (assertion 4), and the personal-verdict unset list in Scenario 4 assertion 4 was still missed by branch run 2.
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
@@ -377,7 +377,7 @@ The two owed items above (the `expires_at` prominence and the claude-code.md per
 | 2026-10-10 | 4 (user-level activation) | with-skill, branch (run 2) | 7/9 | Misses: assertion 4 (the account-length rewrite tier and the personal-verdict unset list not named), 6. |
 | 2026-10-10 | 4 (user-level activation) | control, main | 7/9 | Misses: assertions 4, 6. |
 
-Reading: the branch scored at or above the same-session control on every arm, and every assertion the branch missed was also missed by a control arm, so the rule moves show no regression at this sample size (n=2 branch, n=1–2 control).
+Reading: the branch scored at or above the same-session control on every arm, and every branch miss except Scenario 1 assertion 9 (branch 1/2, control 0/2) was also missed by a control arm, so the rule moves show no regression at this sample size (n=2 branch, n=1–2 control).
 The PR 5 runs (10/10 and 9/9) were above this session's controls on the same text, so run-to-run and scorer variance at n≤2 is about two assertions; the plan's "expected 10/10 and 9/9" is not a stable bar.
 Assertion 4's `expires_at` conjunct was stated by one of two branch runs and neither control run.
 
@@ -385,6 +385,8 @@ Assertion 4's `expires_at` conjunct was stated by one of two branch runs and nei
 
 - Scenario 4 assertion 6 was missed by all three arms, on both texts: no plan stated that explicit per-repo opt-in disappears, that the installation list becomes the only enforcement, or that personal authorship goes through a per-command escape rather than a personal-credentials mode.
   The trade-off is spread across claude-code.md's variant comparison and the Mixed Contribution section; owed: decide whether it needs one statement where a Variant B plan-writer reads, then re-run Scenario 4.
+- Scenario 1 assertion 9 ("self-approval not counted" as a ruleset requirement) was missed by branch run 1 and by neither control run (branch 1/2, control 0/2).
+  Phase 6 now places a Rules list before the checklist that holds that rule; judged noise at n=1, owed: watch it in the next Scenario 1 run.
 - Scenario 1 assertions 6 and 10 were each missed by three of four arms on both texts: the `ZDOTDIR` detail lives in claude-code.md (Common Mistakes and the snapshot notes) and the API-path clause in SKILL.md's Phase 5 and Common Mistakes; neither moved in this PR.
 
 ## Codex adapter scenarios

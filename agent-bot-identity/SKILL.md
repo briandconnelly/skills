@@ -242,7 +242,7 @@ Rules:
 - Positive control: before recording "no bypass actors on any ruleset", prove the reading identity could have seen one — a redacted view and a clean result are otherwise identical.
 - `gh api user` returning your personal login rules out the bot token (installation tokens 403 there) but is not sufficient: a personal account without admin access to the repo also gets `bypass_actors` omitted from the read, the same false-clean shape (verified 2026-07-12).
 - List each ruleset with its source first: `gh api --paginate repos/OWNER/REPO/rulesets --jq '.[] | [.id, .source_type, .source] | @tsv'`.
-- For a `Repository` source confirm `gh api repos/OWNER/REPO --jq .permissions.admin` is `true`; for an `Organization` source confirm `gh api orgs/ORG/memberships/$(gh api user --jq .login) --jq .role` is `admin`.
+- For a `Repository` source confirm `gh api repos/OWNER/REPO --jq .permissions.admin` is `true`; for an `Organization` source (`ORG` is that ruleset's `source` from the listing command) confirm `gh api orgs/ORG/memberships/$(gh api user --jq .login) --jq .role` is `admin`.
 - A ruleset whose source is `Enterprise` (or any other source) is unverified unless the reader is an owner of that enterprise.
 - Then read each ruleset with `gh api repos/OWNER/REPO/rulesets/ID --jq '.bypass_actors | type'` and treat anything other than `array` as unverified, never as empty, since an empty array is a legitimate clean result.
 - File gaps with the repo's admins rather than working around them.
