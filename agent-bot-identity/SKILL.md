@@ -132,7 +132,7 @@ An adapter for a local agent harness must supply all of the following, without e
 
 - Per-repo activation: explicit opt-in, or a gated automatic equivalent keyed on a repo-intrinsic signal such as the org remote.
 - The static git identity env (`GIT_AUTHOR_*`/`GIT_COMMITTER_*`).
-- Command-scope `GIT_CONFIG_*`: credential-helper reset plus the bot helper, SSH→HTTPS rewrites for the bot's GitHub remotes emitted as both `insteadOf` and `pushInsteadOf` and including identity pairs on the https prefix (so a user's global force-SSH rewrite cannot undo them), `commit.gpgsign false`.
+- Command-scope `GIT_CONFIG_*`: a host-wide credential-helper reset plus the bot helper for all of `https://github.com` (never scoped to an account — [`decisions/001`](decisions/001-credential-helper-scope.md)), SSH→HTTPS rewrites for the bot's GitHub remotes emitted as both `insteadOf` and `pushInsteadOf` and including identity pairs on the https prefix (so a user's global force-SSH rewrite cannot undo them), `commit.gpgsign false`.
 - A dynamic `GH_TOKEN` re-minted across hour-plus sessions.
 - A fail-closed substitute when minting fails: a non-empty invalid token, never an empty value.
 - When the machine serves more than one GitHub account: installation selection per Phase 3's `BOT_INSTALL_ID` contract.
@@ -287,6 +287,7 @@ Not enforced — the part everyone overstates:
 | Expecting `as-me` commits to be signed or Verified | `gpgsign false` stays in effect and App-token pushes are never auto-verified; amend from a personal terminal if a signature is required |
 | Auditing Phase 6 rulesets with the bot token | A bot-token ruleset read succeeds with `bypass_actors` withheld (`--jq` prints `null`) rather than failing with 403 — the audit reports "no bypass actors" and looks clean while blind; read rulesets with a personal identity holding repo admin and run the Phase 6 positive control |
 | Assuming the installation list bounds everything the bot can write | It bounds git/content access and all private-repo access; issue creation on any public repo with Issues enabled is open to any authenticated actor, App tokens included |
+| Scoping the credential helper to the mapped account so unrelated private fetches keep working | Every unmapped github.com HTTPS push would then ride the personal credential under the bot's authorship — the headline failure; keep it host-wide (Phase 4 contract), and move session-wide interception problems to a per-command adapter (Claude Variant B, OpenCode) |
 
 Harness-mechanism-specific pitfalls (PATH-shim snapshots, `settings.local.json` static env, the per-command guard, `CwdChanged` plumbing) live with each adapter — see the adapter doc.
 
