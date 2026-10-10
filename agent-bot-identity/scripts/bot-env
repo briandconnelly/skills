@@ -547,7 +547,7 @@ while IFS= read -r k; do
       case "$prc" in
         0) if [ "$probe" = yes ]; then applies=yes; break; fi ;;
         1) ;;
-        *) echo "bot-env: git could not test whether the Authorization header in config key '${k_shown}' applies to github.com; remove or correct the malformed key; refusing to run with a possible competing credential" >&2; exit 1 ;;
+        *) echo "bot-env: could not test whether the Authorization header in config key '${k_shown}' applies to a GitHub destination (git could not evaluate the scope or a remote URL); remove or correct the malformed key or remote; refusing to run with a possible competing credential" >&2; exit 1 ;;
       esac
     done
   fi
