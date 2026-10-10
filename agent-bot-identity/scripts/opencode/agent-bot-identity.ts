@@ -93,8 +93,9 @@ async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promis
     collect(proc.stderr as ReadableStream<Uint8Array>, readers),
     proc.exited,
   ])
-  // If the deadline wins, `work` stays pending until the child's pipes close;
-  // observe it so a late stream error is never an unhandled rejection.
+  // If the deadline wins, the readers are cancelled and `work` settles shortly
+  // after the race has already rejected; observe it so that late settlement is
+  // never an unhandled rejection.
   work.catch(() => {})
   let timer: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<never>((_, reject) => {
@@ -118,26 +119,29 @@ async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promis
 
 export const AgentBotIdentity: Plugin = async ({ client }, options) => {
   const botEnv = typeof options?.botEnv === "string" ? options.botEnv : DEFAULT_BOT_ENV
-  // A usable deadline is a finite integer of at least 1 ms within setTimeout's
-  // 32-bit range; anything else (Infinity, NaN, a string, a negative) falls
-  // back to the default rather than being coerced into a 1 ms timer.
+  // A usable deadline is a finite number of at least 1 ms and at most 2^31−1 ms,
+  // floored to whole milliseconds (1.5 becomes 1); anything else (Infinity,
+  // NaN, a string, a negative, a fraction below 1) falls back to the default
+  // rather than being coerced into a 1 ms timer.
   const requested = options?.timeoutMs
   const timeoutMs =
     typeof requested === "number" && Number.isFinite(requested) && requested >= 1 && requested <= 2_147_483_647
       ? Math.floor(requested)
       : TIMEOUT_MS
 
-  const log = async (level: "warn" | "error", message: string, extra?: Record<string, unknown>) => {
-    // Logging is best-effort; a log failure must never affect routing.
+  // Logging is best-effort and must never delay routing or a refusal: the
+  // call is started and never awaited, and any failure is swallowed.
+  const log = (level: "warn" | "error", message: string, extra?: Record<string, unknown>): void => {
     try {
-      await client.app.log({ body: { service: "agent-bot-identity", level, message, extra } })
+      void Promise.resolve(client.app.log({ body: { service: "agent-bot-identity", level, message, extra } })).catch(() => {})
     } catch {}
   }
 
-  const fail = async (err: unknown, cwd: string): Promise<never> => {
+  const fail = (err: unknown, cwd: string): never => {
     // A throwing hook fails the shell command before it runs: that is this
     // adapter's fail-closed path, so every undetermined-identity outcome raises.
-    await log("error", String(err), { cwd })
+    // The log is started but never awaited, so it cannot hold the rejection.
+    log("error", String(err), { cwd })
     throw err
   }
 
@@ -154,11 +158,11 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       // bot-env's stderr carries the ambiguity warnings (no remotes, probe
       // failures); their repetition is the signal, so forward every one.
       const warning = stderr.trim()
-      if (warning) await log("warn", warning, { cwd: input.cwd })
+      if (warning) log("warn", warning, { cwd: input.cwd })
 
       const lines = stdout.split("\n").filter((line) => line !== "")
       if (lines.length === 0) {
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted no output in ${input.cwd}; refusing to continue with undetermined identity`),
           input.cwd,
         )
@@ -182,7 +186,7 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
           for (const name of match[1].split(" ")) delete output.env[name]
           continue
         }
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted an unrecognized line in ${input.cwd}: ${JSON.stringify(line)}`),
           input.cwd,
         )
@@ -194,7 +198,7 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       const hasIdentity = "GIT_AUTHOR_NAME" in output.env
       const hasToken = "GH_TOKEN" in output.env
       if (hasIdentity !== hasToken || (hasToken && output.env.GH_TOKEN === "")) {
-        await fail(
+        fail(
           new BotEnvError(`agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd}; refusing to route`),
           input.cwd,
         )

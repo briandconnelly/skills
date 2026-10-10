@@ -223,6 +223,19 @@ describe("shell.env hook", () => {
       hooks["shell.env"]({ cwd: gitRepo("replace"), sessionID: "s", callID: "c" }, { env: {} }),
     ).rejects.toThrow(/DEFAULT_BOT_ENV/)
   })
+
+  test("a hung logger cannot hold the hook open past the deadline", async () => {
+    const neverSettles = () => new Promise<never>(() => {})
+    const client = { app: { log: neverSettles } }
+    const plugin = AgentBotIdentity as (input: unknown, options?: unknown) => Promise<Record<string, unknown>>
+    const botEnv = fixture("bot-wedged-log", `#!/usr/bin/env bash\nsleep 5\necho "export GH_TOKEN='x'"\n`)
+    const hooks = (await plugin({ client } as never, { botEnv, timeoutMs: 300 })) as {
+      "shell.env": (i: { cwd: string; sessionID: string; callID: string }, o: { env: Record<string, string> }) => Promise<void>
+    }
+    const t0 = Date.now()
+    await expect(hooks["shell.env"]({ cwd: gitRepo("wedged-log"), sessionID: "s", callID: "c" }, { env: {} })).rejects.toThrow(/did not complete within 300ms/)
+    expect(Date.now() - t0).toBeLessThan(2000)
+  }, 10_000)
 })
 
 // Optional integration case against a real install: run with
