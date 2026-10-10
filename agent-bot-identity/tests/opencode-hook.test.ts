@@ -192,6 +192,28 @@ describe("shell.env hook", () => {
     expect(Date.now() - t0).toBeLessThan(2000)
   }, 10_000)
 
+  test("a non-finite timeoutMs falls back to the default instead of an immediate timeout", async () => {
+    // Infinity used to be coerced by setTimeout into a ~1 ms timer, which
+    // would time out every command; it must behave like the 20 s default.
+    const botEnv = fixture("bot-ok-inf", BOT_BLOCK)
+    const env = await call(botEnv, gitRepo("inf", "git@github.com:acme/repo.git"), undefined, { timeoutMs: Infinity })
+    expect(env.GH_TOKEN).toBe("ghs_fixture")
+    // A fractional value below 1 would floor to a 0 ms timer; it falls back too.
+    const frac = await call(botEnv, gitRepo("frac", "git@github.com:acme/repo.git"), undefined, { timeoutMs: 0.5 })
+    expect(frac.GH_TOKEN).toBe("ghs_fixture")
+  })
+
+  test("the deadline releases the pipe readers it was waiting on", async () => {
+    // After the deadline wins, the collectors must have been cancelled so a
+    // lingering descendant cannot keep this process's pipe ends open: the
+    // wedged fixture backgrounds a sleep that holds stdout, and the hook
+    // must still reject at the deadline and not hang on that sleep.
+    const botEnv = fixture("bot-held-pipe", `#!/usr/bin/env bash\n(sleep 5) &\nwait\n`)
+    const t0 = Date.now()
+    await expect(call(botEnv, gitRepo("held"), undefined, { timeoutMs: 300 })).rejects.toThrow(/did not complete within 300ms/)
+    expect(Date.now() - t0).toBeLessThan(2000)
+  }, 10_000)
+
   test("fail closed: DEFAULT_BOT_ENV placeholder left as REPLACE", async () => {
     const client = { app: { log: async () => ({}) } }
     const hooks = (await (AgentBotIdentity as (i: unknown) => Promise<Record<string, never>>)({ client } as never)) as {

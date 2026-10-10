@@ -72,7 +72,7 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 
 | Situation | Result |
 | --- | --- |
-| `bot-env` missing, non-executable, crashing, emitting garbage/partial output, or not finished at the 20 s deadline | Shell command aborts with the error; nothing runs. At the deadline the hook stops waiting and kills the script; a child the script was waiting on (a git process on a stale lock) is not reaped and may linger |
+| `bot-env` missing, non-executable, crashing, emitting garbage/partial output, or not finished at the 20 s deadline | Shell command aborts with the error; nothing runs. At the deadline the hook stops waiting and kills the script; a child the script was waiting on (a git process on a stale lock) is not reaped and may linger, but the hook releases its own ends of the pipes at the deadline so nothing is buffered on its behalf |
 | Token mint fails | Bot env with `BOT-TOKEN-MINT-FAILED`; `gh` and pushes fail loudly |
 | Command cwd is a non-mapped or non-git directory | Personal env for that command only |
 | opencode started with `--pure` or `OPENCODE_PURE=1` | Plugin never loads; commands run personal (documented escape hatch) |

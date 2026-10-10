@@ -52,6 +52,22 @@ const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
 
 class BotEnvError extends Error {}
 
+// Collect a stream through a reader the deadline can cancel: a descendant
+// that inherited the pipes may outlive the SIGKILLed script, and a cancelled
+// reader releases this process's end of the pipe instead of buffering until
+// that descendant exits.
+async function collect(stream: ReadableStream<Uint8Array>, readers: ReadableStreamDefaultReader<Uint8Array>[]): Promise<string> {
+  const reader = stream.getReader()
+  readers.push(reader)
+  const chunks: Uint8Array[] = []
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks))
+}
+
 async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
   if (botEnv === "REPLACE") {
     throw new BotEnvError(
@@ -71,9 +87,10 @@ async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promis
   } catch (err) {
     throw new BotEnvError(`agent-bot-identity: failed to spawn bot-env at ${botEnv}: ${err}`)
   }
+  const readers: ReadableStreamDefaultReader<Uint8Array>[] = []
   const work = Promise.all([
-    new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
-    new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
+    collect(proc.stdout as ReadableStream<Uint8Array>, readers),
+    collect(proc.stderr as ReadableStream<Uint8Array>, readers),
     proc.exited,
   ])
   // If the deadline wins, `work` stays pending until the child's pipes close;
@@ -83,6 +100,7 @@ async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promis
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       proc.kill("SIGKILL")
+      for (const r of readers) r.cancel().catch(() => {})
       reject(new BotEnvError(`agent-bot-identity: bot-env did not complete within ${timeoutMs}ms in ${cwd}; refusing to continue with undetermined identity`))
     }, timeoutMs)
   })
@@ -100,7 +118,14 @@ async function runBotEnv(botEnv: string, cwd: string, timeoutMs: number): Promis
 
 export const AgentBotIdentity: Plugin = async ({ client }, options) => {
   const botEnv = typeof options?.botEnv === "string" ? options.botEnv : DEFAULT_BOT_ENV
-  const timeoutMs = typeof options?.timeoutMs === "number" && options.timeoutMs > 0 ? options.timeoutMs : TIMEOUT_MS
+  // A usable deadline is a finite integer of at least 1 ms within setTimeout's
+  // 32-bit range; anything else (Infinity, NaN, a string, a negative) falls
+  // back to the default rather than being coerced into a 1 ms timer.
+  const requested = options?.timeoutMs
+  const timeoutMs =
+    typeof requested === "number" && Number.isFinite(requested) && requested >= 1 && requested <= 2_147_483_647
+      ? Math.floor(requested)
+      : TIMEOUT_MS
 
   const log = async (level: "warn" | "error", message: string, extra?: Record<string, unknown>) => {
     // Logging is best-effort; a log failure must never affect routing.
