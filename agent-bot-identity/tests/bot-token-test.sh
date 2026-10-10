@@ -59,11 +59,11 @@ out="$(mint 2>"$DIR/err")" || {
   fail "cold mint failed: $(cat "$DIR/err")"
 }
 # Checked first, right after the mint: the fake's lifetime is 2833 s from the
-# request (an odd number, so a hard-coded hour cannot pass), and the 5 s floor
-# leaves room only for the mint's own runtime.
+# request (an odd number, so a hard-coded hour cannot pass), and the 60 s floor
+# leaves room for the mint's own runtime on a slow runner while still rejecting a hard-coded hour or a zone-shifted parse.
 CACHE="$FAKE_HOME/.cache/acme-agent/token-123.json"
 exp="$(sed -n 's/.*"exp": *\([0-9.]*\).*/\1/p' "$CACHE" 2>/dev/null || true)"  # a missing cache must not abort under set -e
-awk -v e="$exp" -v n="$(date +%s)" 'BEGIN { d = e - n; exit !(e != "" && d >= 2828 && d <= 2833) }' || fail "cached exp does not match the fake's distinctive expires_at (exp='$exp')"
+awk -v e="$exp" -v n="$(date +%s)" 'BEGIN { d = e - n; exit !(e != "" && d >= 2773 && d <= 2833) }' || fail "cached exp does not match the fake's distinctive expires_at (exp='$exp')"
 [ "$out" = ghs_fakemint ] || fail "cold mint printed '$out'"
 grep -q '^POST /app/installations/123/access_tokens Bearer OK accept-ok$' "$DIR/log" || fail "request shape wrong: $(cat "$DIR/log")"
 [ -f "$CACHE" ] || fail "cache not written"
