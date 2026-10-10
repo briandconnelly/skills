@@ -782,5 +782,38 @@ rc=0
 out="$(cd "$R" && GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.botenvprobe GIT_CONFIG_VALUE_0=yes GIT_CONFIG_GLOBAL="$EX_HDR" "$DIR/bot-env" 2>"$DIR/err")" || fail "an inherited probe-named GIT_CONFIG entry invented a refusal: $(cat "$DIR/err")"
 rm -rf "$R"
 
+# 61e. An inherited GIT_CONFIG_PARAMETERS (what `git -c` leaves behind) must
+#      not stop the refusal either.
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_PARAMETERS="'http.https://github.com/other/.botenvprobe'='no'" GIT_CONFIG_GLOBAL="$OTHER_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "an inherited GIT_CONFIG_PARAMETERS hid a refused Authorization scope"
+rm -rf "$R"
+
+# 61f. A password containing '@' in a scope's userinfo is masked whole.
+AT_HDR="$DIR/global-authz-at-password"
+printf '[http "https://me:p@ss@github.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$AT_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$AT_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "userinfo-with-@ Authorization scope did not abort"
+grep -q 'http.https://\*\*\*@github.com/.extraheader' "$DIR/err" || fail "userinfo-with-@ refusal did not mask the whole userinfo: $(cat "$DIR/err")"
+grep -q 'p@ss\|ss@\|me:\|REDACTED' "$DIR/err" && fail "userinfo-with-@ refusal leaked a userinfo fragment or the value: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 61g. A scope git cannot evaluate (--get-urlmatch exits 128 on %zz) is
+#      refused, not passed, and the message says how to fix it.
+BAD_HDR="$DIR/global-authz-badscope"
+printf '[http "https://github.com/%%zz/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$BAD_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$BAD_HDR" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
+[ "$rc" -ne 0 ] || fail "a scope git cannot evaluate did not abort"
+[ -z "$out" ] || fail "probe-error abort still emitted env lines"
+grep -q 'could not test' "$DIR/err" || fail "probe-error abort was not the could-not-test refusal: $(cat "$DIR/err")"
+grep -q 'remove or correct' "$DIR/err" || fail "probe-error refusal did not say how to fix it: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "probe-error refusal printed the header value"
+rm -rf "$R"
+
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"
 exit "$FAIL"

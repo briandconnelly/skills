@@ -473,7 +473,7 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
           case "$resolved_auth" in
             *@*)
               [ "$(url_host_lc "$resolved")" = github.com ] || continue
-              resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
+              resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
               echo "bot-env: remote '${name}' resolves to ${resolved_shown}, an https github.com URL with embedded credentials; git would authenticate with them instead of the bot token. Remove the rule or the credentials; refusing to run with a competing credential" >&2
               exit 1 ;;
           esac
@@ -482,7 +482,7 @@ for name in "${all_names[@]+"${all_names[@]}"}"; do
       esac
       dest="$(github_destination "$resolved")" || dest=github
       [ "$dest" = github ] || continue
-      resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/@]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
+      resolved_shown="$(printf '%s' "$resolved" | sed -e 's#//[^/]*@#//***@#' -e 's#^[^/@:]*@#***@#')"
       echo "bot-env: remote '${name}' still resolves to ${resolved_shown} after the bot rewrites (a rule in your own git config matches its complete URL and wins the tie); refusing to run with a github.com remote outside the bot token" >&2
       exit 1
     done <<EOF3
@@ -526,7 +526,7 @@ while IFS= read -r k; do
   scope="${k#http.}"
   scope="${scope%.extraheader}"
   scope="${scope%.extraHeader}"
-  k_shown="$(printf '%s' "$k" | sed 's#//[^/@]*@#//***@#')"
+  k_shown="$(printf '%s' "$k" | sed 's#//[^/]*@#//***@#')"
   applies=""
   if [ "$scope" = extraheader ] || [ "$scope" = extraHeader ] || [ -z "$scope" ]; then
     applies=yes
@@ -547,7 +547,7 @@ while IFS= read -r k; do
       case "$prc" in
         0) if [ "$probe" = yes ]; then applies=yes; break; fi ;;
         1) ;;
-        *) echo "bot-env: git could not test whether the Authorization header in config key '${k_shown}' applies to github.com; refusing to run with a possible competing credential" >&2; exit 1 ;;
+        *) echo "bot-env: git could not test whether the Authorization header in config key '${k_shown}' applies to github.com; remove or correct the malformed key; refusing to run with a possible competing credential" >&2; exit 1 ;;
       esac
     done
   fi
