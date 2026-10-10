@@ -209,6 +209,19 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
         )
       }
 
+      // Exports are applied first and unsets after, so a name in both would be
+      // deleted despite being exported. bot-env never emits that; refuse it.
+      // The message names variables, never values: GH_TOKEN is one.
+      const conflicts = [...new Set(unsets)].filter((name) => name in parsed)
+      if (conflicts.length > 0) {
+        fail(
+          new BotEnvError(
+            `agent-bot-identity: bot-env emitted a variable both exported and unset in ${input.cwd} (${conflicts.join(", ")}); refusing to route`,
+          ),
+          input.cwd,
+        )
+      }
+
       // Contract check: bot-env emits the identity block only whole, in a fixed
       // shape: author and committer identity, a non-empty GH_TOKEN (its
       // fail-closed sentinel included), an empty GIT_CONFIG_PARAMETERS (git

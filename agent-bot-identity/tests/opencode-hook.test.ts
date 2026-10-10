@@ -231,6 +231,18 @@ describe("shell.env hook", () => {
     await expect(call(botEnv, gitRepo("lowered"))).rejects.toThrow(/GIT_CONFIG_KEY_3 beyond GIT_CONFIG_COUNT/)
   })
 
+  test("fail closed: a name both exported and unset in one block", async () => {
+    // Exports are applied and then all unsets, so GH_TOKEN would be deleted.
+    const botEnv = fixture("bot-export-unset", BOT_BLOCK.replace("OUT\n", "unset GH_TOKEN\nOUT\n"))
+    const err = await call(botEnv, gitRepo("export-unset")).then(
+      () => "",
+      (e: Error) => e.message,
+    )
+    expect(err).toMatch(/both exported and unset/)
+    expect(err).toContain("GH_TOKEN")
+    expect(err).not.toContain("ghs_")
+  })
+
   test("fail closed: a non-numeric or huge GIT_CONFIG_COUNT", async () => {
     for (const [name, count] of [["nan", "abc"], ["huge", "99999999999"]]) {
       const botEnv = fixture(`bot-count-${name}`, BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${count}`))
