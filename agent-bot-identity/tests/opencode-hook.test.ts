@@ -224,6 +224,13 @@ describe("shell.env hook", () => {
     await expect(call(botEnv, gitRepo("undercount"))).rejects.toThrow(/partial identity block/)
   })
 
+  test("fail closed: GIT_CONFIG entries beyond a valid lowered GIT_CONFIG_COUNT", async () => {
+    // COUNT=3 is within bounds and indices 0-2 are well formed; git would ignore
+    // the insteadOf/pushInsteadOf pairs still exported at 3 and above.
+    const botEnv = fixture("bot-lowered", BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", "GIT_CONFIG_COUNT=3"))
+    await expect(call(botEnv, gitRepo("lowered"))).rejects.toThrow(/GIT_CONFIG_KEY_3 beyond GIT_CONFIG_COUNT/)
+  })
+
   test("fail closed: a non-numeric or huge GIT_CONFIG_COUNT", async () => {
     for (const [name, count] of [["nan", "abc"], ["huge", "99999999999"]]) {
       const botEnv = fixture(`bot-count-${name}`, BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${count}`))
