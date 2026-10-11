@@ -234,6 +234,7 @@ Rate-limited error for exit `6`, with JSON on stderr and empty stdout in machine
 Example finding for `gadgetctl`.
 - severity: `P1`.
 - type: `impl-bug`.
-- location: command output from `gadgetctl gadget list --json`.
+- evidence: `observed` (user-supplied capture with stderr discarded via `2>/dev/null`).
+- location: command output from `gadgetctl gadget list --json 2>/dev/null`.
 - impact: stdout includes progress before the JSON payload, so agents cannot parse the success payload deterministically.
 - fix direction: keep stdout as success payload only and move progress or diagnostics to stderr.

@@ -7,13 +7,11 @@ description: Use when designing, building, auditing, or reviewing a command-line
 
 Use this skill to make CLIs easy for agents to discover, invoke correctly, and use at low token cost without sacrificing correctness.
 
-## Core Standard
+## Standard
 
-- Treat the machine-readable schema as the primary contract.
-- Optimize for the first successful non-interactive invocation.
-- Keep stdout as success payload only; put diagnostics and structured failures on stderr.
-- Make ambient state, side effects, auth, latency, truncation, retryability, and secret-handling visible.
-- Prefer compact, deterministic output shapes over prose explanations.
+[contract-checklist.md](references/contract-checklist.md) is the single home for every rule in this skill.
+The workflows order the work and point at its sections; [examples.md](references/examples.md) instantiates it; this file routes.
+Where another file in this skill appears to disagree with the checklist, the checklist governs.
 
 ## When To Use
 
@@ -31,15 +29,21 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 ## Vocabulary
 
-- **Machine profile**: the canonical flag bundle that puts the CLI in non-interactive, machine-readable mode. Declared in the schema.
-  Prefer a single flag that implies the rest (e.g., `--machine` implying JSON output and suppressed progress); when the profile names several flags, the schema must define what each flag adds.
+Definitions only; the rules that govern each term live in [contract-checklist.md](references/contract-checklist.md).
+
+- **Machine profile**: the canonical flag bundle, declared in the schema, that puts the CLI in machine mode (e.g., a single `--machine` flag that implies the rest).
 - **Machine mode**: the runtime state the machine profile produces — no prompts, no color, no progress, no pager, no browser, structured output only.
-- **Isolation profile**: an optional flag bundle that disables ambient config, credentials, caches, and other implicit state when the CLI can support that safely (e.g., `--isolated` or `--no-config`).
+- **Isolation profile**: an optional flag bundle that disables ambient config, credentials, caches, and other implicit state (e.g., `--isolated` or `--no-config`).
   Distinct from the machine profile.
-- **Non-TTY mode**: runtime behavior based on each stream's terminal status: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
-  Conservatively suppress terminal-only behavior even without the explicit machine profile.
-- **Output class**: one of `scalar`, `record`, `list`, `stream`, `bulk-result`, `artifact`, or another explicitly declared class with a stable contract.
-  Each command declares one; a flag may switch a command to a different class only when the schema declares the switch explicitly.
+- **Non-TTY mode**: runtime behavior derived from each stream's terminal status rather than from an explicit flag.
+- **Output class**: the declared shape family of a command's success output.
+  The built-in set:
+  - `scalar`: one value or status
+  - `record`: one resource
+  - `list`: finite collection
+  - `stream`: NDJSON records
+  - `bulk-result`: per-item results plus aggregate exit-code semantics
+  - `artifact`: large result written to disk with a structured pointer
 - **Ambient state**: config files, environment variables, credentials, and caches the CLI reads implicitly.
 
 ## Workflow
@@ -54,9 +58,9 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
 4. For contract hardening when the user owns the CLI, follow [design-workflow.md](references/design-workflow.md); if a contract already exists, first walk [review-workflow.md](references/review-workflow.md) to find the gaps, then design the fixes.
    For a contract the user does not own, follow [review-workflow.md](references/review-workflow.md) only.
-5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, severity scale, and report format live there.
+5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, evidence labels, severity scale, and report format live there.
 6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
-7. When writing or auditing prose surfaces — `--help` text, command summaries, schema `description` fields — apply the rules-then-context discipline in [contract-checklist.md](references/contract-checklist.md); if a separating-context-from-constraints skill is available in your environment, use it as the audit lens for those surfaces.
+7. When writing or auditing prose surfaces — `--help` text, command summaries, schema `description` fields — apply [contract-checklist.md](references/contract-checklist.md) § Prose Surfaces.
 8. Use [examples.md](references/examples.md) for concrete schema, payload, error, and review-finding shapes.
 
 ## Done Criteria
@@ -64,7 +68,5 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
-- **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason.
-  Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).
-- **Diagnosis tasks**: response names the most likely failure path with an evidence label, separates caller-side mitigations the user can take today from owner-side fixes, and either offers safe confirmation probes or states why probing isn't useful.
-  Full checklist coverage isn't required unless the answer broadens into an audit.
+- **Review tasks**: the report follows [review-workflow.md](references/review-workflow.md) § Report Format, including its checklist-coverage table and the evidence label on every finding.
+- **Diagnosis tasks**: the response satisfies the diagnosis-mode items in [review-workflow.md](references/review-workflow.md) §0 and stops there.

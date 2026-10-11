@@ -79,6 +79,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Non-TTY mode conservatively suppresses color, progress, spinners, pagers, browser launch, and prompts.
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
 - Every interactive setup or login flow needs a documented non-interactive bootstrap.
+- Metadata-only paths (`--help`, `tool schema`, `tool schema --fingerprint`) target sub-100ms and avoid eager network calls, auth validation, plugin loading, and heavy imports.
 
 ## Output
 
@@ -94,7 +95,8 @@ Agents typically build shell command lines, so the contract must survive hostile
 - JSON is shallow, stable, deterministic, and compact.
 - In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
 - In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code` and never parse `message`.
-- Each command declares one output class; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
+- Each command declares one output class from the set defined in [SKILL.md](../SKILL.md) Vocabulary; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
+- A custom output class is acceptable when the built-in set does not fit, but it must be explicitly named in the schema with a stable shape, paging behavior, and examples.
 - When class-switching or shape-changing flags can combine (e.g., `--from-file --dry-run`), the schema declares the combined output shape or an explicit precedence rule.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
@@ -223,5 +225,6 @@ Ship tests for:
 - dry-run behavior for mutations
 - interrupt behavior for mutating commands
 - concurrent invocations against local state
+- cancellation of long-running operations
 
 If behavior matters to an agent, cover it with an automated test.
