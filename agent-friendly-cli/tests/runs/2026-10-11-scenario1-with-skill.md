@@ -33,6 +33,9 @@ Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; five `Bas
 **Set:** challenge.
 **Regression vs 2026-06-09 baseline (1/9):** none (prompt unchanged since that baseline).
 **Overhead:** 131,146 subagent tokens; no same-day baseline (prompt unchanged). This run and the pre-commit-4 run (109,083) are the two most expensive arms of the day; design scenarios produce long schemas.
+**Defect the assertions did not catch (found by Copilot review):** the canonical examples at `notectl note search -- "quarterly budget" --machine --select id,title,score` and `notectl note search -- "budget" --machine` place options after `--`, so a conforming parser treats `--machine` and `--select` as operands.
+The pre-commit-4 run put `--machine` before `--` in every example.
+Recorded here as a finding against the skill (no rule said where options go relative to `--`); the checklist Shell Safety section now states it and scenario 1 gained assertion A10; this record's verbatim output is unchanged and the 9/9 score stands for the nine assertions in force when it ran.
 **Notes:** same 9/9 as the pre-commit-4 run; no regression from the wording change.
 This run chose `ndjson-typed` stderr framing where the earlier run chose `single-error-object`; both are the checklist's closed-enum values, so the choice is design latitude, not drift.
 The run also self-validated its JSON in the scratchpad, which the skill does not ask for.

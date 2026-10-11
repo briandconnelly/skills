@@ -31,7 +31,7 @@ Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; nothing u
 
 **Set:** challenge.
 **Regression vs 2026-07-05 baseline (2/6):** none.
-**Overhead:** 69,790 subagent tokens vs 41,044 for the scenario 2 baseline of the same size class (no same-day scenario 3 baseline; the prompt is unchanged since 2026-07-05, whose baseline row stands).
+**Overhead:** 69,790 subagent tokens; no ratio, because no same-day scenario 3 baseline was run (the prompt is unchanged since 2026-07-05, whose baseline row stands, but its token count was not recorded).
 **Notes:** the new `observed` definition (user-supplied verbatim capture) was applied exactly as written; the run also cited the Severity fixed placement for blocking behavior.
 
 ## Full final output

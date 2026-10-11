@@ -20,13 +20,7 @@ If two commands require long prose to explain the difference, the command model 
 ## 2. Design A Guessable Command Surface
 
 Apply [contract-checklist.md](contract-checklist.md) § Command Model, § Shell Safety, and § Prose Surfaces.
-
-Design-only guidance the checklist does not state:
-
-- Reuse the conventional verb set where semantics match: `list`, `get`, `find`, `create`, `update`, `delete`, `validate`.
-- Pick one primary selector pattern per resource type: name, ID, path, query, or stdin.
-- Use the conventional flag names where they fit: `--format`, `--limit`, `--filter`, `--timeout`, `--output`.
-- Prefer named flags; reserve positional arguments for one obvious primary selector.
+Draft the command tree and the primary selector for each resource before any flag, and check every sibling pair of commands against the task model from §1: if the two need prose to tell apart, merge or rename them.
 
 ## 3. Write The Schema Before Behavior
 

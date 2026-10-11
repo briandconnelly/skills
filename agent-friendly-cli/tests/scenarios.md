@@ -58,6 +58,7 @@ Every run records its set, any **regression** (an assertion the baseline satisfi
 - [ ] Duration flags declare units in the name or a `unit` field (Machine Schema).
 - [ ] Each command declares one output class; any flag that switches the class declares the switch (Output).
 - [ ] Ambient state (config, credentials, cache) is declared with inspection and isolation affordances (Ambient State).
+- [ ] Every canonical example that uses `--` places all options before it and only operands after it (Shell Safety). Added 2026-10-11 after a with-skill run shipped `-- "query" --machine`; rows dated 2026-10-11 and earlier were scored on the nine assertions above.
 
 **Expected baseline failures:** no machine profile or schema fingerprint, prose-only errors, no exit-code map, no stdin/ambient-state declarations, dry-run absent or unmarked, pagination undeclared.
 

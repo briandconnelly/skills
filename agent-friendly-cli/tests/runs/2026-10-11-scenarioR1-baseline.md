@@ -14,7 +14,23 @@
 > Propose the changes that would make it safe and easy for agents to call, in priority order.
 > Here is the current help:
 >
-> (followed by the `envctl --help` block exactly as in scenarios.md)
+> ```text
+> $ envctl --help
+> envctl — manage environment profiles
+>
+> Usage: envctl <command> [flags]
+>
+> Commands:
+>   list              List profiles
+>   show <name>       Show a profile
+>   create <name>     Create a profile (prompts for values)
+>   delete <name>     Delete a profile (asks "are you sure?")
+>   login             Log in via browser
+>
+> Flags:
+>   -v, --verbose     More output
+>   --profile-dir     Where profiles are cached (default ~/.envctl)
+> ```
 
 Baseline wrapper: "Your only input is the task below. Do not read any file in this repository or anywhere on disk, do not run any command, and do not use any tool; answer from the task text alone."
 Tool audit: 0 tool calls other than the final hand-back, so no skill access.

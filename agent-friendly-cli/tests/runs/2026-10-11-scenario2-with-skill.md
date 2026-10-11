@@ -14,7 +14,30 @@
 > Each capture discards stderr (`2>/dev/null`), so every line shown is stdout.
 > The audience is the tool's author, who can change anything.
 >
-> (followed by the captured `--help`, `ls --json`, and failing `install` blocks exactly as in scenarios.md)
+> ```text
+> $ depman --help 2>/dev/null
+> DepMan 3.2 — the friendly dependency manager!
+> Usage: depman [command] [options]
+> Commands:
+>   install     Install dependencies (aliases: i, add)
+>   ls          Show stuff
+>   clean       Remove unused packages from the global cache
+>   sync        Sync the lockfile (asks for confirmation first)
+> Options:
+>   --quiet     Less output
+>   --yes       Assume yes
+>
+> $ depman ls --json 2>/dev/null
+> ✨ DepMan 3.2
+> Checking for updates...
+> [{"name":"left-pad","version":"1.3.0"},{"name":"is-odd","version":"3.0.1"}]
+> Done in 0.42s ✓
+>
+> $ depman install nonexistent-pkg 2>/dev/null
+> Error: something went wrong (see log)
+> $ echo $?
+> 1
+> ```
 
 With-skill wrapper: read `SKILL.md` and every file under `references/` in full and follow them; do not read `tests/` or any other repository file; do not modify files, run git, or run the tool described.
 Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; nothing under `tests/`; no other file.

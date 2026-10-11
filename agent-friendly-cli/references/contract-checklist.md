@@ -10,8 +10,11 @@ Use this as the detailed standard for both design and review tasks.
 - Use stable domain nouns from APIs, docs, database objects, and error payloads.
 - Use aliases only for migration; declare aliases in schema and avoid them in canonical examples.
 - Use full words unless an abbreviation is dominant in the domain.
-- Reuse verbs consistently where semantics match.
+- Reuse verbs consistently where semantics match; the conventional set is `list`, `get`, `find`, `create`, `update`, `delete`, `validate`.
 - Avoid flags whose meanings change across commands.
+- Pick one primary selector pattern per resource type: name, ID, path, query, or stdin.
+- Use the conventional flag names where they fit: `--format`, `--limit`, `--filter`, `--timeout-ms`, `--output`.
+- Prefer named flags; reserve positional arguments for one obvious primary selector.
 
 ## Machine Schema
 
@@ -68,6 +71,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Support `--` end-of-options so operands beginning with `-` cannot be parsed as flags, and declare that support in the schema.
 - Treat resource names, filenames, and query values as untrusted data: never pass them to a subshell, `eval`, or a generated shell string.
 - Quote arguments in canonical examples wherever values can contain spaces or shell metacharacters.
+- In canonical examples that use `--`, every option precedes it and only operands follow it; an option written after `--` is parsed as data.
 - Error `hint` fields must not embed executable shell strings built from caller input; express repairs as flag and argument values.
 
 ## Agent-Safe Invocation
@@ -133,13 +137,13 @@ Codes `6`, `7`, and `9` can all be retryable; the payload's `temporary` field is
 
 Structured errors:
 
-- Required fields: `code`, `message`.
-- Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.
+- Required fields: `code`, `message`, `temporary`.
+- Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `request_id`, `docs_url`, `path`.
 - In JSON mode, `code` is symbolic and stable across platforms.
 - Numeric codes are only the shell-branching fallback.
 - `field` must name a published flag or argument, never an internal identifier.
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
-- Retryability is explicit.
+- Retryability is explicit: `temporary` is present on every structured error, `false` included.
 - Rate-limit errors include `retry_after_ms`.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.

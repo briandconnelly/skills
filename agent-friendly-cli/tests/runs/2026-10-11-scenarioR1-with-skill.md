@@ -14,7 +14,23 @@
 > Propose the changes that would make it safe and easy for agents to call, in priority order.
 > Here is the current help:
 >
-> (followed by the `envctl --help` block exactly as in scenarios.md)
+> ```text
+> $ envctl --help
+> envctl — manage environment profiles
+>
+> Usage: envctl <command> [flags]
+>
+> Commands:
+>   list              List profiles
+>   show <name>       Show a profile
+>   create <name>     Create a profile (prompts for values)
+>   delete <name>     Delete a profile (asks "are you sure?")
+>   login             Log in via browser
+>
+> Flags:
+>   -v, --verbose     More output
+>   --profile-dir     Where profiles are cached (default ~/.envctl)
+> ```
 
 With-skill wrapper: read `SKILL.md` and every file under `references/` in full and follow them; do not read `tests/` or any other repository file; do not modify files or run git.
 Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; nothing under `tests/`; no other file.
