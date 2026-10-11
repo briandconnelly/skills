@@ -9,8 +9,9 @@ Mechanism claims trace to the pi 1.1.0 package source (`dist/core/tools/bash.js`
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
 As of 2026-10-10 the extension has passed its unit suite and pi's own loader gate (see Verification), but no live end-to-end run against a real install is recorded yet; until one is, treat both variants as untested end-to-end.
 Variant B differs only in where the forwarder is installed; its live load through the real pi loader has not run.
-Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) works here with no extra code: the routing decision is delegated to `bot-env`, which implements it.
+Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) is delegated to `bot-env`, which implements it; under pi it has not yet been exercised live.
 `as-me` is available under pi (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path applies.
+For what this setup enforces and what it does not, see the SKILL section "What This Enforces — and What It Does Not".
 
 ## Mechanism
 
@@ -90,9 +91,10 @@ A compound command that crosses repos (`cd <org-repo> && git commit` from a pers
 ## Verification
 
 Run these together with the SKILL's Phase 5 checks in an enrolled repo.
-Launch rules for headless pi, observed on pi 1.1.0 on 2026-10-10:
+Launch rules for headless pi 1.1.0:
 
-- Pass `--approve` (`-a`) for a Variant A run: print, JSON, and RPC modes cannot show the trust prompt, and without an override or a saved decision they skip project extensions silently, so the run is personal with no error.
+- Pass `--approve` (`-a`) for a Variant A run: print, JSON, and RPC modes cannot show the trust prompt and, without an override or a saved decision, skip project extensions (pi `docs/security.md` "Project trust without an interactive prompt"), so the run is personal.
+  Observed on 2026-10-10 in RPC mode only: the skip is silent, with no error.
 - For a load check that must not reach a model, `pi --offline --approve --mode rpc --no-session` with a `get_state` request exercises startup only.
 
 Score every check from the recorded tool state (the tool call's input and result in the session or RPC events), never from the model's summary of it.

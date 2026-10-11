@@ -614,10 +614,10 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 > - A GitHub App bot identity is ALREADY provisioned; a per-invocation token-mint script `bot-token`, a host-gated `git-credential-bot` credential helper, and a per-command decision script `bot-env` ALREADY exist and work (the harness-neutral core). Your task is the pi-side routing only.
 > - pi configuration surfaces, all empirically confirmed on this version:
 >   - An extension can re-register the `bash` tool under the same name, supplying `BashOperations` whose `exec(command, cwd, options)` runs each command; a throw from `exec` fails the command.
->   - User-typed `!` / `!!` commands in the TUI and the RPC `bash` command fire a `user_bash` event; a handler may return `{ operations }`, and pi uses the first handler result that is not `undefined` and calls no later handler.
+>   - Extensions can subscribe to a `user_bash` event, which exists for user-typed shell commands (`!` / `!!` in the TUI).
 >   - Extensions load from `<repo>/.pi/extensions/` and `~/.pi/agent/extensions/`; project extensions load only when the project is trusted.
->   - A `powershell` tool exists alongside `bash`.
->   - `/reload` reloads extensions; an extension that fails to load on reload is dropped with an error and pi continues.
+>   - The built-in tool set includes `powershell`.
+>   - `/reload` reloads extensions.
 > - CI runs on GitHub Actions.
 >
 > Goal:
@@ -634,7 +634,7 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] User-typed `!` / `!!` and RPC `bash` commands are routed too, through a `user_bash` handler, not only the agent `bash` tool.
+- [ ] User-typed `!` / `!!` commands are routed too, through a `user_bash` handler, not only the agent `bash` tool.
 - [ ] Identity is resolved at execution time inside `exec`, in the cwd the command runs in, not precomputed in the `user_bash` handler.
 - [ ] A `bot-env` failure (missing, non-executable, crashing, malformed or truncated output, deadline) fails the command closed; nothing runs with an undetermined identity.
 - [ ] A personal verdict strips identity variables inherited from the launching shell (the extension hands the shell a complete env, built from what `bot-env` unsets and exports).
@@ -642,7 +642,7 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 - [ ] Both gaps are named: an earlier extension's `user_bash` handler wins (first-handler-wins), and a failed `/reload` silently stops routing for the rest of the session.
 - [ ] The setup is presented as attribution, not containment.
 
-**Expected baseline failures:** routes only the agent `bash` tool; computes the env in the `user_bash` handler from `event.cwd`; leaves `powershell` open; assumes the extension's presence is guaranteed after a reload.
+**Expected baseline failures:** routes only the agent `bash` tool; computes the env in the `user_bash` handler from `event.cwd`; leaves `powershell` open; misses that another extension's `user_bash` handler can preempt this one; assumes routing survives a `/reload`.
 
 ### pi scenario results
 
