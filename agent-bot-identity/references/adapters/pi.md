@@ -7,9 +7,10 @@ Mechanism claims trace to the pi 1.1.0 package source (`dist/core/tools/bash.js`
 ## Status
 
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
-As of 2026-10-10 the extension has passed its unit suite and pi's own loader gate (see Verification), but no live end-to-end run against a real install is recorded yet; until one is, treat both variants as untested end-to-end.
-Variant B differs only in where the forwarder is installed; its live load through the real pi loader has not run.
-Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) is delegated to `bot-env`, which implements it; under pi it has not yet been exercised live.
+As of 2026-10-10 the extension has passed its unit suite, pi's own loader gate, and a live end-to-end run on pi 1.1.0 against a real install with a real model (see Verification).
+The live run passed checks 1–13 and 9b; push, `gh pr create`, and the negative private-repo probe were not run.
+Variant B differs only in where the forwarder is installed; its live load was exercised through a temporary `PI_CODING_AGENT_DIR`, not the real `~/.pi/agent/extensions/`.
+Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) is delegated to `bot-env`, which implements it; under pi it was exercised live for one of two mapped accounts (the membership check passed for that account's repo), and the second account was not exercised.
 `as-me` is available under pi (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path applies.
 For what this setup enforces and what it does not, see the SKILL section "What This Enforces — and What It Does Not".
 
@@ -75,13 +76,13 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 
 | Situation | Result |
 | --- | --- |
-| `bot-env` missing, non-executable, crashing, malformed, truncated (no completeness line) or partial output, or not finished at the 20 s deadline | Agent bash: failed tool result, command not run. `!`/RPC: the command fails and does not run. At the deadline the extension kills the script and releases its own pipe ends. Covered by the unit suite; not yet observed live |
+| `bot-env` missing, non-executable, crashing, malformed, truncated (no completeness line) or partial output, or not finished at the 20 s deadline | Agent bash: failed tool result, command not run. `!`/RPC: the command fails and does not run. At the deadline the extension kills the script and releases its own pipe ends. Covered by the unit suite; observed live on pi 1.1.0 for a non-executable `bot-env` (Verification checks 7 and 9) |
 | Token mint fails | Bot env with `BOT-TOKEN-MINT-FAILED`; `gh` and pushes fail loudly |
 | Command cwd is a non-mapped or non-git directory | Personal env for that command, inherited identity variables stripped |
 | `powershell` tool called | Blocked with a message pointing here. The tool is off by default (`docs/settings.md` `defaultTools`); keep it disabled |
 | An earlier-loaded extension's `user_bash` handler returns a result | `!`/RPC commands bypass routing and run with the inherited env; agent bash is unaffected. pi uses the first handler result that is not `undefined` and calls no later handler (`dist/core/extensions/runner.js` `emitUserBash`; `docs/extensions.md`) |
 | Forwarder target missing at startup (stale path, typo, moved install) | Fatal at startup: observed on pi 1.1.0 for a project forwarder with `--approve` — `Failed to load extension … Cannot find module …` on stderr and exit code 1 in RPC mode; a valid sibling extension did not rescue startup. `-p` mode printed the same error (its exit code was not captured). The Variant B location was not tested |
-| Extension fails to load on `/reload` | Per the source (`dist/core/agent-session.js` `reload` rebuilds the runtime with whatever loaded; not observed live): pi reports the error and continues with the remaining extensions and the built-in `bash`, so routing silently stops for the rest of the session. An unloaded extension cannot enforce its own presence; re-run the activation check after every reload |
+| Extension fails to load on `/reload` | pi continues with the remaining extensions and the built-in `bash` (`dist/core/agent-session.js` `reload` rebuilds the runtime with whatever loaded), so routing stops for the rest of the session. Observed live on pi 1.1.0 (Verification check 12): after a reload with a broken forwarder, agent bash and RPC `bash` ran personal, and the RPC event stream and stderr carried no error. An unloaded extension cannot enforce its own presence; re-run the activation check after every reload |
 | Extension not loaded: untrusted project (Variant A), `-na`/`--no-approve`, or `-ne`/`--no-extensions` | Personal. Observed on pi 1.1.0: in RPC mode without `--approve` (non-TTY) and with `--no-approve`, project extensions were skipped silently; `-ne` also skipped them |
 | Config `!`-commands, `/share` gist fallback, other extensions' `pi.exec` | Personal (out of scope; see Mechanism). Identity variables exported in the launching shell reach these surfaces unchanged |
 
@@ -105,21 +106,30 @@ Recorded on 2026-10-10, pi 1.1.0, without a model provider or a real install:
 - pi loader gate (`tests/pi-gate/`, a scripted faux model and a fixture `bot-env`): the gate self-test passed, then the extension loaded with no extension error, `bash` registered from the artifact, and the routed `bash` result carried the fixture `ghs_` token and the command-scope helper; the same gate passed through a one-line forwarder, and the import of `./bot-env-block` resolved through the symlink under pi's loader.
 - Startup behavior: the forwarder loaded with `--approve`; a missing forwarder target, an untrusted project, and `-ne` behaved as the Fail direction table records.
 
-The live end-to-end run against a real install has not yet been recorded; its checks, to be scored and dated here, are:
+Live end-to-end run recorded on 2026-10-10, pi 1.1.0, real install at `~/.config/briandconnelly-agent/bin/` (the current scripts, upgraded the same day), default model `runpod/moonshotai/Kimi-K3`:
 
-1. Agent bash: `echo "${GH_TOKEN:0:4}"` → `ghs_`.
-2. `git config --show-scope credential.helper` → bot helper at `command` scope.
-3. `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin HEAD` → succeeds.
-4. SKILL Phase 5 membership assertion → prints the repo.
-5. Bot test commit → author and committer are the bot, `%G?` is `N`.
-6. `as-me` commit → author is the human, and `GH_TOKEN` still reads `ghs_`.
-7. Fail-closed: `chmod -x` the installed `bot-env` → the next command does not run; restore the bit.
-8. Personal verdict in a non-mapped repo → no `GH_TOKEN`, human author, even when pi was launched with a stale `GH_TOKEN` exported.
-9. `!` routing via RPC `bash` → bot env; with `bot-env` broken → the command fails.
-10. `powershell` blocked, if the tool can be enabled on macOS.
-11. Variant B location load through the real pi loader and forwarder.
-12. Failed reload: break the extension, `/reload`, and observe that routing stops.
-13. A non-default `shellCommandPrefix` applies to agent bash.
+- Setup: a scratch clone of `briandconnelly/skills` (origin set to `git@github.com:briandconnelly/skills.git`, scratch branch, never pushed) with the Variant A forwarder in `.pi/extensions/` and `.pi/` in `.git/info/exclude`.
+- Launch: `env -u GH_TOKEN -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS -u BOT_INSTALL_ID pi --mode rpc --approve --tools bash --append-system-prompt <context>`, driven over RPC; each prompt asked the model to run one given command with the `bash` tool.
+- Scoring: every result below is the `tool_execution_start`/`tool_execution_end` pair or the RPC `bash` response, not the model's reply.
+- Model refusal: without `--append-system-prompt` context stating the run was owner-requested, the model refused all six prompts of the first attempt as a suspected credential probe and recorded that in a memory extension; the record was removed and the run repeated with the context.
+
+| # | Command (as run) | Recorded result | Verdict |
+| --- | --- | --- | --- |
+| 1 | Agent bash: `echo "1:${GH_TOKEN:0:4}"` | `1:ghs_` | PASS |
+| 2 | Agent bash: `git config --show-scope credential.helper \| tail -1` | `command !/Users/bdc/.config/briandconnelly-agent/bin/git-credential-bot` | PASS |
+| 3 | Agent bash: `GIT_SSH_COMMAND=/usr/bin/false git ls-remote origin HEAD` | `rc=0`; the same command outside pi exited 128 | PASS |
+| 4 | Agent bash: `gh api --paginate installation/repositories --jq '.repositories[].full_name' \| grep -iFx 'briandconnelly/skills'` | `briandconnelly/skills` | PASS |
+| 5 | Agent bash: `git commit --allow-empty` then `git log -1 --format='%an\|%ae\|%cn\|%ce\|%G?'` | author and committer `briandconnelly-agent[bot]` with the bot noreply email, `%G?` `N` | PASS |
+| 6 | Agent bash: `as-me git commit --allow-empty --no-gpg-sign` then `git log -1` and `${GH_TOKEN:0:4}` | author and committer the human, `tok=ghs_`; `--no-gpg-sign` because the personal config signs with a key a headless run cannot unlock | PASS |
+| 7 | `chmod -x bot-env`, then agent bash `touch <marker7> && echo 7:ran` | `isError: true`, `agent-bot-identity: failed to spawn bot-env at …: spawn … EACCES`; marker absent; mode restored to `-rwxr-xr-x` and the next RPC `bash` read `ghs_` | PASS |
+| 8 | Non-mapped repo (gitlab.com origin), pi launched with `GH_TOKEN=stale GIT_CONFIG_KEY_0=x GIT_AUTHOR_NAME=stale-bot`; agent bash echoes them, commits, `git log -1` | `tok=none key0=none author=none`, commit authored by the human; control with `--no-approve` showed `tok=stale key0=x author=stale-bot` | PASS |
+| 9 | RPC `bash`: `echo "tok=${GH_TOKEN:0:4}"; git config --show-scope credential.helper` | `tok=ghs_`, command-scope bot helper; with `bot-env` non-executable, `success: false` with the EACCES message and the marker command did not run; control without `--approve` read `tok=` and the global helper | PASS |
+| 9b | A throwaway `aaa-userbash.ts` project extension whose `user_bash` returns `{ operations: createLocalBashOperations() }`, then the RPC `bash` of check 9 | `tok=`, `global osxkeychain` (routing bypassed); after removing it, the same request read `ghs_` | PASS (incompatibility confirmed) |
+| 10 | `--tools bash,powershell`; the model called `powershell` with `Write-Output 10:ran` | `isError: true`, `agent-bot-identity: the powershell tool is not routed through the bot identity; disable it (see references/adapters/pi.md)` | PASS |
+| 11 | Forwarder at `$PI_CODING_AGENT_DIR/extensions/agent-bot-identity.ts` (a temporary agent dir with copied auth and models), `--no-approve` so the project forwarder did not load; RPC `bash` and agent bash | both `ghs_`, agent bash with the command-scope bot helper | PASS (temporary agent dir, not `~/.pi/agent/extensions/`) |
+| 12 | Throwaway command extension calling `ctx.reload()`; forwarder replaced with a syntax error; `/reloadnow` over RPC; then RPC `bash` and agent bash | before: `tok=ghs_`; after: `tok=` with the global helper on both surfaces; no `extension_error` event and empty stderr; forwarder restored | PASS (routing stopped as documented) |
+| 13 | Project `.pi/settings.json` `{"shellCommandPrefix": "export PI_PREFIX_MARK=prefix13"}`; agent bash and RPC `bash` echo the mark and `${GH_TOKEN:0:4}` | `13:prefix13 ghs_` on both | PASS |
+| — | `git push`, `gh pr create`, negative private-repo probe | — | NOT RUN |
 
 Audit smells specific to this adapter:
 
