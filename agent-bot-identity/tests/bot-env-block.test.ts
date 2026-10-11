@@ -124,6 +124,12 @@ describe("parseBotEnvBlock", () => {
     expect(refuse(PERSONAL_OUTPUT.replace("unset GH_TOKEN\n", "export GH_TOKEN=ghs_bare\n"))).toMatch(/unrecognized line 3/)
   })
 
+  test("refuses a bot block that neither exports nor unsets BOT_INSTALL_ID (an inherited one would select the installation)", () => {
+    const msg = refuse(BOT_OUTPUT.replace("export BOT_INSTALL_ID='42'\n", ""))
+    expect(msg).toMatch(/partial identity block/)
+    expect(msg).toContain("export or unset of BOT_INSTALL_ID")
+  })
+
   test("bot block with unset BOT_INSTALL_ID and no BOT_INSTALL_ID export (default installation) parses", () => {
     const out = BOT_OUTPUT.replace("export BOT_INSTALL_ID='42'\n", "unset BOT_INSTALL_ID\n")
     const { exports, unsets } = parseBotEnvBlock(out, "/repo")

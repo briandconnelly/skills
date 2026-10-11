@@ -107,7 +107,9 @@ export function parseBotEnvBlock(stdout: string, cwd: string): BotEnvBlock {
   // applies a non-empty one after the counted entries, so it could override
   // the helper), exactly GIT_CONFIG_COUNT key/value pairs starting with the
   // helper reset (0), the bot credential helper (1) and commit.gpgsign=false
-  // (2), and every host-wide rewrite as both insteadOf and pushInsteadOf.
+  // (2), every host-wide rewrite as both insteadOf and pushInsteadOf, and
+  // BOT_INSTALL_ID either exported (mapped installation) or unset (default),
+  // since an inherited one would select the installation bot-token mints for.
   // Entries at or beyond the count would be ignored by git, so they are
   // refused too.
   if (!Object.keys(exports).some(identityExport)) {
@@ -122,6 +124,7 @@ export function parseBotEnvBlock(stdout: string, cwd: string): BotEnvBlock {
   } else {
     const problems = REQUIRED_IDENTITY.filter((name) => !(name in exports))
     if (exports.GH_TOKEN === "") problems.push("non-empty GH_TOKEN")
+    if (!("BOT_INSTALL_ID" in exports) && !unsets.includes("BOT_INSTALL_ID")) problems.push("an export or unset of BOT_INSTALL_ID")
     if ("GIT_CONFIG_PARAMETERS" in exports && exports.GIT_CONFIG_PARAMETERS !== "") problems.push("empty GIT_CONFIG_PARAMETERS")
     if ("GIT_CONFIG_COUNT" in exports) {
       const keyCount = Object.keys(exports).filter((name) => /^GIT_CONFIG_KEY_[0-9]+$/.test(name)).length

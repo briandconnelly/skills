@@ -220,15 +220,18 @@ EOF
   R="$(mkrepo git@github.com:acme/x.git)"
   N="$(mkrepo "")"
   P="$(mkrepo git@gitlab.com:someone/x.git)"
+  # An inherited GIT_CONFIG_COUNT (this suite run under a bot identity) would make
+  # git read the planted GIT_CONFIG_KEY_0=x and fail, so these runs start without one.
+  clean="env -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS"
   for case in "org-bot:$R:" "ambiguous-bot:$N:" "personal:$P:GIT_CONFIG_KEY_0=x GIT_CONFIG_VALUE_0=y"; do
     name="${case%%:*}"; rest="${case#*:}"; repo="${rest%%:*}"; extra="${rest#*:}"
     # shellcheck disable=SC2086 # $extra is a deliberate word-split list of NAME=value pairs
-    out="$(cd "$repo" && env $extra "$DIR/bot-env" 2>/dev/null)" || { fail "$name: bot-env aborted"; continue; }
+    out="$(cd "$repo" && $clean $extra "$DIR/bot-env" 2>/dev/null)" || { fail "$name: bot-env aborted"; continue; }
     msg="$(printf '%s\n' "$out" | bun "$DIR/parse.ts" 2>&1)" || fail "$name: real bot-env output refused by the shared parser: $msg"
   done
-  out="$(cd "$N" && "$DIR/bot-env" 2>/dev/null)"
+  out="$(cd "$N" && $clean "$DIR/bot-env" 2>/dev/null)"
   echo "$out" | grep -q '^unset BOT_INSTALL_ID$' || fail "ambiguous bot verdict no longer unsets BOT_INSTALL_ID (case 15b lost its default-installation shape)"
-  out="$(cd "$P" && GIT_CONFIG_KEY_0=x "$DIR/bot-env" 2>/dev/null)"
+  out="$(cd "$P" && $clean GIT_CONFIG_KEY_0=x "$DIR/bot-env" 2>/dev/null)"
   echo "$out" | grep -q '^unset GIT_CONFIG_KEY_0$' || fail "personal verdict did not enumerate an inherited GIT_CONFIG_KEY_0 (case 15b lost its enumerated shape)"
   rm -rf "$R" "$N" "$P"
 else

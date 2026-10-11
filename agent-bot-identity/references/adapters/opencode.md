@@ -162,7 +162,7 @@ Audit smells specific to this adapter:
 
 - An opencode upgrade taken on trust: `packages/core/src/tool/bash.ts` (the V2 core shell tool) carries a TODO for `shell.env` and no hook as of 1.18.32, and it is not yet wired in; a release that routes bash through it fails open silently, so re-run check 1 after every upgrade and read its output as a discriminator — an empty `GH_TOKEN` means the hook did not fire (routing), `BOT-TOKEN-MINT-FAILED` means it fired and minting failed.
 - A customized `DEFAULT_BOT_ENV` pointing into a repo or a directory on the personal `PATH`.
-- A committed `.opencode/plugin/agent-bot-identity.ts` (machine-local routing config belongs in `.git/info/exclude`, and teammates without the install would hit fail-closed shell aborts).
+- A committed `.opencode/plugin/agent-bot-identity.ts` (machine-local routing config belongs in `.git/info/exclude`, and on a teammate's machine without the install its target is missing, so the plugin silently does not load and their commands run personal: see the Forwarder target missing row under Fail direction).
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
@@ -179,7 +179,7 @@ Audit smells specific to this adapter:
 | Scrubbing a reused shell on personal verdicts | Each command's env is built fresh from the server env; nothing persists across commands, so nothing needs unsetting |
 | Launching opencode with `GH_TOKEN` exported | The hook overlays but never deletes; every command would inherit the stale personal token — export identity vars only inside the plugin's env map |
 | Forking the plugin per repo with customized values | Ten customized copies drift; install one customized master and forward to it |
-| Committing the forwarder | It is machine-local (absolute path inside); exclude it via `.git/info/exclude` — committing also subjects teammates to fail-closed aborts |
+| Committing the forwarder | It is machine-local (absolute path inside); exclude it via `.git/info/exclude` — for a teammate without the install the target is missing, which fails open (see Fail direction) |
 | Expecting interactive terminal surfaces to follow PTY-less routing | PTY spawns get no session/call id and stay personal deliberately; an hour-long-lived PTY could not honor the token's 1h lifetime anyway |
 | Assuming the TUI `!` shell is personal because it is user-typed | It is a hook caller with session/call ids — see Mechanism |
 | Changing directory in one bash call and committing in the next | The `cd` is gone by the next call — see Fail direction |
