@@ -133,7 +133,7 @@ Audit smells specific to this adapter:
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
-- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (the first emits no `GIT_CONFIG_PARAMETERS=''`, the second no completeness line); reinstall `bot-env` together with the plugin, never the plugin alone.
+- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (the first emits no `GIT_CONFIG_PARAMETERS=''`, the second no completeness line); reinstall per the SKILL's Phase 3 install note, which is the one home of the reinstall-together rule.
 - A forwarder whose target path does not exist: see the Forwarder target missing row under Fail direction.
 - A hook timeout reported as `exited 143`: the pre-2026-10 plugin's signal-only timeout; reinstall the plugin master.
 
