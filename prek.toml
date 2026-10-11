@@ -31,6 +31,7 @@ hooks = [
 repo = "local"
 hooks = [
   { id = "check-skill-frontmatter", name = "Validate SKILL.md frontmatter against agentskills.io spec", language = "python", language_version = "python3", additional_dependencies = ["pyyaml>=6"], entry = "python scripts/check-skill-frontmatter.py", files = "(?:^|/)SKILL\\.md$", pass_filenames = true },
+  { id = "check-skill-frontmatter-tests", name = "check-skill-frontmatter: delimiter and field tests", language = "system", entry = "uv run --with pytest --with pyyaml pytest scripts/tests -q", files = "^scripts/(check-skill-frontmatter\\.py|tests/test_check_skill_frontmatter\\.py)$", pass_filenames = false },
   { id = "agent-bot-identity-selflocate", name = "agent-bot-identity: shared scripts self-locate and fail closed", language = "system", entry = "bash agent-bot-identity/tests/selflocate-test.sh", files = "^agent-bot-identity/scripts/", pass_filenames = false },
   { id = "agent-bot-identity-selector-cache", name = "agent-bot-identity: installation selection and per-installation token cache", language = "system", entry = "bash agent-bot-identity/tests/selector-cache-test.sh", files = "^agent-bot-identity/(scripts/|tests/selector-cache-test\\.sh)", pass_filenames = false },
   { id = "agent-bot-identity-routing", name = "agent-bot-identity: routing verdict and effective git transport", language = "system", entry = "bash agent-bot-identity/tests/routing-test.sh", files = "^agent-bot-identity/(scripts/|tests/routing-test\\.sh)", pass_filenames = false },
