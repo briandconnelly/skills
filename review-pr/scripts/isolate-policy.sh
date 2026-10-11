@@ -13,11 +13,11 @@ load_adapter "$RUNNER"
 [ -d "$DIR/.git" ] || die 2 "not a git repository: $DIR"
 g() { git -C "$DIR" "$@"; }
 
-# Resolve base policy symlinks from tree objects before removing or restoring anything (RC11):
-# following one through the working tree would read its target from the head checkout.
+# One walk of the base tree resolves its policy symlinks from tree objects and builds the restore records, before
+# anything is removed (RC11): following a link through the working tree would read its target from the head checkout.
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/review-pr-policy.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
-policy_links "$DIR" "$BASE" > "$WORK/links"
+policy_index "$DIR" "$BASE" "$WORK/links" > "$WORK/records"
 LINK_TARGETS=()
 while IFS= read -r -d '' _link && IFS= read -r -d '' target; do LINK_TARGETS+=("$target"); done < "$WORK/links"
 
@@ -45,7 +45,6 @@ if [ "${#ADAPTER_POLICY_ROOTS[@]}" -gt 0 ]; then
 fi
 # Restore through a private index so a symlinked policy path receives its target's base blobs; the
 # repository's own index is left as checked out.
-policy_index "$DIR" "$BASE" > "$WORK/records"
 if [ -s "$WORK/records" ]; then
   GIT_INDEX_FILE="$WORK/index" git -C "$DIR" update-index -z --index-info < "$WORK/records"
   GIT_INDEX_FILE="$WORK/index" git_wt -C "$DIR" checkout-index -f -a
