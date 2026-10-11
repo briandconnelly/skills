@@ -9,9 +9,14 @@ Use this skill to make CLIs easy for agents to discover, invoke correctly, and u
 
 ## Standard
 
-[contract-checklist.md](references/contract-checklist.md) is the single home for every rule in this skill.
-The workflows order the work and point at its sections; [examples.md](references/examples.md) instantiates it; this file routes.
-Where another file in this skill appears to disagree with the checklist, the checklist governs.
+Each rule in this skill has one home, and every other file cites that home instead of restating it.
+
+- [contract-checklist.md](references/contract-checklist.md) owns the CLI contract rules: what a CLI must declare and do.
+- [review-workflow.md](references/review-workflow.md) owns the review process rules: evidence labels, probe approval, severity, and report format.
+- [design-workflow.md](references/design-workflow.md) owns the design-only guidance that is not a contract requirement.
+- [examples.md](references/examples.md) instantiates the checklist; this file routes.
+
+Where a workflow or example appears to disagree with the checklist on a contract rule, the checklist governs.
 
 ## When To Use
 

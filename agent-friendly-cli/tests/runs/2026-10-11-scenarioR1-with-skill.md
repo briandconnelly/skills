@@ -3,7 +3,7 @@
 - **Date:** 2026-10-11
 - **Tree:** `c154b17` (branch `fix/agent-friendly-cli-review-2026-10-11`, skill files as of commit c154b17)
 - **Mode:** with-skill (fresh general-purpose subagent, skill files read live from this tree; representative set, first run)
-- **Score:** 5/5 scored
+- **Score:** 4/5 scored (corrected after a Codex review of the scoring; see A1)
 - **Subagent tokens:** 76,531 (harness-reported total for the run)
 - **Transcript sha256:** `743aef1657ccbf8f352790d9bd16b792c7c3fe5e51c0ab92f3a69f80b29d082f` (session-local copy; not committed)
 
@@ -23,17 +23,17 @@ Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; nothing u
 
 | # | Assertion (verbatim) | Result | Evidence |
 | --- | --- | --- | --- |
-| A1 | Proposes a non-interactive, machine-readable output mode and says what each command's output looks like in it (Output). | **PASS** | F4: `--machine` profile with implied flags, then per-command output classes and shapes (`list` → `{items, has_more, next_cursor?, limit}`, `show`/`create`/`delete`/`whoami`/`login` → `record` with `delete` → `{name, status: "deleted"}`). |
+| A1 | Proposes a non-interactive, machine-readable output mode and says what each command's output looks like in it (Output). | **FAIL** | F4 declares a `--machine` profile and an output class per command, but states fields for only `list` and `delete`; `show`, `create`, `whoami`, and `login` get the label `record` and nothing else. Scored at the same threshold as the baseline, which was failed for naming a stable JSON object per command without per-command fields. Initially scored PASS; corrected after a Codex review of the scoring. |
 | A2 | Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes). | **PASS** | F5: exit-code map 0–9 with symbolic codes per exit, single-error-object stderr framing. |
 | A3 | Removes every interactive prompt from the agent path: `create` takes values non-interactively, `delete` has an explicit non-prompting trigger plus a preview or dry-run, and `login` has a non-browser bootstrap (Agent-Safe Invocation, Mutations). | **PASS** | F1 (`--from-file`/`--values-stdin`/`--set`, fail-fast `INPUT_REQUIRED`), F2 (`--yes`, `--dry-run`, `--if-exists`, `CONFIRMATION_REQUIRED`), F3 (`ENVCTL_TOKEN`, `--token-stdin`, `--no-browser` device code). |
 | A4 | Names the ambient state (`~/.envctl` cache, login credentials) and proposes how an agent inspects or disables it (Ambient State). | **PASS** | F8: cache declared in schema, `--no-cache`/`--isolated`, `config show --resolved` with redaction; F3: `whoami` for token source and expiry. |
 | A5 | Proposes how an agent discovers the contract (a schema command, `--help --json`, or equivalent) rather than learning flags from examples (Machine Schema). | **PASS** | F9: `envctl schema` and `schema --fingerprint` with a compatibility promise. |
 
 **Set:** representative; never tightened in response to its own results.
-**Regression vs same-day baseline (4/5):** none.
+**Regression vs same-day baseline (4/5):** none; same assertion missed by both arms.
 **Overhead:** 76,531 vs 41,318 subagent tokens (1.85x), and a markedly longer answer (15 findings, coverage table, three-release plan) for a prompt that asked for a prioritized list of changes.
-**Notes:** the treatment closes the baseline's one miss (per-command output shapes, A1).
-It also surfaced a secret-exposure concern (`show` printing values into agent transcripts) that the baseline raised too, so that is not a skill effect.
+**Notes:** no scored difference between the arms on this representative task: both miss A1 at the per-command-fields threshold, the treatment by less.
+The treatment also surfaced a secret-exposure concern (`show` printing values into agent transcripts) that the baseline raised too, so that is not a skill effect.
 The cost side is worth recording: the skill turned a "propose changes" request into a full audit report, which the audience step (tool author) permits but the prompt did not ask for.
 
 ## Full final output

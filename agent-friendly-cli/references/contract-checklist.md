@@ -99,6 +99,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Each command declares one output class from the set defined in [SKILL.md](../SKILL.md) Vocabulary; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
 - A custom output class is acceptable when the built-in set does not fit, but it must be explicitly named in the schema with a stable shape, paging behavior, and examples.
 - When class-switching or shape-changing flags can combine (e.g., `--from-file --dry-run`), the schema declares the combined output shape or an explicit precedence rule.
+- An alternate output declares its own `format`, `streaming`, and completion behavior; the command-level values describe the default output only.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
 - Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`, plus `limit` and `estimated_total` when available.
