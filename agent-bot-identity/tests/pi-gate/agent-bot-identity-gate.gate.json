@@ -1,0 +1,18 @@
+{
+  "kind": "extension",
+  "expect": {
+    "tools": [{ "name": "bash", "exposure": "direct" }]
+  },
+  "tier2": {
+    "prompts": ["print the bot token prefix"],
+    "steps": [
+      { "toolCall": { "name": "bash", "arguments": { "command": "printf '%s|%s\\n' \"$GH_TOKEN\" \"$(git config --show-scope credential.helper | tail -1)\"" } } },
+      { "text": "done" }
+    ],
+    "expect": {
+      "toolResults": [
+        { "toolName": "bash", "isError": false, "contains": "ghs_fixture|command\t!/home/u/bin/git-credential-bot" }
+      ]
+    }
+  }
+}
