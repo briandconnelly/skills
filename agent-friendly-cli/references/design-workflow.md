@@ -54,6 +54,6 @@ Use a result-then-render architecture:
 - separate human renderer
 - separate machine renderer
 
-Keep metadata paths fast per [contract-checklist.md](contract-checklist.md) § Agent-Safe Invocation.
+Lay out imports and startup so the metadata-path rule in [contract-checklist.md](contract-checklist.md) § Agent-Safe Invocation holds.
 
 Ship the contract tests listed in [contract-checklist.md](contract-checklist.md) § Tests.

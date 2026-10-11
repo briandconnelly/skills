@@ -73,5 +73,5 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
-- **Review tasks**: the report follows [review-workflow.md](references/review-workflow.md) § Report Format, including its checklist-coverage table and the evidence label on every finding.
-- **Diagnosis tasks**: the response satisfies the diagnosis-mode items in [review-workflow.md](references/review-workflow.md) §0 and stops there.
+- **Review tasks**: the report satisfies [review-workflow.md](references/review-workflow.md) § Report Format.
+- **Diagnosis tasks**: the response satisfies [review-workflow.md](references/review-workflow.md) §0.

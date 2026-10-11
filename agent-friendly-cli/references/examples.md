@@ -7,7 +7,7 @@ Use these as concrete shapes to mimic; cross-reference [contract-checklist.md](c
 A minimal schema output for `widgetctl schema` is below, covering the `widget get` and `widget delete` commands.
 Later sections also use `count`, `list`, `watch`, `update`, and `export`; their schema entries are omitted for brevity but follow the same per-command shape.
 The machine profile is a single flag: `--machine` implies `--json` and `--no-progress`, so callers add one flag while the implied flags stay individually declared.
-Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a closed enum, fields are required unless marked optional or removed by a declared projection, and a string-valued shape describes a record sequence; JSON Schema is the zero-explanation alternative.
+Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a closed enum, a trailing `?` marks an optional field, fields are required unless so marked or removed by a declared projection, and a string-valued shape describes a record sequence; JSON Schema is the zero-explanation alternative.
 ```json
 {
   "schema_version": "1.0",
@@ -34,6 +34,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
   },
   "exit_codes": {"0": "success", "1": "generic", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, not otherwise classified", "10": "partial failure (domain-specific)"},
   "symbolic_error_codes": ["VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
+  "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
   "auth": "required",
   "environment": ["WIDGETCTL_TOKEN"],
   "config": {"reads": true, "disable_with": "--no-config"},

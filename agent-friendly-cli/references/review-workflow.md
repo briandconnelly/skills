@@ -83,7 +83,7 @@ Where no `tool schema` exists, look for a stable machine-readable substitute bef
 ## 3. Review Invocation Safety
 
 Check the CLI against [contract-checklist.md](contract-checklist.md) § Agent-Safe Invocation, § Shell Safety, § Ambient State, § Mutations And Long-Running Work, and § Side Effects And Telemetry.
-Severity for blocking behavior and hidden state is fixed by the Severity section below.
+Severity for blocking behavior and for hidden side effects on read paths is fixed by the Severity section below.
 
 ## 4. Review Output And Errors
 
@@ -130,5 +130,8 @@ Fixed placements, because agents cannot recover from them reliably:
 - Successful stdout that mixes banners, progress, or summaries with the payload is `P1`.
 - Errors that offer no symbolic code to branch on are `P1`.
 - A mutation whose outcome after a timeout or interrupt cannot be reconciled is `P1`.
+
+Release gating: a `P0` or `P1` finding blocks a release until fixed; `P2` and `P3` findings do not block on their own and are scheduled.
+This is the only place that maps severity to the release decision; the checklist states what a CLI must do, not what blocks shipping.
 
 When no findings are found, state that explicitly and call out residual risks such as untested commands or missing live auth coverage.
