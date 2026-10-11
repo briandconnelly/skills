@@ -490,8 +490,11 @@ printf '[http "https://me:REDACTED@github.com/"]\n\textraHeader = Authorization:
 R="$(mkrepo https://github.com/acme/x.git)"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$HDRU" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
-# (git's matcher does not apply a userinfo-scoped key to the username-free
-# URL, so this may not abort; either way the userinfo must never be printed)
+# (the key's userinfo is part of the scope git matches against an
+# https://me:...@github.com/ destination, so a bot verdict refuses it; the
+# userinfo must never be printed)
+[ "$rc" -ne 0 ] || fail "userinfo-scoped Authorization extraHeader did not abort"
+grep -q 'http.https://\*\*\*@github.com/.extraheader' "$DIR/err" || fail "userinfo-scoped refusal did not name the masked key: $(cat "$DIR/err")"
 ! grep -q REDACTED "$DIR/err" || fail "extraHeader abort echoed userinfo from the key: $(cat "$DIR/err")"
 rm -rf "$R"
 
@@ -537,8 +540,8 @@ HDR7="$DIR/global-authz-userinfo"
 printf '[http "https://me@github.com"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HDR7"
 rc=0
 (cd "$R" && GIT_CONFIG_GLOBAL="$HDR7" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
-# (a username-scoped key does not apply to the username-free URL git uses; git's own matcher decides)
-[ "$rc" -eq 0 ] || fail "user@github.com-scoped extraHeader aborted though git does not apply it to a username-free URL"
+# (a username-scoped key applies to an https://me@github.com/ destination, which any command may name)
+[ "$rc" -ne 0 ] || fail "user@github.com-scoped Authorization extraHeader did not abort"
 rm -rf "$R"
 
 # 45c. A header written without a space after the colon is still Authorization.
@@ -736,6 +739,110 @@ R="$(mkrepo git@github.com:acme/x.git)"
 out="$(cd "$R" && GIT_CONFIG_GLOBAL="$URLLESS" "$DIR/bot-env" 2>"$DIR/err")" || fail "URL-less global section beside a local origin aborted: $(cat "$DIR/err")"
 echo "$out" | grep -q '^export GH_TOKEN=' || fail "URL-less global section beside a local origin lost the bot verdict"
 [ "$(effective "$R" origin "$URLLESS")" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "local origin not rewritten beside a URL-less global section: $(effective "$R" origin "$URLLESS")"
+rm -rf "$R"
+
+# 61. An Authorization header scoped to another account's path applies to
+#     an ad-hoc `git push https://github.com/other/x.git`, so it is refused
+#     although no remote of this repository targets that path.
+OTHER_HDR="$DIR/global-authz-other-org"
+printf '[http "https://github.com/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$OTHER_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$OTHER_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header scoped to another github.com path did not abort"
+grep -q 'http.https://github.com/other/.extraheader' "$DIR/err" || fail "other-path refusal did not name the key: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "other-path refusal printed the header value"
+rm -rf "$R"
+
+# 61b. A scope path containing `=` is still tested (git -c would split it).
+EQ_HDR="$DIR/global-authz-equals"
+printf '[http "https://github.com/acme/x=y/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$EQ_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$EQ_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header scoped to a path containing '=' did not abort"
+grep -q 'REDACTED' "$DIR/err" && fail "equals-path refusal printed the header value"
+rm -rf "$R"
+
+# 61c. Negative control: an Authorization header for a non-GitHub host never
+#      applies to github.com, whatever its path.
+EX_HDR="$DIR/global-authz-example"
+printf '[http "https://example.com/"]\n\textraHeader = Authorization: basic REDACTED\n[http "https://example.com/acme/x=y/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$EX_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$EX_HDR" "$DIR/bot-env" 2>"$DIR/err")" || fail "non-GitHub Authorization header aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "non-GitHub Authorization header lost the bot verdict"
+rm -rf "$R"
+
+# 61d. An inherited GIT_CONFIG_COUNT/KEY/VALUE must not change the probe:
+#      it neither hides a refused scope nor invents one.
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=http.https://github.com/other/.botenvprobe GIT_CONFIG_VALUE_0=no GIT_CONFIG_GLOBAL="$OTHER_HDR" "$DIR/bot-env" >/dev/null 2>&1) || rc=$?
+[ "$rc" -ne 0 ] || fail "an inherited GIT_CONFIG_COUNT hid a refused Authorization scope"
+out="$(cd "$R" && GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.botenvprobe GIT_CONFIG_VALUE_0=yes GIT_CONFIG_GLOBAL="$EX_HDR" "$DIR/bot-env" 2>"$DIR/err")" || fail "an inherited probe-named GIT_CONFIG entry invented a refusal: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 61e. An inherited GIT_CONFIG_PARAMETERS (what `git -c` leaves behind) must
+#      not stop the refusal either.
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_PARAMETERS="'http.https://github.com/other/.botenvprobe'='no'" GIT_CONFIG_GLOBAL="$OTHER_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "an inherited GIT_CONFIG_PARAMETERS hid a refused Authorization scope"
+rm -rf "$R"
+
+# 61f. A password containing '@' in a scope's userinfo is masked whole.
+AT_HDR="$DIR/global-authz-at-password"
+printf '[http "https://me:p@ss@github.com/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$AT_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$AT_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "userinfo-with-@ Authorization scope did not abort"
+grep -q 'http.https://\*\*\*@github.com/.extraheader' "$DIR/err" || fail "userinfo-with-@ refusal did not mask the whole userinfo: $(cat "$DIR/err")"
+grep -q 'p@ss\|ss@\|me:\|REDACTED' "$DIR/err" && fail "userinfo-with-@ refusal leaked a userinfo fragment or the value: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 61g. A scope git cannot evaluate (--get-urlmatch exits 128 on %zz) is
+#      refused, not passed, and the message says how to fix it.
+BAD_HDR="$DIR/global-authz-badscope"
+printf '[http "https://github.com/%%zz/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$BAD_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$BAD_HDR" "$DIR/bot-env" 2>"$DIR/err")" || rc=$?
+[ "$rc" -ne 0 ] || fail "a scope git cannot evaluate did not abort"
+[ -z "$out" ] || fail "probe-error abort still emitted env lines"
+grep -q 'could not test' "$DIR/err" || fail "probe-error abort was not the could-not-test refusal: $(cat "$DIR/err")"
+grep -q 'remove or correct' "$DIR/err" || fail "probe-error refusal did not say how to fix it: $(cat "$DIR/err")"
+grep -q 'REDACTED' "$DIR/err" && fail "probe-error refusal printed the header value"
+rm -rf "$R"
+
+# 61h. An http:// scope applies to an ad-hoc `git push http://github.com/...`
+#      (no rewrite moves it to https), so the probe keeps the scheme.
+HTTP_HDR="$DIR/global-authz-http"
+printf '[http "http://github.com/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$HTTP_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$HTTP_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on an http:// github.com scope did not abort"
+grep -q 'http.http://github.com/other/.extraheader' "$DIR/err" || fail "http-scope refusal did not name the key: $(cat "$DIR/err")"
+rm -rf "$R"
+
+# 61i. A scope with an explicit non-default port applies to a URL naming that
+#      port, so the probe keeps the port.
+PORT_HDR="$DIR/global-authz-port"
+printf '[http "https://github.com:8443/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$PORT_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+rc=0
+(cd "$R" && GIT_CONFIG_GLOBAL="$PORT_HDR" "$DIR/bot-env" >/dev/null 2>"$DIR/err") || rc=$?
+[ "$rc" -ne 0 ] || fail "Authorization header on an explicit-port github.com scope did not abort"
+rm -rf "$R"
+
+# 61j. Negative control: keeping the scheme and port does not turn a
+#      non-GitHub host into a refusal.
+EXP_HDR="$DIR/global-authz-example-port"
+printf '[http "http://example.com:8443/other/"]\n\textraHeader = Authorization: basic REDACTED\n' > "$EXP_HDR"
+R="$(mkrepo git@github.com:acme/x.git)"
+out="$(cd "$R" && GIT_CONFIG_GLOBAL="$EXP_HDR" "$DIR/bot-env" 2>"$DIR/err")" || fail "non-GitHub http/port Authorization header aborted: $(cat "$DIR/err")"
+echo "$out" | grep -q '^export GH_TOKEN=' || fail "non-GitHub http/port Authorization header lost the bot verdict"
 rm -rf "$R"
 
 [ "$FAIL" -eq 0 ] && echo "routing-test: PASS"

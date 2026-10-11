@@ -177,9 +177,7 @@ URLs typed on the command line rather than configured as remotes are outside tha
 An alias typed on the command line (`gh:acme/x.git`) has no host-wide pair either.
 `GH_TOKEN` carries the freshly minted value because `bot-env` itself runs per command, with the same `BOT-TOKEN-MINT-FAILED` fail-closed sentinel.
 Personal-repo commands pay only local git queries.
-The credential helper also returns a complete invalid sentinel credential for an eligible GitHub request after a crashed or empty mint, preventing Git from consulting IDE askpass or terminal credentials.
-Wrong-host requests remain silent.
-Do not clear askpass or terminal-prompt variables globally because a personal verdict cannot safely restore caller- or IDE-provided values.
+The credential helper's sentinel, wrong-host, and askpass rules are in SKILL Phase 3 Rules.
 Two more refusals, for competing HTTP credentials, are in the decision table below.
 
 The decision rules and their fail direction:
@@ -198,7 +196,7 @@ The decision rules and their fail direction:
 | Raw local remote query fails | Bot, stderr warning | Ambiguous — cannot rule out org work |
 | A remote's effective fetch or push URL is still a non-HTTPS `github.com` URL after the bot rewrites (a rule in your own config matches its complete URL) | Command aborts, stderr names the remote and URL | A push there would ride the personal SSH key under the bot's authorship; remove the rule — destinations on other hosts are not checked |
 | A remote's effective fetch or push URL is an https `github.com` URL with embedded credentials (a user `insteadOf` rule put them there) | Command aborts, stderr names the remote with the credentials masked | git authenticates from a URL's userinfo before consulting any helper, so the push would be the human's under the bot's authorship |
-| A git config `http.extraHeader` (any URL scope git applies to the host root, to a raw GitHub remote's target, or to an https github.com URL the rewrites produce) sets `Authorization:` | Command aborts, stderr names the key | git sends the header on every request, so the bot helper is never asked; remove the rule |
+| A git config `http.extraHeader` (any URL scope git applies to an http or https github.com URL, whatever its path, username or port, including a raw GitHub remote's target and the URLs the rewrites produce) sets `Authorization:`, or a key with an `Authorization:` header whose scope git cannot evaluate (a malformed scope such as `%zz`) | Command aborts, stderr names the key; for an unevaluable scope or remote URL it says to remove or correct the key or remote | git sends the header on every request, so the bot helper is never asked; remove the rule |
 | `~/.netrc` (or `_netrc`) has a `machine github.com` or `default` entry | Command aborts, stderr names the file | git enables curl's netrc lookup, which answers before any credential helper |
 | `bot-env` is missing, non-executable, crashes, or emits invalid shell after the guard is installed | Command aborts | Undetermined identity must stop the Bash command, not fall through to personal credentials |
 | Token mint fails | Bot env with invalid sentinel | `gh` and pushes fail loudly; never fall through to personal credentials |
@@ -241,7 +239,7 @@ In a fresh agent session in an opted-in repo, the hook approval prompt appears o
 
 Variant B additionally (the gate and its fail direction):
 
-- Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted only `unset`s, so no bot env leaks in.
+- Agent session in a non-org repo → `echo "${GH_TOKEN:-unset}"` → `unset`; `git config --show-scope credential.helper` → osxkeychain at `global` scope; test commit authored as you and signed — the guard emitted only `unset`s (`GH_TOKEN`, the four identity vars, `BOT_INSTALL_ID`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_COUNT`, and each `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`), so no bot env leaks in.
 - Collaborated path under the guard (the interaction worth proving for Variant B, since the guard re-sets the bot identity every command): in an org repo, `~/.config/acme-agent/bin/as-me git commit --allow-empty -m 'as-me test'` → author is you, while `echo "${GH_TOKEN:0:4}"` still prints `ghs_`.
   `as-me` strips the four identity vars for that one command (falling back to global `user.*`) on top of the env the guard just set — authorship escapes, auth stays the bot.
 - Zero-setup enrollment regression (the incident class Variant B exists for): enroll a fresh repo on the App, clone it, and run the bot-identity checks above (GH_TOKEN prefix, credential.helper scope, commit author) in a first-ever session there — they must pass with no per-repo file of any kind.
