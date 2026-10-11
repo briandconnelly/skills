@@ -20,7 +20,7 @@ pi runs shell commands through these paths; the table covers every path found in
 
 | Surface | Path in pi 1.1.0 | Adapter coverage |
 | --- | --- | --- |
-| `bash` tool — model calls, codemode `tools.bash`, nested `ctx.executeTool` | `dist/core/tools/bash.js` `createShellToolDefinition` → `ops.exec(command, ctx.cwd \|\| cwd, {env})` | Re-registered `bash` tool with wrapped operations |
+| `bash` tool — model calls, codemode `tools.bash`, nested `ctx.executeTool` | `dist/core/tools/bash.js` `createShellToolDefinition` → `ops.exec(command, ctx.cwd \|\| cwd, {env})` | Re-registered `bash` tool with wrapped operations, effective only when no earlier-loaded extension registers `bash` (see Fail direction) |
 | TUI `!` / `!!` | `dist/modes/interactive/interactive-mode.js` `handleBashCommand` → `emitUserBash` → `executeBash(…, {operations})` | `user_bash` handler returning wrapped operations |
 | RPC `bash` command | `dist/modes/rpc/rpc-mode.js` → `emitUserBash` → `executeBash(…, {operations})` | Same handler |
 | `powershell` tool | `dist/core/tools/powershell.js` | Not routed; blocked by the extension's `tool_call` handler |
@@ -80,7 +80,8 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 | Token mint fails | Bot env with `BOT-TOKEN-MINT-FAILED`; `gh` and pushes fail loudly |
 | Command cwd is a non-mapped or non-git directory | Personal env for that command, inherited identity variables stripped |
 | `powershell` tool called | Blocked with a message pointing here. The tool is off by default (`docs/settings.md` `defaultTools`); keep it disabled |
-| An earlier-loaded extension's `user_bash` handler returns a result | `!`/RPC commands bypass routing and run with the inherited env; agent bash is unaffected. pi uses the first handler result that is not `undefined` and calls no later handler (`dist/core/extensions/runner.js` `emitUserBash`; `docs/extensions.md`) |
+| An earlier-loaded extension's `user_bash` handler returns a result | `!`/RPC commands bypass routing and run with the inherited env; this handler alone does not change agent bash (see the `bash` registration row). pi uses the first handler result that is not `undefined` and calls no later handler (`dist/core/extensions/runner.js` `emitUserBash`; `docs/extensions.md`) |
+| An earlier-loaded extension registers `bash` | Agent bash bypasses routing (inherited env); if this adapter loads first, a later extension's `bash` is shadowed. pi keeps the first registration per tool name (`dist/core/extensions/runner.js` `getAllRegisteredTools`, line 411 in 1.1.0). Not exercised live |
 | Forwarder target missing at startup (stale path, typo, moved install) | Fatal at startup: observed on pi 1.1.0 for a project forwarder with `--approve` — `Failed to load extension … Cannot find module …` on stderr and exit code 1 in RPC mode; a valid sibling extension did not rescue startup. `-p` mode printed the same error (its exit code was not captured). The Variant B location was not tested |
 | Extension fails to load on `/reload` | pi continues with the remaining extensions and the built-in `bash` (`dist/core/agent-session.js` `reload` rebuilds the runtime with whatever loaded), so routing stops for the rest of the session. Observed live on pi 1.1.0 (Verification check 12): after a reload with a broken forwarder, agent bash and RPC `bash` ran personal, and the RPC event stream and stderr carried no error. An unloaded extension cannot enforce its own presence; re-run the activation check after every reload |
 | Extension not loaded: untrusted project (Variant A), `-na`/`--no-approve`, or `-ne`/`--no-extensions` | Personal. Observed on pi 1.1.0: in RPC mode without `--approve` (non-TTY) and with `--no-approve`, project extensions were skipped silently; `-ne` also skipped them |
@@ -102,7 +103,7 @@ Score every check from the recorded tool state (the tool call's input and result
 
 Recorded on 2026-10-10, pi 1.1.0, without a model provider or a real install:
 
-- Unit suite: `bash agent-bot-identity/tests/pi-extension-test.sh` from the repo root, 20 pass, 0 fail, covering every refusal path before the inner `exec`, the deadline, the personal-verdict strip, delayed `user_bash` resolution in the `exec` cwd, `shellCommandPrefix`/`shellPath`, the `powershell` block, and co-installation with the OpenCode master.
+- Unit suite: `bash agent-bot-identity/tests/pi-extension-test.sh` from the repo root, 20 pass, 0 fail (24 pass, 0 fail after the final-review fixes, which added the incomplete-personal, marker-only, and `file://` `shellPath` cases), covering every refusal path before the inner `exec`, the deadline, the personal-verdict strip, delayed `user_bash` resolution in the `exec` cwd, `shellCommandPrefix`/`shellPath`, the `powershell` block, and co-installation with the OpenCode master.
 - pi loader gate (`tests/pi-gate/`, a scripted faux model and a fixture `bot-env`): the gate self-test passed, then the extension loaded with no extension error, `bash` registered from the artifact, and the routed `bash` result carried the fixture `ghs_` token and the command-scope helper; the same gate passed through a one-line forwarder, and the import of `./bot-env-block` resolved through the symlink under pi's loader.
 - Startup behavior: the forwarder loaded with `--approve`; a missing forwarder target, an untrusted project, and `-ne` behaved as the Fail direction table records.
 
@@ -134,7 +135,8 @@ Live end-to-end run recorded on 2026-10-10, pi 1.1.0, real install at `~/.config
 Audit smells specific to this adapter:
 
 - A pi upgrade taken on trust: re-run check 1 after every upgrade; `piShellEnv` in the extension mirrors pi's internal `getShellEnv` (`dist/utils/shell.js`), which is not exported and can change without notice.
-- Another extension with a `user_bash` handler that loads earlier: handlers run in extension load and registration order (`docs/extensions.md`), and the startup header lists the loaded resources (`docs/usage.md`) unless `quietStartup` hides it (`docs/settings.md`; `--verbose` overrides).
+- Another loaded extension that registers `bash` or handles `user_bash`: list the loaded extensions from the startup header, which lists the loaded resources (`docs/usage.md`) unless `quietStartup` hides it (`docs/settings.md`; `--verbose` overrides), and search each one's source for a `bash` tool registration or a `user_bash` handler.
+  Handlers run in extension load and registration order (`docs/extensions.md`), and the first `bash` registration and the first `user_bash` result win (see Fail direction).
 - The `powershell` tool enabled in `defaultTools` or `--tools`.
 - A session that ran `/reload` without re-running the activation check afterwards (see the reload row under Fail direction).
 - Identity variables exported in the shell that launches pi: personal verdicts strip them only on routed surfaces, so the non-routed surfaces under Mechanism still see them.
@@ -150,5 +152,6 @@ Audit smells specific to this adapter:
 | Adding the command prefix in the `user_bash` operations | `executeBash` already applies it to user commands; adding it again doubles the prefix |
 | Precomputing the env in the `user_bash` handler | That binds identity to `event.cwd`; RPC requests run concurrently, so a `switch_session` in between could run the command in another cwd with the first cwd's identity — resolve inside `exec` |
 | Treating handler registration as unconditional coverage | The first `user_bash` handler result wins — see Fail direction |
+| Assuming the re-registered `bash` always replaces the built-in for agent calls | pi keeps the first `bash` registration among loaded extensions — see Fail direction |
 | Assuming a failed `/reload` keeps routing | pi continues without the extension — see Fail direction |
 | Expecting a project forwarder to load in a headless run | Without `--approve` or a saved trust decision it is skipped silently — see Verification |

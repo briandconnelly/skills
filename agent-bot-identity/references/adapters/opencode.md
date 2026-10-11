@@ -7,7 +7,9 @@ Mechanism claims trace to the opencode 1.18.32 source (`packages/opencode/src/to
 ## Status
 
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
-Variant A is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
+Variant A with the pre-refactor plugin is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
+The shared-parser version of the plugin (master renamed to `agent-bot-identity-opencode.ts`, parse and contract check imported from `./bot-env-block`) is unit-tested only.
+The positive live routing checks under Verification last ran on the pre-refactor plugin (2026-09-23 on 1.18.32; the write path on 2026-08-24 on 1.18.22), and no live run of the refactored plugin is recorded yet.
 Variant B differs only in where the plugin file is installed; its org-gated behavior is the same code path as Variant A's, so it inherits everything except a live run of the global install location — that one delta is untested.
 Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) works here with no extra code: the routing decision is delegated to `bot-env`, which implements it.
 `as-me` works under OpenCode (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path is fully available.
@@ -30,9 +32,9 @@ One OpenCode glue file sits on top of the shared scripts:
 
 - `scripts/opencode/agent-bot-identity.ts` is the plugin: it spawns the shared `bot-env` in the command's cwd per command and translates its emitted shell (`export KEY='value'`, `export KEY=value`, `unset ...`) into the hook's env map.
   The routing verdict, the ambiguity table, the `insteadOf` derivation, and installation selection all live in `bot-env` alone; this file owns no decision logic.
+  Every undetermined-identity outcome fails the shell command; the Fail direction table below is the one list of those outcomes and of what the deadline does.
 - `scripts/bot-env-block.ts` is the shared parser the plugin imports (through a symlink in `scripts/opencode/`): it owns the parse and the contract check, so the plugin carries neither.
   A block that does not end with the completeness line counts as garbage/partial output in the Fail direction table.
-  Every undetermined-identity outcome fails the shell command; the Fail direction table below is the one list of those outcomes and of what the deadline does.
 
 It also needs the shared `bot-env` installed (the Claude Variant B script) — Variant A installs that lack it must add it; see the SKILL Phase 3 layout.
 
@@ -68,9 +70,15 @@ The forwarder indirection keeps one customized file per machine; the per-repo co
 ### Upgrading an existing install
 
 Rename the installed master to `agent-bot-identity-opencode.ts`, copy `bot-env-block.ts` beside it, reinstall `bot-env`, repoint every forwarder at the renamed file, and restart opencode.
-A forwarder left pointing at the old name has a missing target, which fails open (see the Forwarder target missing row under Fail direction).
-Then probe every forwarder statically, including the Variant B path: `grep -l 'bin/agent-bot-identity\.ts"' <repo>/.opencode/plugin/agent-bot-identity.ts ~/.config/opencode/plugin/agent-bot-identity.ts` must list none, and each remaining quoted target must exist.
-Also run check 1 under Verification in each enrolled repo.
+A forwarder left pointing at the old name has a missing target; see the Forwarder target missing row under Fail direction.
+Optionally, during the transition, leave a one-line re-export at the old installed name so a forwarder not yet repointed keeps routing instead of failing open:
+
+```bash
+printf '%s\n' 'export { default } from "./agent-bot-identity-opencode.ts"' > ~/.config/acme-agent/bin/agent-bot-identity.ts
+```
+
+Cleanup: probe every forwarder statically, including the Variant B path: `grep -l 'bin/agent-bot-identity\.ts"' <repo>/.opencode/plugin/agent-bot-identity.ts ~/.config/opencode/plugin/agent-bot-identity.ts` must list none, and each remaining quoted target must exist; once it lists none, the old-name re-export can be removed.
+Check 1 under Verification must then pass in each enrolled repo.
 
 ## `gh` auth and token dynamics
 
@@ -121,7 +129,7 @@ The 2026-09-23 re-run on opencode 1.18.32, after the routing changes in the shar
 - Items 1, 2, 3, 4, 5, 6, 8 above: PASS (item 3 on a public repo proves the rewrite, not the token).
   In that repo (one mapped account, one raw remote value) the bot verdict carried 15 `GIT_CONFIG_*` entries: the fixed three, the four host-wide `insteadOf`/`pushInsteadOf` pairs, the account pair, and one exact pair per raw remote value.
 - Item 9 with the flip expressed as `workdir` pointed at a nested repo whose remote is on another host: `GH_TOKEN` unset and the human author in that call, `ghs_` again in the next call at the default workdir (PASS).
-- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS).
+- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS; a historical count from the suite before the shared parser, not the current suite's size).
 - Item 7 (private non-enrolled probe), item 11 (write path), and the Variant B location: not re-run; the 1.18.22 results stand for those.
 - Trigger: with the skill installed under `~/.claude/skills/`, an in-domain prompt in a non-enrolled directory made the model load `agent-bot-identity` through the `skill` tool and summarize Phases 1–2 accurately.
 
@@ -133,7 +141,7 @@ Audit smells specific to this adapter:
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
-- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (the first emits no `GIT_CONFIG_PARAMETERS=''`, the second no completeness line); reinstall per the SKILL's Phase 3 install note, which is the one home of the reinstall-together rule.
+- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (a `GIT_CONFIG_PARAMETERS` refusal means that `bot-env` emits no `GIT_CONFIG_PARAMETERS=''`; a "does not end with" refusal means it emits no completeness line); reinstall per the SKILL's Phase 3 install note, which is the one home of the reinstall-together rule.
 - A forwarder whose target path does not exist: see the Forwarder target missing row under Fail direction.
 - A hook timeout reported as `exited 143`: the pre-2026-10 plugin's signal-only timeout; reinstall the plugin master.
 
