@@ -23,6 +23,8 @@ from typing import Any
 
 PACKAGE_NAME = "@earendil-works/pi-coding-agent"
 LOCAL_INSTALL = Path("node_modules") / "@earendil-works" / "pi-coding-agent"
+# The character class pi's managed launcher accepts for install/current-version.
+MANAGED_VERSION = re.compile(r"[0-9A-Za-z._+-]+")
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 ANCHOR_TAG = re.compile(r'<a\s+(?:id|name)="([^"]+)"')
@@ -75,12 +77,29 @@ def _package_root(start: Path) -> Path | None:
     return None
 
 
+def _managed_root(launcher: Path) -> Path | None:
+    """The release a managed launcher runs, read from current-version, never by running it."""
+    if launcher.parent.name != "bin":
+        return None
+    install = launcher.parent.parent / "install"
+    try:
+        version = (install / "current-version").read_text(encoding="utf-8").splitlines()[0]
+    except (OSError, UnicodeDecodeError, IndexError):
+        return None
+    if version in {".", ".."} or not MANAGED_VERSION.fullmatch(version):
+        return None
+    candidate = install / "releases" / version / LOCAL_INSTALL
+    root = _package_root(candidate)
+    return root.resolve() if root == candidate else None
+
+
 def _install_root_for(exe: str) -> Path | None:
     """The Pi package a PATH executable runs, without executing it.
 
     Covers a symlink into the package (Homebrew, npm on Unix) and npm's shim layouts:
     `<prefix>/pi.cmd` beside `<prefix>/node_modules` (Windows) and `<prefix>/bin/pi`
-    beside `<prefix>/lib/node_modules` (Unix without a symlink).
+    beside `<prefix>/lib/node_modules` (Unix without a symlink),
+    and pi's managed install: `<agent>/bin/pi` reading `<agent>/install/current-version`.
     """
     path = Path(exe)
     root = _package_root(path.resolve().parent)
@@ -90,6 +109,9 @@ def _install_root_for(exe: str) -> Path | None:
         root = _package_root(candidate)
         if root == candidate:
             return root.resolve()
+    managed = _managed_root(path.resolve())
+    if managed is not None:
+        return managed
     return None
 
 
