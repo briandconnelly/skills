@@ -193,11 +193,16 @@ rm -rf "$R"
 #     plugin parses (export KEY='...', export KEY=bare, unset KEY ...).
 R="$(mkrepo git@github.com:acme/x.git)"
 git -C "$R" remote add upstream SSH://git@GITHUB.COM/oss-project/x.git
-bad="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -Ev "^export [A-Z_][A-Z0-9_]*='[^']*'$|^export [A-Z_][A-Z0-9_]*=[^ ]+$|^unset [A-Z_][A-Z0-9_]*( [A-Z_][A-Z0-9_]*)*$" || true)"
+bad="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -Ev "^export [A-Z_][A-Z0-9_]*='[^']*'$|^export [A-Z_][A-Z0-9_]*=[^ ]+$|^unset [A-Z_][A-Z0-9_]*( [A-Z_][A-Z0-9_]*)*$|^# bot-env: end$" || true)"
 [ -z "$bad" ] || fail "bot-env emitted a line the adapters cannot parse: $bad"
 count="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | sed -n 's/^export GIT_CONFIG_COUNT=//p')"
 keys="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -c '^export GIT_CONFIG_KEY_')"
 [ "$count" = "$keys" ] || fail "GIT_CONFIG_COUNT=$count but $keys keys were emitted"
+[ "$(cd "$R" && "$DIR/bot-env" 2>/dev/null | tail -n 1)" = '# bot-env: end' ] || fail "bot verdict does not end with the completeness line"
+P="$(mkrepo git@gitlab.com:someone/x.git)"
+[ "$(cd "$P" && "$DIR/bot-env" 2>/dev/null | tail -n 1)" = '# bot-env: end' ] || fail "personal verdict does not end with the completeness line"
+[ "$(cd "$P" && "$DIR/bot-env" 2>/dev/null | grep -c '^# bot-env: end$')" = 1 ] || fail "personal verdict emits the completeness line more than once"
+rm -rf "$P"
 rm -rf "$R"
 
 # 16. A raw remote value that cannot be emitted safely still aborts rather
