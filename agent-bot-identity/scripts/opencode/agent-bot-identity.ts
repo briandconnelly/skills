@@ -15,9 +15,10 @@
  * exactly once, in bot-env, across all harnesses.
  *
  * Install (see references/adapters/opencode.md):
- *   Variant A (per-project opt-in):  copy to <repo>/.opencode/plugin/agent-bot-identity.ts
- *   Variant B (user-level automatic): copy to ~/.config/opencode/plugin/agent-bot-identity.ts
- * then set DEFAULT_BOT_ENV to the absolute path of the installed bot-env and
+ *   Variant A: forward <repo>/.opencode/plugin/agent-bot-identity.ts to the installed agent-bot-identity-opencode.ts
+ *   Variant B: forward ~/.config/opencode/plugin/agent-bot-identity.ts to it
+ * It imports ./bot-env-block, installed beside it.
+ * Then set DEFAULT_BOT_ENV to the absolute path of the installed bot-env and
  * restart opencode (plugins load at startup).
  *
  * Never commit the installed copy: it is machine-local routing config. Add
@@ -25,6 +26,7 @@
  */
 
 import type { Plugin } from "@opencode-ai/plugin"
+import { BotEnvError, parseBotEnvBlock } from "./bot-env-block"
 
 // Absolute path to the installed, customized bot-env script.
 const DEFAULT_BOT_ENV = "REPLACE" // e.g. "/Users/<you>/.config/acme-agent/bin/bot-env"
@@ -41,28 +43,6 @@ const TIMEOUT_MS = 20_000
 
 type ShellEnvInput = { cwd: string; sessionID?: string; callID?: string }
 type ShellEnvOutput = { env: Record<string, string> }
-
-// bot-env emits exactly three line shapes:
-//   export KEY='value'   single-quoted; bot-env refuses values containing a quote
-//   export KEY=value     unquoted scalars, e.g. GIT_CONFIG_COUNT=6
-//   unset KEY [KEY ...]
-const EXPORT_QUOTED = /^export ([A-Z_][A-Z0-9_]*)='([^']*)'$/
-const EXPORT_BARE = /^export ([A-Z_][A-Z0-9_]*)=(\S+)$/
-const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
-
-// A bot verdict's identity block must carry all of these, plus the counted
-// GIT_CONFIG_KEY_i/VALUE_i pairs. GIT_CONFIG_PARAMETERS is expected to be empty.
-const REQUIRED_IDENTITY = [
-  "GIT_AUTHOR_NAME",
-  "GIT_AUTHOR_EMAIL",
-  "GIT_COMMITTER_NAME",
-  "GIT_COMMITTER_EMAIL",
-  "GIT_CONFIG_COUNT",
-  "GH_TOKEN",
-  "GIT_CONFIG_PARAMETERS",
-]
-
-class BotEnvError extends Error {}
 
 // Collect a stream through a reader the deadline can cancel: a descendant
 // that inherited the pipes may outlive the SIGKILLed script, and a cancelled
@@ -172,115 +152,20 @@ export const AgentBotIdentity: Plugin = async ({ client }, options) => {
       const warning = stderr.trim()
       if (warning) log("warn", warning, { cwd: input.cwd })
 
-      const lines = stdout.split("\n").filter((line) => line !== "")
-      if (lines.length === 0) {
-        fail(
-          new BotEnvError(`agent-bot-identity: bot-env emitted no output in ${input.cwd}; refusing to continue with undetermined identity`),
-          input.cwd,
-        )
-      }
-      // Parse into a local map and validate the whole block before anything
-      // reaches output.env, so a partial block merges no variable at all.
-      const parsed: Record<string, string> = {}
-      const unsets: string[] = []
-      for (const line of lines) {
-        let match = EXPORT_QUOTED.exec(line)
-        if (match) {
-          parsed[match[1]] = match[2]
-          continue
-        }
-        match = EXPORT_BARE.exec(line)
-        if (match) {
-          parsed[match[1]] = match[2]
-          continue
-        }
-        match = UNSET.exec(line)
-        if (match) {
-          unsets.push(...match[1].split(" "))
-          continue
-        }
-        fail(
-          new BotEnvError(`agent-bot-identity: bot-env emitted an unrecognized line in ${input.cwd}: ${JSON.stringify(line)}`),
-          input.cwd,
-        )
-      }
-
-      // Exports are applied first and unsets after, so a name in both would be
-      // deleted despite being exported. bot-env never emits that; refuse it.
-      // The message names variables, never values: GH_TOKEN is one.
-      const conflicts = [...new Set(unsets)].filter((name) => name in parsed)
-      if (conflicts.length > 0) {
-        fail(
-          new BotEnvError(
-            `agent-bot-identity: bot-env emitted a variable both exported and unset in ${input.cwd} (${conflicts.join(", ")}); refusing to route`,
-          ),
-          input.cwd,
-        )
-      }
-
-      // Contract check: bot-env emits the identity block only whole, in a fixed
-      // shape: author and committer identity, a non-empty GH_TOKEN (its
-      // fail-closed sentinel included), an empty GIT_CONFIG_PARAMETERS (git
-      // applies a non-empty one after the counted entries, so it could
-      // override the helper), and exactly GIT_CONFIG_COUNT key/value pairs
-      // starting with the helper reset (0), the bot credential helper (1) and
-      // commit.gpgsign=false (2). Entries at or beyond the count would be
-      // ignored by git, so they are refused too. Any identity-bearing export
-      // triggers the full check; unset-only (personal) blocks skip it. The
-      // message names missing variables, never values: GH_TOKEN is one.
-      const identityExport = (name: string): boolean =>
-        REQUIRED_IDENTITY.includes(name) || name === "BOT_INSTALL_ID" || /^GIT_CONFIG_(KEY|VALUE)_[0-9]+$/.test(name)
-      if (Object.keys(parsed).some(identityExport)) {
-        const problems = REQUIRED_IDENTITY.filter((name) => !(name in parsed))
-        if (parsed.GH_TOKEN === "") problems.push("non-empty GH_TOKEN")
-        if ("GIT_CONFIG_PARAMETERS" in parsed && parsed.GIT_CONFIG_PARAMETERS !== "") problems.push("empty GIT_CONFIG_PARAMETERS")
-        if ("GIT_CONFIG_COUNT" in parsed) {
-          // Bound the count by the block itself: a count larger than the number
-          // of exported keys cannot be satisfied, and fails before any loop.
-          const keyCount = Object.keys(parsed).filter((name) => /^GIT_CONFIG_KEY_[0-9]+$/.test(name)).length
-          const count = /^[0-9]+$/.test(parsed.GIT_CONFIG_COUNT) ? Number(parsed.GIT_CONFIG_COUNT) : NaN
-          if (Number.isNaN(count) || count < 3 || count > keyCount) {
-            problems.push("GIT_CONFIG_COUNT between 3 and the number of GIT_CONFIG_KEY_n exports")
-          } else {
-            for (let i = 0; i < count; i++) {
-              for (const name of [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]) if (!(name in parsed)) problems.push(name)
-            }
-            for (const name of Object.keys(parsed)) {
-              const m = /^GIT_CONFIG_(?:KEY|VALUE)_([0-9]+)$/.exec(name)
-              if (m && Number(m[1]) >= count) problems.push(`${name} beyond GIT_CONFIG_COUNT`)
-            }
-            if (parsed.GIT_CONFIG_KEY_0 !== "credential.helper" || parsed.GIT_CONFIG_VALUE_0 !== "") {
-              problems.push("helper reset at GIT_CONFIG index 0")
-            }
-            // bot-env emits `!<install dir>/git-credential-bot` and refuses an
-            // install path outside this character set; any other `!` helper
-            // (`!true`) returns nothing and lets git fall through to a prompt.
-            if (
-              parsed.GIT_CONFIG_KEY_1 !== "credential.helper" ||
-              !/^!\/[A-Za-z0-9._\/-]*\/git-credential-bot$/.test(parsed.GIT_CONFIG_VALUE_1 ?? "")
-            ) {
-              problems.push("bot credential helper at GIT_CONFIG index 1")
-            }
-            if (parsed.GIT_CONFIG_KEY_2 !== "commit.gpgsign" || parsed.GIT_CONFIG_VALUE_2 !== "false") {
-              problems.push("commit.gpgsign=false at GIT_CONFIG index 2")
-            }
-          }
-        }
-        if (problems.length > 0) {
-          fail(
-            new BotEnvError(
-              `agent-bot-identity: bot-env emitted a partial identity block in ${input.cwd} (problems: ${problems.join(", ")}); refusing to route`,
-            ),
-            input.cwd,
-          )
-        }
+      // The whole block is parsed and validated before anything reaches
+      // output.env, so a partial block merges no variable at all.
+      let block: ReturnType<typeof parseBotEnvBlock>
+      try {
+        block = parseBotEnvBlock(stdout, input.cwd)
+      } catch (err) {
+        fail(err, input.cwd)
       }
 
       // Each command's env is built fresh from the server process env, so
       // bot vars from earlier commands cannot linger; unsets only guard
       // against collisions within this block.
-      Object.assign(output.env, parsed)
-      for (const name of unsets) delete output.env[name]
+      Object.assign(output.env, block!.exports)
+      for (const name of block!.unsets) delete output.env[name]
     },
   }
 }
