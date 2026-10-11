@@ -19,6 +19,7 @@
  */
 
 import { spawn } from "node:child_process"
+import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
 
 import type { BashOperations, ExtensionAPI } from "@earendil-works/pi-coding-agent"
@@ -52,6 +53,17 @@ export function piShellEnv(): Env {
   const current = process.env[pathKey] ?? ""
   const updated = current.split(delimiter).filter(Boolean).includes(binDir) ? current : [binDir, current].filter(Boolean).join(delimiter)
   return { ...process.env, [pathKey]: updated }
+}
+
+// pi normalizes settings.shellPath (settings-manager getShellPath ->
+// utils/paths.js normalizePath) with tilde expansion before use; a replacement
+// tool must do the same or `~/bin/bash` fails where the built-in works.
+export function expandShellPath(shellPath: string | undefined): string | undefined {
+  if (typeof shellPath !== "string") return undefined
+  const trimmed = shellPath.trim()
+  if (trimmed === "~") return homedir()
+  if (trimmed.startsWith("~/")) return join(homedir(), trimmed.slice(2))
+  return trimmed
 }
 
 function runBotEnv(botEnv: string, cwd: string, base: Env, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
@@ -169,10 +181,11 @@ export function createAgentBotIdentity(options: AgentBotIdentityOptions = {}): (
       ...template,
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         const settings = pi.getSettings() as { shellPath?: string; shellCommandPrefix?: string }
+        const shellPath = expandShellPath(settings.shellPath)
         const definition = createBashToolDefinition((ctx as { cwd?: string })?.cwd || process.cwd(), {
-          operations: wrapOperations(createLocalBashOperations({ shellPath: settings.shellPath }), resolver(warnVia(ctx))),
+          operations: wrapOperations(createLocalBashOperations({ shellPath }), resolver(warnVia(ctx))),
           commandPrefix: settings.shellCommandPrefix,
-          shellPath: settings.shellPath,
+          shellPath,
         })
         return definition.execute(toolCallId, params, signal, onUpdate, ctx)
       },
@@ -184,7 +197,7 @@ export function createAgentBotIdentity(options: AgentBotIdentityOptions = {}): (
     // prefix here: executeBash already applies it to user commands.
     pi.on("user_bash", (_event, ctx) => ({
       operations: wrapOperations(
-        createLocalBashOperations({ shellPath: (pi.getSettings() as { shellPath?: string }).shellPath }),
+        createLocalBashOperations({ shellPath: expandShellPath((pi.getSettings() as { shellPath?: string }).shellPath) }),
         resolver(warnVia(ctx)),
       ),
     }))

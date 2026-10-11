@@ -1,14 +1,15 @@
 import { afterAll, describe, expect, test } from "bun:test"
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { homedir, tmpdir } from "node:os"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { __resolveEnvForTest, createAgentBotIdentity, piShellEnv, wrapOperations } from "../scripts/pi/agent-bot-identity"
 import { BOT_OUTPUT, PERSONAL_OUTPUT, script } from "./bot-env-fixtures"
 
-// Run with:
-//   NODE_PATH=$HOME/.pi/agent/install/releases/1.1.0/node_modules bun test tests/pi-extension.test.ts
+// Run with: bash agent-bot-identity/tests/pi-extension-test.sh (from the repo
+// root). bun test ignores NODE_PATH; the runner links the installed pi package
+// into agent-bot-identity/node_modules, which is gitignored.
 // Fixture bot-env scripts exercise the real spawn + parse path through the
 // createAgentBotIdentity({ botEnv, timeoutMs }) test seam.
 
@@ -113,6 +114,13 @@ describe("pi adapter: agent bash tool", () => {
     await expect(tools.bash.execute("c", { command: "true" }, undefined, undefined, ctxFor(dir("noexec")))).rejects.toThrow(/failed to spawn bot-env|EACCES/)
   })
 
+  test("fail closed: bot-env missing", async () => {
+    const { tools } = load(join(root, "does-not-exist"))
+    const marker = join(dir("missing"), "ran")
+    await expect(tools.bash.execute("c", { command: `touch ${marker}` }, undefined, undefined, ctxFor(dir("missing-cwd")))).rejects.toThrow(/failed to spawn bot-env/)
+    expect(await Bun.file(marker).exists()).toBe(false)
+  })
+
   test("fail closed: DEFAULT_BOT_ENV left as REPLACE", async () => {
     const { tools } = load(undefined as unknown as string)
     await expect(tools.bash.execute("c", { command: "true" }, undefined, undefined, ctxFor(dir("replace")))).rejects.toThrow(/DEFAULT_BOT_ENV/)
@@ -128,6 +136,18 @@ describe("pi adapter: agent bash tool", () => {
   test("configured shellCommandPrefix applies to agent bash", async () => {
     const out = await runBash(fixture("prefix", script(BOT_OUTPUT)), dir("prefix"), 'echo "$PREFIXED"', { shellCommandPrefix: "PREFIXED=yes" })
     expect(out).toBe("yes")
+  })
+
+  test("shellPath with a leading ~/ is expanded like pi's built-in", async () => {
+    // A real shell reachable only through ~/: a symlink in a temp dir under the home directory.
+    const home = mkdtempSync(join(homedir(), ".agent-bot-identity-pi-test-"))
+    try {
+      symlinkSync("/bin/bash", join(home, "bash"))
+      const out = await runBash(fixture("tilde", script(BOT_OUTPUT)), dir("tilde"), "echo ran-ok", { shellPath: `~/${basename(home)}/bash` })
+      expect(out).toContain("ran-ok")
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   test("bot-env stderr warnings reach the UI", async () => {
