@@ -648,3 +648,5 @@ For the with-skill run, the treatment subagent reads both `SKILL.md` and `refere
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-10-10 | P1 (set up) | baseline (no skill, prompt only) | 4/7 | Failed 1, 4, 6, as predicted: routes only the agent `bash` tool, not `user_bash`; personal verdict is "run unchanged", so inherited `GH_TOKEN`/`GIT_*` survive; neither first-handler-wins preemption nor silent stop after a failed `/reload` is named. Passed 2, 3, 5, 7 (2 and 5 credited for the `bash` tool only and a hedged `powershell` disable). |
+| 2026-10-10 | P1 (set up) | with-skill (treatment) | 7/7 | All assertions satisfied: `!`/`!!` routed via `user_bash`; env resolved inside `exec` in the command's cwd, not precomputed; fail-closed on every `bot-env` failure; personal verdict strips inherited identity variables; `powershell` blocked by `tool_call`; both gaps named; "attribution, not containment". Skill text under test: SKILL.md and references/adapters/pi.md at 807555c. Treatment was barred from tests/. |
