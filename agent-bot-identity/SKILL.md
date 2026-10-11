@@ -1,11 +1,11 @@
 ---
 name: agent-bot-identity
-description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral, with adapters for Claude Code, Codex CLI, and OpenCode.
+description: Use when giving a local coding agent a distinct GitHub App bot identity — its commits, pushes, and PRs attribute to the bot while manual git operations on the same machine keep the personal account untouched — when splitting attribution in a repo where the human and agent both contribute, or when auditing such a dual-identity setup for over-trust. The App/token/credential-helper core is harness-neutral, with adapters for Claude Code, Codex CLI, OpenCode, and pi.
 ---
 
 # Agent Bot Identity
 
-Core is harness-neutral; adapters ship for Claude Code, Codex CLI, and OpenCode, each with a dated verification record in its adapter doc's Status section (the Phase 4 table points at them).
+Core is harness-neutral; adapters ship for Claude Code, Codex CLI, OpenCode, and pi, each with a dated verification record in its adapter doc's Status section (the Phase 4 table points at them).
 
 ## Overview
 
@@ -97,7 +97,8 @@ Rules:
 
 The helper scripts are bundled under `scripts/`; copy the needed files into a single flat directory, customize their placeholders, and `chmod +x` each copied file.
 `~/.config/acme-agent/bin/` is the recommended neutral location.
-Install everything flat in that one directory — including each harness adapter's glue scripts, which live under `scripts/claude/`, `scripts/codex/`, and `scripts/opencode/` in this repo but sit next to the shared scripts once installed.
+Install everything flat in that one directory — including each harness adapter's glue scripts, which live under `scripts/claude/`, `scripts/codex/`, `scripts/opencode/`, and `scripts/pi/` in this repo but sit next to the shared scripts once installed.
+The OpenCode and pi adapters share `scripts/bot-env-block.ts`, installed beside them as `bot-env-block.ts`, and install their masters under distinct names (`agent-bot-identity-opencode.ts`, `agent-bot-identity-pi.ts`); reinstall `bot-env`, `bot-env-block.ts`, and the adapter together, because the parser refuses output shapes it does not know.
 An unused adapter's scripts are extra attack surface with no benefit.
 The install directory contains a `gh` shim (the Codex adapter's) that would route your own terminal through the bot token, and the whole design rests on your personal shells never resolving it.
 The scripts self-locate, so existing `~/.claude/bot-shims/` installs keep working unchanged; for a new install prefer the neutral directory, and adjust every path in the settings examples consistently.
@@ -153,17 +154,18 @@ Implemented adapters:
 - [Claude Code](references/adapters/claude-code.md) — Variant A (per-project opt-in) and Variant B (user-level automatic, per-command re-decision).
 - [Codex CLI](references/adapters/codex.md) — Variant A through the `codex-bot` launcher; Variant B pending.
 - [OpenCode](references/adapters/opencode.md) — one plugin file; Variant A per repo, Variant B at user level.
+- [pi](references/adapters/pi.md) — one extension file; Variant A per repo, Variant B at user level.
 
-| Capability | Claude Code | Codex CLI | OpenCode |
-| --- | --- | --- | --- |
-| Static identity env | ✅ settings/env or guard | ✅ `shell_environment_policy.set` via named profile | ✅ per-command `shell.env` hook |
-| Dynamic `GH_TOKEN` | ✅ SessionStart hook, per command | ✅ PATH-shimmed `gh`, minted per invocation | ✅ minted per command by `bot-env` |
-| Per-command redecision | ✅ Variant B guard | ❌ pending | ✅ hook fires per command with cwd |
-| Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) | ✅ hook throw aborts command / sentinel token |
-| Automatic user-level routing | ✅ Variant B | ❌ pending | ✅ global plugin dir |
-| `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) | ✅ |
-| Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) | ✅ delegated to `bot-env` |
-| Verification record | [claude-code.md Status](references/adapters/claude-code.md#status) | [codex.md Status](references/adapters/codex.md#status) | [opencode.md Status](references/adapters/opencode.md#status) |
+| Capability | Claude Code | Codex CLI | OpenCode | pi |
+| --- | --- | --- | --- | --- |
+| Static identity env | ✅ settings/env or guard | ✅ `shell_environment_policy.set` via named profile | ✅ per-command `shell.env` hook | ✅ per-command env from `bot-env` |
+| Dynamic `GH_TOKEN` | ✅ SessionStart hook, per command | ✅ PATH-shimmed `gh`, minted per invocation | ✅ minted per command by `bot-env` | ✅ minted per command by `bot-env` |
+| Per-command redecision | ✅ Variant B guard | ❌ pending | ✅ hook fires per command with cwd | ✅ resolved in `operations.exec` per command |
+| Fail-closed routing | ✅ guard aborts / sentinel token | ✅ sentinel token (routing only) | ✅ hook throw aborts command / sentinel token | ✅ exec throw aborts command / sentinel token |
+| Automatic user-level routing | ✅ Variant B | ❌ pending | ✅ global plugin dir | ✅ user extensions dir |
+| `as-me` authorship escape | ✅ | ❌ (sandbox denies non-literal-git `.git` writes) | ✅ | ✅ |
+| Installation selection (multi-account, Phase 3) | ✅ Variant B map / Variant A pinned env | ❌ pending (default installation only) | ✅ delegated to `bot-env` | ✅ delegated to `bot-env` |
+| Verification record | [claude-code.md Status](references/adapters/claude-code.md#status) | [codex.md Status](references/adapters/codex.md#status) | [opencode.md Status](references/adapters/opencode.md#status) | [pi.md Status](references/adapters/pi.md#status) |
 
 ("Fail-closed" is scoped to routing, never containment.)
 
@@ -178,7 +180,7 @@ Rules:
 In a fresh agent session in an opted-in repo:
 
 - Run your adapter's activation checks first — see the adapter doc.
-- If the adapter injects `GH_TOKEN` into the command env (Claude Code, OpenCode): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
+- If the adapter injects `GH_TOKEN` into the command env (Claude Code, OpenCode, pi): `echo "${GH_TOKEN:0:4}"` → `ghs_`, proving the adapter injected *an* installation token — which installation it came from is what the membership check below establishes.
   This check does not port to a per-invocation shim adapter (Codex CLI), where a session-level `GH_TOKEN` is an audit *smell*, not a pass — the shim exports it per invocation.
 - Membership: `gh api --paginate installation/repositories --jq '.repositories[].full_name' | grep -iFx 'acme/<this-repo>'` → prints the repo, proving the token belongs to the installation that covers this session's repo.
   Match case-insensitively (`-i`): GitHub's namespace is case-insensitive and `full_name` returns canonical casing, so a hand-written expected name that differs only in case would otherwise false-negative.

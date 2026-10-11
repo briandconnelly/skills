@@ -7,7 +7,9 @@ Mechanism claims trace to the opencode 1.18.32 source (`packages/opencode/src/to
 ## Status
 
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
-Variant A is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
+Variant A with the pre-refactor plugin is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
+The shared-parser version of the plugin (master renamed to `agent-bot-identity-opencode.ts`, parse and contract check imported from `./bot-env-block`) was verified live with a Variant A forwarder on opencode 1.18.35 (2026-10-10): routing, the membership assertion, a bot commit, the per-command flip, and two fail-closed aborts (non-executable `bot-env`, and a block missing the completeness line) — see Verification.
+The write path (push and PR creation) and `as-me` have not been re-run on the refactored plugin; their last live runs are the 2026-08-24 and 2026-09-23 runs on the pre-refactor plugin.
 Variant B differs only in where the plugin file is installed; its org-gated behavior is the same code path as Variant A's, so it inherits everything except a live run of the global install location — that one delta is untested.
 Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) works here with no extra code: the routing decision is delegated to `bot-env`, which implements it.
 `as-me` works under OpenCode (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path is fully available.
@@ -31,6 +33,8 @@ One OpenCode glue file sits on top of the shared scripts:
 - `scripts/opencode/agent-bot-identity.ts` is the plugin: it spawns the shared `bot-env` in the command's cwd per command and translates its emitted shell (`export KEY='value'`, `export KEY=value`, `unset ...`) into the hook's env map.
   The routing verdict, the ambiguity table, the `insteadOf` derivation, and installation selection all live in `bot-env` alone; this file owns no decision logic.
   Every undetermined-identity outcome fails the shell command; the Fail direction table below is the one list of those outcomes and of what the deadline does.
+- `scripts/bot-env-block.ts` is the shared parser the plugin imports (through a symlink in `scripts/opencode/`): it owns the parse and the contract check, so the plugin carries neither.
+  A block that does not end with the completeness line counts as garbage/partial output in the Fail direction table.
 
 It also needs the shared `bot-env` installed (the Claude Variant B script) — Variant A installs that lack it must add it; see the SKILL Phase 3 layout.
 
@@ -41,7 +45,8 @@ cp agent-bot-identity/scripts/bot-env ~/.config/acme-agent/bin/bot-env
 chmod +x ~/.config/acme-agent/bin/bot-env
 # customize bot-env per the Claude adapter (bot name, noreply email, ORG_INSTALLS map)
 
-cp agent-bot-identity/scripts/opencode/agent-bot-identity.ts ~/.config/acme-agent/bin/agent-bot-identity.ts
+cp agent-bot-identity/scripts/bot-env-block.ts ~/.config/acme-agent/bin/bot-env-block.ts
+cp agent-bot-identity/scripts/opencode/agent-bot-identity.ts ~/.config/acme-agent/bin/agent-bot-identity-opencode.ts
 # set DEFAULT_BOT_ENV to the absolute path of the installed bot-env
 ```
 
@@ -49,7 +54,7 @@ Per enrolled repo, install a one-line forwarder and keep it out of git:
 
 ```bash
 mkdir -p <repo>/.opencode/plugin
-printf '%s\n' 'export { default } from "/Users/<you>/.config/acme-agent/bin/agent-bot-identity.ts"' > <repo>/.opencode/plugin/agent-bot-identity.ts
+printf '%s\n' 'export { default } from "/Users/<you>/.config/acme-agent/bin/agent-bot-identity-opencode.ts"' > <repo>/.opencode/plugin/agent-bot-identity.ts
 printf '%s\n' '.opencode/plugin/agent-bot-identity.ts' >> <repo>/.git/info/exclude
 ```
 
@@ -62,6 +67,19 @@ Restart opencode (plugins load at startup; config is not hot-reloaded).
 
 The forwarder indirection keeps one customized file per machine; the per-repo copies carry no values of their own.
 
+### Upgrading an existing install
+
+Rename the installed master to `agent-bot-identity-opencode.ts`, copy `bot-env-block.ts` beside it, reinstall `bot-env`, repoint every forwarder at the renamed file, and restart opencode.
+A forwarder left pointing at the old name has a missing target; see the Forwarder target missing row under Fail direction.
+Optionally, during the transition, leave a one-line re-export at the old installed name so a forwarder not yet repointed keeps routing instead of failing open:
+
+```bash
+printf '%s\n' 'export { default } from "./agent-bot-identity-opencode.ts"' > ~/.config/acme-agent/bin/agent-bot-identity.ts
+```
+
+Cleanup: probe every forwarder statically, including the Variant B path: `grep -l 'bin/agent-bot-identity\.ts"' <repo>/.opencode/plugin/agent-bot-identity.ts ~/.config/opencode/plugin/agent-bot-identity.ts` must list none, and each remaining quoted target must exist; once it lists none, the old-name re-export can be removed.
+Check 1 under Verification must then pass in each enrolled repo.
+
 ## `gh` auth and token dynamics
 
 `GH_TOKEN` is minted per shell command by `bot-env` (via the shared cached `bot-token`), so the one-hour expiry never surfaces mid-session — this adapter has no SessionStart hook and no static token anywhere.
@@ -73,6 +91,7 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 | Situation | Result |
 | --- | --- |
 | `bot-env` missing, non-executable, crashing, emitting garbage/partial output, or not finished at the 20 s deadline | Shell command aborts with the error; nothing runs. At the deadline the hook stops waiting and kills the script; a child the script was waiting on (a git process on a stale lock) is not reaped and may linger, but the hook releases its own ends of the pipes at the deadline so nothing is buffered on its behalf |
+| Forwarder target missing (stale path after the rename, typo, moved install) | Plugin silently not loaded: observed on opencode 1.18.35 (headless `opencode run --format json`, scratch repo, forwarder to a non-existent file) with no load error on stdout or stderr and nothing in opencode's log directory; the bash command ran with `GH_TOKEN` unset, i.e. personal. Under Variant B this holds machine-wide |
 | Token mint fails | Bot env with `BOT-TOKEN-MINT-FAILED`; `gh` and pushes fail loudly |
 | Command cwd is a non-mapped or non-git directory | Personal env for that command only |
 | opencode started with `--pure` or `OPENCODE_PURE=1` | Plugin never loads; commands run personal (documented escape hatch) |
@@ -110,19 +129,45 @@ The 2026-09-23 re-run on opencode 1.18.32, after the routing changes in the shar
 - Items 1, 2, 3, 4, 5, 6, 8 above: PASS (item 3 on a public repo proves the rewrite, not the token).
   In that repo (one mapped account, one raw remote value) the bot verdict carried 15 `GIT_CONFIG_*` entries: the fixed three, the four host-wide `insteadOf`/`pushInsteadOf` pairs, the account pair, and one exact pair per raw remote value.
 - Item 9 with the flip expressed as `workdir` pointed at a nested repo whose remote is on another host: `GH_TOKEN` unset and the human author in that call, `ghs_` again in the next call at the default workdir (PASS).
-- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS).
+- Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS; a historical count from the suite before the shared parser, not the current suite's size).
 - Item 7 (private non-enrolled probe), item 11 (write path), and the Variant B location: not re-run; the 1.18.22 results stand for those.
 - Trigger: with the skill installed under `~/.claude/skills/`, an in-domain prompt in a non-enrolled directory made the model load `agent-bot-identity` through the `skill` tool and summarize Phases 1–2 accurately.
+
+The 2026-10-10 run on opencode 1.18.35 verified the shared-parser plugin (`./bot-env-block` import, renamed master) with the user's default model (`runpod/moonshotai/Kimi-K3`).
+Two plugin builds were each loaded through a Variant A forwarder in a fresh scratch clone of the enrolled personal-account repo `briandconnelly/skills` (SSH remote): the installed master, whose `bot-env-block.ts` predates the review fix that refuses incomplete personal blocks and digits-only bare values, and a copy of the branch-HEAD plugin and parser.
+Each check was one `opencode run --format json --auto` session (check 9's second call continued the same session with `--session`) with stdin from `/dev/null`, the server env scrubbed of every identity variable, a prompt naming exactly one bash command, and the result read from the bash tool's recorded state.
+
+| Build | Check | Recorded tool state | Result |
+| --- | --- | --- | --- |
+| Installed | 1 | `ghs_` | PASS |
+| Installed | 2 | `command !…/bin/git-credential-bot` | PASS |
+| Installed | 3 | `ls-remote` printed `HEAD` with SSH disabled (public repo: proves the rewrite, not the token) | PASS |
+| Installed | 4 | membership assertion printed `briandconnelly/skills` | PASS |
+| Installed | Control: forwarder removed | `GH_TOKEN` empty, helper `global osxkeychain`, human author | PASS |
+| HEAD | 1 | `ghs_` | PASS |
+| HEAD | 2 | `command !…/bin/git-credential-bot` | PASS |
+| HEAD | 3 | as installed | PASS |
+| HEAD | 4 | membership assertion printed `briandconnelly/skills` | PASS |
+| HEAD | 5 | author and committer `briandconnelly-agent[bot]`, `%G?` `N` | PASS |
+| HEAD | 8, non-executable `bot-env` (a scratch copy) | tool status `error`: `failed to spawn bot-env … EACCES`; the probe command did not run | PASS |
+| HEAD | 8, block missing the completeness line (stub piping the installed `bot-env` through `sed '$d'`) | tool status `error`: `does not end with "# bot-env: end"`; the probe command did not run | PASS |
+| HEAD | 8 control: the same scratch copy executable | hook fired (`BOT-` prefix: the copy has no sibling `bot-token`, so minting failed loudly) | PASS |
+| HEAD | 9 | `workdir` at a nested repo with a `gitlab.com` remote: `GH_TOKEN` empty, human author; the next call in the same session at the default workdir: `ghs_`, bot author | PASS |
+
+- Every `ghs_` result also proves the plugin and its relative `./bot-env-block` import loaded, since a forwarder whose plugin fails to load runs personal silently (see Fail direction); no bot-repo check came back personal.
+- Checks 6, 7, 10, 11 and the Variant B install location: not run in this pass.
+- In the check 5 session the model ran an unrequested `git reset --hard HEAD~1` after the requested commit; the commit's bot authorship is in the recorded tool output and was confirmed in the scratch clone's reflog before cleanup.
 
 Audit smells specific to this adapter:
 
 - An opencode upgrade taken on trust: `packages/core/src/tool/bash.ts` (the V2 core shell tool) carries a TODO for `shell.env` and no hook as of 1.18.32, and it is not yet wired in; a release that routes bash through it fails open silently, so re-run check 1 after every upgrade and read its output as a discriminator — an empty `GH_TOKEN` means the hook did not fire (routing), `BOT-TOKEN-MINT-FAILED` means it fired and minting failed.
 - A customized `DEFAULT_BOT_ENV` pointing into a repo or a directory on the personal `PATH`.
-- A committed `.opencode/plugin/agent-bot-identity.ts` (machine-local routing config belongs in `.git/info/exclude`, and teammates without the install would hit fail-closed shell aborts).
+- A committed `.opencode/plugin/agent-bot-identity.ts` (machine-local routing config belongs in `.git/info/exclude`, and on a teammate's machine without the install its target is missing, so the plugin silently does not load and their commands run personal: see the Forwarder target missing row under Fail direction).
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
-- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`: a `bot-env` older than the one that emits `GIT_CONFIG_PARAMETERS=''` cannot satisfy the new plugin; reinstall `bot-env` together with the plugin, never the plugin alone.
+- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (a `GIT_CONFIG_PARAMETERS` refusal means that `bot-env` emits no `GIT_CONFIG_PARAMETERS=''`; a "does not end with" refusal means it emits no completeness line); reinstall per the SKILL's Phase 3 install note, which is the one home of the reinstall-together rule.
+- A forwarder whose target path does not exist: see the Forwarder target missing row under Fail direction.
 - A hook timeout reported as `exited 143`: the pre-2026-10 plugin's signal-only timeout; reinstall the plugin master.
 
 ## Common Mistakes — OpenCode mechanisms
@@ -134,7 +179,7 @@ Audit smells specific to this adapter:
 | Scrubbing a reused shell on personal verdicts | Each command's env is built fresh from the server env; nothing persists across commands, so nothing needs unsetting |
 | Launching opencode with `GH_TOKEN` exported | The hook overlays but never deletes; every command would inherit the stale personal token — export identity vars only inside the plugin's env map |
 | Forking the plugin per repo with customized values | Ten customized copies drift; install one customized master and forward to it |
-| Committing the forwarder | It is machine-local (absolute path inside); exclude it via `.git/info/exclude` — committing also subjects teammates to fail-closed aborts |
+| Committing the forwarder | It is machine-local (absolute path inside); exclude it via `.git/info/exclude` — for a teammate without the install the target is missing, which fails open (see Fail direction) |
 | Expecting interactive terminal surfaces to follow PTY-less routing | PTY spawns get no session/call id and stay personal deliberately; an hour-long-lived PTY could not honor the token's 1h lifetime anyway |
 | Assuming the TUI `!` shell is personal because it is user-typed | It is a hook caller with session/call ids — see Mechanism |
 | Changing directory in one bash call and committing in the next | The `cd` is gone by the next call — see Fail direction |

@@ -360,6 +360,9 @@ EOF
   for v in $(compgen -v | grep -E '^GIT_CONFIG_(KEY|VALUE)_[0-9]+$' || true); do
     echo "unset $v"
   done
+  # Adapters that parse this output refuse a block without this final line,
+  # so a truncated emission fails closed instead of routing partially.
+  echo "# bot-env: end"
   exit 0
 fi
 
@@ -642,3 +645,4 @@ cat <<EOF
 export GIT_CONFIG_COUNT=${idx}
 export GH_TOKEN='${token}'
 EOF
+echo "# bot-env: end"
