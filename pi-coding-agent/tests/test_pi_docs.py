@@ -371,3 +371,39 @@ def test_npm_shim_layouts_resolve_to_the_global_install(tmp_path, shim_dir, inst
     installs = pi_docs.find_installs(str(shim_parent), elsewhere)
     assert [(i.root, i.on_path) for i in installs] == [(root.resolve(), True)]
     assert pi_docs.unattributed_pi(str(shim_parent)) is None
+
+
+def _managed_layout(tmp_path, version="1.1.0", current=None):
+    """pi's managed install: <agent>/bin/pi, <agent>/install/current-version, releases/<v>."""
+    agent = tmp_path / "agent"
+    (agent / "bin").mkdir(parents=True)
+    launcher = agent / "bin" / "pi"
+    launcher.write_text("#!/bin/sh\nexit 99\n")  # must never be executed
+    launcher.chmod(0o755)
+    root = agent / "install" / "releases" / version / pi_docs.LOCAL_INSTALL
+    root.mkdir(parents=True)
+    (root / "package.json").write_text(
+        json.dumps({"name": pi_docs.PACKAGE_NAME, "version": version})
+    )
+    (agent / "install" / "current-version").write_text(f"{current or version}\n")
+    entry = tmp_path / "local-bin"
+    entry.mkdir()
+    (entry / "pi").symlink_to(launcher)
+    return entry, root
+
+
+def test_managed_install_launcher_resolves_to_current_release(tmp_path):
+    entry, root = _managed_layout(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    installs = pi_docs.find_installs(str(entry), elsewhere)
+    assert [(i.root, i.version, i.on_path) for i in installs] == [(root.resolve(), "1.1.0", True)]
+
+
+@pytest.mark.parametrize("bad", ["", "..", "1.1.0/../../x", "1.1.0 x"])
+def test_managed_install_rejects_unsafe_current_version(tmp_path, bad):
+    entry, _ = _managed_layout(tmp_path, current=bad or " ")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    with pytest.raises(pi_docs.NoInstallError):
+        pi_docs.find_installs(str(entry), elsewhere)
