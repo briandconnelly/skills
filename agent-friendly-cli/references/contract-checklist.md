@@ -31,7 +31,7 @@ It should include:
 - output class, shape, format, examples, and size mode
 - shape dialect: the named notation used for output and error shapes (JSON Schema or an equivalently precise named notation), including how it marks required vs optional fields
 - numeric exit codes and symbolic error codes (declared at tool level)
-- per-command error catalog: which symbolic codes that command can return, which exit code each maps to, whether its payload carries `temporary: true` (catalog field `retryable`), whether the caller must reconcile before retrying (catalog field `reconcile_first`), and which flags suppress it (e.g., `--if-exists`)
+- per-command error catalog: which symbolic codes that command can return, which exit code each maps to, whether its payload carries `temporary: true` (catalog field `retryable`), whether the caller must reconcile before retrying (catalog field `reconcile_first`), and which flags suppress it (e.g., `--if-exists`); an omitted `retryable` or `reconcile_first` means `false`
 - side effects
 - expected latency class: `local` (filesystem only), `cached` (cache-served), `network` (one network round trip), `slow` (multi-step or known >1s), `async` (must poll)
 - timeout and retry defaults
@@ -80,6 +80,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
 - Every interactive setup or login flow needs a documented non-interactive bootstrap.
 - Metadata-only paths (`--help`, `tool schema`, `tool schema --fingerprint`) target sub-100ms and avoid eager network calls, auth validation, plugin loading, and heavy imports.
+- Networked commands expose a caller-settable timeout (`--timeout-ms` or equivalent) and declare their retry behavior; a fixed, unchangeable network timeout is a contract gap.
 
 ## Output
 
@@ -138,6 +139,7 @@ Structured errors:
 - `field` must name a published flag or argument, never an internal identifier.
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
 - Retryability is explicit.
+- Rate-limit errors include `retry_after_ms`.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
 

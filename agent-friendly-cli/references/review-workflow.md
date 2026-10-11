@@ -88,7 +88,7 @@ Severity for blocking behavior and hidden state is fixed by the Severity section
 ## 4. Review Output And Errors
 
 Check success and failure output against [contract-checklist.md](contract-checklist.md) § Output and § Errors And Exit Codes.
-Compare the declared exit-code map with the exits you collected in §1; a declared code no scenario produces, or an observed exit the schema does not declare, is a finding.
+Compare the declared exit-code map with the exits you collected in §1: an observed exit the schema does not declare is a finding, and a declared code your probes did not produce is `not-checked` unless source or tests show it is unreachable or mis-mapped.
 
 ## 5. Review Tests And Release Criteria
 

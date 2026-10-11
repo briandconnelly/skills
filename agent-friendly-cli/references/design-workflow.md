@@ -30,7 +30,7 @@ Design-only guidance the checklist does not state:
 
 ## 3. Write The Schema Before Behavior
 
-Treat the schema as the authoritative design artifact and write it before the implementation.
+Write the schema before the implementation.
 It declares every item in [contract-checklist.md](contract-checklist.md) § Machine Schema, plus the per-command declarations that § Stdin Contract, § Output, § Errors And Exit Codes, § Ambient State, and § Mutations And Long-Running Work require.
 
 Expose:
@@ -50,7 +50,7 @@ Design for partial information:
 
 ## 5. Design Output And Errors Up Front
 
-Choose each command's output class from the set defined in [SKILL.md](../SKILL.md) Vocabulary, then declare the output and error contracts per [contract-checklist.md](contract-checklist.md) § Output and § Errors And Exit Codes.
+Declare each command's output and error contracts per [contract-checklist.md](contract-checklist.md) § Output and § Errors And Exit Codes before writing any renderer.
 Write the example success and error payloads into the schema now; [examples.md](examples.md) shows the shapes to mimic.
 
 ## 6. Build For Testability
