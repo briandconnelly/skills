@@ -92,7 +92,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "deleted"}, "size_mode": "small"},
       "alternate_outputs": {
         "--from-file": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
-        "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "size_mode": "small"},
+        "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "streaming": false, "size_mode": "small"},
         "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {dry_run: true, id, planned_action} or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
       },
       "side_effects": {"external_mutation": true, "writes": ["remote widget store"], "description": "deletes the widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},

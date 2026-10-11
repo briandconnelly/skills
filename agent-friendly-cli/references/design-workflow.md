@@ -27,11 +27,8 @@ Draft the command tree and the primary selector for each resource before any fla
 Write the schema before the implementation.
 It declares every item in [contract-checklist.md](contract-checklist.md) § Machine Schema, plus the per-command declarations that § Stdin Contract, § Output, § Errors And Exit Codes, § Ambient State, and § Mutations And Long-Running Work require.
 
-Expose:
-
-- `tool schema`: the authoritative full contract
-- `tool schema --fingerprint`: the cache key whose contract is defined in § Machine Schema
-- optionally `tool schema --summary` or `tool schema <command>` for compact partial loading
+The schema and fingerprint endpoints to expose are defined in § Machine Schema.
+Design-only addition: consider `tool schema --summary` or `tool schema <command>` so agents can load one command's contract without the whole document.
 
 ## 4. Choose Agent-Safe Defaults
 

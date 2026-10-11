@@ -37,7 +37,7 @@ Tool audit: Read `SKILL.md`; `ls` + `cat` of the four reference files; nothing u
 **Notes:** the option-ordering rule added in d64e535 landed on its first measured run; the previous final-wording run (`2026-10-11-scenario1-with-skill.md`) had shipped `-- "query" --machine`.
 Side effect of moving the conventional verb set into the checklist as a rule: this run renamed the requested `search` command to `find` ("the checklist's conventional verb set is ... so the canonical command is `note find`"), flagged it as an owner decision, and offered no alias.
 That is a defensible reading of the rule, but it shows the verb list now binds harder than it did as design guidance; worth watching in later runs.
-Alternate outputs now each declare `streaming`, matching the checklist rule added in a4da656.
+Alternate outputs each declare `streaming: false` but no completion behavior; under the rule as first written in a4da656 that was a gap, and under the rule as narrowed after Copilot round 2 (completion behavior is required only for streaming alternates) they conform.
 
 ## Full final output
 
