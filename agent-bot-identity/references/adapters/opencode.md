@@ -30,6 +30,8 @@ One OpenCode glue file sits on top of the shared scripts:
 
 - `scripts/opencode/agent-bot-identity.ts` is the plugin: it spawns the shared `bot-env` in the command's cwd per command and translates its emitted shell (`export KEY='value'`, `export KEY=value`, `unset ...`) into the hook's env map.
   The routing verdict, the ambiguity table, the `insteadOf` derivation, and installation selection all live in `bot-env` alone; this file owns no decision logic.
+- `scripts/bot-env-block.ts` is the shared parser the plugin imports (through a symlink in `scripts/opencode/`): it owns the parse and the contract check, so the plugin carries neither.
+  A block that does not end with the completeness line counts as garbage/partial output in the Fail direction table.
   Every undetermined-identity outcome fails the shell command; the Fail direction table below is the one list of those outcomes and of what the deadline does.
 
 It also needs the shared `bot-env` installed (the Claude Variant B script) — Variant A installs that lack it must add it; see the SKILL Phase 3 layout.
@@ -41,7 +43,8 @@ cp agent-bot-identity/scripts/bot-env ~/.config/acme-agent/bin/bot-env
 chmod +x ~/.config/acme-agent/bin/bot-env
 # customize bot-env per the Claude adapter (bot name, noreply email, ORG_INSTALLS map)
 
-cp agent-bot-identity/scripts/opencode/agent-bot-identity.ts ~/.config/acme-agent/bin/agent-bot-identity.ts
+cp agent-bot-identity/scripts/bot-env-block.ts ~/.config/acme-agent/bin/bot-env-block.ts
+cp agent-bot-identity/scripts/opencode/agent-bot-identity.ts ~/.config/acme-agent/bin/agent-bot-identity-opencode.ts
 # set DEFAULT_BOT_ENV to the absolute path of the installed bot-env
 ```
 
@@ -49,7 +52,7 @@ Per enrolled repo, install a one-line forwarder and keep it out of git:
 
 ```bash
 mkdir -p <repo>/.opencode/plugin
-printf '%s\n' 'export { default } from "/Users/<you>/.config/acme-agent/bin/agent-bot-identity.ts"' > <repo>/.opencode/plugin/agent-bot-identity.ts
+printf '%s\n' 'export { default } from "/Users/<you>/.config/acme-agent/bin/agent-bot-identity-opencode.ts"' > <repo>/.opencode/plugin/agent-bot-identity.ts
 printf '%s\n' '.opencode/plugin/agent-bot-identity.ts' >> <repo>/.git/info/exclude
 ```
 
@@ -61,6 +64,14 @@ Restart opencode (plugins load at startup; config is not hot-reloaded).
   The usual Variant B blast radius applies: a broken `bot-env` aborts every shell command in every opencode session machine-wide until fixed (verified live).
 
 The forwarder indirection keeps one customized file per machine; the per-repo copies carry no values of their own.
+
+### Upgrading an existing install
+
+Rename the installed master to `agent-bot-identity-opencode.ts`, copy `bot-env-block.ts` beside it, reinstall `bot-env`, repoint every forwarder at the renamed file, and restart opencode.
+A forwarder left pointing at the old name has a missing target.
+Observed on opencode 1.18.35 (headless `opencode run --format json`, stdin from `/dev/null`, scratch git repo, forwarder to a non-existent file): opencode printed no load error to stdout or stderr, the session started, and the bash command ran with `GH_TOKEN` unset, so it ran with the personal identity.
+I found no trace of the missing target in opencode's log directory either.
+A missing target therefore fails open and silently; confirm the forwarder after upgrading by running check 1 under Verification.
 
 ## `gh` auth and token dynamics
 
@@ -122,7 +133,7 @@ Audit smells specific to this adapter:
 - Identity variables exported in the shell profile that launches opencode (the hook cannot remove server-process env on personal verdicts).
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
-- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`: a `bot-env` older than the one that emits `GIT_CONFIG_PARAMETERS=''` cannot satisfy the new plugin; reinstall `bot-env` together with the plugin, never the plugin alone.
+- Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (the first emits no `GIT_CONFIG_PARAMETERS=''`, the second no completeness line); reinstall `bot-env` together with the plugin, never the plugin alone.
 - A hook timeout reported as `exited 143`: the pre-2026-10 plugin's signal-only timeout; reinstall the plugin master.
 
 ## Common Mistakes — OpenCode mechanisms
