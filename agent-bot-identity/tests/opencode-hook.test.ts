@@ -213,9 +213,13 @@ describe("shell.env hook", () => {
   })
 
   test("fail closed: a non-numeric or huge GIT_CONFIG_COUNT", async () => {
-    for (const [name, count] of [["nan", "abc"], ["huge", "99999999999"]]) {
+    // A non-numeric bare value is not a bot-env line shape; a huge count parses but fails the contract.
+    for (const [name, count, pattern] of [
+      ["nan", "abc", /unrecognized line/],
+      ["huge", "99999999999", /partial identity block/],
+    ] as const) {
       const botEnv = fixture(`bot-count-${name}`, BOT_BLOCK.replace("GIT_CONFIG_COUNT=21", `GIT_CONFIG_COUNT=${count}`))
-      await expect(call(botEnv, gitRepo(`count-${name}`))).rejects.toThrow(/partial identity block/)
+      await expect(call(botEnv, gitRepo(`count-${name}`))).rejects.toThrow(pattern)
     }
   })
 

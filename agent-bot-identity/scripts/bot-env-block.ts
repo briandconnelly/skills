@@ -31,16 +31,19 @@ export type BotEnvBlock = { exports: Record<string, string>; unsets: string[] }
 
 // bot-env's line shapes besides END_LINE:
 //   export KEY='value'   single-quoted; bot-env refuses values containing a quote
-//   export KEY=value     unquoted scalars, e.g. GIT_CONFIG_COUNT=6
+//   export KEY=digits    unquoted, only GIT_CONFIG_COUNT (e.g. GIT_CONFIG_COUNT=6)
 //   unset KEY [KEY ...]
+// A bare value is digits only, so a quoted value missing its closing quote
+// is refused instead of read as a bare value.
 const EXPORT_QUOTED = /^export ([A-Z_][A-Z0-9_]*)='([^']*)'$/
-const EXPORT_BARE = /^export ([A-Z_][A-Z0-9_]*)=(\S+)$/
+const EXPORT_BARE = /^export ([A-Z_][A-Z0-9_]*)=([0-9]+)$/
 const UNSET = /^unset ([A-Z_][A-Z0-9_]*(?: [A-Z_][A-Z0-9_]*)*)$/
 // Names a line for an error message without its value.
 const LINE_HEAD = /^(export|unset) ([A-Z_][A-Z0-9_]*)/
 
 // A bot verdict's identity block must carry all of these, plus the counted
 // GIT_CONFIG_KEY_i/VALUE_i pairs. GIT_CONFIG_PARAMETERS is expected to be empty.
+// A personal verdict's block must unset all of these plus BOT_INSTALL_ID.
 const REQUIRED_IDENTITY = [
   "GIT_AUTHOR_NAME",
   "GIT_AUTHOR_EMAIL",
@@ -55,11 +58,15 @@ const identityExport = (name: string): boolean =>
   REQUIRED_IDENTITY.includes(name) || name === "BOT_INSTALL_ID" || /^GIT_CONFIG_(KEY|VALUE)_[0-9]+$/.test(name)
 
 export function parseBotEnvBlock(stdout: string, cwd: string): BotEnvBlock {
-  const lines = stdout.split("\n").filter((line) => line !== "")
+  // Keep each line's raw 1-based stdout line number for error messages.
+  const lines = stdout
+    .split("\n")
+    .map((text, i) => ({ text, number: i + 1 }))
+    .filter((line) => line.text !== "")
   if (lines.length === 0) {
     throw new BotEnvError(`agent-bot-identity: bot-env emitted no output in ${cwd}; refusing to continue with undetermined identity`)
   }
-  if (lines[lines.length - 1] !== END_LINE) {
+  if (lines[lines.length - 1].text !== END_LINE) {
     throw new BotEnvError(
       `agent-bot-identity: bot-env output in ${cwd} does not end with "${END_LINE}" (truncated, or a bot-env older than this adapter); refusing to continue with undetermined identity`,
     )
@@ -69,21 +76,21 @@ export function parseBotEnvBlock(stdout: string, cwd: string): BotEnvBlock {
   // a caller never merges part of a block.
   const exports: Record<string, string> = {}
   const unsets: string[] = []
-  lines.slice(0, -1).forEach((line, i) => {
+  for (const { text: line, number } of lines.slice(0, -1)) {
     let match = EXPORT_QUOTED.exec(line) ?? EXPORT_BARE.exec(line)
     if (match) {
       exports[match[1]] = match[2]
-      return
+      continue
     }
     match = UNSET.exec(line)
     if (match) {
       unsets.push(...match[1].split(" "))
-      return
+      continue
     }
     const head = LINE_HEAD.exec(line)
     const what = head ? `${head[1]} ${head[2]}` : "not an export or unset line"
-    throw new BotEnvError(`agent-bot-identity: bot-env emitted an unrecognized line ${i + 1} in ${cwd} (${what}); refusing to route`)
-  })
+    throw new BotEnvError(`agent-bot-identity: bot-env emitted an unrecognized line ${number} in ${cwd} (${what}); refusing to route`)
+  }
 
   // Exports are applied first and unsets after, so a name in both would be
   // deleted despite being exported. bot-env never emits that; refuse it.
@@ -102,9 +109,17 @@ export function parseBotEnvBlock(stdout: string, cwd: string): BotEnvBlock {
   // helper reset (0), the bot credential helper (1) and commit.gpgsign=false
   // (2), and every host-wide rewrite as both insteadOf and pushInsteadOf.
   // Entries at or beyond the count would be ignored by git, so they are
-  // refused too. Unset-only (personal) blocks skip this; their completeness
-  // is the END_LINE check above.
-  if (Object.keys(exports).some(identityExport)) {
+  // refused too.
+  if (!Object.keys(exports).some(identityExport)) {
+    // Personal path: bot-env unsets every identity variable, so a block that
+    // leaves any of them inherited (marker-only included) is refused.
+    const missing = [...REQUIRED_IDENTITY, "BOT_INSTALL_ID"].filter((name) => !unsets.includes(name))
+    if (missing.length > 0) {
+      throw new BotEnvError(
+        `agent-bot-identity: bot-env emitted a personal block missing unsets in ${cwd} (${missing.join(", ")}); refusing to route`,
+      )
+    }
+  } else {
     const problems = REQUIRED_IDENTITY.filter((name) => !(name in exports))
     if (exports.GH_TOKEN === "") problems.push("non-empty GH_TOKEN")
     if ("GIT_CONFIG_PARAMETERS" in exports && exports.GIT_CONFIG_PARAMETERS !== "") problems.push("empty GIT_CONFIG_PARAMETERS")

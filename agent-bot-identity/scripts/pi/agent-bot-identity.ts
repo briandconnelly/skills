@@ -21,6 +21,7 @@
 import { spawn } from "node:child_process"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import type { BashOperations, ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { createBashToolDefinition, createLocalBashOperations, getAgentDir } from "@earendil-works/pi-coding-agent"
@@ -55,15 +56,18 @@ export function piShellEnv(): Env {
   return { ...process.env, [pathKey]: updated }
 }
 
-// pi normalizes settings.shellPath (settings-manager getShellPath ->
-// utils/paths.js normalizePath) with tilde expansion before use; a replacement
-// tool must do the same or `~/bin/bash` fails where the built-in works.
+// pi normalizes settings.shellPath before use (settings-manager getShellPath
+// -> utils/paths.js normalizePath with default options: no trim, tilde
+// expansion, then file:// URL conversion); a replacement tool must do the same
+// or `~/bin/bash` and `file:///bin/bash` fail where the built-in works. This
+// mirrors the non-win32 behavior of pi 1.1.0; re-check it after a pi upgrade.
 export function expandShellPath(shellPath: string | undefined): string | undefined {
   if (typeof shellPath !== "string") return undefined
-  const trimmed = shellPath.trim()
-  if (trimmed === "~") return homedir()
-  if (trimmed.startsWith("~/")) return join(homedir(), trimmed.slice(2))
-  return trimmed
+  if (!shellPath) return shellPath
+  if (shellPath === "~") return homedir()
+  if (shellPath.startsWith("~/")) return join(homedir(), shellPath.slice(2))
+  if (/^file:\/\//.test(shellPath)) return fileURLToPath(shellPath)
+  return shellPath
 }
 
 function runBotEnv(botEnv: string, cwd: string, base: Env, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
