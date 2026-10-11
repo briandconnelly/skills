@@ -31,7 +31,7 @@ It should include:
 - output class, shape, format, examples, and size mode
 - shape dialect: the named notation used for output and error shapes (JSON Schema or an equivalently precise named notation), including how it marks required vs optional fields
 - numeric exit codes and symbolic error codes (declared at tool level)
-- per-command error catalog: which symbolic codes that command can return, which exit code they map to, and which flags suppress them (e.g., `--if-exists`)
+- per-command error catalog: which symbolic codes that command can return, which exit code each maps to, whether its payload carries `temporary: true` (catalog field `retryable`), whether the caller must reconcile before retrying (catalog field `reconcile_first`), and which flags suppress it (e.g., `--if-exists`)
 - side effects
 - expected latency class: `local` (filesystem only), `cached` (cache-served), `network` (one network round trip), `slow` (multi-step or known >1s), `async` (must poll)
 - timeout and retry defaults
@@ -87,8 +87,9 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Machine-mode stderr framing is declared in the schema: on failure, the structured error object is the only stderr content, or stderr is NDJSON records with a `type` field (`progress`, `warning`, `error`) so agents can separate diagnostics from the failure payload.
 - The framing is declared as a closed enum value — `single-error-object` or `ndjson-typed` — with any explanatory prose in a separate description field, never as a free-form sentence agents must parse.
 - Free-form diagnostics must never interleave with the structured failure payload on machine-mode stderr.
-- Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; the default contract remains empty stdout on failure in machine mode.
+- Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; for non-streaming classes the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
+- A `stream` or NDJSON `bulk-result` command that fails after emitting records keeps the emitted records valid, writes the structured error to stderr per the declared framing, and exits nonzero; the schema declares whether a terminal record marks normal completion (`completion_record`), so consumers can tell a completed stream from a dead process.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
 - In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
@@ -100,7 +101,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`, plus `limit` and `estimated_total` when available.
 - Cursor contracts declare opacity, lifetime, the error code an expired cursor returns, the restart action, and whether a page walk is snapshot-consistent or best-effort.
 - Truncation, omitted fields, and size caps are explicit.
-- `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
+- `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them; when a selection flag exists, the schema declares the projection rule (selected fields present, unselected fields absent) so the full-record shape is not the only declared contract.
 - Default sort is deterministic.
 - Machine output uses UTF-8, locale-independent numbers, stable path style, and UTC or explicitly declared timezones for timestamps.
 - `--output <file>` is restricted to export commands and returns path, byte size, and content hash.
@@ -124,7 +125,7 @@ Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` foll
 Avoid `126` and `127` (shell launch failures) and `128+n` (signal exits); shells already assign those meanings.
 
 The symbolic JSON `code` is the authoritative branch key for agents; the numeric exit code is the shell-branching fallback.
-Codes `6`, `7`, and `9` can all be retryable; the payload's `retryable`/`temporary` field is authoritative for retry decisions, never the exit code alone.
+Codes `6`, `7`, and `9` can all be retryable; the payload's `temporary` field is authoritative for retry decisions, never the exit code alone, and the per-command catalog's `retryable` field mirrors it for each code.
 
 Structured errors:
 
@@ -140,7 +141,7 @@ Structured errors:
 
 Partial failure:
 
-- Multi-item commands exit nonzero by default if any item fails.
+- Multi-item commands exit nonzero by default if any item fails, with the aggregate symbolic code and exit code declared in the per-command error catalog.
 - `--allow-partial` may permit exit `0`, but output must include `partial: true` and failed item errors.
 - Bulk operations should report per-item results in NDJSON when result size can grow.
 
