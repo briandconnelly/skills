@@ -16,6 +16,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
   "canonical_machine_profile": ["--machine"],
   "isolation_profile": ["--isolated"],
   "shape_dialect": "widgetctl-compact-v1",
+  "shape_dialect_description": "a|b is a closed enum; a trailing ? marks an optional field; fields are required unless so marked or removed by a declared projection; a string-valued shape describes a record sequence",
   "global_flags": [
     {"name": "--machine", "type": "boolean", "default": false, "implies": ["--json", "--no-progress"], "description": "non-interactive machine mode: no prompts, no color, no pager, structured output only"},
     {"name": "--json", "type": "boolean", "default": false, "description": "structured JSON output"},
