@@ -1,19 +1,45 @@
 # Test Scenarios for agent-friendly-cli
 
 Behavioral test scenarios for this skill, following the baseline/with-skill methodology: run each scenario with a fresh subagent that does NOT have the skill loaded (baseline), then with the skill loaded (treatment), and compare against the assertions.
-A baseline run that already satisfies every assertion means the scenario is too easy; tighten it.
 An assertion the with-skill run misses is a finding against the skill, not against the agent.
+
+## Scenario sets
+
+Every scenario belongs to exactly one set, and the set decides what a baseline pass means.
+Never pool the two sets into one score.
+
+- **Representative set** — ordinary in-scope work, whose job is to estimate what the skill does on tasks nobody tuned against it.
+  A scenario here is never tightened in response to its own results.
+  A baseline that satisfies every assertion is a result to record, not a scenario to fix.
+  Editing a representative scenario resets its history; say so in the Results table when you do.
+- **Challenge set** — scenarios built to be hard enough to separate the arms and show whether a specific rule lands.
+  Here a baseline that passes everything does mean the scenario is too easy; tighten it.
+  Because this set selects for baseline failure by construction, its totals measure whether rules land, never the skill's net benefit.
+
+Scenarios 1–3 are **challenge set**.
+Scenario R1 is **representative**.
+
+## Scoring dimensions
+
+Each assertion is one of two kinds; scenarios label which.
+
+- **Scored.** Substantive outcomes: a defect detected, a contract element present, a mitigation led with, a severity ranking defensible on the evidence.
+  These are what a run passes or fails on.
+- **Non-scored conformance.** House vocabulary and layout: the `P0`–`P3` words, the finding template's field names, the coverage-table shape.
+  A baseline cannot pass these without the skill, so they are recorded for consistency and never counted in the score.
+
+Every run records its set, any **regression** (an assertion the baseline satisfied and the treatment missed), and the treatment's token cost as a ratio to the baseline's when both are known.
 
 ## How to run
 
-1. **Baseline:** dispatch a subagent with only the scenario prompt below.
+1. **Baseline:** dispatch a subagent with only the scenario prompt below, told that the prompt is its only input and that it must not read any repository file.
    Record which assertions its output satisfies.
-2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt.
-3. **Score:** every assertion is pass/fail with a one-line evidence pointer into the transcript.
-   Record results in the table at the bottom.
-   Assertion lists may be tightened over time; a results row reflects the assertions as of its date.
+2. **Treatment:** dispatch a fresh subagent with the skill content available (or triggered via its description) and the same prompt, told not to read `tests/`.
+3. **Score:** every scored assertion is pass/fail with a one-line evidence pointer into the transcript; quote the assertion text verbatim when scoring, never a paraphrase.
+   Record results in the table at the bottom and archive each run under `tests/runs/<date>-<scenario>-<arm>.md` with the exact prompt, the per-assertion table, and the verbatim final output.
+   Assertion lists in the challenge set may be tightened over time; a results row reflects the assertions as of its date.
 
-## Scenario 1: Design (application test)
+## Scenario 1: Design (application test, challenge set)
 
 **Prompt:**
 
@@ -21,7 +47,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 > It must support: list notes, get a note, search notes, create a note, delete a note, and export all notes to a file.
 > Produce: the command surface, the machine-readable schema, example success payloads, and example error payloads for at least two failure modes.
 
-**Assertions (with-skill run must satisfy):**
+**Assertions (with-skill run must satisfy; all scored):**
 
 - [ ] A canonical machine profile is declared in the schema, and every flag it names is declared as a flag (Machine Schema).
 - [ ] The schema declares numeric exit codes plus symbolic error codes, with a per-command error catalog for at least the mutating command (Errors And Exit Codes).
@@ -35,16 +61,17 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Expected baseline failures:** no machine profile or schema fingerprint, prose-only errors, no exit-code map, no stdin/ambient-state declarations, dry-run absent or unmarked, pagination undeclared.
 
-## Scenario 2: Audit (retrieval test)
+## Scenario 2: Audit (retrieval test, challenge set)
 
 **Prompt:**
 
 > Audit this CLI for agent-friendliness and report your findings.
 > You cannot run the tool; you have only this captured material.
+> Each capture discards stderr (`2>/dev/null`), so every line shown is stdout.
 > The audience is the tool's author, who can change anything.
 >
 > ```text
-> $ depman --help
+> $ depman --help 2>/dev/null
 > DepMan 3.2 — the friendly dependency manager!
 > Usage: depman [command] [options]
 > Commands:
@@ -56,13 +83,13 @@ An assertion the with-skill run misses is a finding against the skill, not again
 >   --quiet     Less output
 >   --yes       Assume yes
 >
-> $ depman ls --json
+> $ depman ls --json 2>/dev/null
 > ✨ DepMan 3.2
 > Checking for updates...
 > [{"name":"left-pad","version":"1.3.0"},{"name":"is-odd","version":"3.0.1"}]
 > Done in 0.42s ✓
 >
-> $ depman install nonexistent-pkg
+> $ depman install nonexistent-pkg 2>/dev/null
 > Error: something went wrong (see log)
 > $ echo $?
 > 1
@@ -70,19 +97,27 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Findings use the `P0`-`P3` severity scale and the finding format from `review-workflow.md`: severity, type (`impl-bug`/`schema-gap`/`design-issue`), location, impact, fix direction.
-- [ ] Evidence labels are applied: `observed` for session behavior, `inferred` for deduced behavior such as the non-TTY hang mechanism, `absence-of-evidence` for the missing schema/machine profile.
-- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation, severity `P0`, with the documented prompt labeled `observed` and the actual non-TTY hang behavior labeled `inferred` (Invocation Safety, Evidence).
-- [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged at `P1` or higher (Output).
+Scored:
+
+- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation and ranked as the most severe finding, above stdout pollution (Invocation Safety, Severity).
+- [ ] The hang finding distinguishes what the capture shows (the documented prompt) from what is deduced (the non-TTY hang mechanism), whether or not it uses the skill's label words (Evidence).
+- [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged as breaking machine parsing, and the finding treats the pollution as established by the capture rather than as a guess (Output, Evidence).
 - [ ] The unstructured error plus generic exit `1` is flagged: no symbolic code to branch on (Errors And Exit Codes).
 - [ ] The implicit update check on a read path is flagged as a hidden side effect / phone-home finding (Side Effects And Telemetry).
 - [ ] `clean` mutating the global cache without `--dry-run` is flagged (Mutations).
 - [ ] Alias duplication (`i`, `add`) and the vague `ls  Show stuff` description are flagged against the discovery path (Command Model / Discovery).
-- [ ] A checklist coverage table is produced with `not-checked` reasons for sections the captured material cannot answer (e.g., stdin contract, tests).
+- [ ] The report states which checklist areas the captured material cannot answer (e.g., stdin contract, tests) instead of silently skipping them (Report Format).
 
-**Expected baseline failures:** ad-hoc severity labels or none, no finding format, no evidence labels, no coverage table, misses the update-check side effect or the prompt hang risk.
+Non-scored conformance:
 
-## Scenario 3: Diagnosis (routing test)
+- [ ] Findings use the `P0`-`P3` words and the finding template from `review-workflow.md`: severity, type, evidence, location, impact, fix direction.
+- [ ] Evidence labels use the literal words `observed`, `inferred`, `absence-of-evidence`.
+- [ ] The hang finding is `P0` and the stdout pollution finding is `P1` or higher.
+- [ ] The coverage statement takes the form of the checklist coverage table with `not-checked` reasons.
+
+**Expected baseline failures:** hang risk ranked below stdout pollution or missed, no observed-vs-inferred split, misses the update-check side effect or the `clean` dry-run gap, no statement of what the material cannot answer.
+
+## Scenario 3: Diagnosis (routing test, challenge set)
 
 **Prompt:**
 
@@ -93,14 +128,60 @@ An assertion the with-skill run misses is a finding against the skill, not again
 
 **Assertions (with-skill run must satisfy):**
 
-- [ ] Names the confirmation prompt blocking on stdin in a non-TTY job as the most likely failure path, with evidence labels: the documented prompt `observed`, the hang mechanism `inferred` (Review Workflow §0-1).
+Scored:
+
+- [ ] Names the confirmation prompt blocking on stdin in a non-TTY job as the most likely failure path, and distinguishes what the help text shows from what is deduced about the hang (Review Workflow §0-1).
 - [ ] Leads with the smallest caller-side mitigation available today (e.g., `--yes`, stdin closed via `</dev/null` to fail fast, a short job-level timeout) rather than tool redesign (SKILL.md Workflow §1, internal operator).
 - [ ] Separates operator-side workarounds from owner-side fixes, and frames owner-side fixes as escalation items to the owning team.
 - [ ] Notes that `--yes` bypasses the confirmation safety check and states what that confirmation was protecting.
 - [ ] Offers one or two safe confirmation probes with permission requested first, or states why probing isn't useful (Review Workflow §1).
 - [ ] Stays diagnosis-sized: no full audit checklist coverage table (SKILL.md Done Criteria).
 
+Non-scored conformance:
+
+- [ ] The documented prompt is labeled `observed` and the hang mechanism `inferred`, in those words.
+
 **Expected baseline failures:** jumps to auditing or redesigning depman, no evidence labels, no operator-vs-owner split, recommends `--yes` without noting the bypassed safety check.
+
+## Scenario R1: Hardening an internal CLI (representative set)
+
+Ordinary in-scope work: an owner asks for the changes that would make an existing internal CLI safe for agents to call.
+Assertions are skill-neutral outcomes; this scenario is never tightened in response to its own results.
+
+**Prompt:**
+
+> Our team owns `envctl`, an internal Go CLI that lists, shows, creates, and deletes environment-variable profiles stored in a shared service.
+> Developers use it interactively today; our CI agents (Claude Code and Codex) will start calling it next quarter.
+> Propose the changes that would make it safe and easy for agents to call, in priority order.
+> Here is the current help:
+>
+> ```text
+> $ envctl --help
+> envctl — manage environment profiles
+>
+> Usage: envctl <command> [flags]
+>
+> Commands:
+>   list              List profiles
+>   show <name>       Show a profile
+>   create <name>     Create a profile (prompts for values)
+>   delete <name>     Delete a profile (asks "are you sure?")
+>   login             Log in via browser
+>
+> Flags:
+>   -v, --verbose     More output
+>   --profile-dir     Where profiles are cached (default ~/.envctl)
+> ```
+
+**Assertions (all scored):**
+
+- [ ] Proposes a non-interactive, machine-readable output mode and says what each command's output looks like in it (Output).
+- [ ] Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes).
+- [ ] Removes every interactive prompt from the agent path: `create` takes values non-interactively, `delete` has an explicit non-prompting trigger plus a preview or dry-run, and `login` has a non-browser bootstrap (Agent-Safe Invocation, Mutations).
+- [ ] Names the ambient state (`~/.envctl` cache, login credentials) and proposes how an agent inspects or disables it (Ambient State).
+- [ ] Proposes how an agent discovers the contract (a schema command, `--help --json`, or equivalent) rather than learning flags from examples (Machine Schema).
+
+**Expected baseline behavior:** likely passes several of these; record the result either way.
 
 ## Results
 
