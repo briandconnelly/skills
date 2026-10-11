@@ -82,9 +82,13 @@ def _managed_root(launcher: Path) -> Path | None:
     if launcher.parent.name != "bin":
         return None
     install = launcher.parent.parent / "install"
+    # Read as the launcher's `IFS= read -r` does: the first line, which must end in "\n".
     try:
-        version = (install / "current-version").read_text(encoding="utf-8").splitlines()[0]
-    except (OSError, UnicodeDecodeError, IndexError):
+        version, newline, _ = (install / "current-version").read_bytes().partition(b"\n")
+        version = version.decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not newline:
         return None
     if version in {".", ".."} or not MANAGED_VERSION.fullmatch(version):
         return None

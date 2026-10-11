@@ -434,3 +434,30 @@ def test_managed_install_rejects_empty_current_version(tmp_path):
     elsewhere.mkdir()
     with pytest.raises(pi_docs.NoInstallError):
         pi_docs.find_installs(str(entry), elsewhere)
+
+
+def test_managed_install_reads_only_the_first_line_like_the_launcher(tmp_path):
+    """The launcher's `read -r` takes the first line and ignores the rest, so the release runs."""
+    entry, root = _managed_layout(tmp_path)
+    (tmp_path / "agent" / "install" / "current-version").write_bytes(b"1.1.0\ninvalid\n")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    installs = pi_docs.find_installs(str(entry), elsewhere)
+    assert [(i.root, i.on_path) for i in installs] == [(root.resolve(), True)]
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"1.1.0",  # no newline: the launcher's `read` fails
+        b"1.1.0\r\n",  # the launcher keeps the \r, which its character class rejects
+        b"1.1.0\x0cjunk\n",  # one line to `read`; splitlines() would split it
+    ],
+)
+def test_managed_install_rejects_what_the_launcher_cannot_read(tmp_path, content):
+    entry, _ = _managed_layout(tmp_path)
+    (tmp_path / "agent" / "install" / "current-version").write_bytes(content)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    with pytest.raises(pi_docs.NoInstallError):
+        pi_docs.find_installs(str(entry), elsewhere)
