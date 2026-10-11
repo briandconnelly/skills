@@ -189,11 +189,12 @@ R="$(mkrepo git@github.com:/acme/x.git)"
 [ "$(effective "$R" origin)" = 'fetch=https://github.com/acme/x.git push=https://github.com/acme/x.git' ] || fail "leading-slash scp remote rewritten badly: $(effective "$R" origin)"
 rm -rf "$R"
 
-# 15. Every emitted line must still match the three shapes the OpenCode
-#     plugin parses (export KEY='...', export KEY=bare, unset KEY ...).
+# 15. Every emitted line must still match the three shapes the shared parser
+#     (scripts/bot-env-block.ts) accepts (export KEY='...', export KEY=digits,
+#     unset KEY ...).
 R="$(mkrepo git@github.com:acme/x.git)"
 git -C "$R" remote add upstream SSH://git@GITHUB.COM/oss-project/x.git
-bad="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -Ev "^export [A-Z_][A-Z0-9_]*='[^']*'$|^export [A-Z_][A-Z0-9_]*=[^ ]+$|^unset [A-Z_][A-Z0-9_]*( [A-Z_][A-Z0-9_]*)*$|^# bot-env: end$" || true)"
+bad="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -Ev "^export [A-Z_][A-Z0-9_]*='[^']*'$|^export [A-Z_][A-Z0-9_]*=[0-9]+$|^unset [A-Z_][A-Z0-9_]*( [A-Z_][A-Z0-9_]*)*$|^# bot-env: end$" || true)"
 [ -z "$bad" ] || fail "bot-env emitted a line the adapters cannot parse: $bad"
 count="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | sed -n 's/^export GIT_CONFIG_COUNT=//p')"
 keys="$(cd "$R" && "$DIR/bot-env" 2>/dev/null | grep -c '^export GIT_CONFIG_KEY_')"
@@ -204,6 +205,35 @@ P="$(mkrepo git@gitlab.com:someone/x.git)"
 [ "$(cd "$P" && "$DIR/bot-env" 2>/dev/null | grep -c '^# bot-env: end$')" = 1 ] || fail "personal verdict emits the completeness line more than once"
 rm -rf "$P"
 rm -rf "$R"
+
+# 15b. Real bot-env output satisfies the shared parser's contract check, not
+#      only its line shapes: an org bot verdict, an ambiguous (no-remote) bot
+#      verdict that unsets BOT_INSTALL_ID, and a personal verdict that also
+#      enumerates inherited GIT_CONFIG_* vars. Needs bun; without it the case
+#      reports SKIP rather than passing silently.
+if command -v bun >/dev/null 2>&1; then
+  cat > "$DIR/parse.ts" <<EOF
+import { parseBotEnvBlock } from "$SRC/bot-env-block.ts"
+const stdout = await new Response(Bun.stdin.stream()).text()
+try { parseBotEnvBlock(stdout, process.cwd()) } catch (err) { console.log((err as Error).message); process.exit(1) }
+EOF
+  R="$(mkrepo git@github.com:acme/x.git)"
+  N="$(mkrepo "")"
+  P="$(mkrepo git@gitlab.com:someone/x.git)"
+  for case in "org-bot:$R:" "ambiguous-bot:$N:" "personal:$P:GIT_CONFIG_KEY_0=x GIT_CONFIG_VALUE_0=y"; do
+    name="${case%%:*}"; rest="${case#*:}"; repo="${rest%%:*}"; extra="${rest#*:}"
+    # shellcheck disable=SC2086 # $extra is a deliberate word-split list of NAME=value pairs
+    out="$(cd "$repo" && env $extra "$DIR/bot-env" 2>/dev/null)" || { fail "$name: bot-env aborted"; continue; }
+    msg="$(printf '%s\n' "$out" | bun "$DIR/parse.ts" 2>&1)" || fail "$name: real bot-env output refused by the shared parser: $msg"
+  done
+  out="$(cd "$N" && "$DIR/bot-env" 2>/dev/null)"
+  echo "$out" | grep -q '^unset BOT_INSTALL_ID$' || fail "ambiguous bot verdict no longer unsets BOT_INSTALL_ID (case 15b lost its default-installation shape)"
+  out="$(cd "$P" && GIT_CONFIG_KEY_0=x "$DIR/bot-env" 2>/dev/null)"
+  echo "$out" | grep -q '^unset GIT_CONFIG_KEY_0$' || fail "personal verdict did not enumerate an inherited GIT_CONFIG_KEY_0 (case 15b lost its enumerated shape)"
+  rm -rf "$R" "$N" "$P"
+else
+  echo "SKIP: case 15b (bun not on PATH)"
+fi
 
 # 16. A raw remote value that cannot be emitted safely still aborts rather
 #     than routing with a partial identity.

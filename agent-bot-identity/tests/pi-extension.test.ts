@@ -1,10 +1,12 @@
 import { afterAll, describe, expect, test } from "bun:test"
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { basename, dirname, join } from "node:path"
+import { basename, delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { __resolveEnvForTest, createAgentBotIdentity, piShellEnv, wrapOperations } from "../scripts/pi/agent-bot-identity"
+import { getAgentDir } from "@earendil-works/pi-coding-agent"
+
+import { __resolveEnvForTest, createAgentBotIdentity, expandShellPath, piShellEnv, wrapOperations } from "../scripts/pi/agent-bot-identity"
 import { BOT_OUTPUT, PERSONAL_OUTPUT, script } from "./bot-env-fixtures"
 
 // Run with: bash agent-bot-identity/tests/pi-extension-test.sh (from the repo
@@ -69,7 +71,7 @@ describe("pi adapter: agent bash tool", () => {
     // from its own inherited env, which must be the routed base env.
     const personal = fixture(
       "personal-enum",
-      `#!/usr/bin/env bash\nprintf '%s\\n' 'unset GH_TOKEN GIT_AUTHOR_NAME'\nfor v in $(compgen -v | grep -E '^GIT_CONFIG_(KEY|VALUE)_[0-9]+$' || true); do echo "unset $v"; done\necho '# bot-env: end'\n`,
+      `#!/usr/bin/env bash\nprintf '%s' '${PERSONAL_OUTPUT.replace("# bot-env: end\n", "")}'\nfor v in $(compgen -v | grep -E '^GIT_CONFIG_(KEY|VALUE)_[0-9]+$' || true); do echo "unset $v"; done\necho '# bot-env: end'\n`,
     )
     let captured: Record<string, string | undefined> = {}
     const inner = {
@@ -95,6 +97,8 @@ describe("pi adapter: agent bash tool", () => {
     ["empty", `#!/usr/bin/env bash\nexit 0\n`, /no output/],
     ["truncated", script(PERSONAL_OUTPUT.replace("# bot-env: end\n", "")), /does not end with/],
     ["partial", script("export GIT_AUTHOR_NAME='acme-agent[bot]'\n# bot-env: end\n"), /partial identity block/],
+    ["incomplete personal", script("unset GH_TOKEN\n# bot-env: end\n"), /personal block missing unsets/],
+    ["marker only", script("# bot-env: end\n"), /personal block missing unsets/],
   ] as const) {
     test(`fail closed (${name}): the inner exec never runs`, async () => {
       let ran = false
@@ -150,6 +154,17 @@ describe("pi adapter: agent bash tool", () => {
     }
   })
 
+  test("shellPath given as a file:// URL is converted like pi's built-in", async () => {
+    const out = await runBash(fixture("fileurl", script(BOT_OUTPUT)), dir("fileurl"), "echo ran-ok", { shellPath: "file:///bin/bash" })
+    expect(out).toContain("ran-ok")
+  })
+
+  test("expandShellPath matches pi's normalizePath: no trim, empty passes through", () => {
+    expect(expandShellPath(" /bin/bash")).toBe(" /bin/bash")
+    expect(expandShellPath("")).toBe("")
+    expect(expandShellPath(undefined)).toBeUndefined()
+  })
+
   test("bot-env stderr warnings reach the UI", async () => {
     const notes: string[] = []
     const { tools } = load(fixture("warn", `#!/usr/bin/env bash\necho 'bot-env: no remotes' >&2\n${script(PERSONAL_OUTPUT).split("\n").slice(1).join("\n")}`))
@@ -197,7 +212,7 @@ describe("pi adapter: user bash (! and RPC)", () => {
   test("base env for user commands is pi's shell env (managed bin dir on PATH)", () => {
     const env = piShellEnv()
     const pathKey = Object.keys(env).find((k) => k.toLowerCase() === "path") ?? "PATH"
-    expect((env[pathKey] ?? "").split(":")).toContain(join(process.env.HOME ?? "", ".pi", "agent", "bin"))
+    expect((env[pathKey] ?? "").split(delimiter)).toContain(join(getAgentDir(), "bin"))
   })
 })
 

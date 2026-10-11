@@ -92,6 +92,45 @@ describe("parseBotEnvBlock", () => {
     expect(msg).not.toContain("ghs_SECRET")
   })
 
+  test("refuses a marker-only block (personal path with no unsets)", () => {
+    const msg = refuse(`${END_LINE}\n`)
+    expect(msg).toMatch(/personal block missing unsets/)
+    for (const name of ["GIT_AUTHOR_NAME", "GH_TOKEN", "GIT_CONFIG_PARAMETERS", "BOT_INSTALL_ID"]) expect(msg).toContain(name)
+  })
+
+  test("refuses a personal block with partial unsets, naming each missing unset", () => {
+    const msg = refuse(`unset GH_TOKEN\n${END_LINE}\n`)
+    expect(msg).toMatch(/personal block missing unsets/)
+    expect(msg).toContain("GIT_AUTHOR_NAME")
+    expect(msg).toContain("BOT_INSTALL_ID")
+    expect(msg).not.toMatch(/missing unsets[^)]*GH_TOKEN/)
+  })
+
+  test("personal block with every required unset plus enumerated GIT_CONFIG unsets parses", () => {
+    const out = PERSONAL_OUTPUT.replace(`${END_LINE}\n`, `unset GIT_CONFIG_KEY_0\nunset GIT_CONFIG_VALUE_0\n${END_LINE}\n`)
+    expect(parseBotEnvBlock(out, "/repo").unsets).toContain("GIT_CONFIG_KEY_0")
+  })
+
+  test("unrecognized-line number is the raw 1-based stdout line, blank lines included", () => {
+    const out = `\n\nunset GH_TOKEN\n\nbogus\n${END_LINE}\n`
+    expect(refuse(out)).toMatch(/unrecognized line 5 /)
+  })
+
+  test("a bare export value must be digits only", () => {
+    const msg = refuse(PERSONAL_OUTPUT.replace("unset GH_TOKEN\n", "export GH_TOKEN='ghs_x\n"))
+    expect(msg).toMatch(/unrecognized line 3/)
+    expect(msg).toContain("export GH_TOKEN")
+    expect(msg).not.toContain("ghs_x")
+    expect(refuse(PERSONAL_OUTPUT.replace("unset GH_TOKEN\n", "export GH_TOKEN=ghs_bare\n"))).toMatch(/unrecognized line 3/)
+  })
+
+  test("bot block with unset BOT_INSTALL_ID and no BOT_INSTALL_ID export (default installation) parses", () => {
+    const out = BOT_OUTPUT.replace("export BOT_INSTALL_ID='42'\n", "unset BOT_INSTALL_ID\n")
+    const { exports, unsets } = parseBotEnvBlock(out, "/repo")
+    expect(exports.BOT_INSTALL_ID).toBeUndefined()
+    expect(unsets).toEqual(["BOT_INSTALL_ID"])
+  })
+
   test("both-exported-and-unset refusal names the variable, not its value", () => {
     const msg = refuse(BOT_OUTPUT.replace(`${END_LINE}\n`, `unset GH_TOKEN\n${END_LINE}\n`))
     expect(msg).toMatch(/both exported and unset/)
