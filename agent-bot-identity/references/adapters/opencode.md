@@ -68,10 +68,9 @@ The forwarder indirection keeps one customized file per machine; the per-repo co
 ### Upgrading an existing install
 
 Rename the installed master to `agent-bot-identity-opencode.ts`, copy `bot-env-block.ts` beside it, reinstall `bot-env`, repoint every forwarder at the renamed file, and restart opencode.
-A forwarder left pointing at the old name has a missing target.
-Observed on opencode 1.18.35 (headless `opencode run --format json`, stdin from `/dev/null`, scratch git repo, forwarder to a non-existent file): opencode printed no load error to stdout or stderr, the session started, and the bash command ran with `GH_TOKEN` unset, so it ran with the personal identity.
-I found no trace of the missing target in opencode's log directory either.
-A missing target therefore fails open and silently; confirm the forwarder after upgrading by running check 1 under Verification.
+A forwarder left pointing at the old name has a missing target, which fails open (see the Forwarder target missing row under Fail direction).
+Then probe every forwarder statically, including the Variant B path: `grep -l 'bin/agent-bot-identity\.ts"' <repo>/.opencode/plugin/agent-bot-identity.ts ~/.config/opencode/plugin/agent-bot-identity.ts` must list none, and each remaining quoted target must exist.
+Also run check 1 under Verification in each enrolled repo.
 
 ## `gh` auth and token dynamics
 
@@ -84,6 +83,7 @@ Mint failure produces the non-empty `BOT-TOKEN-MINT-FAILED` sentinel from `bot-e
 | Situation | Result |
 | --- | --- |
 | `bot-env` missing, non-executable, crashing, emitting garbage/partial output, or not finished at the 20 s deadline | Shell command aborts with the error; nothing runs. At the deadline the hook stops waiting and kills the script; a child the script was waiting on (a git process on a stale lock) is not reaped and may linger, but the hook releases its own ends of the pipes at the deadline so nothing is buffered on its behalf |
+| Forwarder target missing (stale path after the rename, typo, moved install) | Plugin silently not loaded: observed on opencode 1.18.35 (headless `opencode run --format json`, scratch repo, forwarder to a non-existent file) with no load error on stdout or stderr and nothing in opencode's log directory; the bash command ran with `GH_TOKEN` unset, i.e. personal. Under Variant B this holds machine-wide |
 | Token mint fails | Bot env with `BOT-TOKEN-MINT-FAILED`; `gh` and pushes fail loudly |
 | Command cwd is a non-mapped or non-git directory | Personal env for that command only |
 | opencode started with `--pure` or `OPENCODE_PURE=1` | Plugin never loads; commands run personal (documented escape hatch) |
@@ -134,6 +134,7 @@ Audit smells specific to this adapter:
 - A static `GH_TOKEN` anywhere in opencode config: tokens here are minted per command and nothing should pin one.
 - A copy of the plugin edited per repo instead of the one-line forwarder (divergent copies drift; the customized values belong in exactly one file).
 - Every agent command refusing after a plugin update with a message about `GIT_CONFIG_PARAMETERS`, or with "does not end with": a `bot-env` older than the plugin cannot satisfy it (the first emits no `GIT_CONFIG_PARAMETERS=''`, the second no completeness line); reinstall `bot-env` together with the plugin, never the plugin alone.
+- A forwarder whose target path does not exist: see the Forwarder target missing row under Fail direction.
 - A hook timeout reported as `exited 143`: the pre-2026-10 plugin's signal-only timeout; reinstall the plugin master.
 
 ## Common Mistakes — OpenCode mechanisms
