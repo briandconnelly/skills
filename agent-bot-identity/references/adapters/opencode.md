@@ -8,8 +8,8 @@ Mechanism claims trace to the opencode 1.18.32 source (`packages/opencode/src/to
 
 Variant A (per-project opt-in) and Variant B (user-level automatic) are the same artifact in different locations.
 Variant A with the pre-refactor plugin is **tested end-to-end**: routing, bot and `as-me` commits, the per-command flip, and the fail-closed abort re-verified on 1.18.32 (2026-09-23), and the GitHub write path (push and PR creation) on 1.18.22 (2026-08-24) — see Verification.
-The shared-parser version of the plugin (master renamed to `agent-bot-identity-opencode.ts`, parse and contract check imported from `./bot-env-block`) is unit-tested only.
-The positive live routing checks under Verification last ran on the pre-refactor plugin (2026-09-23 on 1.18.32; the write path on 2026-08-24 on 1.18.22), and no live run of the refactored plugin is recorded yet.
+The shared-parser version of the plugin (master renamed to `agent-bot-identity-opencode.ts`, parse and contract check imported from `./bot-env-block`) was verified live with a Variant A forwarder on opencode 1.18.35 (2026-10-10): routing, the membership assertion, a bot commit, the per-command flip, and two fail-closed aborts (non-executable `bot-env`, and a block missing the completeness line) — see Verification.
+The write path (push and PR creation) and `as-me` have not been re-run on the refactored plugin; their last live runs are the 2026-08-24 and 2026-09-23 runs on the pre-refactor plugin.
 Variant B differs only in where the plugin file is installed; its org-gated behavior is the same code path as Variant A's, so it inherits everything except a live run of the global install location — that one delta is untested.
 Multi-account installation selection (SKILL Phase 3's `BOT_INSTALL_ID` contract) works here with no extra code: the routing decision is delegated to `bot-env`, which implements it.
 `as-me` works under OpenCode (there is no sandbox wrapper around commands), so the SKILL's collaborated-work path is fully available.
@@ -132,6 +132,31 @@ The 2026-09-23 re-run on opencode 1.18.32, after the routing changes in the shar
 - Item 10 with `bun` absent: `BUN_BE_BUN=1 opencode test tests/opencode-hook.test.ts` runs the suite with the bun embedded in the opencode binary, 10 pass with `BOT_ENV`/`BOT_ENV_CWD` set (PASS; a historical count from the suite before the shared parser, not the current suite's size).
 - Item 7 (private non-enrolled probe), item 11 (write path), and the Variant B location: not re-run; the 1.18.22 results stand for those.
 - Trigger: with the skill installed under `~/.claude/skills/`, an in-domain prompt in a non-enrolled directory made the model load `agent-bot-identity` through the `skill` tool and summarize Phases 1–2 accurately.
+
+The 2026-10-10 run on opencode 1.18.35 verified the shared-parser plugin (`./bot-env-block` import, renamed master) with the user's default model (`runpod/moonshotai/Kimi-K3`).
+Two plugin builds were each loaded through a Variant A forwarder in a fresh scratch clone of the enrolled personal-account repo `briandconnelly/skills` (SSH remote): the installed master, whose `bot-env-block.ts` predates the review fix that refuses incomplete personal blocks and digits-only bare values, and a copy of the branch-HEAD plugin and parser.
+Each check was one `opencode run --format json --auto` session (check 9's second call continued the same session with `--session`) with stdin from `/dev/null`, the server env scrubbed of every identity variable, a prompt naming exactly one bash command, and the result read from the bash tool's recorded state.
+
+| Build | Check | Recorded tool state | Result |
+| --- | --- | --- | --- |
+| Installed | 1 | `ghs_` | PASS |
+| Installed | 2 | `command !…/bin/git-credential-bot` | PASS |
+| Installed | 3 | `ls-remote` printed `HEAD` with SSH disabled (public repo: proves the rewrite, not the token) | PASS |
+| Installed | 4 | membership assertion printed `briandconnelly/skills` | PASS |
+| Installed | Control: forwarder removed | `GH_TOKEN` empty, helper `global osxkeychain`, human author | PASS |
+| HEAD | 1 | `ghs_` | PASS |
+| HEAD | 2 | `command !…/bin/git-credential-bot` | PASS |
+| HEAD | 3 | as installed | PASS |
+| HEAD | 4 | membership assertion printed `briandconnelly/skills` | PASS |
+| HEAD | 5 | author and committer `briandconnelly-agent[bot]`, `%G?` `N` | PASS |
+| HEAD | 8, non-executable `bot-env` (a scratch copy) | tool status `error`: `failed to spawn bot-env … EACCES`; the probe command did not run | PASS |
+| HEAD | 8, block missing the completeness line (stub piping the installed `bot-env` through `sed '$d'`) | tool status `error`: `does not end with "# bot-env: end"`; the probe command did not run | PASS |
+| HEAD | 8 control: the same scratch copy executable | hook fired (`BOT-` prefix: the copy has no sibling `bot-token`, so minting failed loudly) | PASS |
+| HEAD | 9 | `workdir` at a nested repo with a `gitlab.com` remote: `GH_TOKEN` empty, human author; the next call in the same session at the default workdir: `ghs_`, bot author | PASS |
+
+- Every `ghs_` result also proves the plugin and its relative `./bot-env-block` import loaded, since a forwarder whose plugin fails to load runs personal silently (see Fail direction); no bot-repo check came back personal.
+- Checks 6, 7, 10, 11 and the Variant B install location: not run in this pass.
+- In the check 5 session the model ran an unrequested `git reset --hard HEAD~1` after the requested commit; the commit's bot authorship is in the recorded tool output and was confirmed in the scratch clone's reflog before cleanup.
 
 Audit smells specific to this adapter:
 
