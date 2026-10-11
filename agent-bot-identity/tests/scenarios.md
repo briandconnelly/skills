@@ -7,7 +7,7 @@ An assertion the with-skill run misses is a finding against the skill, not again
 ## Current acceptance suite vs history
 
 Rows dated before 2026-10 are history: they scored the skill as it stood on their dates.
-The current suite is the set of scenarios whose assertions match the skill as of 2026-10-10, listed by id: 1, 2, 3, 4, 5, C1, C2, O1.
+The current suite is the set of scenarios whose assertions match the skill as of 2026-10-10, listed by id: 1, 2, 3, 4, 5, C1, C2, O1, P1.
 Scenarios 2, 3, 5 and C2 are listed as current because their assertions were unchanged on 2026-10-10; they were not re-run that day.
 A PR that changes an assertion updates this list and adds a dated row.
 The Results tables' older rows are retained and labelled by their dates.
@@ -592,3 +592,61 @@ Mechanics for the 2026-10-10 rows: see "Re-runs 2026-10-10" above.
 | --- | --- | --- | --- | --- |
 | 2026-10-10 | O1 (OpenCode set up) | baseline | 2/7 | Passed: per-command decision through `bot-env` with the command's cwd; launch-environment rule. Missed: no PTY or no-id exemption (ids used for logging only; a cwd-less call is denied rather than left personal); fail-closed named only missing, crash, garbage and timeout, with the hook catching and swallowing rather than throwing; a 70-line plugin with its own rewrite logic committed to the repo instead of a one-line forwarder kept out of git; verification from a plugin-set marker rather than tool state, with no `GH_TOKEN` prefix, helper-scope, membership or `workdir` flip checks; attribution-not-containment stated but `OPENCODE_PURE` not named. Matches the expected baseline failures (invented env logic in the plugin, PTY exemption forgotten, forwarder committed). Assertions 1 and 5 are non-discriminating as written (the prompt names `bot-env` and the hook's cannot-delete fact); the other five discriminate. |
 | 2026-10-10 | O1 (OpenCode set up) | with-skill | 7/7 | All assertions satisfied: routing delegated to `bot-env` per command with the command's cwd and no second verdict table; PTY and no-id calls left personal; fail-closed on missing, non-executable, crashing, garbage and partial `bot-env` and at the 20 s deadline; one-line forwarder excluded through `.git/info/exclude` with Variant B as the same file at user level; launch-environment rule stated with the variable list; verification scored from tool state with the `GH_TOKEN` prefix, command-scope helper, membership assertion and per-command flip via `workdir`; attribution-not-containment with `OPENCODE_PURE` as the documented bypass. |
+
+## pi adapter scenarios
+
+This scenario exercises the **pi adapter** (`references/adapters/pi.md`), which implements the SKILL's Phase 4 routing contract for pi.
+It follows the same baseline/with-skill methodology as Scenarios 1–5 (a baseline that satisfies every assertion means the scenario is too easy; tighten it).
+For the with-skill run, the treatment subagent reads both `SKILL.md` and `references/adapters/pi.md`.
+
+### Scenario P1: Set up a pi bot identity (application test)
+
+**Prompt:**
+
+> You are setting up a distinct bot identity for a local AI coding agent (pi, `pi 1.1.0`) on a macOS laptop.
+> Produce a complete written plan as your final answer.
+> Do not run any commands or create any files — everything you need is stated below.
+>
+> Facts:
+> - The user is a member of the `acme` GitHub organization; target repos use SSH remotes (`git@github.com:acme/*.git`).
+> - Global git config: `commit.gpgsign true` with the user's personal GPG key, `credential.helper osxkeychain`, and gh CLI credential helpers for HTTPS.
+> - gh CLI is installed at `/opt/homebrew/bin/gh` and authenticated as the personal account. Login shell is zsh.
+> - A GitHub App bot identity is ALREADY provisioned; a per-invocation token-mint script `bot-token`, a host-gated `git-credential-bot` credential helper, and a per-command decision script `bot-env` ALREADY exist and work (the harness-neutral core). Your task is the pi-side routing only.
+> - pi configuration surfaces, all empirically confirmed on this version:
+>   - An extension can re-register the `bash` tool under the same name, supplying `BashOperations` whose `exec(command, cwd, options)` runs each command; a throw from `exec` fails the command.
+>   - Extensions can subscribe to a `user_bash` event, which exists for user-typed shell commands (`!` / `!!` in the TUI).
+>   - Extensions load from `<repo>/.pi/extensions/` and `~/.pi/agent/extensions/`; project extensions load only when the project is trusted.
+>   - The built-in tool set includes `powershell`.
+>   - `/reload` reloads extensions.
+> - CI runs on GitHub Actions.
+>
+> Goal:
+> - pi commits, pushes, and opens PRs as a bot identity (e.g. `acme-agent[bot]`), scoped to opted-in repos.
+> - Manual git/terminal operations outside pi continue to use the personal account (SSH key, GPG signing, keychain) with zero changes.
+> - The agent must be able to read CI/check status on its own PRs.
+>
+> Deliverables (all five, in order):
+> 1. The extension wiring and where the file lives, for Variant A (per repo) and Variant B (user level).
+> 2. The per-command decision and its fail direction.
+> 3. Which pi surfaces are routed and which are not.
+> 4. Verification steps proving both directions.
+> 5. An honest statement of what this setup does and does not enforce.
+
+**Assertions (with-skill run must satisfy):**
+
+- [ ] User-typed `!` / `!!` commands are routed too, through a `user_bash` handler, not only the agent `bash` tool.
+- [ ] Identity is resolved at execution time inside `exec`, in the cwd the command runs in, not precomputed in the `user_bash` handler.
+- [ ] A `bot-env` failure (missing, non-executable, crashing, malformed or truncated output, deadline) fails the command closed; nothing runs with an undetermined identity.
+- [ ] A personal verdict strips identity variables inherited from the launching shell (the extension hands the shell a complete env, built from what `bot-env` unsets and exports).
+- [ ] The `powershell` tool is blocked or disabled, since it is not routed.
+- [ ] Both gaps are named: an earlier extension's `user_bash` handler wins (first-handler-wins), and a failed `/reload` silently stops routing for the rest of the session.
+- [ ] The setup is presented as attribution, not containment.
+
+**Expected baseline failures:** routes only the agent `bash` tool; computes the env in the `user_bash` handler from `event.cwd`; leaves `powershell` open; misses that another extension's `user_bash` handler can preempt this one; assumes routing survives a `/reload`.
+
+### pi scenario results
+
+| Date | Scenario | Run | Assertions passed | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-10-10 | P1 (set up) | baseline (no skill, prompt only) | 4/7 | Failed 1, 4, 6, as predicted: routes only the agent `bash` tool, not `user_bash`; personal verdict is "run unchanged", so inherited `GH_TOKEN`/`GIT_*` survive; neither first-handler-wins preemption nor silent stop after a failed `/reload` is named. Passed 2, 3, 5, 7 (2 and 5 credited for the `bash` tool only and a hedged `powershell` disable). |
+| 2026-10-10 | P1 (set up) | with-skill (treatment) | 7/7 | All assertions satisfied: `!`/`!!` routed via `user_bash`; env resolved inside `exec` in the command's cwd, not precomputed; fail-closed on every `bot-env` failure; personal verdict strips inherited identity variables; `powershell` blocked by `tool_call`; both gaps named; "attribution, not containment". Skill text under test: SKILL.md and references/adapters/pi.md at 807555c. After 807555c, pi.md changed first only to record verification results (57bc2ae: Status, observed-live notes in Fail direction, Verification); the final-review fix wave then added the first-`bash`-registration Fail direction row and Mechanism note, the loaded-extensions audit smell, and a Common Mistakes row, all postdating this run. Treatment was barred from tests/. |
