@@ -10,8 +10,11 @@ Use this as the detailed standard for both design and review tasks.
 - Use stable domain nouns from APIs, docs, database objects, and error payloads.
 - Use aliases only for migration; declare aliases in schema and avoid them in canonical examples.
 - Use full words unless an abbreviation is dominant in the domain.
-- Reuse verbs consistently where semantics match.
+- Reuse verbs consistently where semantics match; the conventional set is `list`, `get`, `find`, `create`, `update`, `delete`, `validate`.
 - Avoid flags whose meanings change across commands.
+- Pick one primary selector pattern per resource type: name, ID, path, query, or stdin.
+- Use the conventional flag names where they fit: `--format`, `--limit`, `--filter`, `--timeout-ms`, `--output`.
+- Prefer named flags; reserve positional arguments for one obvious primary selector.
 
 ## Machine Schema
 
@@ -31,7 +34,7 @@ It should include:
 - output class, shape, format, examples, and size mode
 - shape dialect: the named notation used for output and error shapes (JSON Schema or an equivalently precise named notation), including how it marks required vs optional fields
 - numeric exit codes and symbolic error codes (declared at tool level)
-- per-command error catalog: which symbolic codes that command can return, which exit code they map to, and which flags suppress them (e.g., `--if-exists`)
+- per-command error catalog: which symbolic codes that command can return, which exit code each maps to, whether its payload carries `temporary: true` (catalog field `retryable`), whether the caller must reconcile before retrying (catalog field `reconcile_first`), and which flags suppress it (e.g., `--if-exists`); an omitted `retryable` or `reconcile_first` means `false`
 - side effects
 - expected latency class: `local` (filesystem only), `cached` (cache-served), `network` (one network round trip), `slow` (multi-step or known >1s), `async` (must poll)
 - timeout and retry defaults
@@ -68,6 +71,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Support `--` end-of-options so operands beginning with `-` cannot be parsed as flags, and declare that support in the schema.
 - Treat resource names, filenames, and query values as untrusted data: never pass them to a subshell, `eval`, or a generated shell string.
 - Quote arguments in canonical examples wherever values can contain spaces or shell metacharacters.
+- In canonical examples that use `--`, every option precedes it and only operands follow it; an option written after `--` is parsed as data.
 - Error `hint` fields must not embed executable shell strings built from caller input; express repairs as flag and argument values.
 
 ## Agent-Safe Invocation
@@ -79,6 +83,8 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Non-TTY mode conservatively suppresses color, progress, spinners, pagers, browser launch, and prompts.
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
 - Every interactive setup or login flow needs a documented non-interactive bootstrap.
+- Metadata-only paths (`--help`, `tool schema`, `tool schema --fingerprint`) target sub-100ms and avoid eager network calls, auth validation, plugin loading, and heavy imports.
+- Networked commands expose a caller-settable timeout (`--timeout-ms` or equivalent) and declare their retry behavior; a fixed, unchangeable network timeout is a contract gap.
 
 ## Output
 
@@ -87,20 +93,23 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Machine-mode stderr framing is declared in the schema: on failure, the structured error object is the only stderr content, or stderr is NDJSON records with a `type` field (`progress`, `warning`, `error`) so agents can separate diagnostics from the failure payload.
 - The framing is declared as a closed enum value — `single-error-object` or `ndjson-typed` — with any explanatory prose in a separate description field, never as a free-form sentence agents must parse.
 - Free-form diagnostics must never interleave with the structured failure payload on machine-mode stderr.
-- Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; the default contract remains empty stdout on failure in machine mode.
+- Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; for non-streaming classes the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
+- A `stream` or NDJSON `bulk-result` command that fails after emitting records keeps the emitted records valid, writes the structured error to stderr per the declared framing, and exits nonzero; the schema declares whether a terminal record marks normal completion (`completion_record`), so consumers can tell a completed stream from a dead process.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
 - In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
 - In error payloads, `message` is the human rendering of `code` and may restate it; agents branch on `code` and never parse `message`.
-- Each command declares one output class; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
+- Each command declares one output class from the set defined in [SKILL.md](../SKILL.md) Vocabulary; a flag that switches the class (bulk input, watch modes) must declare the alternate class in the schema.
+- A custom output class is acceptable when the built-in set does not fit, but it must be explicitly named in the schema with a stable shape, paging behavior, and examples.
 - When class-switching or shape-changing flags can combine (e.g., `--from-file --dry-run`), the schema declares the combined output shape or an explicit precedence rule.
+- An alternate output declares its own `format` and `streaming` value, and its completion behavior when it streams; the command-level values describe the default output only.
 - NDJSON is used for streaming and large per-record result sets.
 - Arrays are used for small finite lists.
 - Pagination includes `has_more`; if `has_more` is `true`, include a navigation token such as `next_cursor` or `offset`, plus `limit` and `estimated_total` when available.
 - Cursor contracts declare opacity, lifetime, the error code an expired cursor returns, the restart action, and whether a page walk is snapshot-consistent or best-effort.
 - Truncation, omitted fields, and size caps are explicit.
-- `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them.
+- `--filter`, `--field` or `--select`, and `--sort` are first-class when the data shape supports them; when a selection flag exists, the schema declares the projection rule (selected fields present, unselected fields absent) so the full-record shape is not the only declared contract.
 - Default sort is deterministic.
 - Machine output uses UTF-8, locale-independent numbers, stable path style, and UTC or explicitly declared timezones for timestamps.
 - `--output <file>` is restricted to export commands and returns path, byte size, and content hash.
@@ -124,23 +133,24 @@ Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` foll
 Avoid `126` and `127` (shell launch failures) and `128+n` (signal exits); shells already assign those meanings.
 
 The symbolic JSON `code` is the authoritative branch key for agents; the numeric exit code is the shell-branching fallback.
-Codes `6`, `7`, and `9` can all be retryable; the payload's `retryable`/`temporary` field is authoritative for retry decisions, never the exit code alone.
+Codes `6`, `7`, and `9` can all be retryable; the payload's `temporary` field is authoritative for retry decisions, never the exit code alone, and the per-command catalog's `retryable` field mirrors it for each code.
 
 Structured errors:
 
-- Required fields: `code`, `message`.
-- Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `temporary`, `request_id`, `docs_url`, `path`.
+- Required fields: `code`, `message`, `temporary`.
+- Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `request_id`, `docs_url`, `path`.
 - In JSON mode, `code` is symbolic and stable across platforms.
 - Numeric codes are only the shell-branching fallback.
 - `field` must name a published flag or argument, never an internal identifier.
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
-- Retryability is explicit.
+- Retryability is explicit: `temporary` is present on every structured error, `false` included.
+- Rate-limit errors include `retry_after_ms`.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
 
 Partial failure:
 
-- Multi-item commands exit nonzero by default if any item fails.
+- Multi-item commands exit nonzero by default if any item fails, with the aggregate symbolic code and exit code declared in the per-command error catalog.
 - `--allow-partial` may permit exit `0`, but output must include `partial: true` and failed item errors.
 - Bulk operations should report per-item results in NDJSON when result size can grow.
 
@@ -222,5 +232,6 @@ Ship tests for:
 - dry-run behavior for mutations
 - interrupt behavior for mutating commands
 - concurrent invocations against local state
+- cancellation of long-running operations
 
 If behavior matters to an agent, cover it with an automated test.
