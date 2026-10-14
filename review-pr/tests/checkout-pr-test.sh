@@ -52,6 +52,14 @@ case "$want_runner" in
     find "$clone/.agents/skills" -name SKILL.md -type f -print -quit | grep -q . \
       || { echo "FAIL: base Codex skills missing"; FAIL=1; }
     ;;
+  pi)
+    for p in .pi/settings.json .pi/mcp.json .pi/extensions .pi/SYSTEM.md .pi/APPEND_SYSTEM.md; do
+      [ ! -e "$clone/$p" ] || { echo "FAIL: pi executable configuration $p present"; FAIL=1; }
+    done
+    [ -f "$clone/AGENTS.md" ] || { echo "FAIL: base AGENTS.md missing"; FAIL=1; }
+    jq -e 'any(.[]; endswith("/SKILL.md"))' "$(jq -r .policy_manifest_path <<<"$out")" >/dev/null \
+      || { echo "FAIL: base pi skills missing from the policy manifest"; FAIL=1; }
+    ;;
   *)
     echo "FAIL: no policy assertions for runner $want_runner"
     FAIL=1
