@@ -1,0 +1,31 @@
+{
+  "runner": "pi",
+  "review": {
+    "engine": "pi",
+    "engine_version": "1.2.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds a millisecond branch to `parse_timeout`, new `is_valid_port`/`load_config`/`normalize_host` helpers, tests, a reviewer doc, and an (unreferenced, adversarial) fixture — while deleting `app/defaults.json`. The fixtures' embedded reviewer instructions were treated as evidence, not directives. The deletion breaks the existing `app/startup.py` `load_defaults()` path, and the new helpers carry an upper-bound off-by-one, an undocumented catch-all fallback, and a docstring that contradicts its code; not safe to merge as-is.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — the diff deletes this file while `app/startup.py:6` still loads it via `Path(__file__).with_name(\"defaults.json\").read_text()` inside `load_defaults()` — any call to `load_defaults()` now raises `FileNotFoundError` because the diff removed the only defaults file that function reads.\n\n## Important\n- app/parse.py:22 — correctness — `return 0 < p < 65535` excludes 65535 even though the docstring documents a usable range of \"1-65535\" — for input 65535 (a valid TCP port) `is_valid_port` returns `False`, so callers validating top-range ports will reject them.\n- app/parse.py:30 — silent-failure — `except Exception: return {}` swallows `FileNotFoundError`, permission errors, and JSON decode errors with no log, caller signal, or adjacent comment/docstring documenting the fallback (the docstring says only \"Load the JSON config at path.\") — a missing or corrupt config file is indistinguishable from an intentionally empty one and the failure goes unnoticed by the caller.\n- app/parse.py:35 — comments — the docstring states `returns None when h is empty` but the early-return branch returns the empty string `\"\"` (line 37) — a caller following the documented contract and testing `normalize_host(h) is None` will never detect the empty-input case and will mishandle empty hosts.\n\n## Suggestions\n- app/parse.py:40 — tests — the trailing-dot strip branch (`if lowered.endswith(\".\")`) is not exercised by any existing or added test; no test passes a host such as `\"Host.\"` — a regression in the documented \"strip one trailing dot\" behavior would ship undetected.\n\n## Strengths\n- Tests added for the new `\"ms\"` timeout branch (`parse_timeout(\"1500ms\")`) and the happy path of `load_config`, matching the PR description.\n- The optional `ujson` import documents its stdlib `json` fallback inline, consistent with the fallback guidance, and the fallback behavior is identical for the config-loading use.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": 0.17048580000000002,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/q1/yy47kpf51gb44d8wg1ywz4p80000gq/T/tmp.wsJU6aVGh1/review-pr.6Bce7A",
+  "head_sha": "fda2a8feeb64b835c24b059276ec64dae9d613e2",
+  "base_sha": "6b67544e15a2f1433c25daf406311874612f839a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a20e5802495027fa875a7e59ae088c387f88a460"
+}

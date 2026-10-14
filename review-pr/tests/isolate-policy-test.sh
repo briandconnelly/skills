@@ -110,10 +110,13 @@ out2="$("$SRC/isolate-policy.sh" claude "$R" "$BASE" "$BASE")"
 
 # Base policy symlinks that leave the base tree are rejected before the checkout is mutated, for both
 # instruction files and passive resources (including symlinked policy roots).
-for runner in claude codex; do
+for runner in claude codex pi; do
+  # An adapter is loadable only once listed in supported (RC7); pi's cases apply from then on.
+  grep -Fxq "$runner" "$SRC/adapters/supported" || continue
   case "$runner" in
     claude) policy_cases=(CLAUDE.md sub/AGENTS.md .claude .claude/skills/reviewer/reference.md);;
     codex) policy_cases=(AGENTS.md sub/AGENTS.override.md .agents .codex .agents/skills/reviewer/reference.md);;
+    pi) policy_cases=(AGENTS.md sub/CLAUDE.MD .pi .agents .claude .pi/skills/reviewer/reference.md);;
   esac
   for policy in "${policy_cases[@]}"; do
     fixture="$(mktemp -d "$S/symlink.XXXXXX")"
