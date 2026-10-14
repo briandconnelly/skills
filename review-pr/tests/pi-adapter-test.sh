@@ -55,8 +55,9 @@ do
   grep -qxF "$arg" <<<"$args" || { echo "FAIL: pi command lacks $arg"; FAIL=1; }
 done
 n="${#ADAPTER_COMMAND[@]}"
-[ "${ADAPTER_COMMAND[n-2]}" = '--' ] && [ "${ADAPTER_COMMAND[n-1]}" = 'PROMPT-SENTINEL' ] \
-  || { echo "FAIL: prompt is not the final pi argument after --"; FAIL=1; }
+if [ "${ADAPTER_COMMAND[n-2]}" != '--' ] || [ "${ADAPTER_COMMAND[n-1]}" != 'PROMPT-SENTINEL' ]; then
+  echo "FAIL: prompt is not the final pi argument after --"; FAIL=1
+fi
 for arg in '<-e>' '<--model>' '<--approve>' '<9>' '<17>'; do
   grep -qxF "$arg" <<<"$args" && { echo "FAIL: pi command unexpectedly has $arg"; FAIL=1; }
 done
