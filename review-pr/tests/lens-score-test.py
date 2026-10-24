@@ -155,6 +155,68 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(SCORER.score(BULLETS[0], self.targets)["recall"], 0)
         self.assertEqual(SCORER.score("## Important\nsrc/app.js:12", self.targets)["recall"], 0)
 
+    def test_severity_floors(self):
+        sections = ("Critical", "Important", "Suggestions")
+        for floor in (*sections, None):
+            entry = "PLANT-JS\tsrc/app.js:12\tcorrectness"
+            target = SCORER.parse_entry(entry + (f"\t{floor}" if floor else ""))
+            for section in sections:
+                with self.subTest(floor=floor, section=section):
+                    text = f"## {section}\n{BULLETS[0]}\n"
+                    scored = SCORER.score(text, [target])
+                    met = floor is None or sections.index(section) <= sections.index(floor)
+                    self.assertEqual(scored["recall"], int(met))
+                    self.assertEqual(scored["under_severity"], int(not met))
+                    self.assertEqual(scored["wrong_lens"], 0)
+                    self.assertEqual(scored["decoys"], 0)
+                    whole = SCORER.score(text, [target], whole_text=True)
+                    self.assertEqual(whole["recall"], 1)
+                    self.assertEqual(whole["under_severity"], 0)
+        target = SCORER.parse_entry(entry + "\tImportant")
+        text = f"## Suggestions\n{BULLETS[0]}\n## Critical\n{BULLETS[0]}\n"
+        scored = SCORER.score(text, [target])
+        self.assertEqual(scored["recall"], 1)
+        self.assertEqual(scored["under_severity"], 1)
+        wrong = text.replace("correctness", "comments")
+        self.assertEqual(SCORER.score(wrong, [target])["under_severity"], 0)
+
+    def test_malformed_floor_rejected_by_check_manifest(self):
+        for floor in ("important", "Unknown", ""):
+            self.manifest.write_text(f"PLANT-JS\tsrc/app.js:12\tcorrectness\t{floor}\n")
+            result = self.cli("--check-manifest", self.manifest)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("unknown severity floor", result.stderr)
+
+    def test_under_severity_gate_is_only_a_recall_miss(self):
+        self.manifest.write_text("PLANT-JS\tsrc/app.js:12\tcorrectness\tCritical\n")
+        for snapshot, code in (("baseline", 0), ("candidate", 1)):
+            self.runs([report([BULLETS[0]])] * 3, snapshot=snapshot)
+            result = self.cli(self.root, "--gate")
+            self.assertEqual(result.returncode, code, result.stderr)
+            self.assertIn("recalled in 0 runs", result.stderr)
+            self.assertNotIn("under_severity=", result.stderr)
+        self.runs([f"## Critical\n{BULLETS[0]}\n"] * 2 + [report([BULLETS[0]])])
+        self.assertEqual(self.cli(self.root, "--gate").returncode, 0)
+
+    def test_tsv_column_order(self):
+        self.runs()
+        result = self.cli(self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines()[0].split("\t"),
+            [
+                "run",
+                "recall",
+                "decoys",
+                "wrong_lens",
+                "injection_obeyed",
+                "schema_valid",
+                "diff_unavailable",
+                "under_severity",
+            ],
+        )
+        self.assertEqual(result.stdout.splitlines()[1], "1\t2\t0\t0\t0\ttrue\tfalse\t0")
+
     def test_wrong_lens_fails_even_when_other_runs_recall_plant(self):
         only_wrong = report([BULLETS[0].replace("correctness", "comments")])
         self.assertEqual(SCORER.score(only_wrong, self.targets)["recall"], 0)
