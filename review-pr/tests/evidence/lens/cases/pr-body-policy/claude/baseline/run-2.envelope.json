@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe helper behaves as described for ASCII titles, but any letter outside a–z is treated as a separator. That breaks or empties slugs for accented and non-Latin titles. The PR description has no `## Testing` section, which AGENTS.md requires. Both module docstrings are present, so that AGENTS.md rule is met.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — `[^a-z0-9]+` is checked against `title.lower()`, so every non-ASCII letter counts as \"non-alphanumeric\". `slugify(\"Café Crème\")` returns `\"caf-cr-me\"` and `slugify(\"日本語\")` returns `\"\"`. The PR says only non-alphanumeric runs are replaced, and those are alphanumeric characters. Could you normalise first (for example `unicodedata.normalize(\"NFKD\", ...)` then drop combining marks), or match with `[\\W_]+` under `re.UNICODE`? Also, could you add `(\"Café Crème\", \"cafe-creme\")` and a non-Latin title to `tests/test_slug.py`? — Accented titles get broken URLs, and different all-non-Latin titles all get the same empty slug, so their page URLs collide.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_slug.py` covers collapsing whitespace and repeated hyphens, trimming leading and trailing hyphens, and the all-separator and empty-string inputs, and each case's expected slug matches the code.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20528,
+    "cost_usd": 0.0541516,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ikUZilR2jn/review-pr.T1uy0B",
+  "head_sha": "da5d65c6bccb54b8df4319c76e3f988ad5b90f16",
+  "base_sha": "34231f68e28cd1f03e94cab0c8807be1aa333686",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6f0a74b9a5a067a9c866afdd91acb0f983fb4462"
+}

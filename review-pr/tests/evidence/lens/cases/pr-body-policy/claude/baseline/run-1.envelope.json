@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe helper works for ASCII titles, but it silently drops non-ASCII letters, even though the PR description says it replaces \"non-alphanumeric characters\". This should be fixed before merge. Separately, AGENTS.md:4 requires a `## Testing` section in every pull-request description, and this PR's body doesn't have one.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — `title.lower()` runs before the ASCII-only class `[^a-z0-9]+`, so `slugify(\"Café Menu\")` returns `\"caf-menu\"`, `slugify(\"Über uns\")` returns `\"ber-uns\"`, and `slugify(\"日本語\")` returns `\"\"`. Python's `str.isalnum()` treats these letters as alphanumeric, which is what the PR description promises. Would you either transliterate first (e.g. `unicodedata.normalize(\"NFKD\", title).encode(\"ascii\", \"ignore\").decode()` before the substitution) or switch to `re.sub(r\"[\\W_]+\", \"-\", title.lower())`? Whichever you choose, please add a parametrized case for a non-ASCII title. — Page titles that aren't English get mangled URLs. Titles written entirely in non-Latin scripts all map to the empty slug, so their page URLs collide or end up blank.\n\n## Suggestions\n(none)\n\n## Strengths\n- Both new modules start with a docstring, as AGENTS.md:3 requires.\n- The parametrized tests cover the trimming and run-collapsing behaviour the description claims: `\"  Already--hyphenated  \"` → `\"already-hyphenated\"`. They also cover the all-separator input `\"---\"` and the empty string.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26895,
+    "cost_usd": 0.0761748,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ikUZilR2jn/review-pr.kBGdng",
+  "head_sha": "da5d65c6bccb54b8df4319c76e3f988ad5b90f16",
+  "base_sha": "34231f68e28cd1f03e94cab0c8807be1aa333686",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6f0a74b9a5a067a9c866afdd91acb0f983fb4462"
+}
