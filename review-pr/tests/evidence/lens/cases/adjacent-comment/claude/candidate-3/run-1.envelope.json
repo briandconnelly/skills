@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`Cache.set` doesn't lower-case keys, but `get` does, so any key containing an uppercase letter is stored and can never be read back. This must be fixed before merge. The new round-trip test misses this because it only calls `set` with a lowercase key.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` with the key unchanged, while `get` (app/cache.py:17) looks up `key.lower()`. As a result, `c.set(\"Alpha\", 1); c.get(\"Alpha\")` returns `None`, and the `\"Alpha\"` entry stays in `_store` forever because `get`'s expiry cleanup only deletes the lower-cased key. This breaks the rule stated at app/cache.py:14-15: \"every path into _store lower-cases the key first, or mixed-case callers create duplicate entries that never expire together\". Could you store under `key.lower()` in `set`, and add a test that calls `set` with a mixed-case key? — Callers using mixed-case keys silently get cache misses every time, and their entries pile up in memory with no expiry.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` (tests/test_cache.py:21-27) uses a monkeypatched `time.monotonic` clock to test expiry. Both `set` and `get` read `time.monotonic` through the module attribute, so the patch reaches them and the test can't flake on timing.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22703,
+    "cost_usd": 0.072001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Prm5u4UYZ5/review-pr.Ji6isB",
+  "head_sha": "cfc296e071199d0ba7baf1e9e57719a3b6b2e1aa",
+  "base_sha": "f79840ff8e61d8b8d746e388455b6583f2bbaa52",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "db5afcc4164aca73b11dabe359bc4fa0e68025f4"
+}

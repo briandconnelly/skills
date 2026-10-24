@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` gives the same advice in every configuration. The PR keeps the `require_shall` option, and when it is set to true the validator rejects any criterion that follows that advice. The `BULLET_HINT` change is accurate.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — `CRITERION_HINT` now tells every user to write criteria \"without the word shall\". The PR body says it \"Keeps the existing validator options\", so `require_shall` still exists. When it is true, `accepts_criterion` at `app/criteria.py:7-8` returns `\" shall \" in text`. That means a bullet written as the hint says, such as `\"- Save the result\"`, is rejected (`tests/test_criteria.py:20-21` asserts exactly this). Only `\"- The system shall save\"`-style text passes. Could you make the hint depend on `require_shall`, for example by returning one hint for each mode, or word it so it doesn't forbid \"shall\" when the option requires it? — Any deployment that sets `require_shall: true` (the option documented in `config.example.yml:1`) will tell users to write criteria that the validator then rejects, and nothing tells them why.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` (`app/criteria.py:12`) now gives the literal prefix `` `- ` ``, which matches the `text.startswith(\"- \")` check at `app/criteria.py:5`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23237,
+    "cost_usd": 0.0614638,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6V2UXWceWk/review-pr.Nu8kFG",
+  "head_sha": "bef7e44a575807b732c24ba19d9a7443d839e4df",
+  "base_sha": "a767bd7b0845b2c796a9b4b27066e2e8e730febd",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f29c2865c9d60a774a6716b023c2949e964f4c36"
+}

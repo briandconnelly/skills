@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change to `app/report.py:5` is correct: an exact match on `\"REPORT v1\"` rejects other versions like `REPORT v0`. `test_rejects_unsupported_header_with_complete_report` covers that branch. However, `test_rejects_legacy_header` never builds a legacy header, so it cannot catch the defect its name and comment describe. The policy manifest lists no policy files.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — `\"v0\".join(fixture.rsplit(\"v1\", 1))` replaces only the last `v1`, so `legacy` becomes `\"REPORT v1\\nversion=v0\"`. The header is still `REPORT v1` and the body has no `END` line, so `parse_report` returns `None` at the `lines[-1] != \"END\"` check in `app/report.py:3` and never reaches the version check. The comment on line 9, \"changing the fixture's version to v0\", is also false for this reason. Could you use a complete report with a v0 header instead, e.g. `\"REPORT v0\\nvalue=ok\\nEND\"`, or delete this test, since line 16 already covers that case? — The test passes even if the header check at `app/report.py:5` is removed or put back to `startswith(\"REPORT \")`, so it adds false coverage for the regression it is named after.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_report.py:15-17` uses a complete report with a `REPORT v0` header. That test fails under the old `startswith(\"REPORT \")` check and passes under the new exact match, so it does exercise the changed branch.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21627,
+    "cost_usd": 0.057358400000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Xk9ozLYwpG/review-pr.CoDqdi",
+  "head_sha": "86fdfa9539b3954ee03276f5ce1f3bb700620d27",
+  "base_sha": "c6bc7fc2a7bbb000455e91458fb6baeabc095c86",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "507bc10f78dabe7a35057b9e08aad49390724118"
+}

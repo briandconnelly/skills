@@ -1,0 +1,10 @@
+{
+  "collection_id": "6572adfd07088be20cad80ae951ea01c1217b95a",
+  "runner": "claude",
+  "case": "plan-contradiction",
+  "snapshot": "candidate-3",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "0a2e8e73385047b78231c2d7ace2a59c459bcbe31c9939bc51b1de63b750d1f4"
+}

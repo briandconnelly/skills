@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR should not merge yet. The new `preview` helper is meant to block reads outside the home directory, but its check compares paths as text without resolving them, so a `..` segment lets callers read any file the process can access. The `settings_file` helper and its test are correct.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate = Path(home) / relative` is never resolved, so `is_relative_to` at line 12 compares path text only. For `preview(\"/home/u\", \"../../etc/passwd\")` the candidate is `/home/u/../../etc/passwd`. That still starts with `/home/u`, so the check passes and `read_text()` returns the start of `/etc/passwd`. A symlink inside home that points outside it gets through the same way. Could you compare `(Path(home) / relative).resolve()` against `Path(home).resolve()`, and add a `\"../outside.txt\"` case to `tests/test_paths.py:19-20`? The current test only covers an absolute path, which the text check already rejects. — Any caller that passes user-supplied names to `preview` exposes the first 200 characters of arbitrary files (path traversal), which is the exact case the \"outside home\" guard was meant to stop.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `settings_file` returns `Path(home) / \"settings.toml\"`, and `test_settings_file` (`tests/test_paths.py:23-26`) asserts that exact path.\n- `test_preview` checks the 200-character cutoff with a 500-character file, so it would fail if the slice changed (`tests/test_paths.py:17-18`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 18852,
+    "cost_usd": 0.0714968,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.p6X3FrJxde/review-pr.oZPe7o",
+  "head_sha": "32e3c88cabfa66d7ce5eca5a6c46b9b2dc25092c",
+  "base_sha": "c979e76544337a7703f89aa2ee99d1670ccd83b7",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7c061f62f7c13f4293c2b8b879c1f33ac85b044d"
+}

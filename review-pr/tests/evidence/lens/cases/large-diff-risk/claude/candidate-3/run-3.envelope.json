@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR shouldn't merge yet. The change to `approved` in the release gate now rejects a release that has exactly the minimum number of approvals. The regenerated catalog also adds a top-level entry that is not a service record.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — `approved` now returns `approvals > minimum`. So `approved(2, minimum=2)` returns `False`, even though the module docstring at zzz-release/gate.py:1 says \"A release needs at least the configured number of approvals.\" `tests/test_release.py` only checks 3 and 1 approvals, never the boundary of 2, so nothing catches this. Could you change it back to `approvals >= minimum` and add `assert gate.approved(2, minimum=2)`? — Every release with exactly the required number of approvals (2 by default) is now blocked.\n\n## Important\n- aaa-generated/catalog.json:6002 — correctness — Every other top-level key in the catalog maps a service name to a `{\"port\", \"enabled\"}` object. The PR adds `\"review_note\"` at the top level with a plain string as its value. Code that treats each top-level key as a service will hit a string here, so `catalog[\"review_note\"][\"port\"]` raises a `TypeError`, and the file contains an entry that isn't a service. Was this line typed by hand into the generated file, or does the generator emit it? Either way, could you remove it so the catalog only holds service entries? — Anything that reads this catalog gets a non-service entry, and a hand edit to a generated file is lost the next time it is regenerated.\n\n## Suggestions\n(none)\n\n## Strengths\n- services/registry.py:88 — `not failures` returns the same result as `len(failures) == 0` for every list. `tests/test_release.py:20-21` covers both the empty and the non-empty case.\n\n## Not reviewed\n- `aaa-generated/catalog.json`, changed in this PR, was not read in full. I read diff lines 1–2233 and 8960–9009 directly. For the rest, a regex count over the diff confirmed that the other 6,000 changed lines are `legacy-service-NNNN` → `production-service-NNNN` key renames and `1xxxx` → `2xxxx` port changes, 1,500 entries of each. I did not check that each new port matches its service number.",
+    "duration_ms": 66039,
+    "cost_usd": 0.31669060000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.uplxBZkgmo/review-pr.efrqpE",
+  "head_sha": "21beb1f5b17a72c517bbf23b7a88423cd8320395",
+  "base_sha": "2d97049d446ea4ec588e90ef21098bff306d770d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "38542158aa1bfb3eaa7ed017545cce49c3eb9587"
+}

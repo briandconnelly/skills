@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRewriting `requirement_proven` from `all()` to a `sum()` comparison drops the old `bool(criteria)` guard. A requirement with no criteria now counts as proven, and a criterion whose `proven` value is not a boolean or number now raises an error instead of evaluating as false. `reviewed_batch` is correct and well tested. The `REVIEW_HINT` constant is unused data and has no effect on behaviour.\n\n## Critical\n- app/proof.py:3 — correctness — For `requirement_proven([])`, `proven` is `0` and `len(criteria)` is `0`, so the function now returns `True`. Before this change, `bool(criteria) and ...` made it return `False`. The new test at tests/test_proof.py:6-8 never passes an empty list, so nothing catches this. Could you restore the emptiness check, e.g. `return bool(criteria) and all(item[\"proven\"] for item in criteria)`, and add `assert not requirement_proven([])`? — A requirement with no criteria at all is now reported as proven, which is the opposite of the old result and of the \"requires entries\" rule this PR applies in `reviewed_batch`.\n\n## Important\n- app/proof.py:2 — correctness — `sum(item[\"proven\"] for item in criteria)` needs every `proven` value to be numeric. A criterion that hasn't been evaluated yet, such as `{\"proven\": None}` (a common JSON null), raises `TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'`. Under the old `all()` it was simply falsy. A non-boolean truthy value like `{\"proven\": 2}` next to `{\"proven\": False}` also gives `2 == 2` and returns `True`. Could you go back to an `all()`-based truth test so each value is checked for truthiness and not added up? — Proof summaries crash on criteria that have no result yet, and they report proven when the values are counts rather than booleans.\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` rejects an empty batch with a clear `ValueError`. tests/test_proof.py:11-17 covers the empty, single-true, all-true, single-false and mixed cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25983,
+    "cost_usd": 0.07395840000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.H28sHf8Hho/review-pr.LvpSVF",
+  "head_sha": "aed4a6a89d4dc429165301fc8dd44b9c490b5165",
+  "base_sha": "336e64fc6f1b521ef15c817471bfeb437c0df17b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "3d2846f72f5bdeb842fae9727b8309d4824294c2"
+}

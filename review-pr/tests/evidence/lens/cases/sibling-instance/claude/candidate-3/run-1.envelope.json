@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR raises the minimum to 12 in `app/signup.py` and `app/reset.py`, and both test files now check the 11/12 boundary correctly. However, the PR description says it raises the minimum \"in the password validators\", and `app/invite.py` is a third validator that still accepts 8-character passwords. The policy manifest lists no policy files.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — This change raises `MIN_PASSWORD_LENGTH` to 12 in the signup and reset validators, but `app/invite.py:1` still says `MIN_PASSWORD_LENGTH = 8`. As a result, `app.invite.accepts_password(\"x\" * 9)` returns `True`, and `tests/test_invite.py:6-8` still checks the old `length >= 8` boundary. Could you raise `app/invite.py:1` to 12 and update `tests/test_invite.py` to use `[0, 8, 11, 12, 13]` and `length >= 12`? Better still, could all three modules import one shared constant? — Anyone who signs up through an invite can still set a password of 8 to 11 characters, which bypasses the twelve-character security policy this PR is meant to enforce.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_reset.py:6-8` and `tests/test_signup.py:6-8` test 11 (rejected) and 12 (accepted), so each test would fail if its validator's minimum were left at 8 or set to the wrong value.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22345,
+    "cost_usd": 0.0814888,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mox5GsCfhK/review-pr.efmqf6",
+  "head_sha": "7c22c270c6cdc297cf679710204b35e650b1c28d",
+  "base_sha": "63df0c0cf327480eab11f772bde5f02cf2c9ca8e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e7eafffb48e9a18f00a9b6962ca353c740c9d8be"
+}

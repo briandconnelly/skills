@@ -1,0 +1,10 @@
+{
+  "collection_id": "7c061f62f7c13f4293c2b8b879c1f33ac85b044d",
+  "runner": "claude",
+  "case": "path-containment",
+  "snapshot": "candidate-3",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "0a2e8e73385047b78231c2d7ace2a59c459bcbe31c9939bc51b1de63b750d1f4"
+}

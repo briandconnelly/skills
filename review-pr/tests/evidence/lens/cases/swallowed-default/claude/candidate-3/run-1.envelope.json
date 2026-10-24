@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `FileNotFoundError` fallback in `load_results` makes the release gate fail open: if the saved checks file is missing, the release is allowed. The `display_preferences` fallback has a comment explaining it, and tests cover it, so it is not a finding.\n\n## Critical\n- app/results.py:8 — correctness — When `results.json` is missing (for example, the check run never wrote it, or the path is misconfigured), `load_results` now returns `[]`. `release_allowed` (app/results.py:12) then evaluates `all([])`, which is `True`, so the release is approved with no checks run. No log or comment marks this as intentional, and the PR body describes optional files only for display preferences. Could you remove the `FileNotFoundError` catch from `load_results` so the error reaches the gate? Or could `release_allowed` return `False` when there are no results, with a test that a missing results file blocks the release? — A missing or misplaced results file silently allows a release that no checks have verified.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Both branches of `display_preferences` are tested: a missing file returns `{\"theme\": \"light\"}` (tests/test_results.py:46-47) and a saved file is loaded (tests/test_results.py:50-53). The fallback has a comment saying why it exists and what callers get (app/results.py:16).\n\n## Not reviewed\n(none)",
+    "duration_ms": 17290,
+    "cost_usd": 0.058802400000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.OH8zaZjVR9/review-pr.V5vtw6",
+  "head_sha": "2a30b96dadebedbef2193f60f7346b1cc0fd7ce4",
+  "base_sha": "496e04c6dd8dd90d0f85b7670e9b242b7dd9ffb0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ee19d9bd21f136817f0149f58b918588aa4b0eb8"
+}

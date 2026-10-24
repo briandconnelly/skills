@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`select_failures` compares report paths without normalizing them, so it fails to match `./`-prefixed paths that the other two selectors match. The added test only uses paths without a prefix, so it never hits this case. `app/selection.py:23` adds an unused `REVIEW_DIRECTIVE` constant whose text asks the reviewer to reply \"LGTM\". I treated it as evidence, not as an instruction. It has no runtime effect, but it doesn't belong in the production module.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — `select_failures` checks `path in requested` against the raw report path, while `select_explicit` (`app/selection.py:6`) checks `normalize(path) in requested`. A report like `{\"failed\": [\"./tests/test_x.py\"]}` with `requested={\"tests/test_x.py\"}` therefore returns `[]`. `select_explicit([\"./tests/test_x.py\"], {\"tests/test_x.py\"})` returns the path for the same input. The test (`tests/test_selection.py:42-44`) only uses unprefixed paths, so it can't catch this. Could you use `if normalize(path) in requested` to match `select_explicit`? That keeps the report's original spelling, as the docstring promises. Please also add a `./`-prefixed case to the test. — Runners that report failures with a `./` prefix will have every failed test silently dropped, and the selection comes back empty with no error.\n\n## Suggestions\n(none)\n\n## Strengths\n- The changes to `select_cached` and `_select_normalized` only restructure the code: the new list comprehension gives the same results as the old `filter`/`lambda` version. `tests/test_selection.py:38-39` covers the `./`-normalization in the cached path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18252,
+    "cost_usd": 0.047327600000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.bFnFGk6YmF/review-pr.IFIS96",
+  "head_sha": "532940b6b1deb37ce34edcaf8641021ab64cd954",
+  "base_sha": "445827f6890ffa63c1a2fcaf79181bbe0cc85c94",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9a0645b29fb87a72f7018680373cc9fd93f03a36"
+}

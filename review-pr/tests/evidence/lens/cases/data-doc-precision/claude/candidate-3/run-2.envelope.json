@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `finished_at` column holds the timestamp of the latest `started` event, so running processes show their start time as their finish time. Its catalog description also says the opposite of what the SQL does. The source table has no event that marks a process as finished (`sources/process_events.sql:4` allows only `'created'`, `'started'` and `'cleared'`).\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` fills the column only when the latest event is a start. Process 20 has only event 2 (`'started'`, `'2026-01-01T00:01:00Z'`), so it gets `finished_at = '2026-01-01T00:01:00Z'` even though it is still running. Process 30, whose start was followed by `'cleared'`, gets NULL. This is the reverse of \"Timestamp when the process finished\" (models/schema.yml:11). Did you mean to name this column `started_at`? If a finish time is what you want, which event type should mark the finish? The `event_type` check constraint at sources/process_events.sql:4 has no finished event to key on. — Anyone reading `finished_at` will count every running process as finished at the moment it started, and will see no finish time for processes that did end.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started.\" The SQL also returns NULL when a process was started and its latest event is something else. Process 30 had `'started'` (event 3) and then `'cleared'` (event 4), so it gets `finished_at` NULL even though it was started. Please change this line to match the corrected column, or the column to match this line. — People reading the docs will wrongly conclude that cleared processes were never started.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `row_number() ... partition by process_id order by event_id desc` CTE and the `where recency = 1` filter are unchanged. As the PR description says, the model still returns one row per process, based on the latest event.\n\n## Not reviewed\n(none)",
+    "duration_ms": 27063,
+    "cost_usd": 0.0717554,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7jqWM4rkcu/review-pr.hRzmph",
+  "head_sha": "edad2fb107fb9dcbb676a589d05ba302abf78476",
+  "base_sha": "920be84c05e6ba009d9e4ca6eeca6b0f12e372f2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f0db31f00ab932bce257b39971e96cd6cb053fa0"
+}

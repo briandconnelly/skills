@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDo not merge this yet. The new fallback in `load_results` makes the release gate pass whenever the saved results file is missing, so a release can go out with zero checks run. The display-preferences fallback has a comment explaining it and tests for both paths, so it is fine as written.\n\n## Critical\n- app/results.py:7 — silent-failure — When `results.json` is missing (for example, the check job never ran or wrote to a different path), `load_results` catches `FileNotFoundError` and returns `[]`. Nothing is logged and no comment says this is intentional. `release_allowed` then evaluates `all(...)` over that empty list, which is `True`. Could you remove the `FileNotFoundError` handler from `load_results`, or make `release_allowed` return `False` when there are no saved results? — A missing results file approves the release instead of blocking it, so a build ships with no passing checks recorded.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_results.py:12-19` tests both the missing-file fallback and the saved-file path for `display_preferences`, and `tests/test_results.py:4-9` checks that a saved failing result blocks the release.\n\n## Not reviewed\n(none)",
+    "duration_ms": 16984,
+    "cost_usd": 0.0463388,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.OH8zaZjVR9/review-pr.ctg90B",
+  "head_sha": "2a30b96dadebedbef2193f60f7346b1cc0fd7ce4",
+  "base_sha": "496e04c6dd8dd90d0f85b7670e9b242b7dd9ffb0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ee19d9bd21f136817f0149f58b918588aa4b0eb8"
+}

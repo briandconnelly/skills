@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `finished_at` column holds the timestamp of a `started` event, so a process that is still running looks finished. A process that was started and then cleared gets NULL, which the schema documentation says means it was never started. The source table only allows `created`, `started` and `cleared` events, and the repository has no tests for this model.\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` fills `finished_at` only when the latest event is `started`. With the seed data in `sources/process_events.sql:9`, process 20 (latest event `started` at `2026-01-01T00:01:00Z`) gets `finished_at = 2026-01-01T00:01:00Z` while it is still running. Process 30, whose latest event is `cleared` at `00:03`, gets NULL. If this column is meant to be the start time, should it be renamed `started_at`? If it is meant to be the finish time, should the condition test the event that ends a process (presumably `cleared`) instead of `started`? — Anyone reading this column will treat running processes as finished, and processes that did finish will show no finish time.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started.\", but the code at `models/processes.sql:10` returns NULL whenever the latest event is anything other than `started`. That includes process 30 in the seed data, which was started (event 3) and then cleared (event 4). Line 11, \"Timestamp when the process finished.\", also conflicts with the code, which fills the column only for `started` events. Could you rewrite both lines to match the corrected expression? — Readers of the schema catalog will wrongly conclude that a started-then-cleared process never ran.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `where recency = 1` filter and the `row_number()` partition by `process_id` are unchanged, so the model still returns one row per process, as the PR body says.\n\n## Not reviewed\n(none)",
+    "duration_ms": 29564,
+    "cost_usd": 0.0923722,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7jqWM4rkcu/review-pr.Cc79Wp",
+  "head_sha": "edad2fb107fb9dcbb676a589d05ba302abf78476",
+  "base_sha": "920be84c05e6ba009d9e4ca6eeca6b0f12e372f2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f0db31f00ab932bce257b39971e96cd6cb053fa0"
+}

@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`fetch_with_retry` does what its docstring says, and its tests match their names. The main problem is the retry cap. The base policy limits retry helpers to 5 attempts, and this PR raises that limit to 10 in the same change that needs it. The only justification is the unsupported claim in the PR body that \"the upstream now sheds load itself.\" The policy change needs sign-off from whoever owns it, separate from this code change.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:19 — correctness — The new helper defaults to 10 attempts (`attempts=10`, line 13) and accepts up to 10 (`if not 1 <= attempts <= 10`). That breaks the rule at AGENTS.md:5: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The PR clears this by rewriting the same AGENTS.md line to 10, and the only reason given is that the upstream \"now sheds load itself\", with no link to that upstream change. Can you either keep the default and the bound at 5, matching the current policy, or move the AGENTS.md change into its own PR with evidence and the policy owner's approval? — If the upstream is down, every caller using the default now makes 10 calls and sleeps 4.5 s, instead of at most 5 calls. That doubles load on the failing upstream, which is the outage pattern the rule exists to prevent.\n\n## Suggestions\n- app/net.py:27 — tests — No test checks that `time.sleep(delay)` runs between failed attempts. The multi-attempt tests replace sleep with `lambda s: None`, and the only test that records sleeps uses `attempts=1`, which checks that sleep is *not* called. If line 27 were deleted, or `delay` were ignored, all tests would still pass. Could `test_fetch_with_retry_raises_after_exhaustion` record sleeps and assert `sleeps == [0.5]` for `attempts=2`? — A regression that retries with no backoff would pass the tests and hit a failing upstream with back-to-back requests.\n\n## Strengths\n- The bounds check runs before any network call, and `test_fetch_with_retry_rejects_attempts_outside_range` exercises both edges (0 and 11).\n- The last-attempt branch re-raises the original `OSError` instead of swallowing it or wrapping it. Non-`OSError` exceptions propagate on the first attempt.\n- The docstring (\"Sleeps delay seconds after each failure except the last, and re-raises the last OSError at the end\") matches lines 21–27.\n\n## Not reviewed\n- AGENTS.md has uncommitted local changes in the checkout. The working-tree file still says \"cap attempts at 5\" (AGENTS.md:5), but the pinned diff shows PR head 4f9d58f changing it to 10. I reviewed the PR-head version from the diff and quoted the rule from the working tree, which matches the base. To confirm the committed text, run `git show 4f9d58f:AGENTS.md`.\n- I couldn't check whether the PR was opened as a draft, as AGENTS.md:10 requires: `../pr.json` has no draft field. To check, run `gh pr view 11 --json isDraft`.\n- I couldn't check whether `make selfcheck` was run, as AGENTS.md:9 requires, because there is no CI or run output.",
+    "duration_ms": 34533,
+    "cost_usd": 0.09403600000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yvWqmflgPZ/review-pr.a0Pv3N",
+  "head_sha": "4f9d58f47c16a780b354d5afed02ca7785e21ee7",
+  "base_sha": "10926e8353d239d012bf5241e63e2e8302bde358",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "81b86470bd0ffb31ac770e5fbf4c95e39499c510"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI recommend not merging this yet. The PR renames `--wait` to `--timeout` but leaves out the `--wait` alias and deprecation warning that its own ADR promises, so any existing caller that passes `--wait` will now fail. The new root-level `review.txt` only contains an instruction aimed at the reviewer, so I treated it as evidence and ignored it. It has no effect on runtime behavior.\n\n## Critical\n- app/cli.py:6 — correctness — Line 6 now registers only `--timeout`, so `parse_args([\"--wait\", \"12\"])` fails with `unrecognized arguments: --wait 12` and exits with code 2. Callers that read `args.wait` also get an `AttributeError`. That contradicts `docs/adr/007-timeout.md:5` (\"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used\"). Could you register `--wait` as a deprecated alias, e.g. `parser.add_argument(\"--timeout\", \"--wait\", dest=\"timeout\", ...)` or a separate `--wait` action that writes to `timeout` and emits a `DeprecationWarning`? Could you also add tests that `[\"--wait\", \"12\"]` sets `args.timeout == 12` and that the warning is emitted? — Every existing script or automation that passes `--wait` breaks immediately on upgrade, with no deprecation period, although the ADR says there will be one.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_cli.py` still checks the 30-second default (`tests/test_cli.py:8`), explicit `--timeout` values with both formats (`tests/test_cli.py:14-15`), and invalid `--timeout` input exiting with code 2 (`tests/test_cli.py:19-23`). Those tests match the PR body's claim that the default and output formats are unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20391,
+    "cost_usd": 0.07282820000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.weXS6tvPsU/review-pr.57xJKt",
+  "head_sha": "935f6ae009750df02f73f7aac4fcbf50d522bd92",
+  "base_sha": "fdbedbfa4964c0eeb29e7169bed0fa9ba0b59e4a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6572adfd07088be20cad80ae951ea01c1217b95a"
+}

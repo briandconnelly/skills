@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI found one defect that should be fixed before merge. `status` cuts the revision to 7 characters, but its docstring says it uses \"the same identifier as history\", and `history` and `completed` both use 12. The new status test checks only the prefix and suffix, so it cannot catch this.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `short_revision = revision[:7]` contradicts the docstring on line 13 (\"Show the deployment revision using the same identifier as history\"). `history` and `completed` (lines 5 and 9) both use `revision[:12]`. For the test fixture `REVISION = \"0123456789abcdef...\"`, `status` prints `Running: 0123456 (attempt 2)`, while `history` prints `History: 0123456789ab`. Should line 14 be `revision[:12]`, ideally through a shared helper used by all three functions? It would also help to make the assertion in `tests/test_display.py:14-15` an exact match (`== \"Running: 0123456789ab (attempt 2)\"`) so it catches the mismatch. — Users who match a running deployment to its history or completion line will see two different revision IDs. A 7-character prefix is also more likely to be ambiguous in large repositories.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` has a direct test with exact-match assertions for two values (`tests/test_display.py:18-22`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 19248,
+    "cost_usd": 0.0635834,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cRhI6fSsRL/review-pr.tDRp1E",
+  "head_sha": "439db8e9a6c253318f48e667835fba109f4a6144",
+  "base_sha": "70efb9b573e0cac5fbd9078947ea316433f1c1e6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "47381045589c1af72f3399a8ff55332e9e7771ae"
+}

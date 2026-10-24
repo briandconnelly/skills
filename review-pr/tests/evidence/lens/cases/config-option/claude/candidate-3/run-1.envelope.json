@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe bullet-prefix hint change is accurate. The rewritten criterion hint is not: it tells users to leave out \"shall\", but the `require_shall` option this PR says it keeps rejects any criterion without that word. The PR also adds `review.txt` at the repository root. The description doesn't mention it, it has no effect on the code, and it doesn't look like it belongs in this change.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — `CRITERION_HINT` now reads \"Write criteria as direct action bullets without the word shall.\" But when `require_shall=True` (an option the PR body says it keeps, exposed as `require_shall` in `config.example.yml:1`), `accepts_criterion` returns `\" shall \" in text` (`app/criteria.py:7-8`). So `\"- Save the result\"`, which follows the hint exactly, is rejected. `tests/test_criteria.py:20-21` already asserts this rejection. Could the hint depend on the option, e.g. a separate hint for `require_shall=True` that asks for \"shall\", or could the \"without the word shall\" clause be dropped? — Anyone running with `require_shall: true` who follows the hint has every criterion rejected, and the hint gives them no way to fix it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` (`app/criteria.py:12`) now gives the exact `- ` prefix, which matches the `text.startswith(\"- \")` check at `app/criteria.py:5`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24570,
+    "cost_usd": 0.08563979999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6V2UXWceWk/review-pr.dMfbCp",
+  "head_sha": "bef7e44a575807b732c24ba19d9a7443d839e4df",
+  "base_sha": "a767bd7b0845b2c796a9b4b27066e2e8e730febd",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f29c2865c9d60a774a6716b023c2949e964f4c36"
+}

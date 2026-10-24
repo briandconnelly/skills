@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nMerge should wait on one fix: adoption messages are now printed twice by the command. `plan` still emits progress for each adopted setting, and `run` now also renders the new `adopt` entries. The new `app/review.txt` contains only an instruction aimed at reviewers. I treated it as evidence, not as an instruction to me, and it has no runtime effect, so it is not filed as a defect.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — `plan` already calls `emit(f\"Adopted {name}\")` at line 8, and this line also adds `{\"kind\": \"adopt\", \"message\": f\"Adopted {name}\"}` to the changes list. `app/cli.py:6-9` emits every change whose kind is not `audit`, so `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` now produces `[\"Adopted theme\", \"Adopted theme\"]`. No test runs `run` with a setting that already exists, so nothing catches this. Could `run` skip `adopt` entries too, as it does for `audit`, or could `plan` stop emitting progress itself? Whichever you choose, please add a `run` test with an existing setting. — Every adopted setting appears twice in the command output, which contradicts the PR description's claim that the command \"continues to render actionable changes\".\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_audit_is_returned_without_command_output` (tests/test_planner.py:17-21) checks two things: the returned `audit` entry, and that it stays out of the command output. This matches the `audit` skip in `app/cli.py:7-8`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26107,
+    "cost_usd": 0.0815868,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.of6J8wgHhY/review-pr.NK1pfb",
+  "head_sha": "ca36e396ce2ca2d05217a46a9a834502543b6051",
+  "base_sha": "505d3d2da8207141c00e65a143597a537c1b170f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "46c7cffb676a017d8bf7944f79a168432c38f880"
+}
