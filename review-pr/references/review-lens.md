@@ -41,6 +41,7 @@ Apply every lens below to changed code and record the required coverage line in 
 - Report a value that can be null, empty, or absent where the changed code assumes otherwise.
 - Report a shared resource used without the lock, ordering, or cleanup that surrounding code requires.
 - Report security-relevant input reaching a shell, query, path, or deserializer without the check used elsewhere in the codebase.
+- Report a rule in a project policy file that the pull request breaks, including a rule about its title or description, and quote the rule with its policy file's `path:line`.
 
 ### silent-failure
 
@@ -76,7 +77,7 @@ Do not demand invalid-input handling unless the surrounding contract or tests re
 
 Report a finding only when every gate below passes.
 
-- The diff introduces or exposes the defect.
+- The diff, or for a `PR body` finding the pull-request title or description, introduces or exposes the defect.
 - A realistic path to failure is named.
 - The surrounding context was read.
 - Existing coverage was checked before reporting a test gap.
@@ -148,6 +149,8 @@ A finding bullet has four fields in the form `- path:line — <lens> — <defect
 The lens is exactly one of `correctness`, `silent-failure`, `tests`, or `comments`.
 
 Use `path:line` for a file at `{{PR_BRANCH}}`.
+
+Use `PR body` in place of `path:line` for a defect in the pull-request title or description.
 
 For a deleted file, use `path:line [base]` and read the old-side content in the pinned diff as its surrounding code.
 
