@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR says there is no behaviour change, but the rewrite of `requirement_proven` changes it: an empty criteria list now counts as proven. That must be fixed before merge. The other changes are equivalent to the old code: the typing and `warn`→`warning` swaps across the record handlers, and `itemgetter` in `by_name`.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — When `criteria` is `[]`, line 10 logs \"requirement has no criteria\" and execution continues. Line 11 then computes `proven = 0` and line 12 returns `0 == len([]) → True`. The old `bool(criteria) and all(...)` returned `False` for this input. Can you either restore `return bool(criteria) and all(item[\"proven\"] for item in criteria)` or add `return False` inside the `if not criteria:` branch? `tests/test_handlers.py:17-19` only checks non-empty lists, so please also add `assert not requirement_proven([])`. — A requirement with no criteria attached is now reported as proven during release review, so an unverified requirement passes, and the only sign of it is a warning log.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `by_name` at `app/handlers/h040_sorting.py:8` now uses `itemgetter(\"name\")`. That gives the same ordering as the old lambda and raises the same `KeyError` on a missing key, and `tests/test_handlers.py:13-14` still exercises it.\n- I matched every added and removed line across the 180 `app/handlers/hNNN_records.py` files against a pattern and the counts reconcile: 4,860 lines are the import removal, signature swaps and `warn`→`warning` swaps. The step bodies are unchanged context lines.\n\n## Not reviewed\n- I didn't read 178 of the 180 `app/handlers/hNNN_records.py` hunks in `../pr.diff` line by line (all except `h000_records.py` and `h001_records.py`). I checked them only by matching their changed lines against the expected mechanical pattern and reconciling the line counts.\n- The repository has no project configuration declaring the supported Python version, so I couldn't confirm that the runtime supports built-in generics like `list[dict[str, int]]`, which need Python 3.9 or later.",
+    "duration_ms": 62658,
+    "cost_usd": 0.21295180000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ctLMuRqPdD/review-pr.GK29Wq",
+  "head_sha": "edfd279faaaa34efe1ffa8d3f5d0d871c0c63534",
+  "base_sha": "a1f35a403fb3a452e6195e0ea51ad02390ff5e72",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a11f9962391452f8b35aae1317219ed3278cb355"
+}

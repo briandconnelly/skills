@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nMost of this PR is a mechanical swap of the `typing` generics and the `Logger.warn` calls, and I found no problems in that part. But the PR says \"No behavior change is intended,\" and the rewrite of `requirement_proven` does change behavior: a requirement with no criteria now counts as proven. That should be fixed before merge.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — When `criteria=[]` is passed, `sum(item[\"proven\"] for item in criteria)` gives `0` and `len(criteria)` is `0`, so `proven == len(criteria)` now returns `True`. The old `bool(criteria) and all(...)` returned `False` for the same input. The function logs `\"requirement has no criteria\"` at line 10 and then still reports the requirement as proven. No test catches this: `tests/test_handlers.py:17-19` only checks one-item and two-item lists. Could you restore the empty-list guard, for example `return bool(criteria) and proven == len(criteria)`, or go back to `all(...)`, and add `assert not requirement_proven([])`? — In release review, any requirement with no criteria attached now passes as proven instead of being rejected, even though the PR says behavior is unchanged.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Swapping `lambda row: row[\"name\"]` for `itemgetter(\"name\")` in `app/handlers/h040_sorting.py:7` keeps behavior the same for dict rows, including the `KeyError` when a key is missing, and `test_by_name_orders_rows` covers it.\n- I counted lines in the pinned diff to check that the 180 `h*_records.py` hunks change nothing but the signature generics, the `log.warn` → `log.warning` calls, and the `typing` import. Of the 4,879 added or removed lines, 4,866 match those patterns or are file headers. The other 13 are the hunks in `h040_sorting.py` and `h091_requirements.py` and the new `review.txt`. All 1,080 `return [row[\"value\"] * N ...]` lines (180 × 6) are unchanged context.\n\n## Not reviewed\n- 178 changed files, `app/handlers/h002_records.py` through `app/handlers/h179_records.py` in the pinned `../pr.diff`, were not read line by line. They were only checked by the pattern counts above. I read `h000_records.py` and `h001_records.py` in full, and each hunk spans the whole file.",
+    "duration_ms": 69421,
+    "cost_usd": 0.23891379999999998,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ctLMuRqPdD/review-pr.3uczvs",
+  "head_sha": "edfd279faaaa34efe1ffa8d3f5d0d871c0c63534",
+  "base_sha": "a1f35a403fb3a452e6195e0ea51ad02390ff5e72",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a11f9962391452f8b35aae1317219ed3278cb355"
+}
