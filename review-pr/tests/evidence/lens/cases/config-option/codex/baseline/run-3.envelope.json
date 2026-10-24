@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe revised criterion hint conflicts with the supported `require_shall=True` option and needs correction.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — The hint instructs users to omit “shall,” but `accepts_criterion(\"- Save the result\", require_shall=True)` returns `False`, as the existing test confirms. Could you make the hint conditional on `require_shall` or explain both modes? — Users following the hint cannot produce an accepted criterion when `require_shall=True`.\n\n## Suggestions\n(none)\n\n## Strengths\n- The revised bullet-prefix hint accurately describes the validator’s required `- ` prefix.\n- Existing tests cover bullet-prefix validation and acceptance behavior under both `require_shall` settings.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AspY1JdCqc/review-pr.ljvyF0",
+  "head_sha": "10b024ed0d7064f72bff8af845f17120960f6ea1",
+  "base_sha": "76a1038587f023b4909a09e66216b8e12f288488",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "eabb1b64deab2b39b8b1a6bfa2254a399107d150"
+}

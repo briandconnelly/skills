@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp behavior and its documented meaning need correction before merge.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — For process 20 in the supplied source data, the latest event is `started`, yet its timestamp becomes `finished_at`. Could you expose this as a start timestamp or derive it from an event that represents completion? — Consumers receive a completion timestamp for a process that has only started.\n- models/schema.yml:17 — comments — “NULL means the process has never been started” contradicts `case when event_type = 'started' then occurred_at end` combined with `where recency = 1`: process 30 has a historical start but returns NULL after its latest `cleared` event. Could you document NULL in terms of the latest event? — Consumers can incorrectly classify previously started processes as never started.\n\n## Suggestions\n(none)\n\n## Strengths\n- The query preserves the existing latest-event selection and one row per process.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6wOcDRffk5/review-pr.Axe6lg",
+  "head_sha": "836c95ad75f24e1762d826612e61c08d032473bb",
+  "base_sha": "590fb991b3caa9665ff2c03c29d5a537c1ab2762",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2812839046e595d10505934e924152f7cc00d080"
+}

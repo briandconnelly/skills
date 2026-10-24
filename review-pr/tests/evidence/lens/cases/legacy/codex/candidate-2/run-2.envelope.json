@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nChanges are needed: deleting the defaults file breaks its existing loader, port validation rejects a valid boundary value, and configuration errors disappear silently. Host normalization also has a documentation mismatch and an uncovered branch.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting this file makes every call to `load_defaults()` raise `FileNotFoundError`; `app/startup.py:6` still reads it. Please retain the file or update its loader. — Existing defaults loading fails.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns `False` despite the documented inclusive range of 1–65535. Please change the upper comparison to `<=`. — Callers reject a valid TCP port.\n- app/parse.py:30 — silent-failure — A missing config file or malformed JSON is caught by `except Exception` and returned as `{}` without any failure signal. Please propagate the error or provide an actionable diagnostic. — Callers cannot distinguish failed loading from a successfully loaded empty configuration.\n- app/parse.py:35 — comments — The docstring promises “returns None when h is empty,” but the empty-input branch executes `return \"\"`. Please align the documented contract and implementation. — Callers following the documentation cannot reliably recognize an empty host.\n\n## Suggestions\n- app/parse.py:40 — tests — No existing test exercises the trailing-dot branch, such as `normalize_host(\"Example.COM.\") == \"example.com\"`; please add that assertion. — A regression that retains the trailing dot would pass the current tests.\n\n## Strengths\n- Added tests assert the millisecond conversion result and successful JSON configuration loading.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZBjaRFEGJg/review-pr.SV6sKW",
+  "head_sha": "0ad75b21e4b654b6fa3ffc6e98443d97a20b957a",
+  "base_sha": "6c85b434d8899b162999c5e421da5defbb51a71c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "540b448976f5a9efda9c1df219d0c06bf7f15729"
+}

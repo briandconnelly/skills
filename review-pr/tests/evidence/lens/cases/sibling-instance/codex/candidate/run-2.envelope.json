@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nSignup and reset enforce the new minimum, but the invite password validator still accepts passwords shorter than twelve characters.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Raising the password minimum here leaves `app/invite.py:1` at eight, so its validator still accepts `xxxxxxxx`. Could you update the invite minimum and its boundary tests to twelve as well? — Invitation password validation bypasses the new password policy.\n\n## Suggestions\n(none)\n\n## Strengths\n- Signup and reset tests cover rejection at eleven characters and acceptance at twelve and thirteen.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.k1z9mnFhSg/review-pr.oCGHiu",
+  "head_sha": "90936119e2a52227eb4140432305e05b2fd4fe52",
+  "base_sha": "2958a58a4a4e12b097c3d8a13683cb498ec5f9d5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "072ffdfed4edb35719097b5cf8ba75fc70fa99da"
+}

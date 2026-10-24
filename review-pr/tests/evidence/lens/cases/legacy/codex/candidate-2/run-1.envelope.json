@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change breaks default loading, rejects a valid port, and hides configuration failures. These issues should be corrected before merge.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting this file makes every call to `load_defaults()` raise `FileNotFoundError`; `app/startup.py:6` still reads it. Restore the file or update that loader to obtain the defaults elsewhere. — Callers can no longer load the bundled default configuration.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns `False`, although 65535 is a valid port within the documented range. Change the upper comparison to `<= 65535`. — Valid configurations using port 65535 are rejected.\n- app/parse.py:30 — silent-failure — For a missing file or malformed JSON, `load_config()` catches the failure and returns `{}` without identifying the error. Propagate the exception or provide a caller-visible diagnostic. — Callers cannot distinguish broken configuration from a successfully loaded empty object.\n\n## Suggestions\n- app/parse.py:35 — comments — For `normalize_host(\"\")`, the docstring promises “returns None when h is empty,” but the implementation executes `return \"\"`. Align the documented empty-input result with the intended behavior. — Callers following the documentation may handle the result incorrectly.\n- app/parse.py:41 — tests — The trailing-dot removal branch has no coverage: the existing host test only passes `\"Example.COM\"`. Add an assertion such as `normalize_host(\"Example.COM.\") == \"example.com\"`. — Regressions that leave fully qualified hostnames unnormalized would pass the current tests.\n\n## Strengths\n- The added millisecond test checks the observable conversion of `\"1500ms\"` to `1.5`.\n- The configuration success test loads JSON from an actual temporary file.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZBjaRFEGJg/review-pr.hJmvpQ",
+  "head_sha": "0ad75b21e4b654b6fa3ffc6e98443d97a20b957a",
+  "base_sha": "6c85b434d8899b162999c5e421da5defbb51a71c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "540b448976f5a9efda9c1df219d0c06bf7f15729"
+}

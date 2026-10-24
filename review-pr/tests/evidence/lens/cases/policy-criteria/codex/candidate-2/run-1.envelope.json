@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry helper exceeds the five-attempt limit in the loaded project policy and should be corrected before merge.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:13 — correctness — When the upstream consistently raises OSError, the default call makes ten attempts, exceeding the loaded project policy’s five-attempt maximum. Please cap both the default and accepted attempts at five and update the tests accordingly. — A failing upstream receives twice the permitted requests, increasing load and delaying failure propagation.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover recovery after transient failures, exhaustion, invalid attempt bounds, and avoiding sleep after a single failed attempt.\n- Exhaustion re-raises the upstream exception, preserving its diagnostic information.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ONhtWpE181/review-pr.RzawjJ",
+  "head_sha": "ec49d38f1f18c0c8c11759e99b29657f46c55a19",
+  "base_sha": "14542dafaa5ac5a1835be92c2bb5e9a2849e0055",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9c175401289ef42cc8bd57079583e02f176f0f9b"
+}
