@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe JSON option works alone, but its default destination fails when followed by the JUnit option. Fix this argument parsing defect before merging.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — With `--json --junit report.xml`, the parser consumes `--junit` as the JSON destination and then raises `unknown option: report.xml`. Only consume the next argument when it is a path rather than another option. — Users cannot request the default JSON destination before a JUnit destination.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests verify explicit JSON file contents and rejection of missing JUnit paths.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.0FjiwdBcM2/review-pr.cLqtQk",
+  "head_sha": "90a8941d5eb0637feea47d9964d857ab677bc43d",
+  "base_sha": "9f56c7e7e150bfed7ed06abb4b633561c706456d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "474ebebe4a5403cfa9632c6e1a57dae6f21fe812"
+}

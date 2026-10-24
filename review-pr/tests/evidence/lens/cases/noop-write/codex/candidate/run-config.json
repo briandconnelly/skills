@@ -1,0 +1,10 @@
+{
+  "collection_id": "c2cce19badeb9e89a9251a352a96127ae18a2b8a",
+  "runner": "codex",
+  "case": "noop-write",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "93fbd5a82d55c88e65cee80e512ddb0f5c248ace439e5097f4edf4f8fb5489b3"
+}

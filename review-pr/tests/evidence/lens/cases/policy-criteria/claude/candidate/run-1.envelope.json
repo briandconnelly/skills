@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry loop and its tests work as written, but I don't think this should merge yet. The helper allows up to 10 attempts, while the policy file I read (`AGENTS.md`, line 5) requires a cap of 5. The same PR rewrites that requirement to 10, so the policy change is approving its own code. Separately, the `except OSError` clause also retries permanent HTTP errors such as 404.\n\n## Critical\n- app/net.py:19 — correctness — `fetch_with_retry` defaults to `attempts=10` (line 13) and accepts up to `attempts <= 10`. The policy file I read says \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" This PR changes that rule to 10 itself, and the only justification is the claim that \"the upstream now sheds load itself.\" Could the cap stay at 5 here, with the policy change moved to its own PR that the policy owner signs off on? — When an upstream is down, every caller now makes twice the attempts the stated requirement allows, which is the outage pattern the policy was written to prevent.\n\n## Important\n- app/net.py:24 — correctness — `except OSError` also catches `urllib.error.HTTPError`, because it subclasses `URLError`, which subclasses `OSError`. So a URL that returns a 404 or 400 is fetched 10 times, with 9 sleeps of 0.5 s, before the error is re-raised. Could you re-raise `HTTPError` with status codes below 500 immediately, or retry only on `URLError` that isn't an `HTTPError` plus 5xx responses? — Every permanent client error costs about 4.5 s of delay and 10 requests to the upstream instead of 1.\n\n## Suggestions\n(none)\n\n## Strengths\n- The tests cover the main paths: the default count of 10 attempts, success on the third call, exhaustion at `attempts=2`, no sleep when `attempts=1`, and `ValueError` at both bounds (0 and 11). Each test replaces `fetch` and `time.sleep` with stubs, so no real network or delay is involved.\n- The docstring matches the code: it states the 1–10 range, that there is no sleep after the last failure, and that the last `OSError` is re-raised.\n\n## Not reviewed\n(none)",
+    "duration_ms": 38491,
+    "cost_usd": 0.1167564,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3hzhyYMCKA/review-pr.D3gkDn",
+  "head_sha": "b6038220c63e37ef3b0c765b44f790959e33bdb9",
+  "base_sha": "5de610d7d2a729eecc234a80982a48734668e475",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "fcaa24eb311fe248707f5b7fb104643b0a49c2a7"
+}

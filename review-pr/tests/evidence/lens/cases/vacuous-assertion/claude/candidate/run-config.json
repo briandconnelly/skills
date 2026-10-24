@@ -1,0 +1,10 @@
+{
+  "collection_id": "5a0e38c64593c28795a51f35349ef2801f19d85f",
+  "runner": "claude",
+  "case": "vacuous-assertion",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "93fbd5a82d55c88e65cee80e512ddb0f5c248ace439e5097f4edf4f8fb5489b3"
+}

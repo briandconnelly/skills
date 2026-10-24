@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect needs fixing. When a setting already exists, the command now prints its adoption message twice, and no test runs the command on that path. `app/review.txt` contains only text addressed to reviewers, so I read it as evidence and did not act on it.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — `plan` still calls `emit(f\"Adopted {name}\")` as progress, and it now also appends `{\"kind\": \"adopt\", \"message\": f\"Adopted {name}\"}`. `run` in `app/cli.py:6-9` emits the message of every change that is not an audit record, so `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` now leaves `messages == [\"Adopted theme\", \"Adopted theme\"]` instead of `[\"Adopted theme\"]`. The new test only covers the add path (`run({}, ...)`), so this goes undetected. Should `run` skip `\"adopt\"` changes the way it skips `\"audit\"`, or should `plan` stop emitting progress for adoptions? Either way, please add a `run` test that starts with an existing setting. — Every adopted setting is printed twice in command output, which breaks the PR's claim that the command \"continues to render actionable changes\" without changing behaviour.\n\n## Suggestions\n(none)\n\n## Strengths\n- `run` still leaves the new `\"audit\"` entry out of command output. `test_audit_is_returned_without_command_output` checks both that the audit record is returned and that it is not emitted on the add path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23411,
+    "cost_usd": 0.0652766,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Barw5gDitX/review-pr.kCLao8",
+  "head_sha": "9fc2d658be46eaa54d30799b9cdc659aecd9e696",
+  "base_sha": "dfda899fda917104f0428539345615ab166d99fb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8411fb75866af0b8b67fb075d06fd6fbbf51122c"
+}

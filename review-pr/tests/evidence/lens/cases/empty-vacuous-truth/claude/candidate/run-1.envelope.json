@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR changes `requirement_proven` in a way that breaks it: a requirement with no criteria now counts as proven, where it used to count as unproven. The new `reviewed_batch` helper and its tests are correct.\n\n## Critical\n- app/proof.py:3 — correctness — For `requirement_proven([])`, `sum(...)` returns `0` and `len(criteria)` is `0`, so `0 == 0` returns `True`. The removed `bool(criteria) and ...` guard returned `False` for this input. Nothing tests the empty case: `tests/test_proof.py:7-8` only passes non-empty lists. Can you restore the guard, for example `return bool(criteria) and all(item[\"proven\"] for item in criteria)`, and add `assert not requirement_proven([])`? — Any requirement that has no criteria yet is now reported as proven without evidence, and every existing caller that relied on the old `False` result gets the opposite answer.\n\n## Important\n- app/proof.py:2 — correctness — Adding up `item[\"proven\"]` only works when every value is a bool or a number. An entry such as `{\"proven\": \"yes\"}` raises `TypeError: unsupported operand type(s) for +: 'int' and 'str'`. The old `all(...)` treated that value as truthy and returned a result. An entry such as `{\"proven\": 2}` also breaks the count: `[{\"proven\": 2}, {\"proven\": False}]` sums to `2 == 2` and returns `True` even though one criterion is unproven. Could you go back to `all(...)`, which checks each value's truthiness directly instead of counting? — Data that the old code handled now either raises an exception or reports a requirement with an unproven criterion as proven.\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` rejects an empty batch with a clear `ValueError` (`app/proof.py:7-8`). Its tests (`tests/test_proof.py:11-17`) cover the empty batch, a single reviewed entry, all-reviewed, a single unreviewed entry and a mixed batch.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23277,
+    "cost_usd": 0.072584,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.iLbs6JSgHj/review-pr.7S5OZa",
+  "head_sha": "f189baf2a1ac52e7bb7637aaafca2d6b7f35b628",
+  "base_sha": "2ccf970cc0d9a4814b61b884c46b88f74a65ea5c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f259dab5df30c1b980dd794b145d2d15b8277e0e"
+}

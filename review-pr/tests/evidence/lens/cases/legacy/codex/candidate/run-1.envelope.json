@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nChanges are needed before merge: deleting the defaults file breaks `load_defaults()`, and the new helpers contain a boundary error and silent configuration failures. Tests were inspected without execution.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting this file makes `app.startup.load_defaults()` raise `FileNotFoundError`, because it still reads the sibling `defaults.json`; please retain the file or update its loader. — Every call to load the application defaults now fails.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns `False`, although the documented range includes 65535; please use `0 < p <= 65535`. — Callers reject a valid TCP port.\n- app/parse.py:30 — silent-failure — Loading a config containing `{\"timeout\":` swallows the JSON parsing exception and returns `{}` without a diagnostic or documented fallback behavior; please propagate an actionable error identifying the path. — Callers cannot distinguish malformed configuration from a successfully loaded empty object.\n\n## Suggestions\n- app/parse.py:35 — comments — The docstring promises “returns None when h is empty,” but the empty-input branch executes `return \"\"`; please align the documentation and behavior. — Callers following the documented contract and checking `is None` miss empty hosts.\n- app/parse.py:40 — tests — The trailing-dot branch has no test: the existing host test only passes `\"Example.COM\"`; please assert that `normalize_host(\"Example.COM.\")` returns `\"example.com\"`. — A regression that preserves the terminal dot would pass the existing tests.\n\n## Strengths\n- The milliseconds test checks that `\"1500ms\"` produces `1.5`, verifying preservation of fractional seconds.\n- Configuration loading is tested with an actual temporary JSON file and an assertion on the parsed result.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.LpVd07ObPU/review-pr.Lhjqiw",
+  "head_sha": "338094d9e56344cc905cfc7963834e871b90a08f",
+  "base_sha": "5c14f7112339cdfe6225d3e20402c9810fad0c22",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "280226d71e86c062d89b15b4c0f1139b404594a2"
+}

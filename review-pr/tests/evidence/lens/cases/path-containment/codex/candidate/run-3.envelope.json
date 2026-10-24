@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe preview helper allows reads outside the selected home directory. Fix the containment check before merging.\n\n## Critical\n- app/paths.py:12 — correctness — With `home=\"/srv/home\"` and `relative=\"../secret.txt\"`, the lexical `is_relative_to` check passes and reads `/srv/secret.txt`; a symlink inside home can also escape. Resolve both paths before checking containment and add regression tests for both cases. — Callers can retrieve readable file contents outside the intended directory.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover short previews, truncation to 200 characters, rejection of an absolute outside path, and the settings file location.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.SXCacBUAuV/review-pr.M3B0US",
+  "head_sha": "6f5a69e1aa9aa4e24b2a8b3d8a327c356edf9d30",
+  "base_sha": "139efa64677a7816ef220ecf0e0cbeb03645c46c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8176abb2683f45258257a124b3dd62fc8725fc60"
+}

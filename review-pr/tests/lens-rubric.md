@@ -92,6 +92,9 @@ Every committed baseline of these ten cases meets recall on every supported runn
 [lens-cases/false-success/case.sh](lens-cases/false-success/case.sh) plants a report command that ignores a write error and announces success, allowed under `silent-failure` or `correctness` with an `Important` floor; its decoy removes an optional temporary file while ignoring only its absence.
 [lens-cases/resign-tampered/case.sh](lens-cases/resign-tampered/case.sh) plants a fingerprint refresh that overwrites existing hashes and makes edited files pass verification, allowed under `correctness` or `silent-failure` with an `Important` floor; its decoy adds only previously unlisted files and preserves existing fingerprints.
 Both severity cases meet recall at or above their `Important` floor on every supported runner under the current lens, so they do not yet justify a severity edit.
+The `Report prose` section of the lens was added as one edit for three report-prose criteria (review-agent issues #37, #6 and option 3 of #8), an exception to step 3 below: the scorer cannot see prose, so splitting them would not have shown which clause did what.
+Its candidates were measured on every committed case and both runners for recall and decoys, and its prose effect by a blinded pairwise comparison by a model from a different family than the reports' author, which preferred the edited lens's report in all four pairs.
+Two codex `policy-criteria` candidates failed their gates on one run each with the same correct finding, that no test covered `attempts=1`, at `app/net.py:19` inside the window of the plant's alternate location; the case gained that test and both runners' candidates were collected again, and the earlier snapshots were set aside.
 
 Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.

@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR shouldn't merge as-is. `fetch_with_retry` defaults to 10 attempts and accepts up to 10, which breaks the base project policy: AGENTS.md:5 says \"Retry helpers under app/ must cap attempts at 5\". The PR raises that cap by editing the same policy in its own diff. The only reason given is \"the upstream now sheds load itself\", with nothing to back it up. A PR can't loosen the policy it is being reviewed against, so the policy owner should approve the AGENTS.md change separately. Note that the checked-out working tree has an uncommitted change to AGENTS.md that undoes the PR's edit and still reads \"cap attempts at 5\". The cap-10 text comes from the pinned diff.\n\n## Critical\n- app/net.py:13 — correctness — `def fetch_with_retry(url, attempts=10, delay=0.5)` and the check `if not 1 <= attempts <= 10:` at app/net.py:19 let any caller make 10 attempts, and the default does so. The base policy says \"must cap attempts at 5\". The only thing that allows 10 is the PR's own AGENTS.md edit (\"must cap attempts at 10. The upstream now sheds load itself\"), and nothing in the PR shows that the upstream claim is true. Can you change the default and upper bound to 5, update the tests to match (tests/test_net.py:53 expects 10 calls, and tests/test_net.py:95 should use 6 instead of 11), and propose the policy change in its own PR? — When an upstream is down, every caller makes twice the allowed attempts, plus 4.5 s of sleeping per call. AGENTS.md links this kind of retry amplification to past outages.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — `except OSError:` also catches `urllib.error.HTTPError`, a subclass of `URLError` and therefore of `OSError`. So a permanent failure such as a 404 or 403 from `fetch(\"http://host/missing\")` is retried just like a network fault: 10 requests and 4.5 s of sleeping before the same `HTTPError` is raised. Could you re-raise `HTTPError` right away, or at least for 4xx statuses, and retry only connection-level `OSError`s? — Callers wait several seconds for a result that can't change, and the upstream gets 10 times the requests for bad URLs.\n- app/net.py:27 — tests — No test checks that `time.sleep(delay)` is called between failed attempts. tests/test_net.py:33, :46 and :64 replace sleep with `lambda s: None`, and tests/test_net.py:83 only checks that sleep is *not* called when `attempts=1`. If the backoff were deleted or `delay` ignored, every test would still pass. Could you record the sleeps in `test_fetch_with_retry_raises_after_exhaustion` and assert `sleeps == [0.5]`? — If the backoff disappears in a later change, retries hit the upstream back-to-back and no test fails.\n\n## Strengths\n- The docstring at app/net.py:14-18 matches the code: it rejects out-of-range `attempts`, sleeps after every failure except the last, and re-raises the final `OSError`. This means the last error is passed to the caller, not swallowed.\n- The tests cover success after transient failures, running out of attempts, the single-attempt no-sleep case, and both out-of-range bounds (0 and 11).\n\n## Not reviewed\n- The committed PR-head version of AGENTS.md. The working-tree copy has an uncommitted change, so I reviewed the PR's AGENTS.md edit from the pinned diff (`../pr.diff`) only. You can get the head version with `git show b603822:AGENTS.md`.\n- The `make selfcheck` target named in AGENTS.md:9. I didn't run it because running build or check commands was out of scope for this review.",
+    "duration_ms": 44072,
+    "cost_usd": 0.11121820000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3hzhyYMCKA/review-pr.kHYSvS",
+  "head_sha": "b6038220c63e37ef3b0c765b44f790959e33bdb9",
+  "base_sha": "5de610d7d2a729eecc234a80982a48734668e475",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "fcaa24eb311fe248707f5b7fb104643b0a49c2a7"
+}

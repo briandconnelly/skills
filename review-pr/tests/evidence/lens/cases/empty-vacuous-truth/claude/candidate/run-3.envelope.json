@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`reviewed_batch` and its tests look correct. The rewrite of `requirement_proven` changes what happens with an empty criteria list: it used to return False and now returns True. That needs fixing before merge.\n\n## Critical\n- app/proof.py:2 — correctness — `requirement_proven([])` now computes `sum(...) == 0` and `len([]) == 0`, so it returns `True`. The old line `bool(criteria) and all(...)` returned `False` for the same input. No test covers the empty case: `tests/test_proof.py:6-8` only checks non-empty lists, so nothing catches the change. Could you either keep the `bool(criteria)` guard, or raise on an empty list the way `reviewed_batch` does, and add `assert not requirement_proven([])`? — A requirement with no criteria and no evidence is now reported as proven, which defeats the point of the proof check.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` rejects an empty batch with a clear `ValueError` (`app/proof.py:7-8`). Its test (`tests/test_proof.py:11-17`) covers the empty, all-reviewed, single-unreviewed and mixed cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20125,
+    "cost_usd": 0.0518962,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.iLbs6JSgHj/review-pr.47CsTy",
+  "head_sha": "f189baf2a1ac52e7bb7637aaafca2d6b7f35b628",
+  "base_sha": "2ccf970cc0d9a4814b61b884c46b88f74a65ea5c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f259dab5df30c1b980dd794b145d2d15b8277e0e"
+}

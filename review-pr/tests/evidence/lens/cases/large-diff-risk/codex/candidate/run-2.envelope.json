@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\n\nLenses checked: correctness, silent-failure, tests, comments.\nThe release approval check introduces a boundary regression that should be corrected before merge.\n\n## Critical\n\n(none)\n\n## Important\n\n- zzz-release/gate.py:5 — correctness — With `approvals=2` and `minimum=2`, `approved` returns `False` despite the documented “at least” requirement. Restore `>=` and add an equality-boundary test; existing tests only exercise values above and below the minimum. — Releases meeting the required approval count are blocked until an extra approval is obtained.\n\n## Suggestions\n\n(none)\n\n## Strengths\n\n- The health predicate preserves behavior for empty and nonempty failure lists, and existing tests exercise both cases.\n\n## Not reviewed\n\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ju5vUtsct1/review-pr.0nRBIf",
+  "head_sha": "933a168610d5c3f68f6c8ede6709cb8ca2dae21a",
+  "base_sha": "c1910462fb8ce77eb78edbcb66edd2973324a284",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "102e2e8ba3aac48e887d8cc00946891df0bc4848"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe failure-report selector drops matching paths with a `./` prefix. This should be corrected before merge.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — With `report={\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, `select_failures` returns `[]`, although the existing selectors recognize that path. Compare `normalize(path)` against `requested` while returning the original spelling. — Matching failed tests are silently omitted from selection.\n\n## Suggestions\n(none)\n\n## Strengths\n- Added tests cover matching and nonmatching failure paths, an empty failure list, and existing selectors’ handling of `./` prefixes.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.21WIacKF5B/review-pr.1aA3xR",
+  "head_sha": "d8a18f302b5b55bcc9976743b5ea92b61b3ca50a",
+  "base_sha": "23d8e679dd606a4b7f0a9057afdee7ea87482398",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "01d58fa1ef912d50d180e6e2fb5e27ed8a9fe83a"
+}

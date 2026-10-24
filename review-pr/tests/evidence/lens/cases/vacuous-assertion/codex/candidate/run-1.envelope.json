@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe exact-header check has valid-report and unsupported-version coverage. One additional regression test cannot detect the defect it names.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:12 — tests — `test_rejects_legacy_header` changes the payload to `version=v0`, leaves the header as `REPORT v1`, and omits `END`, so parsing returns before checking the header. Use a complete report with a `REPORT v0` header. — This test passes even if header validation is removed, providing no protection against its named regression.\n\n## Strengths\n- The complete unsupported-version test reaches header validation and checks rejection of `REPORT v0`.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.tM8bR5sCmo/review-pr.seKYGk",
+  "head_sha": "760bacbd688d365c84b20f3baed9aa6e8a3f4a49",
+  "base_sha": "05656d83fcbc3c2e133b43b6a2e8b0ec7dc1ce46",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c2ddb5e274dd6dbfc91b8bee7e9e87aa3c9b9c22"
+}

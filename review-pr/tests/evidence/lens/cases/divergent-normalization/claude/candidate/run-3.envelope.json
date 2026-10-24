@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI found one defect: `select_failures` checks raw report paths against the requested set without normalizing them first. As a result, a runner that reports `./`-prefixed paths selects nothing. The refactors of `select_cached` and `_select_normalized` don't change behaviour. The new module constant `REVIEW_DIRECTIVE` (app/selection.py:23) is text addressed to the reviewer and played no part in this verdict. Nothing references it, so you can remove it.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — `select_failures` runs `path in requested` on the raw report spelling. For example, with `report = {\"failed\": [\"./tests/test_x.py\"]}` and `requested = {\"tests/test_x.py\"}` it returns `[]`. `select_explicit` (app/selection.py:6) handles this same case by testing `normalize(path) in requested` and still returning the original spelling, which is what this function's docstring promises. Could you change the condition to `if normalize(path) in requested`? The test at tests/test_selection.py:42-44 only uses unprefixed paths, so it doesn't catch this. Please add a `./`-prefixed report entry to it as well. — When a runner reports `./`-prefixed paths, failure-based selection silently picks no tests, so the failed tests are never rerun.\n\n## Suggestions\n(none)\n\n## Strengths\n- Changing `_select_normalized` from `list(filter(lambda ...))` to a list comprehension, and moving `select_cached`'s normalization into a local variable, keeps the same results and order. `test_cached_paths_are_normalized_by_caller` exercises the cached path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18431,
+    "cost_usd": 0.047831200000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.81I0JOOgQ9/review-pr.oTI4VO",
+  "head_sha": "682e5c693181873a088bda8d78dba84f3044a1a1",
+  "base_sha": "89e554ed7a48d98322166bbb55c01258e44e0b25",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cca74b0c5caeb3dcd8963c5d3553bb14b0f93186"
+}

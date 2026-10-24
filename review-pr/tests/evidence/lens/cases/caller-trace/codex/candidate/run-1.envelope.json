@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe adoption records introduce duplicate command output that should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — With `current={\"theme\": \"dark\"}` and `incoming={\"theme\": \"dark\"}`, `run()` emits `\"Adopted theme\"` twice: once during planning and again when the command renders the new adoption record. Please exclude adoption records from command rendering while retaining progress output. — Every adopted setting produces duplicate user-visible output.\n\n## Suggestions\n(none)\n\n## Strengths\n- The added audit test verifies both the returned audit metadata and its omission from command output.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dRPrFfQeUT/review-pr.Bq0k3G",
+  "head_sha": "edd746af316f275bd519521bef0fcaa3ac92cccd",
+  "base_sha": "4d166cb4276c103276a33c65edfd0e5c5fbb2b1e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2cebe2f28141722f0da5b9a2edf922abb12ad01a"
+}

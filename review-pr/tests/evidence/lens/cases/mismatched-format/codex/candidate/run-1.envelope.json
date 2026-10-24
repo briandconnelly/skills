@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe running status uses a shorter revision identifier than history and completion output. Align the identifiers before merging.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For revision `0123456789abcdef0123456789abcdef01234567`, status displays `0123456`, while history and completion display `0123456789ab`. Could you use `revision[:12]` here to preserve the documented shared identifier? — Revisions sharing their first seven characters become indistinguishable in running status even when history distinguishes them.\n\n## Suggestions\n(none)\n\n## Strengths\n- The added tests verify attempt formatting and its inclusion in running status.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.0m1H3AwRJh/review-pr.3Yk1BY",
+  "head_sha": "9fcbccb0b4af8163dba9d0798f7a4eef71777973",
+  "base_sha": "c9ad9880098d267024987f1c1337f8d60e4a0e25",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b801f71d513d59e5de41af38814ab11e939c5b15"
+}

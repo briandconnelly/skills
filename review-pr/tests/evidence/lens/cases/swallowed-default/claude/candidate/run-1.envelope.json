@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR makes the release gate approve a release when the saved results file is missing, so it should not merge until the missing-file case fails closed. The new `display_preferences` fallback is fine: the comment next to it explains it, and both of its paths are tested.\n\n## Critical\n- app/results.py:8 — silent-failure — `load_results` now catches `FileNotFoundError` and returns `[]` without logging or telling the caller. `release_allowed` then evaluates `all(...)` over that empty list, which is `True`. So if `results.json` was never written, or the path is wrong, the gate reports the release as allowed. Could the missing-file case raise, or make `release_allowed` return `False`, instead of returning an empty result set? If you keep a default, please add a test where `release_allowed(tmp_path / \"missing.json\")` is falsy. — If checks never ran or their output went to the wrong place, the release still goes out, with nothing in logs or return values to show the gate had no data.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_results.py` covers both paths of `display_preferences`: the missing file returns `{\"theme\": \"light\"}`, and a saved file returns `{\"theme\": \"dark\"}`. It also checks that `release_allowed` gives opposite answers for a passing result and a failing one.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23731,
+    "cost_usd": 0.065029,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hhOpHj2fKh/review-pr.CVq0wb",
+  "head_sha": "3484a1f3bb3ef876a69eba1953f45a4c581333ca",
+  "base_sha": "4d9d95e1897831aa3d3e302f2456a93b13796bed",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "766f6d6a94e1749f750d6d2b572d03a8bcf25f2b"
+}

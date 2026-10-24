@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nAdoption mode rewrites configuration files even when their values are unchanged. This breaks the existing byte-preservation behavior and should be corrected.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — correctness — Given `{\"theme\":\"dark\"}` and `incoming={\"theme\": \"dark\"}`, `adopt=True` unconditionally records a change and triggers `write_text()`. Can you preserve the file bytes when adoption leaves every value unchanged? — An unchanged configuration loses its original formatting and is unnecessarily written to disk.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests verify replacement updates different values and preserves the original bytes for identical values.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dh2fzsEbLO/review-pr.VZzBId",
+  "head_sha": "a80099e73848ebd86b98ae057dbcd58a63a1df57",
+  "base_sha": "c9ce9401e8f0254e3eb91d163cdfdce016b76caa",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c2cce19badeb9e89a9251a352a96127ae18a2b8a"
+}
