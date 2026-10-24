@@ -38,6 +38,13 @@ Adds a port validator. One real bug, otherwise sound.
 (none)'
 
 check valid true false <<<"$VALID"
+# A finding about the pull-request description cites the exact location token `PR body`.
+SUGGESTION='- app/parse.py:20 — tests — normalize_host trailing-dot branch has no test — a regression there would ship silently'
+PR_BODY_BULLET='- PR body — correctness — the description lacks the Dev Tables section AGENTS.md requires — reviewers cannot check the tables'
+check pr-body-location true false <<<"${VALID/"$SUGGESTION"/"$PR_BODY_BULLET"}"
+for bad in 'PR body [base]' 'pr body' 'PR-body' ' PR body' 'PR body:'; do
+  check "pr-body-variant:$bad" false false <<<"${VALID/"$SUGGESTION"/"${PR_BODY_BULLET/PR body/$bad}"}"
+done
 check missing-coverage false false <<<"$(sed '/^Lenses checked:/d' <<<"$VALID")"
 check marker-only-summary false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.

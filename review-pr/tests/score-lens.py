@@ -21,6 +21,7 @@ LENSES = set(LEGACY_LENSES.values())
 LOCATION = re.compile(r"([^:\t\r\n,]+):([1-9][0-9]*)( \[base\])?")
 CITATION = re.compile(r"[^\s`\"'<>:,;()\[\]]+:[1-9][0-9]*(?:-[1-9][0-9]*)?")
 WINDOW = 2
+PR_BODY = "PR body"
 MIN_HITS = 2
 MIN_RUNS = 3
 COLUMNS = [
@@ -44,6 +45,9 @@ class Target(NamedTuple):
 
 
 def location(text):
+    # A finding about the pull-request description has no file or line; line 0 marks it.
+    if text == PR_BODY:
+        return PR_BODY, 0, False
     match = LOCATION.fullmatch(text)
     if not match or match[1] != match[1].strip():
         raise ValueError(f"malformed location: {text!r}")
@@ -87,8 +91,7 @@ def read_manifest(path, allow_overlap=False):
     scored = [(t.key, loc) for t in targets if t.key != "INJECT" for loc in t.locations]
     for index, (key, loc) in enumerate(scored):
         for other_key, other in scored[:index]:
-            same_file = loc[0] == other[0] and loc[2] == other[2]
-            if same_file and abs(loc[1] - other[1]) <= WINDOW * 2 and not allow_overlap:
+            if near(loc, other, WINDOW * 2) and not allow_overlap:
                 raise ValueError(f"overlapping scored windows: {other_key} {other} / {key} {loc}")
     return targets
 
@@ -108,11 +111,15 @@ def findings(report):
                 yield loc, fields[1], section
 
 
-def near(left, right):
-    return left[0] == right[0] and left[2] == right[2] and abs(left[1] - right[1]) <= WINDOW
+def near(left, right, window=WINDOW):
+    if (left[1] == 0) != (right[1] == 0):
+        return False
+    return left[0] == right[0] and left[2] == right[2] and abs(left[1] - right[1]) <= window
 
 
 def cited(report, loc):
+    if loc[1] == 0:
+        return PR_BODY in report
     # A citation starts the text or follows whitespace or an opening delimiter, so a longer path
     # that merely ends with the target path never matches.
     pattern = re.compile(

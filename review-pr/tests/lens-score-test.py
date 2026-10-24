@@ -77,6 +77,36 @@ class ScoreTests(unittest.TestCase):
         for index, text in enumerate(texts, 1):
             (self.root / f"run-{index}.envelope.json").write_text(json.dumps(envelope(text)))
 
+    def test_pr_body_location(self):
+        plant = SCORER.parse_entry("PLANT-PR\tPR body\tcorrectness")
+        decoy = SCORER.parse_entry("DECOY-PR\tPR body")
+        body = "- PR body — correctness — Missing section — Impact"
+        self.assertEqual(SCORER.score(report([body]), [plant])["recall"], 1)
+        wrong = SCORER.score(report([body.replace("correctness", "comments")]), [plant])
+        self.assertEqual((wrong["recall"], wrong["wrong_lens"]), (0, 1))
+        self.assertEqual(SCORER.score(report([body]), [decoy])["decoys"], 1)
+        # A PR body finding never matches a file target, and a file finding never matches PR body.
+        file_plant = SCORER.parse_entry("PLANT-JS\tsrc/app.js:1\tcorrectness")
+        self.assertEqual(SCORER.score(report([body]), [file_plant])["recall"], 0)
+        self.assertEqual(
+            SCORER.score(report(["- src/app.js:1 — correctness — D — I"]), [plant])["recall"], 0
+        )
+        for bad in ("PR body:3", "pr body", "PR body [base]", " PR body"):
+            with self.subTest(bad=bad):
+                if bad != "PR body:3":  # a file literally named "PR body" stays citable
+                    with self.assertRaises(ValueError):
+                        SCORER.parse_entry(f"PLANT-PR\t{bad}\tcorrectness")
+                text = report([body.replace("PR body", bad, 1)])
+                self.assertEqual(SCORER.score(text, [plant])["recall"], 0)
+        self.assertTrue(SCORER.score(report([body]), [plant], whole_text=True)["recall"])
+
+    def test_pr_body_overlap(self):
+        self.manifest.write_text(MANIFEST + "PLANT-PR\tPR body\tcorrectness\nDECOY-PR\tPR body\n")
+        with self.assertRaisesRegex(ValueError, "overlapping"):
+            SCORER.read_manifest(self.manifest)
+        self.manifest.write_text(MANIFEST + "PLANT-PR\tPR body\tcorrectness\n")
+        self.assertEqual(len(SCORER.read_manifest(self.manifest)), len(self.targets) + 1)
+
     def test_overlapping_windows_rejected_in_check_and_score(self):
         self.runs()
         for target in (
