@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds `save_report`, which writes the rendered report and prints where it went, and `cleanup_report`, which deletes optional temporary reports. `cleanup_report` is correct, its comment matches the code, and it is tested for both outcomes. `save_report` has a problem: it discards every write error and still reports success, and the test for an unwritable destination asserts nothing. The PR should not merge until `save_report` stops reporting success after a failed write.\n\n## Critical\n- app/reports.py:8 — silent-failure — `save_report` catches every `OSError` from `path.write_text`, ignores it, and still prints `Report saved to {path}` and returns `0`. This happens for a missing parent directory, a permission error or a full disk. Nothing records why the error is ignored. — If the write fails, the user is told the report was saved to a path where no file exists, and the caller gets the success code `0`, so it can't detect the failure or retry.\n\n## Important\n- tests/test_reports.py:47 — tests — `test_save_with_unavailable_destination` calls `save_report(tmp_path / \"missing\" / \"report.txt\")` without checking the return value, the printed output, or that an exception is raised. It passes even though the function falsely announces success. — The test is named after the exact failure path that is broken, yet it can't fail for that defect, so it gives false confidence that the case is handled.\n\n## Suggestions\n(none)\n\n## Strengths\n- `cleanup_report` catches only `FileNotFoundError`, and the comment next to it explains why a missing file is fine. Other `OSError`s still reach the caller.\n- `test_cleanup_preserves_other_errors` checks that non-missing-file errors still reach the caller, and `test_cleanup_existing_and_absent_report` checks that cleanup can safely run twice.\n- `test_save_report` checks the file contents, the return value and the exact output on the success path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20589,
+    "cost_usd": 0.0461512,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6sGPs9Cbrq/review-pr.mwHFqp",
+  "head_sha": "9e3681a676acd64bb3df62ae1b28b65cad77ab9d",
+  "base_sha": "e281461507466354bcd30365090be236e15a4aad",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c8d782f53659bfd6a87e51138275a23da4b367e7"
+}

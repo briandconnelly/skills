@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `refresh_fingerprints` and `register_new_files` to `app/integrity.py`, which update the integrity manifest, and adds tests for both. `register_new_files` keeps existing fingerprints as intended. `refresh_fingerprints` does not: it overwrites the fingerprint of every name it is given, including files already listed. A hand-edited tracked file can therefore be re-approved without any signal. That undermines what the manifest is for, so this should be fixed before merge.\n\n## Critical\n- app/integrity.py:17 — correctness — `refresh_fingerprints` sets `entries[name] = fingerprint(root / name)` for every name, with no `if name not in entries` guard like the one `register_new_files` has at line 24. Example: a caller runs it \"after adding new files\" with the content directory's file list (`[\"tracked.txt\", \"new.txt\"]`) while `tracked.txt` has been edited by hand. The edited file's digest replaces the original. The added test at tests/test_integrity.py:38-50 only passes an unchanged tracked file, so it cannot catch this. — Tampered tracked files are quietly re-fingerprinted and `verify` then returns True, which defeats the hand-edit detection the PR description says existing fingerprints provide.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_register_preserves_existing_fingerprints` edits a tracked file before calling `register_new_files`. It asserts that the original digest is kept and that `verify` fails, which tests the intended behavior directly. It also covers duplicate names and an empty name list.\n- Both helpers write the manifest in the same `json.dumps(..., indent=2)` format and read it the same way `verify` does.\n\n## Not reviewed\n- `../policy-manifest.json` lists no policy files, so no project-specific review criteria were applied.",
+    "duration_ms": 21563,
+    "cost_usd": 0.0658018,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.P9Nl7mSK1u/review-pr.19V6Tl",
+  "head_sha": "c35d4473402f5173e9138d9284a93b043273b501",
+  "base_sha": "8fbfd43eb07b439b7b7edf78e3edc8d144145fc8",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bcd74783ec721b107f945b9749960875558b696d"
+}

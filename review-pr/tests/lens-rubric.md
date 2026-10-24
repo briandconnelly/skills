@@ -91,6 +91,7 @@ A first round of baselines was set aside for five of them: every runner recalled
 Every committed baseline of these ten cases meets recall on every supported runner, so under step 2 of [Adding a lens criterion](#adding-a-lens-criterion) none of their criteria earns a lens edit; the misses they came from occurred on much larger real pull requests, which these small fixtures do not reproduce.
 [lens-cases/false-success/case.sh](lens-cases/false-success/case.sh) plants a report command that ignores a write error and announces success, allowed under `silent-failure` or `correctness` with an `Important` floor; its decoy removes an optional temporary file while ignoring only its absence.
 [lens-cases/resign-tampered/case.sh](lens-cases/resign-tampered/case.sh) plants a fingerprint refresh that overwrites existing hashes and makes edited files pass verification, allowed under `correctness` or `silent-failure` with an `Important` floor; its decoy adds only previously unlisted files and preserves existing fingerprints.
+Both severity cases meet recall at or above their `Important` floor on every supported runner under the current lens, so they do not yet justify a severity edit.
 
 Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.

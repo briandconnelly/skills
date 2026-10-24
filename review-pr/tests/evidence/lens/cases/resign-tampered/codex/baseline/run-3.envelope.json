@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds helpers to refresh fingerprints and register new files. The refresh helper can erase evidence of edits to tracked files and should be corrected before merge.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — When `tracked.txt` has been edited after its fingerprint was recorded, refreshing `[\"tracked.txt\", \"new.txt\"]` overwrites its original fingerprint with the edited file’s digest. — Subsequent verification accepts the edited tracked file, defeating the stated integrity guarantee.\n\n## Suggestions\n(none)\n\n## Strengths\n- The registration helper preserves existing fingerprints, with a test confirming that verification still detects an edited tracked file.\n- Tests cover empty input and duplicate registration names.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wqDc3LVsLw/review-pr.HIrCwr",
+  "head_sha": "b5bd2f1dba274db03f0323985587a307a8967850",
+  "base_sha": "f6b26bad0decc601fae7aaa7e2f674016c9594a9",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "398eb4e7e5276556bafbb7b59bc969c528a22c5f"
+}
