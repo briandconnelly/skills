@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `status(revision, attempt)` and an `attempt_label` helper to `app/display.py`, with two new tests. The new status line cuts the revision to 7 characters, while `history` and `completed` use 12. Its own docstring says it should match `history`, so the PR needs a fix before merge.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `status` uses `short_revision = revision[:7]`, but its docstring says \"Show the deployment revision using the same identifier as history\", and `history`/`completed` use `revision[:12]` (lines 5 and 9). For `REVISION = \"0123456789abcdef...\"`, `status` prints `Running: 0123456 (attempt 2)` while history prints `History: 0123456789ab`. — Users can't reliably match a running deployment to its history or completion entry. The new test at tests/test_display.py:14-15 only checks the `startswith(\"Running: \")` prefix and `endswith(\"(attempt 2)\")` suffix, so it passes despite the mismatch.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a small, separate helper, and its tests check exact output (`\"attempt 1\"`, `\"attempt 3\"`).\n- The existing `history`/`completed` behavior is unchanged and still covered by `test_existing_revision_output`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18887,
+    "cost_usd": 0.051575800000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ntwN2yG9cm/review-pr.VMxiE0",
+  "head_sha": "0669d0e3c9eda2acd8c5131cea6a79380f707476",
+  "base_sha": "8a83826b33dcdb9f989ff0b6889053fbaf55b409",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "82aadad498a854dad67b66baabef54fe5610e1d2"
+}

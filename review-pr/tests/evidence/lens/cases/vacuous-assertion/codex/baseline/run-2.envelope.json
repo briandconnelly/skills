@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe parser now requires the exact `REPORT v1` header. The production change looks correct, but one added test does not exercise the behavior it claims to protect.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:12 — tests — `test_rejects_legacy_header` constructs `REPORT v1\\nversion=v0` without an `END` terminator, so parsing returns before header validation. — This test passes even if version validation is removed; use a complete report with an unsupported header.\n\n## Strengths\n- The complete-report regression test exercises rejection of `REPORT v0`, while the existing test verifies acceptance of `REPORT v1`.\n\n## Not reviewed\n- Tests were read but not executed, as required by the review instructions.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.umPRefbfdO/review-pr.S8ecKx",
+  "head_sha": "bd2219b328ffb52804a2c2ff406b5334a88b50a7",
+  "base_sha": "432b27878af1a05cf99564a0749c8135867e3bdc",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9306089b429de6019e63f54a3d9fc6d2efaa3971"
+}

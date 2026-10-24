@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR rewrites `select_cached` and `_select_normalized` without changing their behaviour, and adds `select_failures`, which picks requested paths out of a runner failure report. It should not merge as is: `select_failures` matches report paths exactly as written, without first stripping a leading `./`. Every other selector that reads raw paths does strip it, so a report with dot-prefixed paths silently selects nothing.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — `select_failures` checks `path in requested` against the report's raw path. The sibling `select_explicit` at app/selection.py:6 also keeps the original path in its output but compares `normalize(path) in requested`, and the new docstring (\"preserving its original spelling\") describes that same pattern. With a report of `{\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, it returns `[]` instead of `[\"./tests/test_x.py\"]`. The added test at tests/test_selection.py:43 only uses paths without `./`, so it does not catch this — Failed tests whose runner prints `./`-prefixed paths are silently left out of the rerun selection, and nothing reports an error.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `select_cached`/`_select_normalized` rewrite keeps the same behaviour and is easier to read (a list comprehension instead of `filter`/`lambda`).\n- The new tests check the returned selections directly, including the empty-report case for `select_failures`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18460,
+    "cost_usd": 0.047836000000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6ranKnQykj/review-pr.Y8A9QR",
+  "head_sha": "2d1102588d28e59becaf4feaadd145b5320da911",
+  "base_sha": "aa3d10b7a644d4427aa69150babd0b3af1483b6b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "569c60daed7f7dbade1f06d4ce705614b830435b"
+}

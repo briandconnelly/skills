@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR rewrites `requirement_proven` to compare a sum of `proven` flags against `len(criteria)`, and adds `reviewed_batch` to reject empty batches and check every entry's `reviewed` flag. `reviewed_batch` is correct and well tested. The `requirement_proven` rewrite breaks the old empty-input behaviour: a requirement with no criteria now counts as proven. It also changes how non-boolean `proven` values are handled.\n\n## Critical\n- app/proof.py:3 — correctness — The old guard `bool(criteria) and ...` was removed, so `requirement_proven([])` now computes `0 == 0` and returns `True`, where it used to return `False`. — A requirement with no criteria or evidence is reported as proven. That reverses the gate's meaning and lets unsupported requirements pass. It is also inconsistent with the new `reviewed_batch`, which explicitly rejects empty input.\n\n## Important\n(none)\n\n## Suggestions\n- app/proof.py:2 — correctness — Replacing `all(item[\"proven\"] ...)` with `sum(item[\"proven\"] ...)` means a criterion whose `proven` value is unset (`{\"proven\": None}`) now raises `TypeError: unsupported operand type(s) for +`, where it used to evaluate as not proven. A non-boolean truthy value such as `{\"proven\": 2}` next to `{\"proven\": False}` gives a sum of 2, which equals `len == 2`, so the function returns `True`. — Callers that pass partially filled criteria get a crash or a false \"proven\" result instead of `False`. Keeping `all(...)` with an explicit non-empty check avoids both problems.\n\n## Strengths\n- `reviewed_batch` fails loudly on an empty batch with an error message the caller can act on, and its tests cover the empty, all-reviewed, single-unreviewed and mixed cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26110,
+    "cost_usd": 0.07860199999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.X1ukCnvmgJ/review-pr.3Qvaic",
+  "head_sha": "c735cb6a751c0c94fba0421172a59760d82d60e1",
+  "base_sha": "992512d6a617beef67fb730f4aba94570cd90116",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "72002e293cf21f79d5da363064bad6b3188bc820"
+}

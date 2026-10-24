@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR makes `load_results` return an empty list when the results file is missing, and adds `display_preferences`, which falls back to a light theme when its file is absent. That results fallback makes the release gate fail open: `all([])` is `True`, so a missing results file approves the release. This must be fixed before merge. The documented preferences fallback and its tests are fine.\n\n## Critical\n- app/results.py:7 — correctness — `load_results` catches `FileNotFoundError` and returns `[]`, and `release_allowed` (app/results.py:12) then evaluates `all(...)` over that empty list, which is `True`. If `results.json` was never written (for example, the check job crashed or used the wrong path), `release_allowed` returns `True`. Nothing logs this, nothing signals the caller, and no comment says the fallback is intended. — The release gate approves a release when no checks ran, so an unverified build can ship without any warning.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The `display_preferences` fallback at app/results.py:16-20 has a comment saying the preferences file is optional and that callers get the light theme when it is missing.\n- tests/test_results.py covers passing and failing saved checks for `release_allowed`, and both the missing-file and saved-file paths of `display_preferences`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 17212,
+    "cost_usd": 0.0436702,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.emFxsV09qa/review-pr.yH95wC",
+  "head_sha": "24762bc44c528f6ceeea993eadeef9c716d60b88",
+  "base_sha": "1ec7e123d4af2a44aa5de1bdc9436fe43ff3b6ae",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c29ec38de8166e871f2b769502b31645c7812c41"
+}

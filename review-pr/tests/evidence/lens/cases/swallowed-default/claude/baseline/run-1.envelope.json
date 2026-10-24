@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR makes `load_results` return an empty list when the results file is missing. It also adds an optional `display_preferences` loader that falls back to a light theme, and adds tests for both. The release gate change is unsafe: if the results file is missing, the gate now reports that release is allowed. This should not merge as is.\n\n## Critical\n- app/results.py:8 — correctness — `load_results` now returns `[]` on `FileNotFoundError`, and `release_allowed` (line 12) computes `all(row[\"passed\"] for row in [])`, which is `True`. So a missing `results.json` (checks never ran, wrong path, or file deleted) counts as \"every check passed.\" There is no log or signal, and no comment says this is intended, unlike the documented fallback in `display_preferences`. The new test only covers present files and never checks the missing-file case — Releases go ahead with no checks at all; before this change, a missing file raised an error and blocked the release.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The fallback in `display_preferences` has a comment beside it explaining why it exists and what callers get, and tests cover both the missing-file and saved-file paths.\n- `test_saved_checks_control_release` checks both a passing and a failing result set, so it would catch a gate that always returns one value.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18229,
+    "cost_usd": 0.060402000000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.emFxsV09qa/review-pr.fitjtx",
+  "head_sha": "24762bc44c528f6ceeea993eadeef9c716d60b88",
+  "base_sha": "1ec7e123d4af2a44aa5de1bdc9436fe43ff3b6ae",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c29ec38de8166e871f2b769502b31645c7812c41"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds file previews capped at 200 characters and a settings-path helper. The preview containment check permits access outside the selected home and should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/paths.py:12 — correctness — `is_relative_to()` checks lexical ancestry, so `preview(\"/tmp/home\", \"../outside.txt\")` passes the check; a symlink inside home pointing outside also passes. Existing tests cover only an absolute outside path. — Callers can read files outside the selected home directory.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover short previews, truncation, absolute outside-path rejection, and the settings-file location.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TjC09Sos0i/review-pr.wpvZBT",
+  "head_sha": "62885c9fca6e277c73cc73ca0e7b59814cd682e9",
+  "base_sha": "d272cc4832ae18557b753eca70a810540470952b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d00646783d86adb476903ea607d39a627fe10933"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request requires the exact `REPORT v1` header and adds regression tests. The production change looks correct, but one added test cannot exercise the behavior it names.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:12 — tests — `test_rejects_legacy_header` retains `REPORT v1`, changes the payload to `version=v0`, and omits `END`, so it passes through the existing terminator check even without header validation — This test provides no protection against its named regression; the separate complete-report test does cover unsupported-header rejection.\n\n## Strengths\n- Exact header comparison enforces the supported format.\n- The complete `REPORT v0` test exercises the new rejection branch.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.umPRefbfdO/review-pr.neBKEJ",
+  "head_sha": "bd2219b328ffb52804a2c2ff406b5334a88b50a7",
+  "base_sha": "432b27878af1a05cf99564a0749c8135867e3bdc",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9306089b429de6019e63f54a3d9fc6d2efaa3971"
+}

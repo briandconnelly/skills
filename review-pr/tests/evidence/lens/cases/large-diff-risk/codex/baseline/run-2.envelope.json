@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\n\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR refreshes the deployment catalog, simplifies the health predicate, and changes the release approval check. The approval change introduces a boundary regression that should be fixed.\n\n## Critical\n\n(none)\n\n## Important\n\n- zzz-release/gate.py:5 — correctness — `approved(2, minimum=2)` now returns `False`, contradicting the documented requirement of at least the configured number of approvals — Releases meeting exactly the required approval count are blocked until an unnecessary extra approval arrives.\n\n## Suggestions\n\n(none)\n\n## Strengths\n\n- Existing tests exercise both empty and nonempty failure lists for the simplified health predicate.\n\n## Not reviewed\n\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rndxe5fnfo/review-pr.5LGORT",
+  "head_sha": "995b04dea301b1c64a36026f7115cbf458bf0aeb",
+  "base_sha": "614c72d094a1104abb5c861287bbfeba23d85ea9",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ce0ce31528d6280597250136bfe9dc8d98788c5a"
+}

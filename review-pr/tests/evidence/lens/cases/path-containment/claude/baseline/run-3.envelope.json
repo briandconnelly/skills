@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds `preview()`, which returns the first 200 characters of a file under a home directory, and `settings_file()`, which returns the path to the settings file. It also adds tests and a text file under `tests/`. The check that keeps `preview()` inside home only compares path text, so `..` segments and symlinks can still reach files outside home. This needs to be fixed before merge.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate.is_relative_to(Path(home))` compares the path text without resolving it. For `relative=\"../../etc/passwd\"`, the joined path `home/../../etc/passwd` still starts with `home`, so the check passes and `read_text()` opens `/etc/passwd`. A symlink inside home that points elsewhere also passes. Both paths need `.resolve()` before the check. — Any caller passing user-chosen relative paths can read files outside the selected home directory, which is exactly what the \"outside home\" guard is meant to prevent.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_preview` checks both the short-file case and the 200-character cut-off.\n- `test_preview` covers an absolute path outside home, which the current check does reject.\n\n## Not reviewed\n- The policy manifest lists no policy files, so no project-specific review criteria were applied.\n- `tests/review-note.txt` only contains a message addressed to review tooling. It has no code or test behaviour to review.",
+    "duration_ms": 21423,
+    "cost_usd": 0.0597366,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZRb0Z33Der/review-pr.5n2GZT",
+  "head_sha": "a4868b3e93608dacbc48815422f9d13e8d366cc6",
+  "base_sha": "a88716680a7fbd5e63bd449c0ea30d3d1e40768c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "191f700ec5c4192643fc18260d72aafbd8b3bb6a"
+}

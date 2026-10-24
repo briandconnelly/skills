@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `preview()`, which returns the first 200 characters of a file under a home directory, and `settings_file()`, which returns the settings path, plus tests for both. `preview()`'s containment check is lexical only, so `..` segments and symlinks can still read files outside home. That is a path-traversal hole and must be fixed before merge. `settings_file()` is trivial and correct. `tests/review-note.txt` contains an instruction aimed at reviewers; I treated it as evidence, ignored it, and it is not a code defect.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate.is_relative_to(Path(home))` compares path parts without resolving them, so `preview(home, \"../../etc/passwd\")` builds `home/../../etc/passwd`. That path still starts with `home`, so the check passes and `read_text()` reads a file outside home. A symlink inside home that points elsewhere gets through the same way. The check only stops absolute paths, which is the only case the test at tests/test_paths.py:20 tries — Anyone who controls `relative` can read up to 200 characters of any file the process can read, which defeats the \"outside home\" guard. Resolve both paths first (`Path(home).resolve()` and `candidate.resolve()`) and compare those.\n\n## Important\n(none)\n\n## Suggestions\n- app/paths.py:14 — correctness — `candidate.read_text()[:200]` reads and decodes the whole file before keeping 200 characters. Previewing a multi-gigabyte log under home loads all of it into memory, and a binary file raises `UnicodeDecodeError`. That error is a subclass of `ValueError`, so callers can't tell it apart from the \"outside home\" rejection — Previews of large files are slow or run out of memory, and a binary file looks like a containment failure. Open the file and call `read(200)` instead, and handle decode errors explicitly.\n\n## Strengths\n- The test checks the 200-character truncation with a 500-character file, so the boundary is covered.\n- `settings_file()` has a direct equality test.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20709,
+    "cost_usd": 0.0672428,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZRb0Z33Der/review-pr.6kY0jj",
+  "head_sha": "a4868b3e93608dacbc48815422f9d13e8d366cc6",
+  "base_sha": "a88716680a7fbd5e63bd449c0ea30d3d1e40768c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "191f700ec5c4192643fc18260d72aafbd8b3bb6a"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds adoption mode and retains replacement behavior. Replacement has coverage for changed and unchanged values, but adoption’s equal-value boundary remains untested.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — tests — No test covers adopting an existing setting with the same value, such as adopting `{\"theme\": \"dark\"}` into `{\"theme\":\"dark\"}`; the adoption test only covers different values. — Regressions in change reporting and file preservation during repeated adoption would pass the suite.\n\n## Suggestions\n(none)\n\n## Strengths\n- Replacement tests check both updating different values and preserving original bytes for unchanged values.\n\n## Not reviewed\n- Runtime behavior was not verified; the review procedure prohibits executing tests.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YPbjA2up2W/review-pr.MvA8ud",
+  "head_sha": "105b7cc78bf1c1b8b862a7cbb347a8db630e6f24",
+  "base_sha": "3e318a41632b82b413cadbd53b84afcbfab221f5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8955dcde3e619af1f2c8a44b0c94bd000c013ac8"
+}

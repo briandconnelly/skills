@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds `select_failures`, which picks tests out of a runner's failure report. It also makes two refactors that don't change behavior: `select_cached` and `_select_normalized`. The refactors are correct. The new selector has a defect: unlike `select_explicit`, it compares report paths without normalizing them, so failures reported with a `./` prefix are silently left out.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — `select_failures` compares raw report paths against `requested` without calling `normalize`. With the report `{\"failed\": [\"./tests/test_x.py\"]}` and the requested set `{\"tests/test_x.py\"}`, it returns `[]`. `select_explicit` (line 6) handles the same input by normalizing for the comparison and keeping the original spelling, which is also what the docstring \"preserving its original spelling\" describes. The added test only uses unprefixed paths, so it misses this — If a runner reports failed tests with a `./` prefix, those tests are silently dropped from the selection and never rerun.\n\n## Suggestions\n(none)\n\n## Strengths\n- Replacing `list(filter(lambda ...))` with a list comprehension in `_select_normalized` doesn't change behavior and reads more clearly.\n- The new test file covers the dot-prefix behavior of both `select_explicit` and `select_cached`, plus an empty failure report.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22638,
+    "cost_usd": 0.061421,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6ranKnQykj/review-pr.X1sZhk",
+  "head_sha": "2d1102588d28e59becaf4feaadd145b5320da911",
+  "base_sha": "aa3d10b7a644d4427aa69150babd0b3af1483b6b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "569c60daed7f7dbade1f06d4ce705614b830435b"
+}

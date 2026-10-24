@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds an optional `--json [path]` flag to `parse_args`, which falls back to `results.json` when no path is given. It also adds a `write_reports` helper and the first CLI tests. The new `--json` branch treats whatever argument comes next as its path, even when that argument is another flag. That breaks the main use case in the PR description, which is `--json` used together with `--junit`, so the PR should not merge until that branch is fixed.\n\n## Critical\n- app/cli.py:15 — correctness — The `--json` branch takes `args[i + 1]` as the destination whenever another argument exists, without the `startswith(\"--\")` check that the `--junit` branch uses at line 7. As a result, `[\"--json\", \"--junit\", \"out.xml\"]` sets `json=\"--junit\"` and then fails with `ValueError(\"unknown option: out.xml\")`. Separately, `[\"--json\", \"--junit\"]` returns `{\"json\": \"--junit\"}` without error. — Putting `--json` before `--junit` either fails with a misleading error about the junit path, or makes `write_reports` silently write the JSON report to a file literally named `--junit` and produce no JUnit report. The comment at line 12 (\"JSON can use its default destination when no path is supplied\") is also wrong in this case. No test covers `--json` followed by another flag.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Moving the `--junit` assignment to `options[\"junit\"] = args[i + 1]` before the increment makes the index handling easier to follow without changing behavior.\n- `tests/test_cli.py` covers the `--junit` error paths: a missing path, and a path argument that is actually another flag (`--json`). It also checks a real file write through `write_reports` using `tmp_path`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25366,
+    "cost_usd": 0.0610404,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6CGhpIVDxg/review-pr.fgSkgz",
+  "head_sha": "8e567571e460b068374742d0121004ebdfd40c05",
+  "base_sha": "6628864857fc01e236968710b7ee572af1e19167",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f2bcff8ae2a4f8272ae8e434958921547176575b"
+}

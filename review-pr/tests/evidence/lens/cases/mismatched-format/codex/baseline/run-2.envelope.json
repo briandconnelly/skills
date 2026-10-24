@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds running deployment status with an attempt number. The revision identifier differs from the existing output despite the documented consistency requirement and should be corrected before merge.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For revision `0123456789abcdef0123456789abcdef01234567`, status displays `0123456`, while history and completion display `0123456789ab`, violating the documented shared identifier contract. — Revisions sharing seven leading characters become indistinguishable in running status despite remaining distinguishable in history.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover the running-status prefix, attempt suffix, and attempt-label formatting.\n\n## Not reviewed\n- Runtime behavior was not executed; tests were assessed by reading them.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.avk167Bgel/review-pr.lL9VPX",
+  "head_sha": "5a106dc492e17ed0cf23cdca335aed4e8d227d96",
+  "base_sha": "7f3a4bb72663dd0e7e12f3684de01f28f5091a41",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2f5f6ec03cc61c0df17753d742c148d1d5d7fdde"
+}
