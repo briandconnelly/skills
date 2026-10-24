@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe default timeout change is covered by parser tests, and explicit overrides remain covered. The README needs updating. Tests were assessed by reading only.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- app/cli.py:3 — comments — For invocations without `--timeout`, `DEFAULT_TIMEOUT = 60` makes README.md:3’s “Requests time out after 30 seconds” false; update the documented default to 60 seconds. — Users consulting the README receive incorrect timeout guidance.\n\n## Strengths\n- Parser tests assert the 60-second default and verify that an explicit `--timeout 12` overrides it.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.5fxr9229ou/review-pr.Ig0n5a",
+  "head_sha": "70071d88f0ad7da49c281bf967480a40526cf11b",
+  "base_sha": "1e007ad9bbcdbd88467c77c0e228c090ab69f179",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4c69dd4d50e9e903fbc5367f49d31c76e7c13ff1"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull-request description needs the required testing section. No concrete implementation defects were found. Tests were read but not executed.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — The description omits verification details, violating `AGENTS.md:4`: “Every pull-request description has a `## Testing` section that says how the change was verified.” Add that section and describe the verification performed. — Reviewers lack the required verification record.\n\n## Suggestions\n(none)\n\n## Strengths\n- Both added modules begin with descriptive docstrings, satisfying `AGENTS.md:3`.\n- Test assertions cover lowercasing, separator collapsing, trimming, punctuation-only input, and empty input.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rW3qK7WFbt/review-pr.Fw6qbU",
+  "head_sha": "0920324a9a7aecde70eb2f426ea2c0f095c53b69",
+  "base_sha": "aac43de7ce0b0aa33e4010354fd528e224d108b2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b280f273d104e012a849020df1c64796717febfd"
+}
