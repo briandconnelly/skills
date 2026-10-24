@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds selection from failure reports and refactors existing selectors. The new selector misses requested tests when report paths have a `./` prefix.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — With `report={\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, `select_failures` returns `[]` because it omits the normalization used by both existing selectors. — A failed test is silently excluded from selection; normalize paths for comparison while preserving their original spelling in the result.\n\n## Suggestions\n(none)\n\n## Strengths\n- Added tests cover matching, excluded, and empty failure-report entries.\n- Existing selector behavior is preserved by the refactoring.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.sZCe4MBlkS/review-pr.SFh244",
+  "head_sha": "caa6ff05fa888ee29beb655ddd310655cf912b2b",
+  "base_sha": "1b6cdd19530167125ebdd587a6b3b4504f48121a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "55606ea02806dd4471bd65866796e22480dacd57"
+}

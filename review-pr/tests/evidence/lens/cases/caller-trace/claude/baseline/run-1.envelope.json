@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR makes `plan` record an `adopt` change for each setting that already exists and add a trailing `audit` entry, and it adds a test showing that `run` returns the audit entry without printing it. The audit change works. The new `adopt` entries cause a real bug: `run` prints every non-audit change, so each adopted setting is now printed twice. It should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Adopted settings now produce an `adopt` change in addition to the existing `emit(f\"Adopted {name}\")` on line 8. `app/cli.py:6-9` (`for change in changes: if change[\"kind\"] == \"audit\": continue; emit(change[\"message\"])`) only skips `audit` entries, so `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` now emits `[\"Adopted theme\", \"Adopted theme\"]` where it used to emit `[\"Adopted theme\"]`. No test runs `run` with a setting that already exists, which is why this wasn't caught. — Users see every adopted setting reported twice in the command output, which contradicts the PR's claim that the command keeps rendering progress and actionable changes as before.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_audit_is_returned_without_command_output` checks both that `run` returns the audit entry and that the audit entry isn't printed, so it would fail if either behavior broke.\n- The audit entry is appended after the loop, so it is always last. That keeps the existing `add`/`adopt` order and makes it easy for consumers to find.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21660,
+    "cost_usd": 0.06943300000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.pSJq90S2LN/review-pr.Xl6SBC",
+  "head_sha": "4448f303a1932b831975f9987f64ae7eda3c1e0f",
+  "base_sha": "2cca35bf71a5394992974fc11bd67143ea8824f4",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "58da779c00f61c5f6364dba90b6984620e7d3c24"
+}

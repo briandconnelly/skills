@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds `preview()`, which returns the first 200 characters of a file under a home directory, and `settings_file()`, which returns the path to the settings file. It also adds tests for both. `preview()` checks containment only on the path text, so a relative path containing `..` gets through and the function reads files outside home. Fix this before merging.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate.is_relative_to(Path(home))` only compares path text and never resolves `..` or symlinks. For example, `preview(\"/home/alice\", \"../../etc/passwd\")` builds `/home/alice/../../etc/passwd`. That path still starts with `/home/alice`, so the check passes and `read_text()` opens `/etc/passwd`. A symlink inside home that points outside it is followed the same way. The only rejection test (tests/test_paths.py:20) uses an absolute path that `/` already replaces, so it doesn't catch this. Calling `.resolve()` on both paths before the check would fix it. — Anyone who controls `relative` can read the first 200 characters of any file the process can open. That defeats the \"outside home\" guard this function exists to provide.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The tests cover the 200-character limit with a 500-character file, as well as the short-file case.\n- `settings_file()` is simple, and its test checks the exact expected path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 19379,
+    "cost_usd": 0.054521,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZRb0Z33Der/review-pr.17Hmn5",
+  "head_sha": "a4868b3e93608dacbc48815422f9d13e8d366cc6",
+  "base_sha": "a88716680a7fbd5e63bd449c0ea30d3d1e40768c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "191f700ec5c4192643fc18260d72aafbd8b3bb6a"
+}

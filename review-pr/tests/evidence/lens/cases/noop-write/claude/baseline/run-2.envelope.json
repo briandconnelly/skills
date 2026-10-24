@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds an `adopt` flag to `merge`. In adopt mode, incoming values overwrite existing keys and the merger records those keys in its change list. It also adds tests for adopting a value and for replacing a different value. One correctness defect needs fixing: adopt mode marks a key as changed and rewrites the file even when the value hasn't changed. That breaks the module's promise to leave untouched files alone.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch assigns the value and calls `changes.append(key)` without checking `current[key] != value`. The `replace` branch at lines 18-21 does make that check. So `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `{\"theme\":\"dark\"}\\n` returns `[\"theme\"]` and runs `path.write_text(json.dumps(current, indent=2) + \"\\n\")`. — Calling adopt on a file that already matches rewrites it with different formatting (for example, `{\"theme\":\"dark\"}` becomes indented multi-line JSON). This breaks the module docstring's promise of \"preserving untouched configuration files\", which the existing replace test `test_unchanged_replacement_preserves_bytes` enforces for replace mode. Callers also get keys that didn't change in the returned change list.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_replace_updates_different_setting` adds coverage for the replace-with-a-different-value path. Before this PR, only the unchanged-replacement path was tested.\n- The replace branch still skips unchanged values, so the existing byte-preservation behavior for `replace=True` is unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20727,
+    "cost_usd": 0.056430400000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xdpczeMfnu/review-pr.XfVLwo",
+  "head_sha": "56dac7ce1ef81e41ad603df991434ff6bc27c224",
+  "base_sha": "d6584156329e97ec782096453e4f94dedd921068",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "42f1df83936fdf59cae3238ac6654e397c490bb4"
+}

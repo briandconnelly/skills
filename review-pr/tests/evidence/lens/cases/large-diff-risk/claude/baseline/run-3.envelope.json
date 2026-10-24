@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR regenerates `aaa-generated/catalog.json`, which renames all 1,500 `legacy-service-NNNN` entries to `production-service-NNNN` and moves their ports from 10xxx to 20xxx. It also rewrites `healthy()` in `services/registry.py` as `not failures`, which behaves the same for lists, and changes the release approval check in `zzz-release/gate.py`. The approval change adds an off-by-one error: a release with exactly the minimum number of approvals is now blocked, so this should not merge until it is fixed.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — `approved` changed from `approvals >= minimum` to `approvals > minimum`, so `approved(2, minimum=2)` now returns `False`. This contradicts the module docstring at line 1: \"A release needs at least the configured number of approvals.\" The tests in `tests/test_release.py:11-16` only use 3 and 1 approvals, never the boundary value, so they still pass. — Every release with exactly the required number of approvals (2 by default) is wrongly blocked, and the test suite does not catch it.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_release.py:19-21` covers both the empty and non-empty failure lists for the rewritten `healthy()`, which confirms the new version matches the old one for list inputs.\n- The catalog regeneration is uniform: every renamed entry keeps `\"enabled\": true`, and each one's port offset matches its new service index.\n\n## Not reviewed\n- No catalog generator or source config is in the repository, so I could not check whether the regenerated `aaa-generated/catalog.json` matches what the generator would actually produce.\n- Nothing in the repository reads `aaa-generated/catalog.json`, so I could not check how the renamed services and new ports affect deployment.",
+    "duration_ms": 52708,
+    "cost_usd": 0.2924758,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dInQ1zFH2L/review-pr.D0hDkM",
+  "head_sha": "4d4347796b6e91851713d743165c2ae477d143fb",
+  "base_sha": "b157c6479a320b5671855b20b95ce1540868c2c6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "09122a31ce86a648ac203721d474ee23fdd02a84"
+}

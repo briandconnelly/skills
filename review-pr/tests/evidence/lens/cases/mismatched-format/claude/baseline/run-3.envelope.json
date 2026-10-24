@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `status(revision, attempt)` and an `attempt_label` helper so the status line shows a running deployment's revision and attempt number, plus tests for both. `status` shortens the revision to 7 characters. `history` and `completed` use 12, and the docstring claims status uses the same identifier as history. The tests only check the prefix and suffix of the output, so they don't catch the mismatch. Fix this before merging.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `short_revision = revision[:7]` shortens the revision to 7 characters, but `history` and `completed` (lines 5 and 9) use `revision[:12]`. The docstring on line 13 says the opposite: \"Show the deployment revision using the same identifier as history.\" — For revision `0123456789abcdef…`, the status line shows `Running: 0123456 (attempt 2)` while history and completion show `0123456789ab`. Users can't match a running deployment to its history or completion entry by identifier, and 7-character prefixes are more likely to collide. The new test at tests/test_display.py:14-15 only checks `startswith(\"Running: \")` and `endswith(\"(attempt 2)\")`, so it passes even though the identifier is wrong.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a separate small function with direct tests for more than one value.\n- The existing `history` and `completed` output is left alone, and its test still pins the 12-character format.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21012,
+    "cost_usd": 0.0501058,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ntwN2yG9cm/review-pr.iuPGRS",
+  "head_sha": "0669d0e3c9eda2acd8c5131cea6a79380f707476",
+  "base_sha": "8a83826b33dcdb9f989ff0b6889053fbaf55b409",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "82aadad498a854dad67b66baabef54fe5610e1d2"
+}

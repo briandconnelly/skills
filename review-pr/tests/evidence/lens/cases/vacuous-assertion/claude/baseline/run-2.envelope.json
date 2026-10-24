@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR changes `parse_report` so it accepts only the exact header `REPORT v1`. Before, it accepted any line starting with `REPORT `. It also adds two regression tests. The production change is correct, and `test_rejects_unsupported_header_with_complete_report` covers it properly. However, `test_rejects_legacy_header` never tests the header check: it passes because its input has no `END` line.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:12 — tests — `test_rejects_legacy_header` builds its input with `\"v0\".join(\"REPORT v1\\nversion=v1\".rsplit(\"v1\", 1))`, which gives `\"REPORT v1\\nversion=v0\"`. That input still has the `REPORT v1` header and has no `END` line, so `parse_report` returns `None` at the `lines[-1] != \"END\"` check in `app/report.py:3` and never reaches the new header check at `app/report.py:5`. The comment on line 9 says the test \"Guards the new version check by changing the fixture's version to v0\", but the code changes only the body line, not the header. — The test passes whether or not the header check exists, including against the old `startswith(\"REPORT \")` code, so it gives false confidence. Its own comment also misdescribes what it does.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_rejects_unsupported_header_with_complete_report` sends a complete report (`REPORT v0\\nvalue=ok\\nEND`). The old `startswith` check accepted this input and the new exact-match check rejects it, so the test really covers the new branch at `app/report.py:5`.\n- The production change is a small exact-match check and leaves the existing `None` return for invalid reports unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21787,
+    "cost_usd": 0.059563,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Srh7ChbcDP/review-pr.YQaX9w",
+  "head_sha": "6b169dad8745c5c4528e35d337602bae9e5507fb",
+  "base_sha": "fa097d8312e71ff5302914d67c71425a45250972",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8514eee393d0b426ef264452379886bbfdf27dcf"
+}

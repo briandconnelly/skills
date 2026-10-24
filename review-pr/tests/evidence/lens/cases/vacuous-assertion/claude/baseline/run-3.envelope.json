@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR changes the header check in `parse_report` from a prefix match on `\"REPORT \"` to an exact match on `\"REPORT v1\"`, and adds two tests. The production change is correct and has no other callers in the repository. `test_rejects_unsupported_header_with_complete_report` properly covers the new rejection branch. `test_rejects_legacy_header` is misnamed and doesn't test what its comment says.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:8 — tests — `test_rejects_legacy_header` builds `\"REPORT v1\\nversion=v0\"`. `rsplit(\"v1\", 1)` swaps the last `v1`, which is in the body, not the header. The input also has no `END` line, so `parse_report` returns `None` at the trailer check in `app/report.py:3`. It never reaches the version check, and the comment at line 9 (\"Guards the new version check by changing the fixture's version to v0\") is wrong. — The test passes with the old `startswith(\"REPORT \")` code too, so it can't catch a regression in the header check it is named for. It only looks like extra coverage.\n\n## Strengths\n- `app/report.py:5` now requires an exact `\"REPORT v1\"` header, so `parse_report` rejects unsupported versions such as `REPORT v0` and `REPORT v10`. The old prefix match accepted them.\n- `test_rejects_unsupported_header_with_complete_report` passes a complete, well-formed report with a `v0` header. It fails on the old code and passes on the new code, so it really tests the change.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20350,
+    "cost_usd": 0.055701999999999995,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Srh7ChbcDP/review-pr.GYTkqu",
+  "head_sha": "6b169dad8745c5c4528e35d337602bae9e5507fb",
+  "base_sha": "fa097d8312e71ff5302914d67c71425a45250972",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8514eee393d0b426ef264452379886bbfdf27dcf"
+}

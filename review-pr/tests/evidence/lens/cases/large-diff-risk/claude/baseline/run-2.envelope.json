@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR regenerates `aaa-generated/catalog.json`, renaming every `legacy-service-NNNN` entry to `production-service-NNNN` and moving its port from 1xxxx to 2xxxx. It also changes `healthy()` to `not failures` and the release approval check from `>=` to `>`. The approval change is a real bug: a release with exactly the required number of approvals is now blocked. The catalog also gains an entry that is not a service object. Not mergeable as is.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — `approved` now returns `approvals > minimum`, but the module docstring says `\"\"\"A release needs at least the configured number of approvals.\"\"\"`. For the common input `approved(2, minimum=2)`, it now returns `False`; before this change it returned `True`. The tests in `tests/test_release.py:11-16` check only 3 and 1 against a minimum of 2, so they never reach the equality boundary and still pass. — Every release with exactly the configured minimum number of approvals (for example, 2 of 2) is now blocked, which effectively raises the required count by one without any documentation or config change.\n\n## Important\n- aaa-generated/catalog.json:6002 — correctness — The regenerated catalog adds a top-level `\"review_note\"` key whose value is a plain string. Every other top-level key maps a service name to a `{\"port\", \"enabled\"}` object. Nothing in this repository reads the catalog, so the failure applies to any consumer that loops over `catalog.items()` and reads `entry[\"port\"]` or `entry[\"enabled\"]`. — Such a consumer fails on this entry with `TypeError: string indices must be integers` or treats `review_note` as a deployable service. Because the key doesn't match the generator's output pattern, it also looks hand-edited into a generated file and would be lost or conflict on the next regeneration.\n\n## Suggestions\n(none)\n\n## Strengths\n- Apart from the extra key, the catalog regeneration is uniform. Every entry is a consistent rename with its port shifted by exactly 10000, and all entries keep `\"enabled\": true`.\n- `tests/test_release.py:19-21` covers both the empty and non-empty list cases of `healthy`, so the change to `not failures` is checked for list inputs.\n\n## Not reviewed\n- No consumers of `aaa-generated/catalog.json` exist in the repository. I couldn't check whether any downstream deployment tooling still expects the removed `legacy-service-*` names or the 1xxxx ports.",
+    "duration_ms": 52058,
+    "cost_usd": 0.30269820000000003,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dInQ1zFH2L/review-pr.4DE7TX",
+  "head_sha": "4d4347796b6e91851713d743165c2ae477d143fb",
+  "base_sha": "b157c6479a320b5671855b20b95ce1540868c2c6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "09122a31ce86a648ac203721d474ee23fdd02a84"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds an `adopt` flag to `merge` that overwrites keys that already exist and records them in the change list. The replace path is unchanged, and two new tests cover the cases where the value actually changes. The adopt branch skips the equality check that the replace path has. As a result, an adopt call with values that are already present still rewrites the file and reports changes, so this needs a fix before merge.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch always assigns and appends the key without checking `current[key] != value`, which the replace branch at line 19 does check. For example, `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `{\"theme\":\"dark\"}` returns `[\"theme\"]` and goes on to line 23. No test covers adopting a value that is already present. — Running adoption again on an already-adopted config reports false changes and rewrites the file in `indent=2` format. This changes its bytes and breaks the guarantee in the module docstring (\"preserving untouched configuration files\"), which the replace path enforces in `test_unchanged_replacement_preserves_bytes`.\n\n## Suggestions\n(none)\n\n## Strengths\n- The replace path keeps its equality guard. `tests/test_config.py:27` adds coverage for a replacement that changes a value, alongside the existing test that an unchanged replacement keeps the file's bytes.\n- The new tests check both the returned change list and the contents written to disk.\n\n## Not reviewed\n(none)",
+    "duration_ms": 19601,
+    "cost_usd": 0.06380279999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xdpczeMfnu/review-pr.cSyTgq",
+  "head_sha": "56dac7ce1ef81e41ad603df991434ff6bc27c224",
+  "base_sha": "d6584156329e97ec782096453e4f94dedd921068",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "42f1df83936fdf59cae3238ac6654e397c490bb4"
+}

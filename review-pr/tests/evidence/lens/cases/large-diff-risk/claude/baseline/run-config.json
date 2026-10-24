@@ -1,0 +1,10 @@
+{
+  "collection_id": "09122a31ce86a648ac203721d474ee23fdd02a84",
+  "runner": "claude",
+  "case": "large-diff-risk",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "1d2b5cbea423491064710daeb17b52c1e09d03cb7385f3514701e11feb8c3a42"
+}

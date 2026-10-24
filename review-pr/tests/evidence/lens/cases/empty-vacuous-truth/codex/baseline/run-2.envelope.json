@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request changes requirement proof aggregation and adds a reviewed-batch helper with tests. The requirement calculation introduces an empty-input regression that should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:3 — correctness — `requirement_proven([])` now returns `True` because both the sum and length are zero; previously it returned `False`. — A requirement with no criteria is incorrectly marked proven.\n\n## Suggestions\n(none)\n\n## Strengths\n- Batch tests cover empty-input rejection, all-reviewed entries, and unreviewed entries.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.f7MHPbdXo9/review-pr.u48Pkh",
+  "head_sha": "de80f59304372ea75483dbfa066dfd0fdd7456af",
+  "base_sha": "cca31c1d3a045646faa6353c2e13759b2e6dc50f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ad4049059c01c529b0590208cb623226afbfb5b5"
+}

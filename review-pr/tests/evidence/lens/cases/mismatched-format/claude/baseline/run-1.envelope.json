@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, which build a \"Running: … (attempt N)\" line, and adds tests for both. `status` shortens the revision to a different length than the existing history and completion output, which goes against its own docstring and the PR's goal. The added test doesn't check the revision part of the line, so it misses this. This should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `status` uses `short_revision = revision[:7]`, but `history` and `completed` both use `revision[:12]` (lines 5 and 9). The docstring at line 13 says \"Show the deployment revision using the same identifier as history.\" — For the test fixture `REVISION`, the running line shows `0123456` while history and completion show `0123456789ab`. Users can't match a running deployment to its history and completion entries by identifier. The new test `test_running_status_contains_attempt` (tests/test_display.py:14-15) only checks the `\"Running: \"` prefix and the `\"(attempt 2)\"` suffix, so it passes even with the wrong length.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a small, separate helper, and `test_attempt_label` checks its full output for more than one input.\n- The existing `history` and `completed` behavior is unchanged and still covered by `test_existing_revision_output`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24031,
+    "cost_usd": 0.06329019999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ntwN2yG9cm/review-pr.Tn4jJn",
+  "head_sha": "0669d0e3c9eda2acd8c5131cea6a79380f707476",
+  "base_sha": "8a83826b33dcdb9f989ff0b6889053fbaf55b409",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "82aadad498a854dad67b66baabef54fe5610e1d2"
+}

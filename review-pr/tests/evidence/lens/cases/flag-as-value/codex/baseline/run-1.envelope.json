@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds optional JSON destinations and report writing. The JSON parser consumes subsequent options as paths, breaking the advertised combination with JUnit; this should be fixed before merging.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — `parse_args([\"--json\", \"--junit\", \"results.xml\"])` consumes `--junit` as the JSON destination, then raises `ValueError(\"unknown option: results.xml\")` — Users cannot combine the default JSON destination with a following JUnit option.\n\n## Suggestions\n(none)\n\n## Strengths\n- Added tests cover the standalone JSON default, writing an explicit JSON destination, and missing JUnit paths.\n\n## Not reviewed\n- Runtime verification was prohibited by the review instructions; tests were assessed by reading them.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ql34jZY6Rm/review-pr.YUGgzh",
+  "head_sha": "c3fb5a7c65c2a900ea660b13164e16cba21ee2ce",
+  "base_sha": "64fa40c3bbae953edd0525f04821a49a39624ed9",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bdabbbc28bd083366207b0bfaa15c6faf0bc9333"
+}

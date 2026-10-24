@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds an `adopt` flag to `merge` that overwrites existing keys with incoming values and records them as changes. It also restructures the `replace` branch and adds tests for adopt and replace. The adopt branch has no equality check. When an incoming value matches the stored one, `merge` still reports it as a change and rewrites the file, which breaks the module's promise to leave untouched files alone.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch sets `current[key] = value` and appends `key` without checking `current[key] != value`, unlike the `replace` branch at line 19. For example, `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `{\"theme\":\"dark\"}\\n` returns `[\"theme\"]` and rewrites the file as indented JSON. Passing `adopt=True, replace=True` hits the same unconditional branch. — Callers get a no-op reported as a change, and an untouched config file is reformatted. This contradicts the module docstring \"Merge settings while preserving untouched configuration files\" and the byte-preservation behavior that `test_unchanged_replacement_preserves_bytes` enforces for `replace`.\n\n## Suggestions\n- tests/test_config.py:18 — tests — `test_adopt_updates_setting` only covers adoption when the value differs. No test runs adopt with an equal existing value or checks that the file bytes stay the same, as `test_unchanged_replacement_preserves_bytes` does for `replace`. — That is why the unconditional rewrite at app/config.py:13 passes the suite unnoticed.\n\n## Strengths\n- The `replace` path still skips unchanged values via the nested `if current[key] != value:`, so the existing byte-preservation test for replacement still holds.\n- The new `test_replace_updates_different_setting` covers the replace-with-different-value branch, which had no test before.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21895,
+    "cost_usd": 0.0603004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xdpczeMfnu/review-pr.qVYSPd",
+  "head_sha": "56dac7ce1ef81e41ad603df991434ff6bc27c224",
+  "base_sha": "d6584156329e97ec782096453e4f94dedd921068",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "42f1df83936fdf59cae3238ac6654e397c490bb4"
+}

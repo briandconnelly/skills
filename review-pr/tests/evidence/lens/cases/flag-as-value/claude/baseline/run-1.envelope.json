@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds a `--json` option to `parse_args` that takes an optional path and defaults to `results.json`. It also adds a `write_reports` helper and the first CLI tests. The optional-path logic treats any next token as the JSON path, even when that token is another flag. As a result, `--json` cannot be followed by `--junit`, which is the combination the PR says it supports. This needs fixing before merge.\n\n## Critical\n- app/cli.py:15 — correctness — When `--json` has no path, the parser still takes the next token as its destination (`if i + 1 < len(args): destination = args[i + 1]`), even if that token is a flag. The `--junit` branch guards against this with `args[i + 1].startswith(\"--\")`, but this branch does not. For `[\"--json\", \"--junit\", \"out.xml\"]`, the parser sets `json` to `\"--junit\"`, skips past it, and then raises `ValueError(\"unknown option: out.xml\")`. For `[\"--json\", \"--junit\"]`, it returns `{\"json\": \"--junit\"}`. — Users can't pass the bare `--json` before `--junit`, which is the \"default destination … alongside the required --junit destination\" case in the PR description. One order fails with a misleading \"unknown option\" error. In the other, `write_reports` writes the JSON report to a file literally named `--junit` and never raises the required \"--junit requires a path\" error. No test passes `--json` followed by another flag, so the tests don't catch this.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The `--junit` change moves the assignment ahead of the index increment and keeps the same behaviour.\n- `test_required_junit_path` covers the missing-path error for both end-of-arguments and a following flag (`[\"--junit\", \"--json\"]`).\n- `test_json_default_and_explicit_path` uses `tmp_path`, so the write test leaves no files in the working tree.\n\n## Not reviewed\n(none)",
+    "duration_ms": 19973,
+    "cost_usd": 0.0620652,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6CGhpIVDxg/review-pr.GTegZg",
+  "head_sha": "8e567571e460b068374742d0121004ebdfd40c05",
+  "base_sha": "6628864857fc01e236968710b7ee572af1e19167",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f2bcff8ae2a4f8272ae8e434958921547176575b"
+}

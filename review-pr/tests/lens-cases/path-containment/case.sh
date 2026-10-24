@@ -60,6 +60,8 @@ def test_preview(tmp_path):
 
     (tmp_path / "notes.txt").write_text("hello")
     assert preview(tmp_path, "notes.txt") == "hello"
+    (tmp_path / "long.txt").write_text("x" * 500)
+    assert preview(tmp_path, "long.txt") == "x" * 200
     with pytest.raises(ValueError):
         preview(tmp_path / "home", tmp_path / "outside.txt")
 

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds missing-file fallbacks for saved results and display preferences, with tests for saved checks and preferences. The results fallback introduces a release-gate bypass that should be fixed before merge.\n\n## Critical\n- app/results.py:8 — correctness — When the results file does not exist, returning `[]` makes `release_allowed(path)` return `True` because `all([])` is true; previously the missing file raised an error. — A release is permitted without any saved checks.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The optional preferences fallback has an explanatory comment and a test asserting its caller-visible value.\n- Saved-check tests cover both passing and failing results.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.s9Uaa12PtK/review-pr.NMphfv",
+  "head_sha": "24762bc44c528f6ceeea993eadeef9c716d60b88",
+  "base_sha": "1ec7e123d4af2a44aa5de1bdc9436fe43ff3b6ae",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c97d06db6cb7333f147f7d88ac790505dd934815"
+}
