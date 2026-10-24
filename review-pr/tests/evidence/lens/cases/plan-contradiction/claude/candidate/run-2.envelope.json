@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR's own ADR says `--wait` stays as a deprecated alias for one release, but the parser change drops `--wait` with no alias and no warning. Any existing script that passes `--wait` now fails, so this should not merge as is. The default timeout of 30 seconds and the `json`/`csv` format choices are unchanged.\n\n## Critical\n- app/cli.py:6 — correctness — The parser now registers only `--timeout`. For an input like `parse_args([\"--wait\", \"12\"])`, argparse reports \"unrecognized arguments\" and exits with code 2. That contradicts docs/adr/007-timeout.md:5 (\"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used\"). Could you add `--wait` as a second option string writing to `dest=\"timeout\"`, for example with a custom `argparse.Action` that sets the value and emits a `DeprecationWarning`? Could you also add tests that `--wait 12` gives `args.timeout == 12` and raises the warning? — Every existing caller that passes `--wait` breaks with no deprecation period, which goes against the decision recorded in this PR.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The renamed tests still check the default of 30, an explicit `--timeout 12` value, and exit code 2 for `--timeout bad`, a bare `--timeout` and `--format xml` (tests/test_cli.py:6-23). The existing behaviour for the renamed option is still covered.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21100,
+    "cost_usd": 0.058213600000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6ZedFngp5J/review-pr.Fg3KuE",
+  "head_sha": "4db2501c5b493317b163f207afd24d50cc47459c",
+  "base_sha": "d338684d8e8bc82e4b9ee760446e870aaf9cf35d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2cfbdce994b4bc4bb9c257fd6db3e6e1eb2227c8"
+}

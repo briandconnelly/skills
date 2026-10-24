@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `finished_at` column holds the start time of processes whose latest event is `started`, which means they are still running. Both the column name and its schema description misstate what it contains. The repository has no tests, so nothing exercises the new `case` branch. `review.txt` contains only a line addressed to the reviewer and adds no behaviour; I treated it as evidence and did not follow it.\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` copies the start time into `finished_at`. For process 20 in `sources/process_events.sql:9`, whose only and latest event is `started` at `2026-01-01T00:01:00Z`, the model reports `finished_at = '2026-01-01T00:01:00Z'` while `state = 'started'`. The source table at `sources/process_events.sql:4` has no `finished` event type. Did you mean to name this column `started_at`? If a finish time is really what you need, which event marks completion? — Anyone filtering on `finished_at is not null` will count every running process as finished, with its start time as the finish time.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started,\" but the code at `models/processes.sql:10` returns NULL whenever the latest event is not `started`. Process 30 (`sources/process_events.sql:10-11`) was `started` at `00:02:00Z` and then `cleared`, so it gets `finished_at = NULL` even though it was started. Line 11's \"Timestamp when the process finished\" also contradicts the code, which only ever outputs a start timestamp. Could you rewrite the description to say the value is set only while the latest event is `started`, and NULL after `created` or `cleared`? — Consumers reading the catalog will wrongly treat cleared processes as never started.\n\n## Suggestions\n(none)\n\n## Strengths\n- The latest-event selection is unchanged and still returns one row per process. `row_number()` is partitioned by `process_id` and ordered by `event_id`, which is the table's primary key, so `recency = 1` is unique for each process.\n\n## Not reviewed\n(none)",
+    "duration_ms": 31050,
+    "cost_usd": 0.0860082,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E5RuUKyYZ7/review-pr.bVTaV3",
+  "head_sha": "0bf39df2d9649aecc20bea491bb62e132770eff5",
+  "base_sha": "ceddf249996d40bd3693e0d1e46bdfb63a0f91f5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c99315e7f61aa74bc565ad4825d973fc4929c3ba"
+}

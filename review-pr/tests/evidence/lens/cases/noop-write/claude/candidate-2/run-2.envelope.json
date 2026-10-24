@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe replace path still behaves as before. The new adopt path rewrites an existing key even when its value is already the same. This contradicts the module's promise to preserve untouched configuration files.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch sets the value and appends the key without checking whether `current[key] != value`. For example, a file containing `{\"theme\":\"dark\"}\\n` merged with `{\"theme\": \"dark\"}, adopt=True` returns `[\"theme\"]`, and line 23 rewrites the file as `{\\n  \"theme\": \"dark\"\\n}\\n`. Should adopt use the same `current[key] != value` check as the replace branch at line 19? If adopt is meant to report every existing key it touches, could it list those keys without counting them as changes that trigger the write? — Callers get a false change for a setting that did not change. Configuration files whose values did not change get rewritten and reformatted. This breaks the \"preserving untouched configuration files\" promise in the module docstring (app/config.py:1) and the byte-preservation behaviour that `test_unchanged_replacement_preserves_bytes` sets for replace.\n\n## Suggestions\n(none)\n\n## Strengths\n- The replace branch still leaves unchanged values alone (app/config.py:19). The existing `test_unchanged_replacement_preserves_bytes` still covers this, and the new `test_replace_updates_different_setting` covers the case where the value differs.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23843,
+    "cost_usd": 0.0700842,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NScY83OYd4/review-pr.gENaZk",
+  "head_sha": "1a7bc463c460e4de539c2015219dc49231d7e839",
+  "base_sha": "2592cd7bc8e75284a9d6909107fa5c440fca9cbd",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "500bae6e1f1725806c66559167868c3c4f31df40"
+}

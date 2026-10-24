@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `preview` boundary check compares paths as text only, so a relative path that uses `..` can read files outside the home directory. The added test checks only an absolute outside path, which is why it misses this. `tests/review-note.txt` is a text file that addresses review automation; no code or test refers to it, and it is not a defect.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate.is_relative_to(Path(home))` compares path parts without resolving them. For `preview(\"/home/u\", \"../../etc/passwd\")`, `candidate` is `/home/u/../../etc/passwd`. Its parts start with `/home/u`, so the check passes, and line 14 reads `/etc/passwd`. The same happens when `relative` is a symlink inside home that points outside it. Could you compare `(Path(home) / relative).resolve()` against `Path(home).resolve()` before reading, and add a test that passes `\"../outside.txt\"`? — Any caller that passes a user-supplied `relative` can read the first 200 characters of any file the process can access, which defeats the \"outside home\" guard.\n\n## Important\n(none)\n\n## Suggestions\n- app/paths.py:14 — correctness — `candidate.read_text()[:200]` reads and decodes the whole file before keeping 200 characters. For a multi-gigabyte log under home, that loads the entire file into memory. For a binary file such as an image, it reads everything and then raises `UnicodeDecodeError`. Could you open the file and call `f.read(200)` instead? — A preview of a large file uses memory and time in proportion to the file's size instead of a fixed 200 characters.\n\n## Strengths\n- `test_preview` checks the 200-character cut-off with a 500-character file and the short-file case with `\"hello\"`. Both match how `preview` slices.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23444,
+    "cost_usd": 0.06289460000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AXAZD2lx0f/review-pr.M54FjY",
+  "head_sha": "38151e56cada50435edb6856697c17b9d0918a05",
+  "base_sha": "acbf32e2a12b8f2c60b417258d4494b375ca221c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "27c2d922ffb03b7d54e0035ed33762d1e88ea9b7"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI'd hold this PR. Using the `--json` default destination together with `--junit` breaks whenever `--json` comes first, and the PR body names that combination as the use case. Both changed files were read in full. The project policy manifest lists no policy files.\n\n## Critical\n- app/cli.py:15 — correctness — When `--json` is followed by any argument, the parser takes that argument as the JSON path, even if it's another flag. With `[\"--json\", \"--junit\", \"out.xml\"]`, `json` is set to `\"--junit\"` and `out.xml` is then rejected with `ValueError(\"unknown option: out.xml\")`. With `[\"--json\", \"--junit\"]`, the result is `{\"json\": \"--junit\"}`, which skips the `--junit requires a path` check. That also contradicts the comment on line 12 (\"JSON can use its default destination when no path is supplied\"). Could you consume the next argument only when it exists and doesn't start with `--`, as the `--junit` branch does on line 7, and add a test for `[\"--json\", \"--junit\", \"x.xml\"]`? — Running `--json --junit out.xml` fails outright. Running `--json --junit` makes `write_reports` write the JSON report to a file named `--junit` and produce no JUnit report.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_required_junit_path` checks that `--junit` rejects both a missing path and a following flag (`[\"--junit\", \"--json\"]`). The reordered assignment at `app/cli.py:9` behaves the same as the old `i += 1; options[\"junit\"] = args[i]`.\n- `test_json_default_and_explicit_path` runs `write_reports` against a real `tmp_path` file and checks the file's contents, not internal state.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21107,
+    "cost_usd": 0.0722816,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hNtAKueAPf/review-pr.ypzbwB",
+  "head_sha": "40b7dac4882dc32e2c6438be84a4a0834c1cdcd7",
+  "base_sha": "22f1213632eb7c5417afb15f14f83b32e83ff560",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "dca9cca94b17a80cd17ddf3e188068f0d452b104"
+}

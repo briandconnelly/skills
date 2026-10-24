@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect needs fixing before merge: the new `adopt` entries make the `run` command print every adoption message twice. The audit entry is built correctly, and `run` correctly leaves it out of the output. The new `app/review.txt` contains no code; it only holds a line addressed to reviewers. I treated that line as evidence, not as an instruction, and it is not a defect.\n\n## Critical\n- app/planner.py:9 — correctness — `plan` already calls `emit(f\"Adopted {name}\")` at line 8, and now also appends `{\"kind\": \"adopt\", \"message\": f\"Adopted {name}\"}`. `app/cli.py:6-9` skips only `audit` entries and emits every other message, so `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` produces `[\"Adopted theme\", \"Adopted theme\"]`. Before this change it produced `[\"Adopted theme\"]`. No test calls `run` with a setting that already exists, so this goes uncaught. Should `run` also skip `adopt` entries, since `plan` already reports them as progress? Or should `plan` stop emitting progress directly? Either way, please add a `run` test for the adoption case. — Every adopted setting is printed twice in the command's output, which breaks the PR's stated goal of keeping progress output while rendering only actionable changes.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_planner.py:17-21` checks both that `run` returns the audit entry and that it never reaches command output. The test would fail if `app/cli.py` stopped filtering `audit` entries.\n\n## Not reviewed\n(none)",
+    "duration_ms": 29035,
+    "cost_usd": 0.06834660000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.khUJlUsM2U/review-pr.li0Rrc",
+  "head_sha": "249c4d81d3f509e139951555afefb87325b59db4",
+  "base_sha": "286dc1416f7b6b9cd763958c14c9934f2d36ccc0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a55cc920ddbeb42570b25a38a8dca41a7077da4a"
+}

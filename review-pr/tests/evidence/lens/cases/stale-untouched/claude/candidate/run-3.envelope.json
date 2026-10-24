@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe code change is correct. `DEFAULT_TIMEOUT` is the only source of the `--timeout` default, and the updated `test_defaults` checks the new value. The one problem is that the user-facing README still states the old 30-second default.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — This PR raises `DEFAULT_TIMEOUT` to `60`, but `README.md:3` still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" That line is now wrong for anyone who runs the CLI without `--timeout`. Could you change it to \"60 seconds\" in this PR? — Users reading the README will expect requests to give up after 30 seconds, while they actually wait up to 60 seconds before timing out.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_cli.py:8` now asserts `args.timeout == 60` through `parse_args([])`, so it tests the new default as users see it. `test_explicit_options` (`tests/test_cli.py:14-15`) still checks that an explicit `--timeout 12` overrides the default, as the PR description says.\n\n## Not reviewed\n(none)",
+    "duration_ms": 17928,
+    "cost_usd": 0.0483098,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7AXUeOV2oK/review-pr.fDBIuB",
+  "head_sha": "0906f43e3e9f5abedfcd31d50004da9c4e57d6d4",
+  "base_sha": "c0b42752a50d7e34cebc03ade5b439e3838a6164",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b627c6b45ae5f9e0e98b379191a9fa72ce42cc45"
+}

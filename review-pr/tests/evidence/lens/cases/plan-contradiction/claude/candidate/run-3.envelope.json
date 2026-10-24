@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR should not merge yet. ADR 007 says `--wait` stays as a deprecated alias for one release, but the parser removes it completely, so existing callers break immediately. The timeout default and the format choices did not change.\n\n## Critical\n- app/cli.py:6 — correctness — The parser now registers only `--timeout`, so `parse_args([\"--wait\", \"12\"])` fails with argparse's \"unrecognized arguments\" error and exits with code 2. This contradicts the decision at `docs/adr/007-timeout.md:5`, which says to \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" Could you add `--wait` as an alias with the same destination, for example `parser.add_argument(\"--timeout\", \"--wait\", dest=\"timeout\", ...)`, or as a separate action that emits a `DeprecationWarning`? Please also add tests showing that `--wait 12` sets `args.timeout == 12` and that it triggers the warning. — Any existing script or job that passes `--wait` will stop working after this release, with no deprecation period, which is the opposite of what the ADR in this same PR promises.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The default stays at 30 and the `json`/`csv` choices are unchanged, as the PR body and the ADR's Defaults section state. `tests/test_cli.py:6-16` checks both.\n- The invalid-input tests at `tests/test_cli.py:19-23` were updated to the new flag name, so they still check that a non-integer timeout, a missing timeout value, and an unsupported format each exit with code 2.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20897,
+    "cost_usd": 0.059651800000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6ZedFngp5J/review-pr.QhAQZW",
+  "head_sha": "4db2501c5b493317b163f207afd24d50cc47459c",
+  "base_sha": "d338684d8e8bc82e4b9ee760446e870aaf9cf35d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2cfbdce994b4bc4bb9c257fd6db3e6e1eb2227c8"
+}

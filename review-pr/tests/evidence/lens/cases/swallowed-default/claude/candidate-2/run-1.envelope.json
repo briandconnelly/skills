@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `FileNotFoundError` fallback in `load_results` makes `release_allowed` pass the release gate whenever the results file is missing. The `display_preferences` fallback is fine: the adjacent comment explains it and a test covers it.\n\n## Critical\n- app/results.py:8 — correctness — When the results file is missing (for example, the check run never wrote `results.json`, or the path is mistyped), `load_results` returns `[]`. `release_allowed` (app/results.py:12) then evaluates `all(...)` over that empty list, which is `True`, so the release goes through with no saved checks at all. There is also no log and no comment saying this fallback is intended. Could the missing-file case either raise or make `release_allowed` return `False`? You could also add a test in tests/test_results.py that calls `release_allowed(tmp_path / \"missing.json\")` and asserts it does not allow the release. — The release gate fails open: a build with no recorded checks is treated as fully passing and gets released.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `display_preferences` (app/results.py:15-20) catches only `FileNotFoundError`, so malformed JSON still raises. Its fallback is explained by the adjacent comment, and `test_optional_preferences_have_visible_theme` and `test_saved_preferences_are_loaded` cover both of its paths.\n- `test_saved_checks_control_release` checks both a passing and a failing saved result, so it would catch an inverted gate.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22200,
+    "cost_usd": 0.06443080000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.B9lKCB5bfL/review-pr.c28qgX",
+  "head_sha": "0c779a914ec6805649e3c2be1129aed82e6456e1",
+  "base_sha": "02f90f7440423c42bef44b8a28a5a6fda4852509",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "027fc9c74608aa4bd19fb047b98d99b328d99af8"
+}

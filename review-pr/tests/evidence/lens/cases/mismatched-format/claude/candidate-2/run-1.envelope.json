@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne change is needed before merge: the new status line shortens the revision to 7 characters, while the docstring says it uses the same identifier as history (12 characters). The attempt label itself is correct and tested.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `status` uses `short_revision = revision[:7]`, but its docstring says \"Show the deployment revision using the same identifier as history\", and `history`/`completed` use `revision[:12]` (app/display.py:5, app/display.py:9). For `REVISION = \"0123456789abcdef…\"`, `status` prints `Running: 0123456 (attempt 2)` while history prints `History: 0123456789ab`. The new test `test_running_status_contains_attempt` (tests/test_display.py:11-15) only checks the `\"Running: \"` prefix and the `\"(attempt 2)\"` suffix, so it passes with either length. Could you change this to `revision[:12]` and assert the whole string, e.g. `status(REVISION, 2) == \"Running: 0123456789ab (attempt 2)\"`? — Operators see a different ID for a running deployment than in history and completion output, so they can't match a running deployment to its history entry by text, and the test suite won't catch the mismatch.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is tested with exact-equality checks for two inputs (tests/test_display.py:18-22).\n- The diff leaves the existing `history`/`completed` output and their tests unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21398,
+    "cost_usd": 0.06519620000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.99zmzAiNYf/review-pr.9pnypf",
+  "head_sha": "b077c1bdae9517e6bc1fc359bb36a7ab80025d2b",
+  "base_sha": "aacf1bc4da2ee8322237f5b6fafa57237d1afc3e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bf3230be6c070b78a936488b230c2da5f57fda36"
+}

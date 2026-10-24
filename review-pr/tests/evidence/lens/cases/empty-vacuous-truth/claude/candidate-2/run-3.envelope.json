@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRewriting `requirement_proven` from `bool(criteria) and all(...)` to a sum-and-compare changes its behavior on inputs it used to handle. An empty criteria list now counts as proven, and non-boolean `proven` values now raise errors or return wrong results instead of being read as true or false. The new `reviewed_batch` helper is correct and fully tested. The first regression should be fixed before merge.\n\n## Critical\n- app/proof.py:3 — correctness — With `criteria=[]`, `sum(...)` is `0` and `len(criteria)` is `0`, so `requirement_proven([])` now returns `True`. The base code's `bool(criteria) and ...` guard made it return `False`, and `reviewed_batch` in this same PR rejects an empty batch. Could you restore the empty check, for example `return bool(criteria) and all(item[\"proven\"] for item in criteria)`, and add `assert not requirement_proven([])` to `tests/test_proof.py`? — A requirement with no evidence at all is reported as proven, and no test catches the regression because `test_requirement_with_evidence` never passes an empty list.\n\n## Important\n- app/proof.py:2 — correctness — `sum(item[\"proven\"] for item in criteria)` needs numeric values. It no longer reads `proven` as true or false the way the base `all(...)` did. For example, `[{\"proven\": None}]`, which is what a JSON `null` produces, now raises `TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'` where it used to return `False`. And `[{\"proven\": 2}, {\"proven\": 0}]` returns `True` even though one criterion is unproven. Is there a reason not to use `all(item[\"proven\"] for item in criteria)` here? — Callers that pass null or non-bool `proven` values get a crash or a wrong \"proven\" result instead of `False`.\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` raises `ValueError` on an empty batch. `test_reviewed_batch_requires_entries` checks that error path, the all-reviewed cases with one and two entries, and the not-reviewed cases with one and two entries.\n\n## Not reviewed\n(none)",
+    "duration_ms": 27050,
+    "cost_usd": 0.0671142,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CXjzhuGFsk/review-pr.cjNePG",
+  "head_sha": "7a561999cb1ce1ae6b686deaea5a2b8d2b6ba4c5",
+  "base_sha": "c20265fd748127e8aed404e2e29492e5ba290d2d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "17829db701eb2d666e3721b4ee3876c5052f611c"
+}

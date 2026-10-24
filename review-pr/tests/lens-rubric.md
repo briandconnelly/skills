@@ -101,13 +101,14 @@ Two codex `policy-criteria` candidates failed their gates on one run each with t
 [lens-cases/config-option/case.sh](lens-cases/config-option/case.sh) plants guidance to omit shall while the validator still supports requiring it, allowed under `comments` or `correctness`; its decoy is a bullet-prefix hint that is correct under both supported options; an earlier decoy ended the hint with an invisible trailing space, which claude rightly reported, so it was rewritten and its baseline set aside.
 [lens-cases/data-doc-precision/case.sh](lens-cases/data-doc-precision/case.sh) plants a finish-time description for a start-event timestamp and a NULL description that omits cleared values, allowed under `comments` or `correctness` at either description or the SQL that writes the start time; its decoy accurately describes the process identifier.
 
-Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]`.
+Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.
 When the runner is not runnable the collector skips as RC7 in [the runner adapter contract](../references/runner-contract.md#execution-invariants) specifies; otherwise it scores the collected reports and applies the gate.
 A collection of fewer than three runs saves evidence but cannot pass the gate.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.
 Here `baseline` and `candidate` identify lens versions; both use contract scoring, and their gates differ only in the recall exemption above.
+A later lens edit, or a retry of a set-aside collection, uses a numbered name such as `candidate-2`; only a snapshot named exactly `baseline` has the recall exemption.
 Each snapshot contains `manifest`, `run-config.json`, `run-N.envelope.json`, `run-N.json` (native runner output), and `scores.tsv`.
 The configuration records `case`, `snapshot`, `runner`, `level`, `runs`, `budget_usd`, `collection_id`, and the SHA-256 of `references/review-lens.md` as `lens_sha256`.
 The envelopes also record `collection_id`.

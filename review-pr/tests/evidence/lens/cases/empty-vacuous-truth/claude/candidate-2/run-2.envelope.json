@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`reviewed_batch` is correct, and its tests cover the empty, all-true and mixed cases. One regression needs fixing first: the rewrite of `requirement_proven` drops the empty-list guard, so a requirement with no criteria now counts as proven.\n\n## Critical\n- app/proof.py:2 — correctness — The old code was `bool(criteria) and all(...)`, which returned `False` for `criteria=[]`. The new `sum(...) == len(criteria)` computes `0 == 0` for `[]` and returns `True`. The new test at tests/test_proof.py:7-8 only passes non-empty lists, so it doesn't catch this. Could you put back the `bool(criteria) and all(item[\"proven\"] for item in criteria)` form, or add an explicit empty check, and add an `assert not requirement_proven([])` case? — Any requirement with no attached criteria is now reported as proven, which is the opposite of what the previous code returned and the reverse of what \"proof status\" should mean.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` raises a clear `ValueError` on an empty batch instead of treating it as reviewed. tests/test_proof.py:11-17 covers the empty, single, all-true and mixed inputs.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20030,
+    "cost_usd": 0.05121459999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CXjzhuGFsk/review-pr.LIxhyB",
+  "head_sha": "7a561999cb1ce1ae6b686deaea5a2b8d2b6ba4c5",
+  "base_sha": "c20265fd748127e8aed404e2e29492e5ba290d2d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "17829db701eb2d666e3721b4ee3876c5052f611c"
+}

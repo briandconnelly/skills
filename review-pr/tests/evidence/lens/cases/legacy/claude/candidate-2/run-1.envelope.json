@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR should not be merged yet. It deletes `app/defaults.json`, but `app/startup.py` still reads that file. It also has an off-by-one in `is_valid_port`, and `load_config` hides every load or parse failure by returning `{}`. The policy manifest lists no policy files.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — The diff deletes `app/defaults.json` (`{\"timeout\":30}`), but `app/startup.py:6` still reads it with `json.loads(Path(__file__).with_name(\"defaults.json\").read_text())`. Every call to `load_defaults()` will now raise `FileNotFoundError`. Should this file be kept, or should `load_defaults` be moved to the new loader in the same change? — Application startup that loads defaults crashes on every run after merge.\n\n## Important\n- app/parse.py:22 — correctness — `return 0 < p < 65535` returns `False` for `is_valid_port(65535)`, but the docstring promises a valid range of \"1-65535\". Please change the check to `0 < p <= 65535` and add a `65535` assertion next to the lower-bound test. — Configs or callers that use port 65535 will be wrongly rejected as invalid.\n- app/parse.py:30 — silent-failure — `except Exception: return {}` turns a missing file (`FileNotFoundError`), an unreadable file (`PermissionError`) and malformed JSON (`ValueError`/`JSONDecodeError` from `json` or `ujson`) into an empty config. Nothing is logged and the caller gets no signal. The docstring says only \"Load the JSON config at path.\" and does not mention this fallback. Could you catch only `FileNotFoundError` for an intentional default, document that in the docstring, and let parse errors propagate or log them? — A config with a typo, or a path that was misspelled, will silently run with all defaults, and the operator has no clue why their settings are ignored.\n\n## Suggestions\n- app/parse.py:35 — comments — The docstring says `\"returns None when h is empty\"`, but the code does `if h == \"\": return \"\"`. Please pick one behavior and make the docstring and code agree. — Callers who follow the docstring and check `is None` will treat an empty host as a real hostname.\n- app/parse.py:40 — tests — `test_normalize_host_lowercases` only checks `\"Example.COM\"`. No test exercises the trailing-dot branch (e.g. `normalize_host(\"Example.COM.\") == \"example.com\"`) or the empty-input branch. — A regression in removing the FQDN dot would not be caught.\n\n## Strengths\n- `test_parse_timeout_millis` checks the new `ms` branch against its actual value (`\"1500ms\"` → `1.5`), not an implementation detail.\n- `test_load_config_reads_json` checks the success path end to end with a real temporary file.\n\n## Not reviewed\n(none)",
+    "duration_ms": 31168,
+    "cost_usd": 0.11036780000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3MLQ2BrSGn/review-pr.cHD4Pc",
+  "head_sha": "45792e8f96a8fa8ae311ab46831c969f56cc9e2e",
+  "base_sha": "9ce45c34bdc963d37478a821450419deedf627c3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9f686922adf01302e5a5c64021fa300cc9d240ed"
+}

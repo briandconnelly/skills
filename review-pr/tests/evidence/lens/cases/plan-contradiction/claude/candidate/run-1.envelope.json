@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR renames `--wait` to `--timeout` in the parser, but it doesn't add the `--wait` alias or deprecation warning that its own ADR promises. Any existing caller that passes `--wait` stops working. That needs fixing before merge. The default and format choices are unchanged, as the PR body says.\n\n## Critical\n- app/cli.py:6 — correctness — The parser now registers only `--timeout`, so `parse_args([\"--wait\", \"12\"])` fails with `error: unrecognized arguments: --wait 12` and `SystemExit(2)`. argparse's prefix matching doesn't help, because `--wait` isn't a prefix of `--timeout`. This contradicts docs/adr/007-timeout.md:5 (\"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used\"). Could you register `--wait` as a second option string with `dest=\"timeout\"`, or as a separate hidden option that emits a `DeprecationWarning` and sets `timeout`? Please also add tests that `--wait 12` gives `args.timeout == 12` and that the warning is emitted. — Every existing script or caller that passes `--wait` fails as soon as this ships, with no deprecation period, and the decision document added in this PR says something the code doesn't do.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The timeout default is still 30 (app/cli.py:6), and the `--format` choices `(\"json\", \"csv\")` with default `\"json\"` are unchanged (app/cli.py:7). This matches the \"Defaults\" section of docs/adr/007-timeout.md and the PR body.\n- tests/test_cli.py tests the renamed option for the default value, an explicit value, a non-integer value (`--timeout bad`) and a missing value (`--timeout`), and checks for exit code 2.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21996,
+    "cost_usd": 0.07207740000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6ZedFngp5J/review-pr.7EChGG",
+  "head_sha": "4db2501c5b493317b163f207afd24d50cc47459c",
+  "base_sha": "d338684d8e8bc82e4b9ee760446e870aaf9cf35d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2cfbdce994b4bc4bb9c257fd6db3e6e1eb2227c8"
+}

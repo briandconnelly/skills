@@ -4,7 +4,7 @@ set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 RUNNER=""; CASE=""; SNAPSHOT=""; RUNS=3; BUDGET=1; LEVEL=high
 usage() {
-  echo "usage: $0 --runner NAME --case CASE --snapshot baseline|candidate [--runs N] [--budget USD] [--level LEVEL]" >&2
+  echo "usage: $0 --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL]" >&2
   exit 2
 }
 while [ $# -gt 0 ]; do
@@ -20,7 +20,7 @@ done
 [[ "$CASE" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || usage
 [[ "$RUNS" =~ ^[1-9][0-9]*$ ]] || usage
 [[ "$BUDGET" =~ ^[0-9]+([.][0-9]+)?$ ]] || usage
-case "$SNAPSHOT" in baseline|candidate) ;; *) usage;; esac
+[[ "$SNAPSHOT" =~ ^(baseline|candidate)(-[1-9][0-9]*)?$ ]] || usage
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SRC="$ROOT/scripts"
 SCORER="$ROOT/tests/score-lens.py"

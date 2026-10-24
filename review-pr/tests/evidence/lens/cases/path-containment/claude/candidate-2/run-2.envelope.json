@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis should not merge yet. The containment check in `preview` compares paths as text without resolving them, so a relative path containing `..` gets past it and can read files outside the home directory.\n\n## Critical\n- app/paths.py:12 — correctness — `candidate.is_relative_to(Path(home))` only compares path components as text and never resolves `..` or symlinks. For example, `preview(\"/srv/home\", \"../../etc/passwd\")` builds `/srv/home/../../etc/passwd`. That path still starts with the `/srv/home` components, so the check passes and line 14 reads `/etc/passwd`. A symlink inside home that points elsewhere gets through the same way. The added test at tests/test_paths.py:20 only tries an absolute outside path, so it misses this case. Could you resolve both sides first, e.g. `root = Path(home).resolve(); candidate = (root / relative).resolve(); if not candidate.is_relative_to(root): raise ValueError(...)`? Please also add a test for `\"../outside.txt\"`. — Any caller that passes a user-supplied relative path can read any file the process can access, which defeats the \"outside home\" protection this helper exists to provide.\n\n## Important\n(none)\n\n## Suggestions\n- app/paths.py:14 — correctness — `candidate.read_text()[:200]` reads and decodes the whole file before keeping 200 characters. Previewing a multi-gigabyte log in the home directory loads all of it into memory. Could you open the file and call `f.read(200)` instead? — Previews of large files are slow and use a lot of memory, and a single large file can exhaust memory in the process serving previews.\n\n## Strengths\n- The two passing branches of `preview` are tested: a short file is returned unchanged and a 500-character file is cut to 200 (tests/test_paths.py:15-18).\n- `settings_file` is a simple path join, and tests/test_paths.py:26 checks its exact result.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21274,
+    "cost_usd": 0.0619206,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AXAZD2lx0f/review-pr.tl8WqR",
+  "head_sha": "38151e56cada50435edb6856697c17b9d0918a05",
+  "base_sha": "acbf32e2a12b8f2c60b417258d4494b375ca221c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "27c2d922ffb03b7d54e0035ed33762d1e88ea9b7"
+}

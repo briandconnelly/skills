@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe audit entry is added correctly, and `run` filters it out of command output as described. The new `adopt` change is not filtered the same way. As a result, every adopted setting is now printed twice when the command runs, so this should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — `plan` already calls `emit(f\"Adopted {name}\")` at line 8, and this line now also appends a `{\"kind\": \"adopt\", ...}` change. `run` emits every change that is not an audit entry (the stale line is `app/cli.py:9`, which only skips `\"audit\"` at `app/cli.py:7`). So `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` now produces `[\"Adopted theme\", \"Adopted theme\"]` where it used to produce `[\"Adopted theme\"]`. No test calls `run` with a setting that already exists, so nothing catches this. Should `run` also skip `\"adopt\"` entries, since `plan` already emitted their progress line? If so, please add a `run` test with an existing setting that asserts `messages == [\"Adopted theme\"]`. — Command output repeats a line for every adopted setting. That contradicts the PR's statement that the command keeps rendering only actionable changes, and it breaks any consumer that reads `emit` output line by line.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_audit_is_returned_without_command_output` checks the behavior you'd expect from outside: the audit record is returned last with the right count, and it does not appear in `messages`. It would fail if the audit entry were missing or if `run` printed it.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23662,
+    "cost_usd": 0.0657572,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.khUJlUsM2U/review-pr.27OdDh",
+  "head_sha": "249c4d81d3f509e139951555afefb87325b59db4",
+  "base_sha": "286dc1416f7b6b9cd763958c14c9934f2d36ccc0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a55cc920ddbeb42570b25a38a8dca41a7077da4a"
+}

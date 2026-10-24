@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR shouldn't merge yet. The project policy in `AGENTS.md` caps retry helpers under `app/` at 5 attempts, and `fetch_with_retry` defaults to and allows 10. The PR gets around this by rewriting the policy line in the same change, and the only stated reason is the unverified claim that \"the upstream now sheds load itself\". The retry and re-raise logic is otherwise sound.\n\n## Critical\n- app/net.py:19 — correctness — `fetch_with_retry` allows up to 10 attempts and also defaults to 10 (`attempts=10` at `app/net.py:13`). Project policy says \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The PR changes that rule to 10 at `AGENTS.md:5` in the same change that relies on it, and the tests lock in the higher number (`tests/test_net.py:53` asserts `len(calls) == 10`, and `tests/test_net.py:95` treats `attempts=10` as valid). Could you change the default and the bound to 5, update the error message and both tests, and drop the `AGENTS.md` edit unless the policy owners approve it separately? — When the upstream is down, every caller using the default makes 10 requests and waits 4.5 s (9 × 0.5 s) instead of the policy's 5 requests. That doubles the load this rule exists to limit.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — `except OSError` also catches `urllib.error.HTTPError` (a subclass of `URLError`, which is a subclass of `OSError`). So a permanent client error, such as a 404 for a mistyped `url` or a 400, gets retried on every attempt with a sleep in between. Would you re-raise `HTTPError` with a 4xx status right away and retry only connection errors and 5xx responses? — With the default settings, a 404 costs the caller 4.5 s and sends 10 identical requests before the same error comes back.\n- app/net.py:27 — tests — Every test that reaches the retry path replaces `time.sleep` with `lambda s: None` (`tests/test_net.py:33`, `:46`, `:64`). The only test that records sleeps uses `attempts=1`, where no sleep happens. So nothing checks that `time.sleep(delay)` runs between failed attempts or receives `delay`. Could you record sleeps in `test_fetch_with_retry_raises_after_exhaustion` and assert `sleeps == [0.5]`? — If someone removes or breaks the sleep, retries become a tight loop that hits a failing upstream back-to-back, and every test still passes.\n\n## Strengths\n- The last `OSError` is re-raised unchanged once attempts run out, so callers see the real failure instead of a default value (`app/net.py:25-26`).\n- Invalid `attempts` values are rejected before any request is made, and `tests/test_net.py:94-101` tests both sides of the range.\n- There is no sleep after the final failed attempt, matching the docstring, and `tests/test_net.py:74-91` checks this.\n\n## Not reviewed\n- `AGENTS.md` at pr-11: the working-tree copy has uncommitted changes (`git status` shows `M AGENTS.md`) and still contains the 5-attempt rule, so I saw the PR-head text only in the diff hunk (lines 2–8). Run `git show HEAD:AGENTS.md` in this repository to get the full PR-head file.\n- `make selfcheck`, which `AGENTS.md` asks contributors to run: I didn't run it or the test suite, because this review is limited to reading files.",
+    "duration_ms": 45735,
+    "cost_usd": 0.1249618,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.2AwPfw9XBM/review-pr.9EHV8j",
+  "head_sha": "8e3b75b51d97e096f606f297bd298711514eac63",
+  "base_sha": "8d5824ccb4f9fafebb6469a8713c0be105e5764f",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ed9ea9f340f9a42868d0e2ad5918e9bd90513d48"
+}
