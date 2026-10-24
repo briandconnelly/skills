@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change raises `MIN_PASSWORD_LENGTH` from 8 to 12 in `app/reset.py` and `app/signup.py`, and both validators now enforce `len(password) >= 12`. The updated tests cover lengths 11, 12 and 13 around the new limit. I found no defects in the changed lines. One scope question: the PR body says this \"raises the minimum in the password validators\", but `app/invite.py:1` still sets `MIN_PASSWORD_LENGTH = 8`, and `tests/test_invite.py:8` still expects that limit. The diff doesn't touch that file, so I haven't filed it as a finding. Did you mean to leave the invite flow at 8 characters?\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_reset.py:6` and `tests/test_signup.py:6` test lengths 11, 12 and 13. So a change to the constant or an off-by-one in `>=` would make each test fail.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21587,
+    "cost_usd": 0.08372299999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Mq6vPcKbiU/review-pr.rGRKym",
+  "head_sha": "56bd791999db80c1b37c588905472f07cd690afe",
+  "base_sha": "fcfdc5f1adc766bdd99f3d02f61965bc74c369f0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5f6ea52f90884f07dd6bc4b02b85f85518dc0ae1"
+}

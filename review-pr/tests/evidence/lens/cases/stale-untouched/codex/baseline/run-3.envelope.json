@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nNo defects found in the changed files. The tests cover the new default and explicit timeout overrides; they were read but not run.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The updated default assertion checks 60 seconds, while existing tests verify explicit timeout values still take precedence.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.9reQGoBtqM/review-pr.yrjeko",
+  "head_sha": "8a1e224608063ee4f22c4f267930f1ef90d50880",
+  "base_sha": "aa4ce8684a2812715e748e7cdf12d04ffd5f9b89",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d5624df7bad11431bb7043a45b5d8cc8a71b0287"
+}

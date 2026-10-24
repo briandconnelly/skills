@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change sets `DEFAULT_TIMEOUT` to 60 in `app/cli.py:3`, and `--timeout` still overrides it through `default=DEFAULT_TIMEOUT` at `app/cli.py:8`. I found no defects in the changed lines. One problem is outside the diff, so I couldn't file it as a finding: `README.md:3` still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" That line is now wrong, and the PR should update it as well.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_cli.py:8` now checks the new default of 60, so the test would fail if the default went back to 30.\n- `tests/test_cli.py:13-16` (`test_explicit_options`) checks that an explicit `--timeout 12` overrides the default, which matches the PR description.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18663,
+    "cost_usd": 0.052669400000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ybNkEmOVS8/review-pr.c4N2b0",
+  "head_sha": "8a1e224608063ee4f22c4f267930f1ef90d50880",
+  "base_sha": "aa4ce8684a2812715e748e7cdf12d04ffd5f9b89",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df3afe9f995ccade5c838e6cb370e369831621f3"
+}

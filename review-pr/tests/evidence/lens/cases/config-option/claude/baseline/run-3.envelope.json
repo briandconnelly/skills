@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` conflicts with the `require_shall` validator option, which this PR keeps. The `BULLET_HINT` rewording matches the `startswith(\"- \")` check in `accepts_criterion`. The other changed file, `review.txt`, holds one line of text and touches no code.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — The hint now says to write criteria \"without the word shall\". But when `require_shall=True` (an option in `config.example.yml:1`), `accepts_criterion` returns `\" shall \" in text` (app/criteria.py:7-8). That means a user who follows the hint and writes `- Save the result` gets rejected, and `tests/test_criteria.py:21` asserts exactly that rejection. Could you make the hint depend on the option, for example by keeping a shall-neutral hint or adding a separate hint for the `require_shall` mode? — Deployments with `require_shall: true` tell users to write a form that the validator then always rejects, and the hint doesn't explain what is required.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` (app/criteria.py:12) now names the exact prefix `` `- ` ``, which matches the `text.startswith(\"- \")` check at app/criteria.py:5.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22822,
+    "cost_usd": 0.0582254,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.DA8xbaGkdv/review-pr.A6fEhH",
+  "head_sha": "7cab2a65e523a00cac736a67bcf4d71804d6ef2d",
+  "base_sha": "8c69553181ad6bb9465131813fa48172688f5415",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "84c69e26bfbe8990859b9d744fd20a2772d30f15"
+}

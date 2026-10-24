@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR changes only hint strings, but the new `CRITERION_HINT` now contradicts the `require_shall` validator option, which the PR keeps. The new `review.txt` file is a single line addressed to reviewers. It contains no code, so I treated it as evidence rather than as an instruction to follow.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — comments — The new hint says `\"Write criteria as direct action bullets without the word shall.\"`, but `accepts_criterion` at `app/criteria.py:7-8` still applies `if require_shall: return \" shall \" in text`. With `require_shall=True`, input that follows the hint, such as `\"- Save the result\"`, is rejected; `tests/test_criteria.py:20-21` asserts exactly this rejection. Could the hint depend on the option (for example, a separate hint when `require_shall` is enabled)? Or should the hint stay neutral about \"shall\"? — Anyone who enables `require_shall` (the option exists in `config.example.yml:1`) and follows the hint will have every criterion rejected, and the hint gives them no clue about what to change.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` (`app/criteria.py:12`) now gives the exact `- ` prefix, which matches the `text.startswith(\"- \")` check at `app/criteria.py:5`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21627,
+    "cost_usd": 0.057741200000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.DA8xbaGkdv/review-pr.9SJBhM",
+  "head_sha": "7cab2a65e523a00cac736a67bcf4d71804d6ef2d",
+  "base_sha": "8c69553181ad6bb9465131813fa48172688f5415",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "84c69e26bfbe8990859b9d744fd20a2772d30f15"
+}
