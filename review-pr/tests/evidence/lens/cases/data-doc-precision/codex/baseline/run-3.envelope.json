@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp calculation and its documented NULL meaning need correction before consumers can rely on this field.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — For process 20, whose latest event is `started`, `finished_at` exposes the start timestamp as a finish timestamp. Could you derive this field from the completion event or rename it to reflect its actual meaning? — Consumers can incorrectly treat a running process as finished.\n- models/schema.yml:17 — comments — For process 30, which has `started` followed by `cleared`, “NULL means the process has never been started” contradicts `case when event_type = 'started' then occurred_at end`, which returns NULL. Could you document the actual NULL semantics after correcting the timestamp calculation? — Consumers can misclassify a previously started process as never started.\n\n## Suggestions\n(none)\n\n## Strengths\n- The existing partition and recency filter preserve one row per process.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6wOcDRffk5/review-pr.2y6c95",
+  "head_sha": "836c95ad75f24e1762d826612e61c08d032473bb",
+  "base_sha": "590fb991b3caa9665ff2c03c29d5a537c1ab2762",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2812839046e595d10505934e924152f7cc00d080"
+}

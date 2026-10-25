@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe revised criterion hint conflicts with a supported validator option and should be corrected.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — With `require_shall=True`, following “without the word shall” produces criteria such as `- Save the result`, which the validator rejects. Make the hint conditional on the option or explain both modes. — Authors following the hint cannot satisfy validation when that option is enabled.\n\n## Suggestions\n(none)\n\n## Strengths\n- The revised bullet-prefix hint accurately describes the validator’s required `- ` prefix.\n- Existing tests cover criteria with and without “shall” under both validator modes.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AspY1JdCqc/review-pr.yulZFA",
+  "head_sha": "10b024ed0d7064f72bff8af845f17120960f6ea1",
+  "base_sha": "76a1038587f023b4909a09e66216b8e12f288488",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "eabb1b64deab2b39b8b1a6bfa2254a399107d150"
+}

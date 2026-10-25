@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe changes are correct: `app/reset.py` and `app/signup.py` now require at least 12 characters, and both test files check the new boundary on each side. However, the PR description says the minimum is raised \"in the password validators\", and the invite flow was missed. `app/invite.py:1`, which this diff does not touch, still sets `MIN_PASSWORD_LENGTH = 8`, so the invite flow still accepts 8–11 character passwords such as `\"x\" * 8`. `tests/test_invite.py:8` still expects that. Should the invite validator and its test be raised to 12 in this PR so all three flows follow the policy?\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_reset.py:6` and `tests/test_signup.py:6` test lengths 11 (rejected) and 12 (accepted), which pins down the `>=` comparison at the new minimum. They also test 13 and the old minimum of 8, so the tests fail if the minimum goes back to 8.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23458,
+    "cost_usd": 0.0748268,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Mq6vPcKbiU/review-pr.TvutZJ",
+  "head_sha": "56bd791999db80c1b37c588905472f07cd690afe",
+  "base_sha": "fcfdc5f1adc766bdd99f3d02f61965bc74c369f0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5f6ea52f90884f07dd6bc4b02b85f85518dc0ae1"
+}

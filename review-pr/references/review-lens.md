@@ -82,7 +82,7 @@ Report a finding only when every gate below passes.
 - Existing coverage was checked before reporting a test gap.
 - A concrete impact is stated.
 
-Never report a defect in a file the diff does not touch.
+Report a defect in a file the diff does not touch only when the change makes that file wrong; cite the changed line that does so, and name the stale `path:line` in the defect field.
 
 Omit purely cosmetic formatting or style issues.
 

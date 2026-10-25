@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nMerge should wait. The new missing-file fallback in `load_results` opens the release gate when there are no saved checks. The display-preferences fallback is fine: a comment explains it and tests cover it.\n\n## Critical\n- app/results.py:8 — correctness — When the results file is missing (for example, the checks never ran or the path is wrong), `load_results` now returns `[]`. `release_allowed` (app/results.py:12) then evaluates `all([])`, which is `True`, so the release is allowed with no evidence that any check passed. Before this change, a missing file raised `FileNotFoundError` and the release stopped. No test covers this path: `test_saved_checks_control_release` always writes the file first. Could you remove the `FileNotFoundError` fallback from `load_results`, or have `release_allowed` return `False` when no results exist? Please also add a test that calls `release_allowed` on a path that doesn't exist and asserts it is falsy. — A missing or misplaced results file lets a release ship with no checks run.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `display_preferences` has tests for both branches: a missing file returns `{\"theme\": \"light\"}` (tests/test_results.py:12-13) and a saved file is loaded (tests/test_results.py:16-19).\n\n## Not reviewed\n(none)",
+    "duration_ms": 17591,
+    "cost_usd": 0.0441294,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.B9lKCB5bfL/review-pr.0C56YN",
+  "head_sha": "0c779a914ec6805649e3c2be1129aed82e6456e1",
+  "base_sha": "02f90f7440423c42bef44b8a28a5a6fda4852509",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "027fc9c74608aa4bd19fb047b98d99b328d99af8"
+}

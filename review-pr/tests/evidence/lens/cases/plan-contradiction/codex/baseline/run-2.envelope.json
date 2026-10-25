@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe option rename breaks existing `--wait` invocations despite the documented transition period. This compatibility issue should be fixed before merging.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — `parse_args([\"--wait\", \"12\"])` now exits with an unrecognized-argument error, although the new ADR specifies retaining `--wait` for one release. Please accept it as a deprecated alias for `--timeout` and emit the documented warning. — Existing scripts using `--wait` stop working immediately.\n\n## Suggestions\n(none)\n\n## Strengths\n- The parser retains the thirty-second default and JSON/CSV choices, with tests covering defaults and explicit format selection.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.KLF2K9xw3u/review-pr.X4E6Hl",
+  "head_sha": "f05558cb2182cdeb148319acf69ce3fd08eb300f",
+  "base_sha": "ef00533f358d70ea9e61d03d768dc384735b96c4",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9b19b426b06127a3b509c8f232d862a43e8916e8"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `finished_at` column holds the wrong value: it takes the timestamp of the latest `'started'` event, so it reports a start time as a finish time. Processes that really did finish get NULL. The repository has no tests, so nothing checks the new column for any event type.\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` fills `finished_at` only when the latest event is `'started'`. With the seed data in `sources/process_events.sql`, process 20 is still running (its latest event is `started` at `2026-01-01T00:01:00Z`) but gets `finished_at = 2026-01-01T00:01:00Z`. Process 30, which ended with `cleared` at `00:03:00Z`, gets `finished_at = NULL`. Should this branch match the terminal event (`event_type = 'cleared'`)? If the column is meant to hold a start time, it should be renamed `started_at`. — Anyone reading `processes.finished_at` will count running processes as finished and finished processes as unfinished, so duration and completion metrics built on this column will be wrong.\n\n## Important\n- models/schema.yml:17 — comments — The docs say \"NULL means the process has never been started.\" The SQL at `models/processes.sql:10` also returns NULL for any process whose latest event is `cleared`. Process 30 was started (event 3) and still gets NULL. Line 11 also says \"Timestamp when the process finished\", but the code fills the column on `'started'`. Could you rewrite both lines to match the corrected expression? — Consumers will read NULL as \"never started\" and miss processes that were started and then cleared, which hides finished work in the published schema catalog.\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 29023,
+    "cost_usd": 0.091155,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YXUNL73Dfo/review-pr.VZLzrv",
+  "head_sha": "accabd10d10f05e7a8589b60d039479a3194d028",
+  "base_sha": "4a60e5fd45defdf1781e20dc5e5390d86004fe36",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0b56ef5e37057b763b52e142bec1aba2ec1c5331"
+}

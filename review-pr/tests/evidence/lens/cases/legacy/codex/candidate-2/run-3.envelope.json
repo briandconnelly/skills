@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change breaks default loading, rejects a valid port, and hides configuration failures. These issues should be corrected before merge.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Deleting this file leaves app/startup.py:6 opening a nonexistent resource whenever `load_defaults()` is called; restore the file or update that loader to supply the defaults. — Every call to `load_defaults()` now raises `FileNotFoundError`.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns `False`, although 65535 is within the documented valid range; change the upper comparison to `<= 65535`. — Applications using this validator reject a valid TCP port.\n- app/parse.py:30 — silent-failure — For malformed JSON or an unreadable configuration file, `except Exception` discards the failure and returns `{}`; propagate the error or provide a diagnostic identifying the path and cause. — Callers cannot distinguish a valid empty configuration from a configuration that failed to load.\n\n## Suggestions\n- app/parse.py:40 — tests — No test exercises the trailing-dot branch: the only host test passes `\"Example.COM\"`; add an assertion that `normalize_host(\"Example.COM.\")` returns `\"example.com\"`. — Removing or breaking trailing-dot normalization would leave the current tests passing.\n- app/parse.py:35 — comments — The docstring promises “returns None when h is empty,” but the empty-input branch executes `return \"\"`; align the documentation and behavior. — Callers following the documented contract receive a different return value for `normalize_host(\"\")`.\n\n## Strengths\n- The millisecond test verifies fractional-second conversion with `\"1500ms\"`.\n- The configuration test verifies loading JSON from a temporary file.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZBjaRFEGJg/review-pr.8NzPAs",
+  "head_sha": "0ad75b21e4b654b6fa3ffc6e98443d97a20b957a",
+  "base_sha": "6c85b434d8899b162999c5e421da5defbb51a71c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "540b448976f5a9efda9c1df219d0c06bf7f15729"
+}

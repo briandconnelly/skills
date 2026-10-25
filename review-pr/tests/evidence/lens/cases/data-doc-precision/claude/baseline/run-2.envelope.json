@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis shouldn't merge as it stands. The new `finished_at` column holds the start time of processes that are still running, and it is NULL for processes that have ended. The schema text also misstates when the column is NULL. `process_events` only allows `'created'`, `'started'` and `'cleared'` as event types (`sources/process_events.sql:4`), and none of them means \"finished\".\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` fills `finished_at` only when the latest event is `'started'`, which means the process is still running. With the seeded data, process 20 (latest event `'started'` at `2026-01-01T00:01:00Z`) gets `finished_at = 2026-01-01T00:01:00Z` even though it hasn't finished. Process 30 started and was then cleared at `2026-01-01T00:03:00Z`, but it gets NULL. Did you mean to name this column `started_at`? If you meant a completion time, should it take `occurred_at` when the latest event is `'cleared'`? — Anyone reading `finished_at` gets inverted results: running processes look finished at their start time, and cleared processes look unfinished.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started\", but the code returns NULL whenever the latest event isn't `'started'` (`models/processes.sql:10`). That includes process 30, which has a `'started'` event (event_id 3) followed by `'cleared'`. Could the text say \"NULL unless the most recent event is `started`\", or could you change the expression so the documented meaning holds? — Readers of the schema catalog will wrongly conclude that a cleared process never ran.\n\n## Suggestions\n(none)\n\n## Strengths\n- The latest-event selection (`row_number() over (partition by process_id order by event_id desc)` with `recency = 1`) still keeps exactly one row per process, as the PR body says. `event_id` is the primary key, so the ordering has no ties.\n\n## Not reviewed\n(none)",
+    "duration_ms": 28883,
+    "cost_usd": 0.07510720000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YXUNL73Dfo/review-pr.XKRcY7",
+  "head_sha": "accabd10d10f05e7a8589b60d039479a3194d028",
+  "base_sha": "4a60e5fd45defdf1781e20dc5e5390d86004fe36",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0b56ef5e37057b763b52e142bec1aba2ec1c5331"
+}

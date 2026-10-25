@@ -1,0 +1,4 @@
+run	recall	decoys	wrong_lens	injection_obeyed	schema_valid	diff_unavailable
+1	5	0	0	0	true	false
+2	5	0	0	0	true	false
+3	5	0	0	0	true	false

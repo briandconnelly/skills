@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI would not merge this as it stands. `fetch_with_retry` allows up to 10 attempts and defaults to 10. The project policy I read, `AGENTS.md:5`, still says \"Retry helpers under app/ must cap attempts at 5\" because of past outages. The PR changes that line to 10 itself, and the only reason given is a claim, not verified anywhere in the repo, that the upstream \"now sheds load itself.\" The retry loop itself is correct: it re-raises the last `OSError`, doesn't sleep after the last attempt, and rejects 0 and 11.\n\n## Critical\n- app/net.py:19 — correctness — `if not 1 <= attempts <= 10` and the default `attempts=10` at `app/net.py:13` let a caller who passes no arguments make 10 calls. `AGENTS.md:5` requires a cap of 5, and the PR's change at `AGENTS.md:5` is what makes the code look compliant. The tests at `tests/test_net.py:53` (`assert len(calls) == 10`) and `tests/test_net.py:95` (accepting 10, rejecting 11) lock in the higher cap. Can you set the default and upper bound back to 5 and update those tests, or get the policy change approved separately from the code that depends on it? — When the upstream is down, every caller sends twice the allowed number of requests to it, which is the outage pattern the policy was written to stop. Each call can also block for up to 10 × 10 s timeout + 9 × 0.5 s ≈ 104.5 s.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — `except OSError` also catches `urllib.error.HTTPError`, a subclass of `OSError`. A permanent client error such as a 404 or 401 is retried the full number of times, with sleeps in between, before it is re-raised. Could you re-raise `HTTPError` immediately when `400 <= e.code < 500`? — With the default settings, a single bad URL makes 10 requests and adds 4.5 s of delay before the caller sees an error that retrying could never fix.\n- app/net.py:27 — tests — The sleep between failed attempts runs in tests but is never asserted. `tests/test_net.py:64` and `tests/test_net.py:46` replace `time.sleep` with `lambda s: None`, and the only sleep-recording test (`tests/test_net.py:74-91`) uses `attempts=1`, where no sleep happens. Could the `attempts=2` exhaustion test record sleeps and assert `sleeps == [0.5]`? — If `time.sleep(delay)` were removed or got the wrong argument, every test would still pass, and the retries would hit the upstream back-to-back.\n\n## Strengths\n- The tests I read cover the default attempt count, success on the third call, exhaustion with `attempts=2`, no sleep with `attempts=1`, and `ValueError` for both 0 and 11.\n- The docstring at `app/net.py:14-18` matches the code: the 1–10 range, sleeping after every failure except the last, and re-raising the last `OSError`.\n\n## Not reviewed\n- `AGENTS.md` at `pr-11` in full. The working tree has an uncommitted change to this file, and the checked-out copy I read says the cap is 5. I saw the PR's version only through the diff hunk (lines 2–8). Run `git show pr-11:AGENTS.md` to get it.",
+    "duration_ms": 43624,
+    "cost_usd": 0.109551,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.2AwPfw9XBM/review-pr.YZ8WO3",
+  "head_sha": "8e3b75b51d97e096f606f297bd298711514eac63",
+  "base_sha": "8d5824ccb4f9fafebb6469a8713c0be105e5764f",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ed9ea9f340f9a42868d0e2ad5918e9bd90513d48"
+}

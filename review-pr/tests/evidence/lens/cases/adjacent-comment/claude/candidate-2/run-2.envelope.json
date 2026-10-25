@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `Cache.set` stores keys as given, but `get` lower-cases them, so any value set under a key that isn't all lowercase can't be read back. The round-trip test only uses lowercase keys, so it doesn't catch this.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` without lower-casing the key, but `get` (app/cache.py:17) looks up `key.lower()`. So `c.set(\"Alpha\", 1); c.get(\"Alpha\")` returns `None`, and the entry under `\"Alpha\"` is never removed by `get`'s expiry branch either. This also breaks the rule in the comment at app/cache.py:14-15 (\"every path into _store lower-cases the key first\"). Could `set` write to `self._store[key.lower()]`? A mixed-case key in `test_set_then_get_round_trip` (e.g. `c.set(\"Alpha\", 1)`) would then catch this, since the test's lowercase `\"alpha\"` passes either way — impact: callers moving off direct `_store` writes, as the PR intends, get silent cache misses for any key with an uppercase letter. Those dead entries also pile up in `_store` because nothing ever evicts them.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` patches `time.monotonic` on the `time` module, which is the same name `app/cache.py` calls. That makes the expiry check deterministic and makes it actually test `set`'s expiry calculation and `get`'s eviction.\n- The updated comment at app/cache.py:7 (\"Entries expire 300 seconds after they are written.\") matches `DEFAULT_TTL = 300`. The default argument in `__init__` picks up the new value.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24575,
+    "cost_usd": 0.055563,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.jQpMyLVUWJ/review-pr.gqYHh7",
+  "head_sha": "6bbf5ed733076c9185f52dfe5df54ffdcdd359eb",
+  "base_sha": "8fc09435abade8e152f3419dc5bd1a8159094884",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bff698faa3c7b9ce598fd14266d516bfa5733ca3"
+}

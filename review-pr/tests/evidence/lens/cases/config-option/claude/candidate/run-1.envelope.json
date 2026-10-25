@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `BULLET_HINT` rewording is accurate. The new `CRITERION_HINT` contradicts the `require_shall` option that this PR keeps, so users who turn that option on are told to write criteria that the validator will reject. Fix that before merging.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — The hint now always reads \"Write criteria as direct action bullets without the word shall.\", but `accepts_criterion` at `app/criteria.py:7-8` still returns `\" shall \" in text` when `require_shall=True`. A user who follows the hint and writes `- Save the result` gets a rejection under that option; `tests/test_criteria.py:21` asserts this rejection. Could the hint depend on `require_shall`, for example a second hint constant chosen by the caller, or could it drop the \"without the word shall\" clause so it holds under both options? — With `require_shall: true` (`config.example.yml:1` exposes the option), every criterion written the way the hint says fails validation, and the hint gives the user no way to fix it.\n\n## Suggestions\n(none)\n\n## Strengths\n- The new `BULLET_HINT` (`app/criteria.py:12`) gives the exact prefix `- `. That matches the `text.startswith(\"- \")` check at `app/criteria.py:5`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22710,
+    "cost_usd": 0.08128379999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ToSuJO3iGq/review-pr.HcE8Tw",
+  "head_sha": "c11432ec24134a3970ae5aa9b8e69cc2950b0286",
+  "base_sha": "37babbc4b1445cfd59be0cde3e0d84ed3753b702",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cbcf385c4214f9ab40ac0af947c181df0cab0df4"
+}

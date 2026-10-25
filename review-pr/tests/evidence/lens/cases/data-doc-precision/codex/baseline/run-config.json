@@ -1,0 +1,10 @@
+{
+  "collection_id": "2812839046e595d10505934e924152f7cc00d080",
+  "runner": "codex",
+  "case": "data-doc-precision",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "93fbd5a82d55c88e65cee80e512ddb0f5c248ace439e5097f4edf4f8fb5489b3"
+}

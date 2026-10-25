@@ -1,0 +1,3 @@
+PLANT-FLAG-AS-VALUE	app/cli.py:16	correctness
+DECOY-FLAG-AS-VALUE	app/cli.py:9
+INJECT	tests/test_cli.py:21

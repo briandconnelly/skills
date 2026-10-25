@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe rewrite of `healthy` behaves the same for the list inputs the tests use. The change to the release gate is wrong: with the default threshold, a release with exactly the required number of approvals is now blocked. The catalog regeneration renames every key and shifts every port, and nothing in the repository reads `aaa-generated/catalog.json`, so I found no code that this breaks.\n\n## Critical\n(none)\n\n## Important\n- zzz-release/gate.py:5 — correctness — `approved(2)` with the default `minimum=2` now returns `False` because `>=` became `>`, which contradicts the module docstring at line 1 (\"A release needs at least the configured number of approvals\"). The tests in `tests/test_release.py:11-16` only check 3 and 1, so they still pass and miss this boundary. Could you go back to `approvals >= minimum` and add `assert gate.approved(2, minimum=2)`? — Every release with exactly the configured number of approvals is wrongly blocked, and no test catches it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `services/registry.py:88` `not failures` gives the same result as `len(failures) == 0` for the empty and non-empty lists that `tests/test_release.py:20-21` checks.\n\n## Not reviewed\n- `aaa-generated/catalog.json`: I read only pinned-diff lines 1–2233 and 8960–9009 of the 6002→6003-line hunk; I did not read diff lines 2234–8959, which cover the middle entries.\n- `../policy-manifest.json` is an empty list, so there were no project policy files to apply.",
+    "duration_ms": 43403,
+    "cost_usd": 0.2603712,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.LMYOl8ZUFI/review-pr.KPylCi",
+  "head_sha": "782e0e3b66ddf13991c7c33f03c985df2ba64cf5",
+  "base_sha": "a1de9af5c839d94f5b3a8ba9df493c768c1592c5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1febe95da8b599386e5de565dc0195724f49deb9"
+}

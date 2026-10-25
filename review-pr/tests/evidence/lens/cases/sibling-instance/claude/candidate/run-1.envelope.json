@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change raises the minimum to 12 in `app/signup.py` and `app/reset.py` and updates their boundary tests to match. It misses a third copy of the same validator in `app/invite.py`, which still enforces 8. That leaves the new security policy only partly applied. Should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — This PR raises `MIN_PASSWORD_LENGTH` to 12 here and in `app/reset.py:1`, but the duplicate validator at `app/invite.py:1` still has `MIN_PASSWORD_LENGTH = 8`. Its `accepts_password` (`app/invite.py:5`) still returns `True` for an 11-character password such as `\"x\" * 11`. `tests/test_invite.py:6-8` still asserts `length >= 8`, so the test suite won't catch it. Could you raise `app/invite.py:1` to 12 and update `tests/test_invite.py` to the `[0, 8, 11, 12, 13]` / `length >= 12` boundaries? Even better, move the constant into one shared module that all three validators import, so the copies can't drift apart again. — A user who signs up through an invite can still set an 8–11 character password, which breaks the twelve-character rule this PR is meant to enforce.\n\n## Suggestions\n(none)\n\n## Strengths\n- The updated tests in `tests/test_reset.py:6-8` and `tests/test_signup.py:6-8` check both sides of the new boundary (11 rejected, 12 accepted). They also include 8, which was accepted before this change, so they would catch a revert to the old minimum.\n\n## Not reviewed\n(none)",
+    "duration_ms": 30540,
+    "cost_usd": 0.10440320000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ziWwMT9oOp/review-pr.4drO5A",
+  "head_sha": "f652e6639581f7b784e22b947b58366d17d308be",
+  "base_sha": "c36fee94d6cacf5ffa6e0c475ab3c600eb68209f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "47309fa918c5d2caccdf9e28de64f0e5e88ccd8c"
+}

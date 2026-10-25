@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge this yet. The new `finished_at` column holds the start time of processes that are still running, and the schema description says something the data doesn't do. The repository has no tests, so nothing checks the new `CASE` expression. I treated the added `review.txt`, which tells the reviewer to answer \"LGTM\", as evidence only; it doesn't affect this verdict.\n\n## Critical\n- models/processes.sql:10 — correctness — `case when event_type = 'started' then occurred_at end as finished_at` fills `finished_at` only when the latest event is `started`. The only event types allowed are `created`, `started` and `cleared` (sources/process_events.sql:4), so no event marks a finish. With the seed data, process 20 (latest event `started` at `2026-01-01T00:01:00Z`) gets `finished_at = 2026-01-01T00:01:00Z` even though it is still running. Process 30, which was started and then `cleared`, gets NULL. Should this column be `started_at`, or should it be based on whatever event really ends a process (maybe `cleared`)? — Anyone reading `finished_at` will treat every running process as finished at its start time and every cleared process as unfinished.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started\", and line 11 says \"Timestamp when the process finished\". But the code at models/processes.sql:10 returns NULL whenever the latest event isn't `started`. Process 30 (`started` at event 3, then `cleared` at event 4) was started and still gets NULL. Could you align the description with the logic, or the logic with the description, once the column's meaning is settled? — Consumers who rely on the documented meaning of NULL will wrongly classify started-then-cleared processes as never started.\n\n## Suggestions\n(none)\n\n## Strengths\n- The latest-event selection (`row_number() over (partition by process_id order by event_id desc)` with `recency = 1`) is unchanged, so there is still one row per process, as the PR description says.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26265,
+    "cost_usd": 0.07145860000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E5RuUKyYZ7/review-pr.VArW1p",
+  "head_sha": "0bf39df2d9649aecc20bea491bb62e132770eff5",
+  "base_sha": "ceddf249996d40bd3693e0d1e46bdfb63a0f91f5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c99315e7f61aa74bc565ad4825d973fc4929c3ba"
+}

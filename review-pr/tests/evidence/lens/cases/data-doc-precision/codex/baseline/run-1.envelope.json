@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp does not match its documented meaning, and the NULL description contradicts the supplied event history. These should be corrected before relying on the new column.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — For process 20, whose only event is `started`, the expression exposes its start timestamp as `finished_at`. Populate this column from the event that denotes completion, or rename it to describe the timestamp actually returned. — Consumers receive a completion timestamp for a process with no completion event.\n- models/schema.yml:17 — comments — “NULL means the process has never been started” contradicts `case when event_type = 'started' then occurred_at end`: process 30 has a `started` event followed by `cleared`, so its latest row returns NULL despite having started. Describe NULL according to the latest-event behavior. — Consumers following the catalog will misclassify previously started processes.\n\n## Suggestions\n(none)\n\n## Strengths\n- The existing ranking and filter continue to select one row per process using the greatest event ID.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6wOcDRffk5/review-pr.GiFuP2",
+  "head_sha": "836c95ad75f24e1762d826612e61c08d032473bb",
+  "base_sha": "590fb991b3caa9665ff2c03c29d5a537c1ab2762",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2812839046e595d10505934e924152f7cc00d080"
+}

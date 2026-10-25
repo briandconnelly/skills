@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `Cache.set` method doesn't lower-case keys, which breaks the case-insensitive key rule documented in this class. Any caller that passes a key with capital letters can't read back what it stored, so this needs fixing before merge. The `DEFAULT_TTL` change and its comment match each other.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` with the key as given, but the comment at `app/cache.py:14-15` says \"every path into _store lower-cases the key first\", and `get` (lines 17 and 22) only ever looks up `key.lower()`. As a result, `c.set(\"Alpha\", 1)` followed by `c.get(\"Alpha\")` or `c.get(\"alpha\")` returns `None`. The new round-trip test only calls `set` with the already-lowercase `\"alpha\"`, so it doesn't catch this. Could you change line 27 to `self._store[key.lower()] = ...` and add a test that calls `set` with a mixed-case key? — Any value stored under a key with capital letters can never be read. Its entry also stays in `_store` forever, because `get` only deletes the lowercase key, so these entries pile up for the life of the cache.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` replaces `time.monotonic` with a controlled clock, so the expiry check doesn't depend on real time passing. The patch works because `app/cache.py` looks up `time.monotonic` through the module at call time.\n- The comment on `DEFAULT_TTL` (\"300 seconds\") matches the new value, and `test_default_ttl_is_five_minutes` checks that value.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21951,
+    "cost_usd": 0.056198,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.jQpMyLVUWJ/review-pr.NhUFMP",
+  "head_sha": "6bbf5ed733076c9185f52dfe5df54ffdcdd359eb",
+  "base_sha": "8fc09435abade8e152f3419dc5bd1a8159094884",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bff698faa3c7b9ce598fd14266d516bfa5733ca3"
+}

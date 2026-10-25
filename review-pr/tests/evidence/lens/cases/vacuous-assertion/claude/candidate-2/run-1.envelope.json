@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe production change in `app/report.py` is correct: only a header of exactly `REPORT v1` is now accepted, and `test_rejects_unsupported_header_with_complete_report` covers that check. However, one of the two added regression tests passes for an unrelated reason, so it does not protect the version check it says it guards.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:10 — tests — `test_rejects_legacy_header` never sends a v0 header to the parser. The input `\"REPORT v1\\nversion=v1\"` has no `END` line, and `rsplit(\"v1\", 1)` swaps only the last `v1`, so the result is `\"REPORT v1\\nversion=v0\"`. `parse_report` returns `None` for it at the `lines[-1] != \"END\"` check (`app/report.py:3`) and never reaches the new header check at `app/report.py:5`. The comment at line 9 says the test changes \"the fixture's version to v0\", but it actually changes a body field. Could you use a complete fixture with a legacy header, such as `\"REPORT v0\\nvalue=ok\\nEND\"`, or else delete the test since line 16 already covers that case? — The test would still pass if the header check were reverted to `startswith(\"REPORT \")` or removed, so it gives false assurance about the regression it names.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_rejects_unsupported_header_with_complete_report` (tests/test_report.py:15-17) would fail against the old `startswith(\"REPORT \")` check, because the old code returned `[\"value=ok\"]` for `\"REPORT v0\\nvalue=ok\\nEND\"`. It is a real regression test for the new check.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18036,
+    "cost_usd": 0.0643656,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.zEEC69NfeF/review-pr.XR8z0H",
+  "head_sha": "4581d7b2ef82ce91f9c7069306381d416dcebeaf",
+  "base_sha": "153bf542f661d756ebcd941142725523caba74de",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8bed2352a3efb5574fceafec78a382392b644d2b"
+}

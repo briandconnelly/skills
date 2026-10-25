@@ -1,0 +1,10 @@
+{
+  "collection_id": "9b19b426b06127a3b509c8f232d862a43e8916e8",
+  "runner": "codex",
+  "case": "plan-contradiction",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "93fbd5a82d55c88e65cee80e512ddb0f5c248ace439e5097f4edf4f8fb5489b3"
+}
