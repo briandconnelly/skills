@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`cleanup_report` is fine, but `save_report` must not merge as written. It reports success even when the write fails, and the test for that case asserts nothing.\n\n## Critical\n- app/reports.py:8 — silent-failure — `save_report` catches every `OSError` from `path.write_text` with `except OSError: pass`. It then still prints `Report saved to {path}` and returns `0`. For example, if the path's parent directory doesn't exist (`tmp_path / \"missing\" / \"report.txt\"`), or the location is read-only or the disk is full, nothing is written, yet the user is told the report was saved and the caller gets a success code. The matching test at `tests/test_reports.py:13-14` calls `save_report` on that missing-directory path but has no assertion, so it can't catch this. Could you drop the `try/except` so the `OSError` reaches the caller, or catch it, print an error that names the path and the OS reason, and return a non-zero code? Could you also make the test check that the call fails and that no \"saved\" message is printed? — Users and scripts that check the return code are told the report exists at a path where it doesn't, so the report is silently lost.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The comment on `cleanup_report` (`app/reports.py:15`) explains why only `FileNotFoundError` is suppressed. `tests/test_reports.py:17-28` covers the existing-file case, the already-absent case, and an `OSError` that still propagates (calling `unlink` on a directory).\n\n## Not reviewed\n(none)",
+    "duration_ms": 20512,
+    "cost_usd": 0.0710336,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.kbUR0dc1wJ/review-pr.HsqxIk",
+  "head_sha": "f050e6a421924c3903a636b116657b1ee55f8736",
+  "base_sha": "6eb47395f5e71dcdb3bbce0a611eb04410543b43",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "fdd3699a6868f89e74b9b62be11404ead9936c2d"
+}

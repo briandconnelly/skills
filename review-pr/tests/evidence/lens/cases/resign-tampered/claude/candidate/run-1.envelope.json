@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`register_new_files` keeps existing fingerprints as intended. `refresh_fingerprints` overwrites the fingerprint of every name it is given, including files already in the manifest. The PR body says existing fingerprints let verification detect hand-edited tracked files, so refreshing a tracked file removes that check for it. I'd fix this before merging.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — `refresh_fingerprints` sets `entries[name] = fingerprint(root / name)` for every name, whether or not the name is already in the manifest. Suppose `tracked.txt` was edited by hand after it was fingerprinted, and someone runs `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` after adding `new.txt`. The edited content becomes the new baseline, and `verify` then returns `True`. The PR describes this as a refresh to run \"after adding new files\", and `register_new_files` (line 24) already guards with `if name not in entries`. Should refresh skip names that are already present, or only update entries whose current fingerprint still matches? The test `test_refresh_registers_new_files_and_keeps_unchanged_entries` (tests/test_integrity.py:6-18) only refreshes a tracked file that hasn't changed, so its `\"tracked.txt\": original` assertion passes whether the entry is kept or recomputed. A case that edits `tracked.txt` before refreshing would catch this. — A tampered tracked file is silently re-baselined, and the integrity manifest no longer detects that edit.\n\n## Suggestions\n(none)\n\n## Strengths\n- `register_new_files` keeps existing entries and handles duplicate names. `test_register_preserves_existing_fingerprints` checks this against an edited tracked file and asserts that `verify` then fails (tests/test_integrity.py:21-34).\n\n## Not reviewed\n(none)",
+    "duration_ms": 28044,
+    "cost_usd": 0.0919172,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FQKB02ejVT/review-pr.CtSER8",
+  "head_sha": "3ff794a213df272daa6f53fcc02abf9d879182c6",
+  "base_sha": "7fc34eb4eff49851a8092166ace2fb0efffae8c5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b53e331f91a74d37f9ccd26701d09ecabff4b0ca"
+}

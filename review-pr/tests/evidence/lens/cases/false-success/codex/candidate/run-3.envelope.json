@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFailed saves are reported as successful and should be corrected before merge. All changed files and tests were read.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — When the destination’s parent directory does not exist, `save_report` swallows `FileNotFoundError`, prints “Report saved,” and returns zero; please propagate the exception or return a failure status and suppress the success message. — Users and callers are told the report was saved even though no file was created.\n\n## Suggestions\n(none)\n\n## Strengths\n- Cleanup intentionally tolerates absent files while preserving other errors, with tests covering both behaviors.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1KmpMmXI9g/review-pr.Qm1hKp",
+  "head_sha": "f050e6a421924c3903a636b116657b1ee55f8736",
+  "base_sha": "6eb47395f5e71dcdb3bbce0a611eb04410543b43",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df5d7a4c766f16b645db6d87c6049424d4d5212c"
+}
