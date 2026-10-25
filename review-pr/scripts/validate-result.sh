@@ -59,7 +59,7 @@ END {
 }
 function valid_finding(line,   fields, count, j) {
   count=split(line, fields, " — ")
-  if (count<4 || fields[1] !~ /^- .+:[1-9][0-9]*( \[base\])?$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
+  if (count<4 || fields[1] !~ /^- (.+:[1-9][0-9]*( \[base\])?|PR body)$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
   for (j=3;j<=count;j++) if (fields[j] ~ /^[[:space:]]*$/) return 0
   return 1
 }
@@ -71,7 +71,7 @@ function check_section(name, findings,   b, L, i, m, nonblank, none) {
     nonblank++
     if (L[i]=="(none)") { none++; continue }
     if (L[i] !~ /^- /) { err(name ": line is neither (none) nor a bullet: " substr(L[i],1,40)); continue }
-    if (findings && !valid_finding(L[i])) err(name ": bullet is not \"- path:line — lens — sentence — why\": " substr(L[i],1,60))
+    if (findings && !valid_finding(L[i])) err(name ": bullet is not \"- path:line — lens — sentence — why\" (or \"- PR body — lens — sentence — why\"): " substr(L[i],1,60))
   }
   if (none && nonblank!=1) err(name ": (none) mixed with other lines")
   if (nonblank==0) err(name ": empty section")
