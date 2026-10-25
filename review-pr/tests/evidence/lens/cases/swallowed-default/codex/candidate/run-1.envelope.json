@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe missing-results fallback allows release without saved checks and should be corrected before merge.\n\n## Critical\n- app/results.py:8 — correctness — When the results file is absent, `load_results()` returns `[]`, so `release_allowed()` evaluates `all([])` as `True`. Preserve the exception or explicitly deny release when results are missing. — A missing or incorrectly configured results path permits release without any checks.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests exercise passing and failing saved checks, saved display preferences, and the documented fallback for absent preferences.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3Gkmr6XY66/review-pr.HjL7yY",
+  "head_sha": "3be0292c367bf9056d40789891bdc97e31a6848a",
+  "base_sha": "d70ecb822108d89e2d3f920f56423b15bebdeef2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7b875466837c5d50bf643efce644135513412f97"
+}

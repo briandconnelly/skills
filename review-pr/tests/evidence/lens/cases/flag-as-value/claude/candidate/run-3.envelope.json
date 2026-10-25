@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `--json` branch takes whatever token comes next as its path, even when that token is another flag, so `--json` doesn't work with `--junit` in the common order. Fix that before merging. I found nothing to report under silent-failure or comments, and no separate test gap beyond what the correctness finding covers.\n\n## Critical\n- app/cli.py:15 — correctness — With `parse_args([\"--json\", \"--junit\", \"out.xml\"])`, the condition `if i + 1 < len(args): destination = args[i + 1]` sets the JSON destination to `\"--junit\"` and skips that token. The next token, `\"out.xml\"`, is then read as a flag and raises `ValueError(\"unknown option: out.xml\")`. The `--junit` branch just above already guards against this with `args[i + 1].startswith(\"--\")`. Could the `--json` branch use the same check (in both line 15 and line 18) so it falls back to `\"results.json\"` when the next token is a flag? A test for `[\"--json\", \"--junit\", \"x.xml\"]` would cover that path. — The PR says `--json` should work \"alongside the required --junit destination\", but putting `--json` before `--junit` is rejected. Through `write_reports`, the same input would try to write a file literally named `--junit`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_required_junit_path` covers all three outcomes of the `--junit` guard: a valid path, a missing path at the end, and a following flag (`[\"--junit\", \"--json\"]`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 16385,
+    "cost_usd": 0.045698,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.fefjR6sqK2/review-pr.tkmGYS",
+  "head_sha": "ade625412d7762e52e326393d0c0f2ebbb36ebfc",
+  "base_sha": "7dd1d1366888e74f4306fa7fcd956f38f8843c49",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ec23d671648ad125c5d4233763d30cbd25868b2b"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `--junit` change is a pure refactor and its tests cover it. The new `--json` branch has a bug that blocks merge: it takes whatever argument comes next as its path, even when that argument is another flag. That breaks the \"`--json` alongside `--junit`\" use the PR description promises.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — When `--json` has no path, the branch still takes the next argument if there is one. It doesn't check `startswith(\"--\")` the way the `--junit` branch does at line 7. So `parse_args([\"--json\", \"--junit\", \"out.xml\"])` sets `json=\"--junit\"` and then fails with `ValueError(\"unknown option: out.xml\")`. `parse_args([\"--json\", \"--junit\"])` returns `{\"json\": \"--junit\"}`, and `write_reports` then writes a file named `--junit`. Could you only consume `args[i + 1]` when it exists and doesn't start with `--`, and add a test for `[\"--json\", \"--junit\", \"x.xml\"]`? — Putting `--json` with no path before `--junit` either fails with an error that points at the wrong argument or drops the JUnit option and writes the JSON report to a file named `--junit`. The comment at line 12 (\"JSON can use its default destination when no path is supplied\") is also wrong for this input.\n\n## Suggestions\n(none)\n\n## Strengths\n- Moving the `--junit` assignment to `options[\"junit\"] = args[i + 1]` before `i += 1` keeps the old behaviour. `test_required_junit_path` covers the valid path, a missing path, and a flag given as the path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21494,
+    "cost_usd": 0.055468,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.fefjR6sqK2/review-pr.DwIt4J",
+  "head_sha": "ade625412d7762e52e326393d0c0f2ebbb36ebfc",
+  "base_sha": "7dd1d1366888e74f4306fa7fcd956f38f8843c49",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ec23d671648ad125c5d4233763d30cbd25868b2b"
+}

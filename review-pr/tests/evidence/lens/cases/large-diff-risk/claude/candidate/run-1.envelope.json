@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release-gate change breaks the approval boundary. A release with exactly the required number of approvals is now blocked, and no test checks that case. The `healthy` rewrite gives the same result for every list input. The catalog regeneration renames the 1,500 `legacy-service-*` entries to `production-service-*` and moves their ports from 1xxxx to 2xxxx.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — `approved` now returns `approvals > minimum`, so `approved(2, minimum=2)` returns `False`. The module docstring at line 1 still says \"A release needs at least the configured number of approvals.\" Should this go back to `>=` so the code matches the \"at least\" contract? — Every release with exactly the minimum number of approvals (2 by default) is now blocked. The existing tests use 3 and 1, so this boundary case is never checked and the regression passes CI.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- services/registry.py:88 — `not failures` returns the same result as `len(failures) == 0` for every list, including the `[]` and `[\"database\"]` cases asserted in `tests/test_release.py:20-21`.\n\n## Not reviewed\n- aaa-generated/catalog.json: I read the pinned diff lines 1–2233 and 8980–9009 line by line, but not lines 2234–8979. For that middle section I only checked the shape of the changed lines with pattern searches: 6,000 rename and port lines plus the closing-brace change, and 1,500 added ports in the 2xxxx range.\n- I found no code in the repository that reads `aaa-generated/catalog.json`, so I couldn't check how the renamed keys and new ports are used by any consumer outside this repository.",
+    "duration_ms": 61565,
+    "cost_usd": 0.31639680000000003,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Rwe4GuVs7a/review-pr.RcffH2",
+  "head_sha": "4fe494796d28a0d80e1ad0be1175917a9587bbc3",
+  "base_sha": "f1c227de3e13c747bff60daec53e8c68c94b1f30",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1169f5a3b9dad5319ec0782d4ffed0ffb73a075f"
+}

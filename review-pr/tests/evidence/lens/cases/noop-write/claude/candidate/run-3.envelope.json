@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `adopt` branch overwrites values without checking whether they differ, so it rewrites configuration files that haven't changed. Fix this before merging. Apart from that, the change is small, and the replacement path behaves as it did before.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch sets the value and adds the key to `changes` even when `current[key] == value`. For example, `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `'{\"theme\":\"dark\"}\\n'` returns `[\"theme\"]`. Because `changes` is non-empty, line 23 then rewrites the file as `'{\\n  \"theme\": \"dark\"\\n}\\n'`. Could you add the same `if current[key] != value:` guard that the `replace` branch uses at line 19? — This breaks the module's stated contract, \"Merge settings while preserving untouched configuration files\" (line 1): adopting settings that already match rewrites the file's formatting and reports a change that never happened. The added test `test_adopt_updates_setting` only covers a value that differs, so nothing catches this.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `replace` branch now nests the inequality check inside `elif replace:`, and it still behaves as before. `test_unchanged_replacement_preserves_bytes` covers an unchanged value, and the added `test_replace_updates_different_setting` covers a changed one.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22000,
+    "cost_usd": 0.0595106,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.UwnkBbp4dj/review-pr.L3zaDf",
+  "head_sha": "25eb40ec215fea7601d8dba3a41d115e68b53336",
+  "base_sha": "33574dd7f963a9a9a23ad510654b2e389e488bf7",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6bd083ce17557abc41b6ad62fbef302476d80570"
+}

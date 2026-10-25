@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDon't merge yet. The new `Cache.set` stores keys without lower-casing them, but `get` always lower-cases. As a result, any key with a capital letter can be stored but never read back. The TTL change and its comment are consistent.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` with the key exactly as passed, but `get` (line 17) always looks up `key.lower()`. So `c.set(\"Alpha\", 1); c.get(\"Alpha\")` looks up `\"alpha\"`, finds nothing and returns `None`. Also, `set(\"Alpha\", 1)` followed by `set(\"alpha\", 2)` leaves two separate entries, which the comment at lines 14–15 says must not happen (\"every path into _store lower-cases the key first\"). Could you change this to `self._store[key.lower()] = (value, time.monotonic() + self._ttl)`, and add a mixed-case key to `test_set_then_get_round_trip`? That test currently only stores `\"alpha\"`, so it can't catch this. — Any caller that uses a mixed-case key gets silent cache misses, and leftover duplicate entries can't be reached or removed through `get`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` patches `time.monotonic` on the module that `app/cache.py` uses through `import time`, so the expiry check runs against a fixed clock and gives the same result every run.\n- The `DEFAULT_TTL` comment at app/cache.py:7 matches the new value of 300.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26294,
+    "cost_usd": 0.057097600000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dbgevtkYJu/review-pr.3tyJZj",
+  "head_sha": "9f6cbe88c37acee0908f9c33afe48b2ce6cd7d67",
+  "base_sha": "b396741ac4fd132af9ed73a27cdfa043aef7d98d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b3aa783b89990ff8141f7e910fc4ea2cf541b68a"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR shouldn't merge yet. The new `Cache.set` stores keys without lower-casing them, but the class comment at `app/cache.py:14-15` says every path into `_store` lower-cases the key. As a result, any key with an uppercase letter can't be read back. The DEFAULT_TTL change and its comment match each other.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` using the key as given, but `get` looks up and deletes `key.lower()`. So after `c.set(\"Alpha\", 1)`, both `c.get(\"Alpha\")` and `c.get(\"alpha\")` return `None`. This breaks the rule in `app/cache.py:14-15`: \"every path into _store lower-cases the key first\". Could you change line 27 to `self._store[key.lower()] = ...`? `test_set_then_get_round_trip` (tests/test_cache.py:10-14) only ever sets the all-lowercase `\"alpha\"`, so it can't catch this. Adding a case like `c.set(\"Alpha\", 1); assert c.get(\"alpha\") == 1` would. — Callers who set any key with an uppercase letter get silent cache misses. Their entries also stay in `_store` forever, because `get` only deletes the lower-cased key on expiry. That's an unbounded memory leak for the callers this PR moves off direct `_store` access.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` (tests/test_cache.py:21-27) checks expiry by patching `time.monotonic`, which is the name `app/cache.py` calls, instead of sleeping. The test is quick and gives the same result every run.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25811,
+    "cost_usd": 0.0692716,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dbgevtkYJu/review-pr.qXOG4D",
+  "head_sha": "9f6cbe88c37acee0908f9c33afe48b2ce6cd7d67",
+  "base_sha": "b396741ac4fd132af9ed73a27cdfa043aef7d98d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b3aa783b89990ff8141f7e910fc4ea2cf541b68a"
+}

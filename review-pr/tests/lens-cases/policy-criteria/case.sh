@@ -146,6 +146,26 @@ def test_fetch_with_retry_raises_after_exhaustion(monkeypatch):
     assert len(calls) == 2
 
 
+def test_fetch_with_retry_single_attempt_does_not_sleep(monkeypatch):
+    calls = []
+    sleeps = []
+
+    def down(url):
+        calls.append(url)
+        raise OSError("down")
+
+    monkeypatch.setattr(net, "fetch", down)
+    monkeypatch.setattr(net.time, "sleep", sleeps.append)
+    try:
+        net.fetch_with_retry("http://example", attempts=1)
+    except OSError:
+        pass
+    else:
+        raise AssertionError("expected OSError")
+    assert len(calls) == 1
+    assert sleeps == []
+
+
 def test_fetch_with_retry_rejects_attempts_outside_range():
     for attempts in (0, 11):
         try:

@@ -96,6 +96,28 @@ Suggestions are findings and must pass the same gates.
 
 A suggestion using phrases such as “consider,” “may differ,” or “in some environments” without naming a failing input is padding.
 
+## Report prose
+
+Write to the pull-request author.
+
+In `## Summary`, include pull-request context only when the verdict needs it to be understood.
+
+In a defect field, state what the code does with the failing input, then ask the author a targeted question about correcting it or suggest a concrete correction.
+
+A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
+
+List a strength only when you verified it, and never one that a `## Not reviewed` bullet leaves open.
+
+List under `## Not reviewed` only evidence that was unavailable or that you did not read.
+
+List every changed file you did not read in full under `## Not reviewed`.
+
+Resolve a question the checked-out code can answer from that code, and report any resulting defect under the finding gates.
+
+Name each unavailable piece of evidence precisely enough that a person could obtain it, such as the repository and path or the query to run.
+
+Verify each count against an enumeration of the counted items before stating it.
+
 ## Output contract
 
 Emit exactly these six second-level headings in this order and exactly once, with nothing before `## Summary` and no other second-level heading.
@@ -103,7 +125,7 @@ Emit exactly these six second-level headings in this order and exactly once, wit
 ```text
 ## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
-<one to four sentences describing what the pull request does and the overall verdict>
+<one to four sentences giving the overall verdict and anything the finding bullets cannot carry>
 
 ## Critical
 <(none) or finding bullets for defects that must be fixed before merge>

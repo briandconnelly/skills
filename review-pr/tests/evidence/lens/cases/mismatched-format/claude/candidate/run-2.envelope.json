@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI'd hold this PR until the revision length in `status` is fixed. `status` cuts the revision to 7 characters, but its docstring says it uses the same identifier as `history`, which shows 12. The new tests check only the start and end of the status string, so they don't catch the mismatch.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `status` uses `revision[:7]`, so for `REVISION = \"0123456789abcdef…\"` it returns `\"Running: 0123456 (attempt 2)\"`. For the same revision, `history` returns `\"History: 0123456789ab\"` and `completed` returns `\"Deployed: 0123456789ab\"`. The docstring on line 13 says the opposite: \"Show the deployment revision using the same identifier as history.\" Should this be `revision[:12]` so it matches lines 5 and 9? If so, could `tests/test_display.py:14-15` assert the whole string (`== \"Running: 0123456789ab (attempt 2)\"`) so the length is checked? — A running deployment's status shows a different revision ID from its history and completion lines. Operators can't match them by string or grep, and a 7-character prefix is more likely to be ambiguous in large repositories.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is tested directly with two values (`tests/test_display.py:18-22`). The tests pin its exact output.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18620,
+    "cost_usd": 0.0483914,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dOfzcfzjMM/review-pr.ldLv2U",
+  "head_sha": "44db0f9cf006a41773f1a09c7bdff91c971f6af4",
+  "base_sha": "b7741b4a3148a45278c1ad9b985f8ddb85328488",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "93a181d3f8d872c883e630cfad0d756ad0813b40"
+}
