@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe refresh helper should preserve existing fingerprints so adding files does not hide edits to tracked files.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — If `tracked.txt` was edited after its fingerprint was recorded, refreshing `[\"tracked.txt\", \"new.txt\"]` overwrites its original digest. Could you preserve existing entries, as `register_new_files` does, and add a regression test for this input? — Verification subsequently accepts the hand-edited tracked file, erasing the manifest’s evidence of modification.\n\n## Suggestions\n(none)\n\n## Strengths\n- `register_new_files` preserves existing fingerprints; its test verifies that an edited tracked file still fails verification while new files are registered.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.71C6yXWwSz/review-pr.IcaAkh",
+  "head_sha": "3ff794a213df272daa6f53fcc02abf9d879182c6",
+  "base_sha": "7fc34eb4eff49851a8092166ace2fb0efffae8c5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b63aab381149391c563f55c3d0c3536ef05d14b8"
+}

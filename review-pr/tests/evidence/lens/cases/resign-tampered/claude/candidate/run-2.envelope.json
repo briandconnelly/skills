@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`register_new_files` is correct and well tested. `refresh_fingerprints` overwrites fingerprints that are already in the manifest, so it can hide a hand-edited tracked file. That breaks the integrity guarantee the PR description relies on. The policy manifest lists no policy files.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — `refresh_fingerprints` sets `entries[name] = fingerprint(root / name)` for every name, including names already in the manifest. Suppose `tracked.txt` was hand-edited from \"original\" to \"edited\" and then `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` runs, for example by passing the directory listing after adding `new.txt`. The function stores the hash of \"edited\", and `verify` then returns True. The test `test_refresh_registers_new_files_and_keeps_unchanged_entries` (tests/test_integrity.py:6) only uses an unmodified tracked file, so it cannot catch this. Should refresh skip names already in `entries`, as `register_new_files` does? If re-hashing tracked files is intended, could it refuse (raise) when a stored digest no longer matches, and could the test cover an edited tracked file? — Running the refresh command after adding files can silently approve tampered tracked files, which defeats the PR's stated claim that \"existing fingerprints let verification detect hand-edited tracked files.\"\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_register_preserves_existing_fingerprints` edits a tracked file and passes a duplicate name. It asserts that the original digest is kept and that `verify` returns False afterwards, so it covers the hand-edit detection behavior of `register_new_files`.\n- Both helpers compute every fingerprint before calling `write_text`. If a listed file is missing, `FileNotFoundError` is raised and the manifest stays as it was, not partly rewritten.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25445,
+    "cost_usd": 0.0826014,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FQKB02ejVT/review-pr.BASRkE",
+  "head_sha": "3ff794a213df272daa6f53fcc02abf9d879182c6",
+  "base_sha": "7fc34eb4eff49851a8092166ace2fb0efffae8c5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b53e331f91a74d37f9ccd26701d09ecabff4b0ca"
+}
