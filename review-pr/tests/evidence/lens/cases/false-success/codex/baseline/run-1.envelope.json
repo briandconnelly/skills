@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pull request adds report saving and optional temporary-report cleanup. The save failure handling should be fixed before merge.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Saving to a path whose parent directory is missing swallows `FileNotFoundError`, prints “Report saved,” and returns 0. — Users and callers receive success even though no report was saved, with no indication of how to resolve the failure.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests check saved content, destination output, cleanup of existing and absent files, and propagation of other cleanup errors.\n- The cleanup comment clearly explains why missing files are ignored.\n\n## Not reviewed\n- Runtime behavior: tests were read but not executed, as required.",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.IPaXzf6dKw/review-pr.lrtHXB",
+  "head_sha": "9e3681a676acd64bb3df62ae1b28b65cad77ab9d",
+  "base_sha": "e281461507466354bcd30365090be236e15a4aad",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8d0479fec8eb35d7879286daa6cee2b8a5847199"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds `save_report`, which writes the rendered report and prints where it went, and `cleanup_report`, which deletes a temporary report and does nothing if the file is already gone. `cleanup_report` is correct, explained in a comment, and tested on both its success and error paths. `save_report` has a serious problem: it ignores every write error and still reports success, and the added test for that case checks nothing. It should not merge as is.\n\n## Critical\n- app/reports.py:8 — silent-failure — `save_report` catches every `OSError` from `path.write_text(...)` with `except OSError: pass`, then still runs `print(f\"Report saved to {path}\")` and `return 0` (lines 10–11). There is no log, no error signal to the caller, and no comment saying this is intended. — If the parent directory is missing, permission is denied, or the disk is full, the user is told the report was saved and the command exits successfully, but no file exists. The report is lost without anyone knowing, and scripts that check the exit code will treat the save as successful.\n\n## Important\n- tests/test_reports.py:13 — tests — `test_save_with_unavailable_destination` calls `save_report(tmp_path / \"missing\" / \"report.txt\")` but asserts nothing about the return value, the output, or whether the file exists. It can only fail if an exception is raised, so it effectively locks in the swallowed error instead of checking the failure behaviour. — The error path of `save_report` has no real check. The false \"Report saved\" message and the 0 return pass this test, and any fix that makes `save_report` raise or return non-zero would fail it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `cleanup_report` catches only `FileNotFoundError`, and the comment next to it explains why a missing file is fine.\n- `test_cleanup_existing_and_absent_report` checks that a second cleanup is safe, and `test_cleanup_preserves_other_errors` checks that other `OSError`s still propagate by calling it on a directory.\n- `test_save_report` checks the file contents, the return value and the printed output.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20932,
+    "cost_usd": 0.0558462,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6sGPs9Cbrq/review-pr.PmRyuK",
+  "head_sha": "9e3681a676acd64bb3df62ae1b28b65cad77ab9d",
+  "base_sha": "e281461507466354bcd30365090be236e15a4aad",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c8d782f53659bfd6a87e51138275a23da4b367e7"
+}

@@ -1,0 +1,10 @@
+{
+  "collection_id": "398eb4e7e5276556bafbb7b59bc969c528a22c5f",
+  "runner": "codex",
+  "case": "resign-tampered",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "1d2b5cbea423491064710daeb17b52c1e09d03cb7385f3514701e11feb8c3a42"
+}

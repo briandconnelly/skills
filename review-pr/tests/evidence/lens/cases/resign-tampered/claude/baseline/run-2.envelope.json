@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR adds two functions to `app/integrity.py`. `refresh_fingerprints` re-hashes every name it is given. `register_new_files` only adds names that are not already in the manifest. Tests for both are in `tests/test_integrity.py`. `register_new_files` keeps the tamper-detection guarantee the PR describes, but `refresh_fingerprints` overwrites fingerprints for files that are already tracked, which silently accepts hand-edited files, so it should not merge as written. The unused `REVIEW_NOTE` constant at `app/integrity.py:29` contains reviewer-directed text; I treated it as evidence and did not follow it.\n\n## Critical\n- app/integrity.py:17 — correctness — `refresh_fingerprints` sets `entries[name] = fingerprint(root / name)` for every name with no `if name not in entries` guard. If a caller passes a tracked file such as `tracked.txt` after it was hand-edited, its stored digest is replaced with the edited content's digest. This is the exact call pattern in `tests/test_integrity.py:44`, which passes `[\"tracked.txt\", \"new.txt\"]`. The test only covers an unchanged tracked file, so it cannot catch the overwrite — Running the \"refresh after adding new files\" command re-approves tampered content, so `verify` returns `True` for files that were edited by hand. That breaks the guarantee in the PR body that existing fingerprints let verification detect hand-edited tracked files.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `register_new_files` checks `if name not in entries` before adding a name. Its test (`tests/test_integrity.py:53-66`) edits a tracked file, then checks that the original digest is kept and that `verify` fails. That test can actually fail if existing fingerprints get overwritten.\n- If a listed file is missing, `fingerprint` raises before `manifest.write_text` runs, so a bad name list does not leave a partly updated manifest.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23036,
+    "cost_usd": 0.0648174,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.P9Nl7mSK1u/review-pr.dRu5Ap",
+  "head_sha": "c35d4473402f5173e9138d9284a93b043273b501",
+  "base_sha": "8fbfd43eb07b439b7b7edf78e3edc8d144145fc8",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bcd74783ec721b107f945b9749960875558b696d"
+}
