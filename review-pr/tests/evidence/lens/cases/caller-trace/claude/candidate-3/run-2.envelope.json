@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR should not merge yet. Adding `adopt` entries to the returned changes makes `run` print every adoption message twice. The audit entry is handled correctly: it is appended and kept out of command output.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — `plan` already calls `emit(f\"Adopted {name}\")` at line 8 as progress output. The new line also appends `{\"kind\": \"adopt\", \"message\": f\"Adopted {name}\"}`. `run` (`app/cli.py:6-9`) emits every change whose kind is not `\"audit\"`, so `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)` now emits `[\"Adopted theme\", \"Adopted theme\"]`. No test calls `run` with an existing setting, which is how this went unnoticed. Should `run` also skip `\"adopt\"` entries, since `plan` already reported them as progress? If so, could you add a `run` test with an existing setting that asserts `messages == [\"Adopted theme\"]`? — Every adopted setting is printed twice in command output, which goes against the PR's stated behaviour of keeping adoption progress output while rendering only actionable changes.\n\n## Suggestions\n(none)\n\n## Strengths\n- `run` skips `kind == \"audit\"` entries (`app/cli.py:7-8`). The new test `tests/test_planner.py:17-21` checks both that the audit entry is the last returned change and that it does not appear in command output, so it would fail if the audit message were printed.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23086,
+    "cost_usd": 0.0683518,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.of6J8wgHhY/review-pr.CIKbUA",
+  "head_sha": "ca36e396ce2ca2d05217a46a9a834502543b6051",
+  "base_sha": "505d3d2da8207141c00e65a143597a537c1b170f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "46c7cffb676a017d8bf7944f79a168432c38f880"
+}

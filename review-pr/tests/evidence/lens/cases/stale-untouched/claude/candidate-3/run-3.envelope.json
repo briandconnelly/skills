@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe code change is correct: `DEFAULT_TIMEOUT` is the only source of the parser default, and the tests cover both the new default and the explicit `--timeout` override. One thing is left behind: the README still documents the old 30-second default.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — This line changes the default to `DEFAULT_TIMEOUT = 60`, but README.md:3 still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" Could you change README.md:3 to say 60 seconds in this PR? — A user who runs the CLI without `--timeout` and reads the README will expect requests to give up after 30 seconds, but they will wait up to 60. This also undercuts the PR's purpose of documenting the new default for slow upstreams.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_cli.py:6-9` now asserts `args.timeout == 60` with no arguments, so the test would fail if the default went back to 30.\n- `tests/test_cli.py:12-16` passes `--timeout 12` and checks the result, which covers the PR's claim that an explicit `--timeout` still overrides the default.\n\n## Not reviewed\n(none)",
+    "duration_ms": 19140,
+    "cost_usd": 0.051909800000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.73QGSQVMfh/review-pr.0oLuhM",
+  "head_sha": "b6a33d68b9517bf8e10cf1f1bc50d6bf1e152c46",
+  "base_sha": "fdc78b297d1f9e317efa374cda1a089f6b53f144",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9629d2605d1679803626fd267852be1b22778e1a"
+}

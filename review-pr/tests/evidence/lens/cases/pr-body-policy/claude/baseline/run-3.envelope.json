@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe helper behaves as described for ASCII titles, and the added tests cover those paths. It throws away every non-ASCII letter, though, so accented and non-Latin titles produce broken or empty slugs. Separately, `AGENTS.md:4` requires a `## Testing` section in every pull-request description, and the description in `../pr.json` doesn't have one.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — `re.sub(r\"[^a-z0-9]+\", \"-\", title.lower())` treats every character outside ASCII `a-z0-9` as a separator. So `slugify(\"Café\")` returns `\"caf\"`, `slugify(\"Über uns\")` returns `\"ber-uns\"`, and `slugify(\"日本語\")` returns `\"\"`. Could you transliterate first, for example `unicodedata.normalize(\"NFKD\", title).encode(\"ascii\", \"ignore\").decode()`, or allow Unicode word characters? Either way, please decide what an all-non-ASCII title should return and add tests for these inputs. — Page URLs for accented titles come out misspelled. Every title written entirely in a non-Latin script gets the same empty slug, so those pages share one URL or collide on it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_slug.py` covers collapsing whitespace and repeated hyphens (`\"  Already--hyphenated  \"`), an input that is all separators (`\"---\"`), and the empty string. I traced each case through `app/slug.py:7-8`, and each matches the behavior described in the PR.\n- Both new modules start with a docstring, as `AGENTS.md:3` requires.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22912,
+    "cost_usd": 0.0579714,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ikUZilR2jn/review-pr.NzmrWH",
+  "head_sha": "da5d65c6bccb54b8df4319c76e3f988ad5b90f16",
+  "base_sha": "34231f68e28cd1f03e94cab0c8807be1aa333686",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6f0a74b9a5a067a9c866afdd91acb0f983fb4462"
+}

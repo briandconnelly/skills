@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nI'd hold this PR until one bug is fixed. The PR body says `--json` should work \"alongside the required --junit destination\", but if `--json` comes right before another flag, the parser treats that flag as the JSON file path. The `--junit` changes are correct and the tests cover them.\n\n## Critical\n- app/cli.py:15 — correctness — In the `--json` branch, any next argument becomes the destination, including another flag. For example, `parse_args([\"--json\", \"--junit\", \"x.xml\"])` sets `options[\"json\"] = \"--junit\"`, moves past it, and then raises `ValueError(\"unknown option: x.xml\")`. Can you make it match the `--junit` check at line 7, so the default `results.json` is used when `args[i + 1].startswith(\"--\")`, and add a test for `[\"--json\", \"--junit\", \"x.xml\"]`? — Putting `--json` with no path before `--junit`, which is the combined use the PR describes, fails with an error that blames `x.xml` instead of `--json`. With `[\"--json\", \"--junit\"]`, it fails quietly instead: `write_reports` would write the JSON report to a file literally named `--junit` and never check that `--junit` has a path.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The `--junit` path check rejects both a missing path and a path that starts with `--`. `tests/test_cli.py:50-55` tests both cases (`[\"--junit\"]` and `[\"--junit\", \"--json\"]`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 18013,
+    "cost_usd": 0.0511966,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mV4cyFVj36/review-pr.5k2whS",
+  "head_sha": "d5c14d77f53ae1044e172c2fd919b62e4277797e",
+  "base_sha": "803987db19201d16e4fd9075d0ee7b192e7b6322",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "481458601a7435d90f644eedaa3af97d42825945"
+}

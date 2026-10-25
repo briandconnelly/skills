@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timeout change and parser tests agree, but the documented default is now stale.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — With no `--timeout`, `DEFAULT_TIMEOUT = 60` contradicts README.md:3: “Requests time out after 30 seconds unless you pass `--timeout SECONDS`.” Please update the documented default to 60 seconds. — Users following the documentation will expect requests to time out thirty seconds earlier.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests assert the new default and preserve coverage for explicit timeout overrides.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.5fxr9229ou/review-pr.hhjgLi",
+  "head_sha": "70071d88f0ad7da49c281bf967480a40526cf11b",
+  "base_sha": "1e007ad9bbcdbd88467c77c0e228c090ab69f179",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4c69dd4d50e9e903fbc5367f49d31c76e7c13ff1"
+}

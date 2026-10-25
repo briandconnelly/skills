@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe production change to an exact `\"REPORT v1\"` match is correct, and `test_rejects_unsupported_header_with_complete_report` covers it. `test_rejects_legacy_header` does not test what it claims to test and should be fixed or removed. The policy manifest lists no policy files.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — `\"v0\".join(fixture.rsplit(\"v1\", 1))` replaces only the last `v1`. That `v1` is in the body line `version=v1`, so the test parses `\"REPORT v1\\nversion=v0\"`. This input keeps the supported `REPORT v1` header and has no `END` line. `parse_report` returns `None` at `app/report.py:3` because `END` is missing, so the version check at `app/report.py:5` never runs. The comment at line 9 (\"changing the fixture's version to v0\") describes a header change that never happens. Could you use a literal complete report with a legacy header, such as `\"REPORT v0\\nvalue=ok\\nEND\"`, or drop this test because line 15 already covers that case? — The test cannot fail if the version check is removed or reverted to `startswith(\"REPORT \")`, so it gives false confidence that it guards the new check.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_report.py:15-17` sends a report with a valid `END` line and a `REPORT v0` header. Only the new check at `app/report.py:5` rejects that input, so the test would fail if the check regressed.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23950,
+    "cost_usd": 0.0736052,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Xk9ozLYwpG/review-pr.8ciVqI",
+  "head_sha": "86fdfa9539b3954ee03276f5ce1f3bb700620d27",
+  "base_sha": "c6bc7fc2a7bbb000455e91458fb6baeabc095c86",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "507bc10f78dabe7a35057b9e08aad49390724118"
+}

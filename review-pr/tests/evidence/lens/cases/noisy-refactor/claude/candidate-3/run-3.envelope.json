@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe typing and logging changes are mechanical and correct. The rewrite of `requirement_proven` does change behaviour: a requirement with no criteria now counts as proven. That contradicts the PR's statement that \"No behavior change is intended\", and it must be fixed before merge.\n\n## Critical\n- app/handlers/h091_requirements.py:11 — correctness — For `criteria=[]`, the old `bool(criteria) and all(...)` returned `False`. The new code computes `sum(...) == 0` and `len(criteria) == 0`, so it returns `True` after logging \"requirement has no criteria\". Could you restore the empty guard, either with `return bool(criteria) and all(item[\"proven\"] for item in criteria)` or with `if not criteria: log.warning(...); return False`? Please also add `assert not requirement_proven([])` to `tests/test_handlers.py:17`, since the current test does not cover this case. — Any requirement with an empty criteria list now passes release review as proven, which reverses the old fail-closed result. The only sign is a warning log, and no existing test catches it.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Using `itemgetter(\"name\")` in `app/handlers/h040_sorting.py:7` gives the same result as the old `lambda row: row[\"name\"]`, and `tests/test_handlers.py:13-14` still checks the ordering.\n- All 1,080 `log.warn` → `log.warning` replacements and all 1,080 `List[Dict[str, int]]` → `list[dict[str, int]]` signature replacements are one-for-one. The `from typing import Dict, List` import is removed from all 181 files that used it. Counting changed lines by pattern accounts for every one of the diff's 4,879 `+`/`-` lines.\n\n## Not reviewed\n- I did not read the diffs for `app/handlers/h002_records.py` through `app/handlers/h179_records.py` (178 files) line by line. I read `h000_records.py` and `h001_records.py` in full. For the rest, I matched every changed line against the four mechanical patterns and checked the totals, but I did not confirm that each warning message's handler/step number matches its file and function.\n- I could not find any project configuration (`pyproject.toml`, `setup.cfg`, `setup.py`, `requirements*.txt`, `.python-version`) at the repository root. So I could not confirm that the supported Python version is 3.9 or later, which the built-in `list[...]`/`dict[...]` annotations need at import time.\n- `../policy-manifest.json` lists no policy files, so I applied no project-specific policy criteria.",
+    "duration_ms": 76608,
+    "cost_usd": 0.24657,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7rOCBiXVWk/review-pr.F2aC1Q",
+  "head_sha": "808dd1e0867166c3cbe987f440a74aa95c9ec5e8",
+  "base_sha": "13cfe33f1c48927a7528500c58eb5bbb4630bc33",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5a70a30e53f2266c17446c7e67b7e0291a2382c7"
+}

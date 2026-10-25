@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe typing and logging changes look mechanical, but `requirement_proven` now behaves differently, even though the PR body says \"No behavior change is intended.\" It now treats a requirement with no criteria as proven. This must be fixed before merge.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — For `criteria=[]`, the new code computes `proven = sum(...)` as `0`, and `return proven == len(criteria)` evaluates `0 == 0` and returns `True`. The old `return bool(criteria) and all(...)` returned `False`. The warning on line 10 still logs, but execution then falls through to the success result. Could you restore the empty-list guard, for example `if not criteria: log.warning(...); return False`, or keep `bool(criteria) and all(item[\"proven\"] for item in criteria)`? A test asserting `not requirement_proven([])` in `tests/test_handlers.py:17` would also help, since the existing test only checks non-empty lists. — A release-review requirement with no criteria now passes as proven, so release reviews can approve requirements that have no proof.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Replacing `log.warn` with `log.warning` drops the deprecated alias without changing the log level or message. I checked this in all 181 changed handler files using the pattern counts described under Not reviewed.\n- `by_name` with `operator.itemgetter(\"name\")` behaves the same as the old lambda for dict rows, including raising `KeyError` when the key is missing. `tests/test_handlers.py:13-14` covers it.\n\n## Not reviewed\n- `app/handlers/h002_records.py` through `app/handlers/h179_records.py` (178 files): I did not read these diffs line by line. I checked them with pattern counts against the pinned diff instead. There are 180 hunks of the form `@@ -1,48 +1,47 @@`; changed `def` and `log.warn` lines number 2162 each, which is 2160 from the record files plus 2 from `h091_requirements.py`; there are 1080 unchanged `return [row[\"value\"] * N ...]` lines; and the totals of changed and header lines match exactly. These counts would not catch a wrong handler or step number inside a rewritten log message.\n- The repository does not declare a Python version (there is no `pyproject.toml`, `setup.cfg`, or similar). So I could not confirm that the deployment runtime is 3.9 or newer, which the built-in `list[...]`/`dict[...]` annotations require.",
+    "duration_ms": 95752,
+    "cost_usd": 0.3078354,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7rOCBiXVWk/review-pr.8TRSL3",
+  "head_sha": "808dd1e0867166c3cbe987f440a74aa95c9ec5e8",
+  "base_sha": "13cfe33f1c48927a7528500c58eb5bbb4630bc33",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5a70a30e53f2266c17446c7e67b7e0291a2382c7"
+}

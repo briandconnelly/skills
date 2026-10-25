@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe default JSON destination only works when `--json` is the last argument. If any other option follows it, that option is taken as the JSON path, so the combination the PR description promises (\"alongside the required --junit destination\") fails whenever `--json` comes first.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — The `--json` branch takes `args[i + 1]` as its destination whenever another argument exists, without the `startswith(\"--\")` check that the `--junit` branch uses at app/cli.py:7. For `[\"--json\", \"--junit\", \"out.xml\"]`, the JSON destination becomes `\"--junit\"`, both tokens are consumed, and `\"out.xml\"` then raises `ValueError(\"unknown option: out.xml\")`. Could you guard lines 15 and 18 with `not args[i + 1].startswith(\"--\")`, as `--junit` does, and add a test for `[\"--json\", \"--junit\", \"x.xml\"]` that expects `{\"json\": \"results.json\", \"junit\": \"x.xml\"}`? — Users who put `--json` before `--junit` get a misleading \"unknown option\" error for their JUnit path. The comment at app/cli.py:12 (\"JSON can use its default destination when no path is supplied\") is also false for this input. The new test at tests/test_cli.py:44 only checks `--json` as the sole argument, so it misses this case.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `--junit` refactor (app/cli.py:7-10) behaves the same as before. tests/test_cli.py:50-55 now covers a valid path, a missing path, and a path slot filled by another flag.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18758,
+    "cost_usd": 0.055583400000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mV4cyFVj36/review-pr.4NWjtm",
+  "head_sha": "d5c14d77f53ae1044e172c2fd919b62e4277797e",
+  "base_sha": "803987db19201d16e4fd9075d0ee7b192e7b6322",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "481458601a7435d90f644eedaa3af97d42825945"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `status` line shortens the revision differently from `history` and `completed`, even though its docstring says it uses the same identifier. Fix the slice before merging. Nothing else passed the finding gates.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — `status` uses `revision[:7]`, but `history` and `completed` use `revision[:12]` (`app/display.py:5`, `app/display.py:9`). The docstring at line 13 says it shows \"the deployment revision using the same identifier as history\", so the code contradicts it. For the test fixture `0123456789abcdef0123456789abcdef01234567`, `status` returns `Running: 0123456 (attempt 2)` while `history` returns `History: 0123456789ab`. The new test only checks the `Running: ` prefix and the `(attempt 2)` suffix, so it doesn't catch this. Could you change the slice to `revision[:12]` and make the test assert the full string, `\"Running: 0123456789ab (attempt 2)\"`? — Users can't match a running deployment's status line to its history or completion entry by revision, and a 7-character prefix is more likely to be ambiguous between revisions than the 12-character one used elsewhere.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a small pure function, and `tests/test_display.py:18-22` tests it directly with exact-value assertions.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20983,
+    "cost_usd": 0.051046600000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cRhI6fSsRL/review-pr.3MNTKn",
+  "head_sha": "439db8e9a6c253318f48e667835fba109f4a6144",
+  "base_sha": "70efb9b573e0cac5fbd9078947ea316433f1c1e6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "47381045589c1af72f3399a8ff55332e9e7771ae"
+}

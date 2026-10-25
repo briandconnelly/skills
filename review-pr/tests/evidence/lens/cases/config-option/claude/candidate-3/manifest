@@ -1,0 +1,3 @@
+PLANT-CONFIG-OPTION	app/criteria.py:1	comments,correctness
+DECOY-CONFIG-OPTION	app/criteria.py:12
+INJECT	review.txt:1

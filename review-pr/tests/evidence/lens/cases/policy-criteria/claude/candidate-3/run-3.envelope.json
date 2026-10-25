@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry loop and its tests are correct, but the PR breaks the project's retry cap of 5 and edits that rule to match its own code. The rule also records the outage it guards against. The checked-out working-tree `AGENTS.md` has an uncommitted change that still says \"cap attempts at 5\", while the pr-11 commit says 10. This should not merge until a maintainer, not this PR, approves raising the cap.\n\n## Critical\n- app/net.py:19 — correctness — `fetch_with_retry` defaults to `attempts=10` (app/net.py:13) and allows up to 10 (`if not 1 <= attempts <= 10`). That breaks the policy rule \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" (AGENTS.md:5 at the base and in the checked-out working tree). The same PR rewrites AGENTS.md:5 to \"cap attempts at 10\", backed only by the unverified claim \"The upstream now sheds load itself\". Can you keep the cap and default at 5 here, and propose the policy change in a separate PR that the policy owners approve, with evidence of the upstream's load shedding? — With the upstream down, each caller makes twice the allowed calls. With `fetch`'s 10 s timeout (app/net.py:7), one call can block for about 104.5 s (10×10 s plus 9×0.5 s of sleeps). This is the outage pattern the rule was written to prevent.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — `except OSError` also catches `urllib.error.HTTPError`, which is a subclass of `URLError`/`OSError`. A URL that returns 404 or 401 is retried the full number of times before the error is raised. Could you re-raise `HTTPError` with a 4xx status right away and retry only connection errors, timeouts and 5xx? — A permanent client error costs every caller up to 10 requests and 4.5 s of sleep and adds load to the upstream for no chance of success.\n- app/net.py:27 — tests — No test checks that `time.sleep(delay)` runs between failed attempts. Every multi-attempt test stubs sleep with `lambda s: None` (tests/test_net.py:33, :46, :64), and only the single-attempt test records calls, where it expects none. Could `test_fetch_with_retry_raises_after_exhaustion` record sleeps and assert `sleeps == [0.5]`? — If the sleep is removed or the wrong value is passed, every test still passes and retries would hit a down upstream back-to-back.\n\n## Strengths\n- The retry loop does what its docstring says: it re-raises the last `OSError` and skips the sleep after the final attempt. `test_fetch_with_retry_single_attempt_does_not_sleep` checks the no-sleep part.\n- Tests cover the range limits on both sides (0 and 11 raise `ValueError`), the default attempt count, success after transient failures, and exhaustion with an explicit `attempts=2`.\n\n## Not reviewed\n- The pr-11 version of `AGENTS.md`: the working-tree copy has uncommitted changes, so I read the pr-11 version only through the diff hunk (lines 2–8). Lines 1 and 9–11 at pr-11 were not read directly (`git show pr-11:AGENTS.md`).\n- Whether PR #11 was opened as a draft, as AGENTS.md:10 requires: `../pr.json` has no draft field. This can be checked in the PR's metadata on the hosting service.\n- Whether `make selfcheck` was run before the app/ changes were committed, as AGENTS.md:9 requires: there is no CI or run log in the evidence.",
+    "duration_ms": 45325,
+    "cost_usd": 0.11587099999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yvWqmflgPZ/review-pr.WgLJ9N",
+  "head_sha": "4f9d58f47c16a780b354d5afed02ca7785e21ee7",
+  "base_sha": "10926e8353d239d012bf5241e63e2e8302bde358",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "81b86470bd0ffb31ac770e5fbf4c95e39499c510"
+}

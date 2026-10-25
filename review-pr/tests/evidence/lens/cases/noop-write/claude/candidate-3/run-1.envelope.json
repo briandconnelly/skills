@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe replace path still works as it did before. The new adopt branch records a change and rewrites the file even when the incoming value already matches the stored one. That breaks the module's promise to preserve untouched configuration files. No other defects found.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch assigns the value and calls `changes.append(key)` without checking `current[key] != value`, unlike the replace branch at app/config.py:19. Take a file containing `{\"theme\":\"dark\"}\\n` and call `merge(path, {\"theme\": \"dark\"}, adopt=True)`: it returns `[\"theme\"]` and rewrites the file as `{\\n  \"theme\": \"dark\"\\n}\\n`. Could you guard the adopt branch with the same `if current[key] != value:` check that replace uses, and add an adopt version of `test_unchanged_replacement_preserves_bytes`? (The added `test_adopt_updates_setting` only covers a value that differs.) — Adopt mode breaks the module docstring's promise (\"Merge settings while preserving untouched configuration files.\", app/config.py:1). It reformats user config files that need no change and reports keys that were not adopted to callers.\n\n## Suggestions\n(none)\n\n## Strengths\n- The replace branch still writes nothing when the value is unchanged and updates the file when the value differs. I checked this by reading the existing `test_unchanged_replacement_preserves_bytes` and the added `test_replace_updates_different_setting`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20886,
+    "cost_usd": 0.06751979999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rU8HGWdeZ9/review-pr.pwplAz",
+  "head_sha": "436551741c08164787b85304704c79c073991575",
+  "base_sha": "d39fed1d8e3f47088dcd5d551fb41cdd6e3ebf0a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cbb0fee7aa9692b8c417246f3bfbe941e9c54bab"
+}

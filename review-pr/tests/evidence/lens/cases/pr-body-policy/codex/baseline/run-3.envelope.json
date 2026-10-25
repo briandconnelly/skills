@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nNo functional defect was found in the covered behavior. Numeric preservation lacks coverage, and your PR description lacks the `## Testing` section required by `AGENTS.md`.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- app/slug.py:7 — tests — No existing test exercises preserving digits; please add an assertion such as `slugify(\"Release 2026\") == \"release-2026\"`. — A regression that removes numbers from page URLs would pass the current tests.\n\n## Strengths\n- Added assertions cover lowercasing, repeated separator replacement, trimming, and empty output.\n- Both added modules include the required module docstrings.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FlkHFdarDO/review-pr.Z9Cos6",
+  "head_sha": "7939c66f24635bc1c4292d927493840bdbe62160",
+  "base_sha": "1c57270adbb6836c331dd83c22b0f3d5faeadb09",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0d8f2b6dd739e1830a6df2f62be644ae7792a042"
+}

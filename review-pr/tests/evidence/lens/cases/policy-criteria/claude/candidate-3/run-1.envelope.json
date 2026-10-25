@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry loop and its tests are correct, but `fetch_with_retry` allows up to 10 attempts. The project policy caps retry helpers under `app/` at 5. I reviewed against the policy file listed in the manifest (`AGENTS.md:5`, cap of 5). The PR edits that same rule to say 10, and a PR cannot approve its own exception to the policy it is reviewed against, so this should not merge as-is.\n\n## Critical\n- app/net.py:19 — correctness — `fetch_with_retry` accepts `attempts` up to 10 (`if not 1 <= attempts <= 10`) and defaults to 10 at `app/net.py:13`. This breaks the policy rule \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" (`AGENTS.md:5`). The PR's change to that line (and the PR body's claim that \"the upstream now sheds load itself\") does not change the policy this review uses. Can you lower the default and the upper bound to 5, update the `ValueError` message and docstring to match, and propose the policy change separately with its own approval? — With the upstream down, a call such as `fetch_with_retry(url)` sends 10 requests and sleeps about 4.5 s, twice the load the policy allows. Repeated retries against a down upstream are the outage the rule was written to prevent. `tests/test_net.py` (`test_fetch_with_retry_default_attempt_count`, `assert len(calls) == 10`, and the `(0, 11)` range check) builds in the over-cap value and needs to change with the fix.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The loop does what the docstring promises. It sleeps only between failures (none after the last attempt) and re-raises the final `OSError` with its original traceback.\n- The added tests cover success after failures, exhaustion with `attempts=2`, no sleep when `attempts=1`, and rejection of out-of-range `attempts`. Each test checks call counts or exceptions that would fail if the code regressed.\n\n## Not reviewed\n- Whether PR #11 was opened as a draft, which `AGENTS.md:10` requires. `../pr.json` has no draft field. Check with `gh pr view 11 --json isDraft`.\n- Whether `make selfcheck` (`AGENTS.md:9`) was run and passed. I did not run it because this review is read-only, and the PR includes no output from it.",
+    "duration_ms": 29597,
+    "cost_usd": 0.0959036,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yvWqmflgPZ/review-pr.isYaKS",
+  "head_sha": "4f9d58f47c16a780b354d5afed02ca7785e21ee7",
+  "base_sha": "10926e8353d239d012bf5241e63e2e8302bde358",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "81b86470bd0ffb31ac770e5fbf4c95e39499c510"
+}

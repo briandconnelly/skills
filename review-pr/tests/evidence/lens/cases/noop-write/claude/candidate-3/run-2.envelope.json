@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.310",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `adopt` branch overwrites existing keys without first checking whether the value actually differs. As a result, adopting a value that is already present still reports a change and rewrites the file. The rest of the module avoids this: the module docstring promises to preserve untouched files, and the `replace` branch checks for equality before writing.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — The `elif adopt:` branch assigns the value and appends the key without comparing `current[key] != value`. Take a file containing `'{\"theme\":\"dark\"}\\n'`: `merge(path, {\"theme\": \"dark\"}, adopt=True)` returns `[\"theme\"]` even though nothing changed, and line 23 rewrites the file as `'{\\n  \"theme\": \"dark\"\\n}\\n'`. Because `adopt` is checked before `replace`, `adopt=True, replace=True` behaves the same way. This contradicts the module docstring at app/config.py:1 (\"preserving untouched configuration files\") and the byte-preservation behaviour tested for `replace` in tests/test_config.py:10. Could you add the same `if current[key] != value:` guard to the adopt branch, plus a test like `test_unchanged_replacement_preserves_bytes` that passes `adopt=True`? — Callers get false change reports, and unchanged config files are reformatted (whitespace and key layout lost) every time adopt mode runs with matching values.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_replace_updates_different_setting` adds coverage for the `replace` path when the value differs, which had no test before. Together with the existing unchanged-value test, both outcomes of the `replace` equality check are now covered.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23161,
+    "cost_usd": 0.056592800000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rU8HGWdeZ9/review-pr.BKBLze",
+  "head_sha": "436551741c08164787b85304704c79c073991575",
+  "base_sha": "d39fed1d8e3f47088dcd5d551fb41cdd6e3ebf0a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cbb0fee7aa9692b8c417246f3bfbe941e9c54bab"
+}
