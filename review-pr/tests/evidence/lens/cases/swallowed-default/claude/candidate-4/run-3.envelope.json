@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release gate now fails open and must be fixed before merge. If the results file is missing, `load_results` returns `[]`, and `all([])` is `True`, so `release_allowed` approves a release when no checks were saved. The display-preferences fallback is documented and tested on both branches. The PR description covers only optional preferences, not optional results.\n\n## Critical\n- app/results.py:7 — correctness — When `results.json` does not exist (for example, the check job never ran or wrote to a different path), `load_results` returns `[]` and `release_allowed` returns `True`, because `all()` over an empty iterable is `True` (app/results.py:12). Before this change, the missing file raised `FileNotFoundError`, which blocked the release. The `except FileNotFoundError: return []` has no comment, log or caller signal, and the PR body only says the preferences file is optional. Recommended fix: remove the fallback in `load_results`, or make `release_allowed` return `False` when no results load. Then add a test in `tests/test_results.py` asserting that `release_allowed(tmp_path / \"missing.json\")` is falsy. — The release gate approves releases that have no recorded passing checks, and the existing `test_saved_checks_control_release` cannot catch this because it always writes the file first.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The `display_preferences` fallback has a comment beside it that explains why it exists and what callers see (app/results.py:16). Tests cover both the missing file and the saved file (tests/test_results.py:12-19).\n\n## Not reviewed\n(none)",
+    "duration_ms": 20159,
+    "cost_usd": 0.050671400000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1iSTQJTGoj/review-pr.SVN5Dp",
+  "head_sha": "9bad32fe4a50d32be64a324489c22e076bdc7e8a",
+  "base_sha": "70d30213a711182230417976692864ee7d5d6aa3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "84dc22c9d41ee9cfe69b2bf826576064324779d9"
+}

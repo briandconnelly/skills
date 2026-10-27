@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nSave failures should be surfaced before callers rely on this command: an unavailable destination currently produces a success announcement and returns zero.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Saving to a path whose parent directory does not exist discards `FileNotFoundError`, prints “Report saved,” and returns zero despite creating no report. The `except OSError: pass` also hides permission and disk-write failures; the unavailable-destination test checks no failure signal. Propagate the exception or report an actionable error and return a nonzero status, announcing success only after the write succeeds. — Users and callers receive false confirmation and cannot identify why their report was not saved.\n\n## Suggestions\n(none)\n\n## Strengths\n- The successful-save test verifies report contents, return status, and the announced destination.\n- Cleanup tests cover existing files, already absent files, and propagation of other filesystem errors.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wzIgZ1floD/review-pr.79Xlip",
+  "head_sha": "1deb9c0161ea6d0f1ad559c7110cd58fadeaa247",
+  "base_sha": "19340b74c3a3a1e054fbabf71fbec820a4d126d0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df4c1aff3533a211bbc9aa875ec777873da6b9a3"
+}

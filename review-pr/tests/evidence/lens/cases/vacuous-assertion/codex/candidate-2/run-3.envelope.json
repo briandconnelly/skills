@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nOnly optional corrections were found in the reviewed scope: one added test passes without exercising the header check it names. The complete-report test does cover rejection of version v0.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:11 — tests — For the generated input `REPORT v1\\nversion=v0`, `test_rejects_legacy_header` passes without exercising legacy-header rejection. The replacement changes the body’s version, leaving the header unchanged, and the missing `END` causes rejection before the header check. Remove this redundant test or replace its fixture with a complete report exercising a distinct invalid header. — This test gives misleading regression protection, although the following test correctly covers v0 rejection.\n\n## Strengths\n- Tests cover acceptance of a complete v1 report and rejection of a complete v0 report.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.kwx6rva5gO/review-pr.eDVM4v",
+  "head_sha": "7dd31236043a70edd3759a46db28228db1ccc079",
+  "base_sha": "07ace8a53e697256ee8a34b5e756e6e3abe3d990",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0811b1dd9aeaad59f2ac55e8db863f46f3f2cea6"
+}

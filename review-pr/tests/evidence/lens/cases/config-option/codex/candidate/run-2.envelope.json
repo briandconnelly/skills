@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe criterion hint should be corrected because it directs authors to omit a word that the supported `require_shall=True` option requires.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — With `require_shall=True`, `- Save the result` follows the revised hint but is rejected by the validator. The hint says “without the word shall,” while line 8 requires `\" shall \"`; `tests/test_criteria.py:20–21` explicitly verifies this rejection. Qualify the hint to explain that omitting “shall” depends on the validator setting. — Authors following the guidance can produce criteria that fail the configured validation.\n\n## Suggestions\n(none)\n\n## Strengths\n- The revised bullet hint gives the exact `- ` prefix checked by the validator.\n- Existing tests cover acceptance and rejection with both validator settings.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.r0QIhN7IVr/review-pr.K89rnm",
+  "head_sha": "a0667a85ab693a1f65a775829fe2357863d3c8fc",
+  "base_sha": "b7110d3acb2e1d90d397cff15136a4e6acce1d88",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "28d43a39d9fbfe069576682f31110da3fe241709"
+}

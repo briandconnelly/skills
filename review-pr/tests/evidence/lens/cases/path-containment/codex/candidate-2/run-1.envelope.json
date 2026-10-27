@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe preview containment check must be fixed before merge: relative traversal and symlinks can expose files outside the selected home directory.\n\n## Critical\n- app/paths.py:12 — correctness — With `home=\"/srv/home\"` and `relative=\"../secret.txt\"`, `preview` reads `/srv/secret.txt` instead of rejecting the outside path. `is_relative_to` checks lexical ancestry without resolving `..` or symlinks, so both traversal and an in-home symlink to an outside file bypass this check. Resolve the home and candidate paths before checking containment, read the validated path, and add regression tests for both bypasses; the existing rejection test covers only an absolute outside path. — Callers can read text outside the directory that the preview helper is intended to restrict access to.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests verify ordinary previews, truncation to 200 characters, and rejection of an absolute outside path.\n- The settings helper has a test asserting its returned path.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.aRW0jncXer/review-pr.cJJ7pP",
+  "head_sha": "325fc2bc1e35a92749d73f96193c55e08414879d",
+  "base_sha": "3cdbbb8e89455ef2cee3c9fc5532e4ea3acecd9d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "49be5a02ad60d1d7aed0245ecc1b1038b8350a73"
+}

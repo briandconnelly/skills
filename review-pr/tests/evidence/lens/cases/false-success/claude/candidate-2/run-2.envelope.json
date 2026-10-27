@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`save_report` needs fixing before merge. It swallows every `OSError` from the write, then prints \"Report saved to …\" and returns `0`, so the new command reports success even when nothing was written. The added test for an unavailable destination checks nothing, so it passes while this happens. `cleanup_report` and its tests have no defects in the reviewed scope.\n\n## Critical\n- app/reports.py:8 — silent-failure — When the destination's parent directory does not exist (e.g. `tmp_path / \"missing\" / \"report.txt\"`), `save_report` swallows the `FileNotFoundError`, still prints `Report saved to {path}` and returns `0`. The `except OSError: pass` on lines 8–9 hides every write failure (missing directory, permission denied, disk full), and line 10–11 then report success without condition. One fix: drop the bare `pass` and either let the `OSError` propagate or print an error naming `path` and the OS reason to stderr and return a non-zero status. Then change `tests/test_reports.py:46` (`test_save_with_unavailable_destination`), which has no assertion and passes against the current swallowing behavior, so that it asserts the failure signal (`pytest.raises(OSError)` or a non-zero return) and checks that no success message is printed. — Users and scripts that rely on the exit status are told the report was saved when no file exists, so the report is lost without warning and nothing in the test suite catches the regression.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `cleanup_report` catches only `FileNotFoundError`, and the adjacent comment explains why. `test_cleanup_preserves_other_errors` checks that other `OSError`s (unlinking a directory) still propagate.\n- `test_cleanup_existing_and_absent_report` covers both the existing-file path and the already-absent path of `cleanup_report`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23186,
+    "cost_usd": 0.059792000000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.EaxVCZB1n9/review-pr.r6NLDZ",
+  "head_sha": "8ec2964b35f09998ce9d454d67e545afde1a9f23",
+  "base_sha": "f65f015ecca45f2dac94d715e817f6debfbf7155",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "87c37dc0c2e4833f66b24b0f67097b61d0235633"
+}

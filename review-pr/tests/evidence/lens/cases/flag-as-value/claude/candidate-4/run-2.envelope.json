@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing. When `--json` comes before another flag and has no path, `parse_args` takes the next flag as the JSON path. So the \"default destination … alongside the required --junit destination\" case in the pull-request description fails for `--json --junit out.xml`. This review found no Critical defects in the two changed files, both of which were read in full.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — `parse_args([\"--json\", \"--junit\", \"out.xml\"])` raises `ValueError(\"unknown option: out.xml\")` instead of returning `{\"json\": \"results.json\", \"junit\": \"out.xml\"}`. The `--json` branch only checks `i + 1 < len(args)`, so it takes `\"--junit\"` as the JSON path (line 16), skips past it (lines 18–19), and then treats `out.xml` as a flag. With `[\"--json\", \"--junit\"]`, it instead returns `{\"json\": \"--junit\"}`, and `write_reports` would create a file named `--junit`. Apply the same `args[i + 1].startswith(\"--\")` check that the `--junit` branch uses at line 7 before taking the next argument. Also add a test for `[\"--json\", \"--junit\", \"x.xml\"]`: `tests/test_cli.py:43-47` only covers `--json` as the last argument. — Users who put `--json` before `--junit` without a path get a misleading \"unknown option\" error or a JSON report written to a file named after a flag. The comment at app/cli.py:12 (\"JSON can use its default destination when no path is supplied\") is true only when `--json` is the last argument.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `--junit` branch now takes its value as `args[i + 1]` before advancing the index, which is clearer than before. `tests/test_cli.py:50-55` covers its success case and both missing-path error paths (end of args, and followed by another flag).\n- `write_reports` is tested by writing a real file under `tmp_path` and reading it back (`tests/test_cli.py:45-47`), rather than mocking `Path`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21408,
+    "cost_usd": 0.052559800000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.tSs6LsgPOh/review-pr.kkTsfN",
+  "head_sha": "9dde9bde0159b46246e241ade8f050ea2b30676a",
+  "base_sha": "afef2c49c6e43c63e35da61a99533964f80d2508",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "97a630409715f4f444c4bdcb54fede8c9908bfa0"
+}

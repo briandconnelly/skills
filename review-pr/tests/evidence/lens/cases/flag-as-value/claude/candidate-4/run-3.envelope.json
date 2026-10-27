@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect needs fixing before merge. The pull request description promises that `--json` can use its default destination alongside `--junit`, but the new parser treats any token after `--json` as its path, including the next flag. As a result, `--json --junit out.xml` fails to parse, and in a related case JSON is written to a file named `--junit`.\n\n## Critical\n- app/cli.py:15 — correctness — Given `[\"--json\", \"--junit\", \"out.xml\"]`, `parse_args` sets the JSON destination to `\"--junit\"` and then raises `ValueError(\"unknown option: out.xml\")`, so the default destination cannot be combined with a following flag. Lines 15–19 accept `args[i + 1]` whenever it exists, without the `startswith(\"--\")` check that the `--junit` branch uses at line 7. A related input, `[\"--json\", \"--junit\"]`, returns `{\"json\": \"--junit\"}`, so `write_reports` writes the JSON report to a file literally named `--junit`. Recommended fix: keep the default unless the next argument exists and does not start with `--`, for example `if i + 1 < len(args) and not args[i + 1].startswith(\"--\"): destination = args[i + 1]; i += 1`. Also add a test for `[\"--json\", \"--junit\", \"x.xml\"]` that expects `{\"json\": \"results.json\", \"junit\": \"x.xml\"}`. — Users who put `--json` before `--junit`, the combination the PR body describes, get a parse error or a stray JSON file named after the flag. The existing test only covers `--json` as the last argument, so it does not catch this.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The `--junit` branch now assigns `args[i + 1]` before advancing, with the same behavior as before. `tests/test_cli.py` tests a valid path, a missing path, and a path that is actually a flag.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25082,
+    "cost_usd": 0.060084799999999994,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.tSs6LsgPOh/review-pr.rZnB1v",
+  "head_sha": "9dde9bde0159b46246e241ade8f050ea2b30676a",
+  "base_sha": "afef2c49c6e43c63e35da61a99533964f80d2508",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "97a630409715f4f444c4bdcb54fede8c9908bfa0"
+}

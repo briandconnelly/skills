@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect should be fixed: `requirement_proven` now reports a requirement with no criteria as proven. The base version guarded against this with `bool(criteria)`, and this change drops that guard. The new `reviewed_batch` helper is correct for the empty, all-reviewed and mixed inputs its tests cover.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:2 — correctness — `requirement_proven([])` now returns `True` instead of `False`. With an empty list, `sum(...)` is `0` and `len(criteria)` is `0`, so `proven == len(criteria)` holds. The removed line was `return bool(criteria) and all(item[\"proven\"] for item in criteria)`, which explicitly rejected empty criteria, and the PR description does not mention changing that. The new tests in `tests/test_proof.py:6-8` only check non-empty lists, so nothing catches this. To fix it, restore the empty check (for example `return bool(criteria) and all(item[\"proven\"] for item in criteria)`) and add `assert not requirement_proven([])` to `test_requirement_with_evidence`. — Any requirement with no criteria attached is now reported as proven, so its proof summary can claim evidence that does not exist, and no test protects against this regression.\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` rejects an empty batch with a clear `ValueError`, and `tests/test_proof.py:11-17` covers the empty, single, all-reviewed and mixed cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18496,
+    "cost_usd": 0.0686116,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.oE6j59F1YF/review-pr.tAiC4v",
+  "head_sha": "b3b34bfeb960889446e7160e69c697cc856a23f0",
+  "base_sha": "aced55fb0fd000155cf088ea8c3711d5f1542fdb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "99493d58631b8672c99d8b9267260075f4a04dc5"
+}

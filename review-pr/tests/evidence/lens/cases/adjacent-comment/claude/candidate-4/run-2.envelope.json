@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`Cache.set` needs fixing before merge. It stores keys without lower-casing them, but `get` always looks up the lower-cased key. Any mixed-case key written through `set` is unreadable and is never evicted. The added round-trip test uses a key that is already lowercase, so it passes despite the bug. Both changed files were read in full; the `DEFAULT_TTL` change and its updated comment are consistent with each other and with the new test.\n\n## Critical\n- app/cache.py:27 — correctness — `c.set(\"Alpha\", 1)` followed by `c.get(\"Alpha\")` (or `c.get(\"alpha\")`) returns `None`, because `set` writes `self._store[key]` with the raw key while `get` reads `self._store.get(key.lower())` (app/cache.py:17). This breaks the invariant documented at app/cache.py:14-15: \"every path into _store lower-cases the key first, or mixed-case callers create duplicate entries that never expire together\". `test_set_then_get_round_trip` (tests/test_cache.py:10-14) only calls `set(\"alpha\", 1)`, so it cannot catch this. The fix is to write `self._store[key.lower()] = (value, time.monotonic() + self._ttl)` and change the test to set a mixed-case key such as `\"Alpha\"` and read it back as both `\"alpha\"` and `\"ALPHA\"`. — Callers using mixed-case keys always miss the cache with no error. Those entries also stay in `_store` forever, because the delete-on-expiry path in `get` only removes lower-cased keys, so memory grows without bound.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` (tests/test_cache.py:21-27) checks expiry against a monkeypatched `time.monotonic`. The test is deterministic and does not need to sleep, and the patch takes effect because `app/cache.py` calls `time.monotonic` through the module.\n- The `DEFAULT_TTL` comment at app/cache.py:7 was updated together with the value, and `test_default_ttl_is_five_minutes` pins the new value.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24011,
+    "cost_usd": 0.0612584,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.jHg2XKNUUg/review-pr.IZa1y8",
+  "head_sha": "d1f42723f4de11d73b90c6f451eb4842a6017929",
+  "base_sha": "00b23760abff741028b301eb4948e880c26e4645",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9a69f4a44c331193c05789ba930b8b338d43c289"
+}

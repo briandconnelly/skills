@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect should be fixed: `run()` now prints \"Adopted <name>\" twice for each setting that already exists. The new `adopt` entries reach the unchanged CLI loop, which renders every entry except audit ones, so each adoption appears once as progress output and again as a rendered change. No test calls `run()` with an existing setting, so the current tests miss it. The audit entry itself is built correctly and kept out of command output.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Running `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)` now sends `\"Adopted theme\"` to `emit` twice. The first comes from the progress call at `app/planner.py:8`; the second comes from the new `{\"kind\": \"adopt\", ...}` entry, which the unchanged loop at `app/cli.py:6-9` renders because it only skips `kind == \"audit\"`. The PR body says the command \"continues to render actionable changes and omit audit records\". One fix is to skip `adopt` entries in `app/cli.py` the same way as `audit` entries, then add a test that calls `run()` with an existing setting and asserts `messages == [\"Adopted theme\"]`. Alternatively, drop the progress `emit` for adoptions. — Every adopted setting shows up twice in command output. Users see repeated adoption lines, and the regression is invisible to the test suite because `test_adoption_progress` only calls `plan()` and `test_command_adds_setting` only covers the add path.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_audit_is_returned_without_command_output` checks both that `run()` returns the audit entry and that it is not printed. Removing the `audit` skip in `app/cli.py` would make the test fail.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25001,
+    "cost_usd": 0.0650004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xYp0ATHPPG/review-pr.SD6fvX",
+  "head_sha": "1b5e3fe5e99112c99ac2aa7dad047f4b0d5c6dc2",
+  "base_sha": "87ab20f0ac6e9c5173fb9f80016654390c6aaaaa",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d27c976960406ec85cfd777fa35c1e83dc89dc40"
+}

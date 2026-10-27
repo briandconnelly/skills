@@ -1,0 +1,10 @@
+{
+  "collection_id": "5f0095d27fc46a8ab23b1b028ab030ad57a5e190",
+  "runner": "codex",
+  "case": "swallowed-default",
+  "snapshot": "candidate-2",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "20abcd0fcd2e6dfac691dc0e47954434b7ee48876dfab5cef3b6e2fe4a1ecab4"
+}

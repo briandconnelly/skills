@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`save_report` needs fixing before merge. When the write fails, it hides the `OSError`, still prints \"Report saved to …\" and returns `0`, so users and scripts are told a report was saved when no file exists. The added test for an unavailable destination does not check any outcome, so it cannot catch this. No policy files were listed in the manifest. The cleanup path in the reviewed scope only catches the error its comment describes.\n\n## Critical\n- app/reports.py:8 — silent-failure — When the destination can't be written (for example, `tmp_path / \"missing\" / \"report.txt\"` with a missing parent directory, a read-only directory or a full disk), `save_report` still prints `Report saved to <path>` and returns `0`. The cause is the `except OSError: pass` at lines 8–9, which drops the error, after which lines 10–11 run the success message and return unconditionally. The fix is to remove the bare `pass` and either let the `OSError` propagate, or print an error to stderr that names the path and the `strerror` and return a non-zero status. In both cases, the success message should only run after `write_text` succeeds. — Users and any script that checks the exit status are told the report was saved when no file was written, so the report is silently lost and nothing shows why.\n\n## Important\n- tests/test_reports.py:14 — tests — `test_save_with_unavailable_destination` calls `save_report` on a path whose parent directory doesn't exist, but it asserts nothing about the return value, stdout or exceptions. It therefore passes whether the function reports the failure or falsely reports success. This is the test that should catch the swallowed `OSError` at `app/reports.py:8`. It should assert the intended behavior: either `pytest.raises(OSError)`, or a non-zero return code, no \"Report saved\" output and `not path.exists()`. — The test gives no regression protection for the failure path it is named after, and the defect above currently passes it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `cleanup_report` (`app/reports.py:14-19`) only catches `FileNotFoundError`, which matches its comment that an already absent file needs no cleanup. `test_cleanup_preserves_other_errors` checks that other `OSError`s still propagate.\n- `test_cleanup_existing_and_absent_report` covers both the delete-existing case and the already-absent case, including calling cleanup twice.\n\n## Not reviewed\n(none)",
+    "duration_ms": 27666,
+    "cost_usd": 0.0715804,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.EaxVCZB1n9/review-pr.zKsYRI",
+  "head_sha": "8ec2964b35f09998ce9d454d67e545afde1a9f23",
+  "base_sha": "f65f015ecca45f2dac94d715e817f6debfbf7155",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "87c37dc0c2e4833f66b24b0f67097b61d0235633"
+}

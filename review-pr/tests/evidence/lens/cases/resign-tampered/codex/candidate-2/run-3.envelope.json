@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe refresh helper should preserve existing fingerprints: refreshing an edited tracked file currently replaces its baseline and causes verification to accept the edit.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — When `tracked.txt` has been edited since its fingerprint was recorded, passing `[\"tracked.txt\", \"new.txt\"]` to `refresh_fingerprints` makes subsequent verification accept the edited file. The unconditional assignment overwrites the recorded digest; the refresh test passes because its tracked file remains unchanged. Preserve existing entries as `register_new_files` does, and add a regression test using an edited tracked file. — Refreshing after adding files can erase evidence of hand edits that the existing fingerprints are intended to detect.\n\n## Suggestions\n(none)\n\n## Strengths\n- The registration test verifies that existing fingerprints survive hand edits and that verification still detects those edits.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TCaRN0WrKh/review-pr.xIx0Fw",
+  "head_sha": "395ae2c002237ab8f10ab7346bdcf36228e02f0d",
+  "base_sha": "e5d2026f1d72d77cf8baa3bc39be21a22d08e19e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ad0ffc78a41f60066c1cdece1cf82b7ddd8ec4b8"
+}

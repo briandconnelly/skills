@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important fix is needed: `status()` shortens the revision to 7 characters, while `history()` and `completed()` use 12. That contradicts the docstring's promise of \"the same identifier as history.\" Because of this, the new running-status line shows a different revision string from the history line that the PR body says it sits beside. The test for `status()` checks only the prefix and suffix, so it does not catch the mismatch.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For `REVISION = \"0123456789abcdef...\"`, `status(REVISION, 2)` returns `\"Running: 0123456 (attempt 2)\"`, while `history(REVISION)` returns `\"History: 0123456789ab\"`. That breaks the docstring at app/display.py:13: \"Show the deployment revision using the same identifier as history.\" The cause is that `short_revision = revision[:7]` uses a different slice from the `revision[:12]` at app/display.py:5 and app/display.py:9. The fix is to use `revision[:12]` (or a shared helper or constant used by all three functions). Also strengthen `test_running_status_contains_attempt` (tests/test_display.py:14-15) to assert the full string `\"Running: 0123456789ab (attempt 2)\"`, because its `startswith`/`endswith` checks pass with either slice length. — Operators comparing the running-status line with the history and completion output for the same deployment see two different revision identifiers. They cannot match the lines by text, and no current test would catch a regression in this.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a small separate helper, and `test_attempt_label` (tests/test_display.py:18-22) asserts its exact output for two values.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23810,
+    "cost_usd": 0.0571158,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xtp4qLe3Z8/review-pr.WORVfC",
+  "head_sha": "6ed4734af487a23cf2ca23f5a97168fd6f24f304",
+  "base_sha": "2f6989672e1d058009bd5556943eb28463a6c0d1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d5d154b3f0c4ed968a2e755e4003b12719dac812"
+}

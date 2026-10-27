@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `--wait` alias needs fixing before merge. The ADR added in this pull request says `--wait` stays accepted for one release with a deprecation warning, but the parser drops it completely. Any existing invocation that passes `--wait` will now exit with an argparse error. The renamed option, the unchanged 30-second default and the unchanged format choices match the description and the tests.\n\n## Critical\n- app/cli.py:6 — correctness — Calling `parse_args([\"--wait\", \"12\"])` now exits with status 2 (\"unrecognized arguments\"), when it should be accepted as a deprecated alias. The diff replaces `parser.add_argument(\"--wait\", ...)` with `parser.add_argument(\"--timeout\", type=int, default=30)` and registers no alias. That contradicts `docs/adr/007-timeout.md:5`: \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" A search of the repository finds no other handling of `--wait`. To fix this, register `--wait` as a hidden alias that writes to `dest=\"timeout\"`, for example with `help=argparse.SUPPRESS` or a custom action. Emit a `DeprecationWarning` or stderr message when it is used, and add tests that check `--wait 12` gives `args.timeout == 12` and that the warning fires. — Existing scripts and automation that pass `--wait` stop working immediately instead of getting the one-release deprecation period the ADR promises.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The tests were updated consistently for the new flag. They cover the default (`args.timeout == 30`), an explicit value, and both invalid-input cases (`--timeout bad`, `--timeout` with no value), all of which still exit with code 2.\n- The default and the `--format` choices are unchanged, as the PR body and the ADR's \"Defaults\" section state.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24718,
+    "cost_usd": 0.062156,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.vS9RFkkdcJ/review-pr.hzNd42",
+  "head_sha": "714462061421a2005b3d61bec68b710854302fa2",
+  "base_sha": "89876fd9327ce82fe26fdc2921305dd7a15efb9e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e9a593925fb11f668c332ad0933f0c797708e1e8"
+}

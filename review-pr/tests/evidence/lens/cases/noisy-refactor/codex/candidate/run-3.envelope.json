@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe requirement-proof change should be fixed because empty criteria now return `True`, reversing the previous behavior. Existing tests do not exercise this boundary.\n\n## Critical\n(none)\n\n## Important\n- app/handlers/h091_requirements.py:12 — correctness — Calling `requirement_proven([])` now returns `True` despite having no supporting criteria. Both `sum(...)` and `len(criteria)` equal zero, whereas the removed `bool(criteria)` guard returned `False`. Restore the nonempty guard and add an empty-input regression test alongside the existing nonempty cases. — Release-review callers can treat an unsupported requirement as proven.\n\n## Suggestions\n(none)\n\n## Strengths\n- The logging replacements preserve warning severity and message text.\n- The sorting test asserts observable row ordering, which remains consistent with the new `itemgetter` key.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.X2AJZAy8yv/review-pr.eOGmeK",
+  "head_sha": "5d473431b0d3bc7af30acc5510c9fff0de5bc76a",
+  "base_sha": "3f2e8d4bcc4ff0707c76dd4e4884f1f8c96ee551",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c3e4242e6e797730dae66084dc3768f2cca58443"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne fix is needed before this lands. `refresh_fingerprints` overwrites the stored digest for every name it is given, including files already in the manifest. If a tracked file has been hand-edited and is passed alongside new files, it is quietly re-baselined, and `verify` can no longer detect the edit, although the PR description says detecting such edits is the point of existing fingerprints. `register_new_files` is not affected: it keeps existing entries, and its test shows that.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — If `tracked.txt` has been hand-edited since it was fingerprinted, calling `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` replaces its stored digest with the digest of the edited content, so `verify` afterwards returns `True` instead of `False`. Line 17 assigns `entries[name] = fingerprint(root / name)` with no `name not in entries` check. The PR body says existing fingerprints let verification \"detect hand-edited tracked files\", and the added test at tests/test_integrity.py:44 calls refresh with this mixed tracked-plus-new list, but only on an unedited tracked file. That test would pass with or without the overwrite, so it cannot catch this. Recommended fix: skip names already present in `entries`, or raise when an existing entry's digest differs, like `register_new_files` does. Then add a test that edits `tracked.txt` before refreshing and asserts `not verify(...)`. — An operator who runs the refresh after adding files can unknowingly approve a tampered tracked file, and integrity verification then misses exactly the case it exists to catch.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_register_preserves_existing_fingerprints` (tests/test_integrity.py:53-66) edits a tracked file before registering. It checks that the old digest is kept, that `verify` then fails, and it covers duplicate names and an empty list.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23334,
+    "cost_usd": 0.06515359999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Byto1nGjlh/review-pr.FvmKax",
+  "head_sha": "f40c7552a77d460b60c90a9bc5898a024c18e052",
+  "base_sha": "61fccd92deaeaf3f781ab91a1d1b7f8670588955",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bf73933964390dd48ca7e0b949d778445fc5d1fa"
+}

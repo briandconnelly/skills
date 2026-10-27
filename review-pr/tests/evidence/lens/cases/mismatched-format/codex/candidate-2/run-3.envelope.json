@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe running status should use the same revision identifier as history: it currently truncates revisions to seven characters while history uses twelve.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For revision `0123456789abcdef0123456789abcdef01234567`, status displays `0123456` while history displays `0123456789ab`. This contradicts the status docstring’s promise to use “the same identifier as history”; `history()` explicitly slices with `revision[:12]`. Use twelve characters in status and assert the complete status output in its test. — Users receive inconsistent revision identifiers across running status and history, making deployments harder to match.\n\n## Suggestions\n(none)\n\n## Strengths\n- Added assertions check attempt formatting both directly and within running status.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.y4Tejt6p0S/review-pr.E1FAnG",
+  "head_sha": "b9256d5888d5453f36c94570ba2b9402531e5d96",
+  "base_sha": "becf831b3a21d9ee788f190b5b3a9096a797bb20",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d01aa6e9b80d74c7ea5fe762dca6fc3fca12cd0b"
+}

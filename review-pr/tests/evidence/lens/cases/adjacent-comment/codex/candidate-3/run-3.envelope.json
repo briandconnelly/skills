@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe setter’s key handling should be fixed because mixed-case writes cannot be retrieved through the case-insensitive getter.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — Calling `set(\"Alpha\", 1)` followed by `get(\"Alpha\")` returns `None` instead of `1`. The setter stores the original key, while `get()` lowercases every lookup; the existing round-trip test only writes a lowercase key. Store under `key.lower()` and add a mixed-case write test covering retrieval and replacement through different casings. — Callers using uppercase or mixed-case keys lose access to cached values, and writes using different casings fail to replace the same logical entry.\n\n## Suggestions\n(none)\n\n## Strengths\n- The expiry test controls the monotonic clock, verifying expiration without timing-dependent sleeps.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wBxrE7SWEP/review-pr.Avc4NQ",
+  "head_sha": "d1f42723f4de11d73b90c6f451eb4842a6017929",
+  "base_sha": "00b23760abff741028b301eb4948e880c26e4645",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "3d2b406c10bb15cbfa7e256fcb198a23439d2366"
+}

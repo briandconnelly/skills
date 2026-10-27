@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `finished_at` column must be fixed before merge. It is only filled in when the latest event is `'started'`, so it holds the start time of processes that are still running and is NULL for processes that actually ended. Its schema description also misstates when the value is NULL. No project policy files were listed in the manifest. All changed files were read in full.\n\n## Critical\n- models/processes.sql:10 — correctness — In the seeded data, process 20's latest event is `'started'` at `2026-01-01T00:01:00Z`, so `finished_at` comes out as that start time even though the process has not finished, while process 30, which ended with `'cleared'`, gets NULL. The expression `case when event_type = 'started' then occurred_at end` takes the timestamp only when the newest event is a start. The source table allows only `'created'`, `'started'` and `'cleared'` (sources/process_events.sql:4), so no event means \"finished\" in the way the column name and schema say. Recommended fix: decide which event marks completion (probably `'cleared'`) and use that in the condition (`when event_type = 'cleared'`). If the column is meant to be the latest event's time, rename it and update its description. — Anyone reading `processes.finished_at` gets the reverse of what they expect: running processes look finished at their start time, and processes that ended show no finish time.\n\n## Important\n- models/schema.yml:17 — comments — The description says \"NULL means the process has never been started.\", but process 30 was started (event 3) and still gets a NULL `finished_at`, because its latest event is `'cleared'`. The NULL comes from the `case` in models/processes.sql:10, which only checks the latest event. The same is true for every process whose last event is `'cleared'`, and for any process whose last event is `'created'`, whatever its history. Recommended fix: once the column's meaning is settled, rewrite the NULL sentence to give the real rule (for example, \"NULL unless the latest event is X\"). — Anyone relying on the catalog will wrongly treat NULL as \"never started\" and miscount processes that were started and then cleared.\n\n## Suggestions\n(none)\n\n## Strengths\n- The change leaves the `row_number() ... partition by process_id order by event_id desc` / `recency = 1` filter as it was, so the model still returns one row per process, as the PR description says.\n\n## Not reviewed\n(none)",
+    "duration_ms": 29645,
+    "cost_usd": 0.0745538,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AJgyLGpMAO/review-pr.OkHxkc",
+  "head_sha": "ceee95dd5c108e64d069ce961f72ff5c312d1441",
+  "base_sha": "e8b518d190026065ca95abeb3480e2bfb0412a58",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a5f55174cd7309363c7fb3e9f77be61a3f68998c"
+}

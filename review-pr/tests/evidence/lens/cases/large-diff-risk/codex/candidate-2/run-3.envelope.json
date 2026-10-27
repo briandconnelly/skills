@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe release approval boundary should be fixed because releases with exactly the configured minimum approvals are now incorrectly blocked.\n\n## Critical\n(none)\n\n## Important\n\n- zzz-release/gate.py:5 — correctness — With `approvals=2` and `minimum=2`, `approved()` now returns `False` despite meeting the required threshold. The new `>` contradicts “at least the configured number of approvals” at `zzz-release/gate.py:1`; existing tests cover only values above and below the threshold. Restore `>=` and add an equality-boundary regression test. — Releases meeting the configured minimum require an extra approval to proceed.\n\n## Suggestions\n(none)\n\n## Strengths\n\n- Existing tests exercise both empty and nonempty failure lists for the simplified health predicate.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.C2DvBfxxX3/review-pr.Uu8PSB",
+  "head_sha": "6a55d7a9b7ee9d602e8a7fb562e69b1e06e0f2b4",
+  "base_sha": "a10d3b5949799ec24ffb601c94e60c111c570c2c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "630443cfc0ec3f308db17bfdb8b484757ab49242"
+}

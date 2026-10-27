@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe legacy-header regression test should be corrected because its malformed fixture is rejected before the version check runs.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:12 — tests — For `\"REPORT v1\\nversion=v0\"`, `test_rejects_legacy_header` passes without testing legacy-header rejection. The replacement changes the payload’s final `v1`, and the missing `END` causes rejection before the header check; the original parser would also pass this test. Use a complete report and change its header to `REPORT v0`, or remove this redundant test given the complete-report test below. — This test provides no regression protection for the header validation it claims to exercise.\n\n## Suggestions\n(none)\n\n## Strengths\n- The complete-report regression test exercises rejection of `REPORT v0`.\n- The existing valid-report test checks that version 1 payloads are preserved.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.kwx6rva5gO/review-pr.X2P09u",
+  "head_sha": "7dd31236043a70edd3759a46db28228db1ccc079",
+  "base_sha": "07ace8a53e697256ee8a34b5e756e6e3abe3d990",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0811b1dd9aeaad59f2ac55e8db863f46f3f2cea6"
+}

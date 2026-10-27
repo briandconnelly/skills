@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe criterion hint should be fixed because following it produces input rejected by the supported `require_shall=True` option.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — With `require_shall=True`, a criterion following the new hint, such as `- Save the result`, is rejected. The hint requires writing “without the word shall,” while the validator requires `\" shall \"`; existing tests explicitly confirm this rejection. Make the hint conditional on the option or retain guidance compatible with both modes. — Users following the guidance cannot satisfy validation when `require_shall` is enabled.\n\n## Suggestions\n(none)\n\n## Strengths\n- The revised bullet-prefix hint matches the validator’s exact `- ` requirement.\n- Existing tests cover acceptance and rejection of plain bullets under both validator modes.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.r0QIhN7IVr/review-pr.qvNxh7",
+  "head_sha": "a0667a85ab693a1f65a775829fe2357863d3c8fc",
+  "base_sha": "b7110d3acb2e1d90d397cff15136a4e6acce1d88",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "28d43a39d9fbfe069576682f31110da3fe241709"
+}

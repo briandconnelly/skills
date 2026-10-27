@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing first: the containment check in `preview` compares paths as text, so a `..` path can read any file the process can access. `Path.is_relative_to` never resolves `..` or symlinks. The new test only tries an absolute outside path, so it passes even though traversal works. This review also found one optional correction about memory use on large files.\n\n## Critical\n- app/paths.py:12 — correctness — `preview(home, \"../../etc/passwd\")` returns the first 200 characters of `/etc/passwd` instead of raising `ValueError(\"outside home\")`. — `Path(home) / \"../../etc/passwd\"` still begins with `home`'s parts, and `is_relative_to` (line 12) only compares path parts without resolving `..`, so the check passes and line 14 reads the file outside home. A symlink inside home that points outside gets through the same way. The fix is to resolve both sides before comparing, e.g. `root = Path(home).resolve(); candidate = (root / relative).resolve(); if not candidate.is_relative_to(root): raise ValueError(...)`. It also needs a test with `\"../outside.txt\"` (and a symlink case) in `tests/test_paths.py:19-20`. The existing absolute-path case at line 20 cannot catch this, because joining an absolute path throws away `home` entirely. — Anyone who controls `relative` can read any file the process can access (credentials, keys, other users' data), which defeats the stated purpose of limiting previews to the selected home directory.\n\n## Important\n(none)\n\n## Suggestions\n- app/paths.py:14 — correctness — `preview` on a multi-gigabyte file under home (for example a large log or disk image) reads the whole file into memory just to return 200 characters. — `candidate.read_text()[:200]` decodes the full contents before slicing. Opening the file and reading a bounded amount (`with candidate.open() as f: return f.read(200)`) returns the same result for text files. — Previewing a large file can stall or exhaust memory in the process serving previews.\n\n## Strengths\n- `tests/test_paths.py:17-18` checks the 200-character cutoff with a 500-character file, so a change to the preview length would make the test fail.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25034,
+    "cost_usd": 0.06601380000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.b0gPtsQk5A/review-pr.YxmUCG",
+  "head_sha": "36bed730d78da7420106af348a26481c87e22506",
+  "base_sha": "77809fb8cd59385a9b3a37827d746ec54993fd8a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "312e947297a5eed3df84a384ff31317e4c2847ba"
+}

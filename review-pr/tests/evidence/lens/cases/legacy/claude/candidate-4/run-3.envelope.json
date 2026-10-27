@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR deletes `app/defaults.json`, but `app/startup.py` still reads that file, so `load_defaults()` will now raise on every call. That is a merge-blocking regression. There are also three Important defects: `is_valid_port` rejects the valid port 65535, `load_config` silently turns every failure into `{}`, and the `normalize_host` docstring promises `None` for empty input while the code returns `\"\"`. The findings cover only the files in the pinned diff plus `app/startup.py`, which this review read because of the deletion.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — After this deletion, any call to `load_defaults()` raises `FileNotFoundError`, because the stale `app/startup.py:6` still runs `json.loads(Path(__file__).with_name(\"defaults.json\").read_text())`. Nothing in the diff replaces the file or updates `startup.py`. Either keep `app/defaults.json`, or change `load_defaults()` to use another source (for example `load_config` with an explicit default of `{\"timeout\": 30}`) in this same PR. — Any startup path that calls `load_defaults()` crashes instead of getting the 30-second timeout default.\n\n## Important\n- app/parse.py:22 — correctness — `is_valid_port(65535)` returns `False`, but the docstring says \"usable TCP port (1-65535)\" and 65535 is a valid TCP port. The strict `p < 65535` leaves out the upper bound. Change it to `0 < p <= 65535` and add `assert is_valid_port(65535)` and `assert not is_valid_port(65536)` to `test_is_valid_port_lower_bound` or a companion test. The current test checks only 0, 1 and 8080, so it cannot catch this. — Services configured on port 65535 are wrongly rejected as invalid.\n- app/parse.py:30 — silent-failure — If the config file is missing, unreadable, or contains malformed JSON (such as `{\"timeout\": 5,}`), `load_config` returns `{}`. That result is identical to a valid empty config. `except Exception: return {}` discards the `OSError` or `ValueError` without logging it and without telling the caller, and neither the docstring (\"Load the JSON config at path.\") nor a comment explains the fallback. Catch only `FileNotFoundError` if a missing file should mean \"use defaults\", document that in the docstring, and let parse errors propagate (or at least log them with the path). No test covers this fallback. — A typo in the config file makes the app run on defaults without any message, and operators have nothing to show why their settings were ignored.\n- app/parse.py:35 — comments — `normalize_host(\"\")` returns `\"\"`, but the docstring says it \"returns None when h is empty\". Line 37 is `return \"\"`. Make the docstring and code agree: either return `None` on line 37 or change the docstring to say it returns `\"\"`. No test covers the empty-input branch. — A caller following the docstring with `if normalize_host(h) is None:` never sees the empty-host case and treats `\"\"` as a valid host.\n\n## Suggestions\n- app/parse.py:40 — tests — No test exercises the trailing-dot branch (`if lowered.endswith(\".\"): lowered = lowered[:-1]`). The only test, `test_normalize_host_lowercases`, passes `\"Example.COM\"`, which has no trailing dot. Add a case such as `assert normalize_host(\"Example.COM.\") == \"example.com\"`. — A regression in stripping the fully-qualified dot, which the docstring names as core behavior, would pass the test suite.\n\n## Strengths\n- `test_parse_timeout_millis` checks the new `ms` branch with a concrete value (`\"1500ms\"` → `1.5`), so it fails if the division or suffix handling is wrong.\n- `test_is_valid_port_lower_bound` checks both sides of the lower boundary (0 rejected, 1 accepted).\n\n## Not reviewed\n(none)",
+    "duration_ms": 37194,
+    "cost_usd": 0.10163820000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.MmXYqjMDQU/review-pr.GBUM1v",
+  "head_sha": "ff5f43a8442b0864e63355c192691b06b5fdf27c",
+  "base_sha": "9829cd4601e17f8bf2e5d880dc63b895e57b6bde",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "caf57365da9b26472873245cc7323a9b891f93fc"
+}

@@ -1,0 +1,10 @@
+{
+  "collection_id": "309a91d69aaf918dfc1e563693ce31ca0ff0259e",
+  "runner": "codex",
+  "case": "data-doc-precision",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "20abcd0fcd2e6dfac691dc0e47954434b7ee48876dfab5cef3b6e2fe4a1ecab4"
+}

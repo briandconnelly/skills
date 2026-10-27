@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe pull-request description should be fixed to include the verification section required by project policy. No additional defects were found in the reviewed code and tests.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — The current description omits the required `## Testing` section. AGENTS.md:4 states, “Every pull-request description has a `## Testing` section that says how the change was verified.” Add that section and accurately describe the verification performed. — The description violates contributor policy and leaves reviewers without the required verification information.\n\n## Suggestions\n(none)\n\n## Strengths\n- Both added modules begin with descriptive docstrings, satisfying AGENTS.md:3.\n- The parameterized tests check lowercasing, separator collapsing, trimming, and empty results.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.or9jVwAlWo/review-pr.Nv8Pe4",
+  "head_sha": "d6cfd1a532f01eb60cf88101620e2c3931a639f9",
+  "base_sha": "83476929e1247f2b0ec325362b7a66b7157904cf",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6390af42ac1ccf7b1dcb2c5bc6ada5340ba01ba0"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `finished_at` column needs fixing before merge because it holds the wrong value. It is set to the `started` event's timestamp, so a process that is still running looks finished. A process that started and was then cleared gets NULL. The schema description also contradicts this logic: it calls the value a finish time and says NULL means the process was never started. The source table allows only `created`, `started` and `cleared` event types, so this column cannot represent a finish time as written.\n\n## Critical\n- models/processes.sql:10 — correctness — For process 20 in `sources/process_events.sql:9`, whose only event is `started`, `finished_at` is `'2026-01-01T00:01:00Z'`. That is when the process started, and the process's `state` is still `started`, so a running process is reported as finished. The expression `case when event_type = 'started' then occurred_at end as finished_at` copies the start time into a column named and documented as the finish time. The event-type check in `sources/process_events.sql:4` (`'created', 'started', 'cleared'`) has no finish event to take a timestamp from. One option is to rename the column to `started_at` and fill it from the most recent `started` event instead of the latest event only. The other is to define which event marks a process as finished (for example `cleared`) and use that event's `occurred_at`. — Anyone who filters on `finished_at is not null` will count running processes as completed and get wrong durations and completion times.\n\n## Important\n- models/schema.yml:17 — comments — For process 30 (`started` at event 3, then `cleared` at event 4 in `sources/process_events.sql:10-11`), `finished_at` is NULL. The description says \"NULL means the process has never been started\", but this process was started. The SQL at `models/processes.sql:10` returns a non-NULL value only when the latest event is `started`, so NULL also covers processes that were started and then cleared. Line 11, \"Timestamp when the process finished.\", conflicts with the same expression, which takes the `started` event's time. Update the description to match the corrected column logic, so that it says exactly which event fills the column and which states produce NULL. — Readers of the schema catalog will treat cleared processes as never started, and running processes as finished.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `latest_event` CTE and its `recency = 1` filter are unchanged, so the model still returns one row per process, as the PR description says.\n- The new column is documented in `models/schema.yml` in the same change that adds it.\n\n## Not reviewed\n(none)",
+    "duration_ms": 35892,
+    "cost_usd": 0.07947080000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AJgyLGpMAO/review-pr.nqRYA7",
+  "head_sha": "ceee95dd5c108e64d069ce961f72ff5c312d1441",
+  "base_sha": "e8b518d190026065ca95abeb3480e2bfb0412a58",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a5f55174cd7309363c7fb3e9f77be61a3f68998c"
+}

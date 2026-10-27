@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `select_failures` compares report paths exactly as written, so a failure report that spells paths with a `./` prefix selects nothing. The sibling selectors in the same module normalize paths before matching. Apart from that, the refactors of `select_cached` and `_select_normalized` behave the same as before.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — For a report `{\"failed\": [\"./tests/test_x.py\"]}` with `requested={\"tests/test_x.py\"}`, `select_failures` returns `[]` instead of `[\"./tests/test_x.py\"]`, because it checks `path in requested` without calling `normalize`. `select_explicit` (app/selection.py:6) handles the same input by running `normalize(path) in requested` and returning the original spelling, which is what the docstring \"preserving its original spelling\" describes. The tests at tests/test_selection.py:43-44 only use paths without the `./` prefix, so they do not catch this. Fix: change the condition to `normalize(path) in requested`, and add a test with a `./`-prefixed entry in `report[\"failed\"]`. — When a runner reports failed tests as `./tests/...`, no failed tests are selected and nothing reports an error, so failures are not re-run.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `select_cached` and `_select_normalized` rewrites keep their behavior, and `test_cached_paths_are_normalized_by_caller` covers them by checking that the normalized spelling is returned.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18159,
+    "cost_usd": 0.0629184,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.2tBhodKaLX/review-pr.WuQWMj",
+  "head_sha": "a495938ccfaa499c62600f1867d9c18cd26c40bf",
+  "base_sha": "4df934b5e84435703e99f1c268a98eb1cb614558",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ed32e75281b481994f665e3126f3223cb7dce520"
+}

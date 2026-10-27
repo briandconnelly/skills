@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing. With `adopt=True`, a key whose existing value already matches the incoming value is still recorded as a change, so `merge` rewrites the file. That breaks the module's promise to preserve untouched configuration files. This review covered the full diff and both changed files, and found no other defects.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — When `merge(path, {\"theme\": \"dark\"}, adopt=True)` runs on a file that already holds `{\"theme\":\"dark\"}\\n`, it returns `[\"theme\"]` and rewrites the file as `{\\n  \"theme\": \"dark\"\\n}\\n`. The values match, so the output should be `[]` and the file should be left alone. The `elif adopt:` branch (lines 13–15) assigns the value and appends the key without comparing `current[key] != value`. Because `changes` is then non-empty, line 23 re-serializes the whole file with `indent=2`. The `replace` branch (lines 19–21) guards against this case, and `test_unchanged_replacement_preserves_bytes` checks the guard. The only adopt test, `test_adopt_updates_setting`, uses a differing value, so this path has no test. Recommended fix: add the same `if current[key] != value:` guard inside the adopt branch, and add an adopt version of the byte-preservation test. If adopted keys are meant to appear in `changes` even when unchanged, as the PR body's \"records adopted keys in its change list\" may suggest, the write at line 22 should then depend on whether something actually changed, not on whether `changes` is non-empty. — Running adoption over existing settings that already match rewrites and reformats users' config files. It also reports changes that did not happen. This breaks the module docstring's guarantee (app/config.py:1, \"preserving untouched configuration files\") and creates churn in files kept under version control.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_replace_updates_different_setting` adds coverage for the replace path when the value differs. Before this change, only the equal-value replace path had a test.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20686,
+    "cost_usd": 0.056720000000000007,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.G5NqgDJdcj/review-pr.p8gQen",
+  "head_sha": "2d6f06baf9482eab12b14d4a0d6054c182c22e72",
+  "base_sha": "67584102fd86e4c4dc1e969d8179d47f17678557",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "767cb41e56539ea1a18f0b15828033b2c0ed1a85"
+}

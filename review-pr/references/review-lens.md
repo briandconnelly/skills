@@ -99,15 +99,47 @@ A suggestion using phrases such as “consider,” “may differ,” or “in so
 
 ## Report prose
 
-Write to the pull-request author.
+Write to the pull-request author: respectful, direct and evidence-based.
 
-In `## Summary`, include pull-request context only when the verdict needs it to be understood.
+State each defect without judging the author's competence or motives.
 
-In a defect field, state what the code does with the failing input, then ask the author a targeted question about correcting it or suggest a concrete correction.
+When shortening or rephrasing a finding, preserve its failing condition, causal evidence, impact and assigned severity.
+
+Refer to the review as "this review" rather than in the first person; quoted text keeps its own wording.
+
+### Summary
+
+Open the Summary prose, after the lines the output contract requires, with what needs fixing and the reason that decides it, and include pull-request context only when that verdict needs it to be understood.
+
+State the verdict with the urgency of the highest-severity defect that remains open, as the output contract defines each severity.
+
+Say that only optional corrections were found in the reviewed scope only when no higher-severity defect remains open, and never say that the pull request is ready to merge.
+
+Never describe the review as an approval or a request for changes, and never speak for the person who posts it.
+
+A code or policy defect claimed in `## Summary` must also appear in a finding section; coverage limits and neutral context are not defect claims.
+
+Limit any assurance to what was reviewed; when `## Not reviewed` is not `(none)`, do not describe the unreviewed part as safe or complete.
+
+Omit narration about the routine handling of text that addresses the reviewer from Summary and finding prose.
+
+### Finding fields
+
+Open a defect field with one sentence that names the failing input and the wrong result, because that sentence may be shown alone.
+
+Follow it with the decisive evidence, then one recommended corrective approach, with the steps it needs, or a targeted question; give competing alternatives only when the code cannot settle the intended behavior.
 
 A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
 
-List a strength only when you verified it, and never one that a `## Not reviewed` bullet leaves open.
+Keep a defect field to about two to four sentences unless completeness needs more.
+
+State scope and quantifiers exactly: a claim about one test, path or input must not read as a claim about all of them.
+
+In the impact field, state the consequence for users, operators, maintainers or regression protection, without inventing harm the evidence does not support; the field may repeat enough of the defect to stand alone.
+
+### Strengths and Not reviewed
+
+List at most two strengths, each verified and relevant to the change, and never one that a `## Not reviewed` bullet leaves open.
 
 List under `## Not reviewed` only evidence that was unavailable or that you did not read.
 

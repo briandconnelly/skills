@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing before merge. `fetch_with_retry` defaults to and allows 10 attempts, but the project's product-requirement policy caps retry helpers under `app/` at 5. The only thing that makes 10 look allowed is this same pull request's edit to `AGENTS.md`, which loosens the cap based on an unverified claim that \"the upstream now sheds load itself.\" No other defects were found in the reviewed scope.\n\n## Critical\n- app/net.py:19 — correctness — With the default `attempts=10` (`app/net.py:13`), or any explicit value from 6 to 10, `fetch_with_retry` passes the `if not 1 <= attempts <= 10` check and makes up to 10 upstream calls. That breaks the policy rule \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" (`AGENTS.md:5`). This pull request rewrites that rule to \"cap attempts at 10\" in the same change that needs it, so the code is effectively approving itself, and the new rationale has no supporting evidence in the diff or description. Recommended fix: set the default and the upper bound to 5 (`attempts=5`, `1 <= attempts <= 5`, matching error message and docstring), update `tests/test_net.py:53` and `tests/test_net.py:95` to expect 5 and 6, and propose the policy change separately with evidence and the policy owner's sign-off. — When an upstream is down, every caller sends twice as many requests as policy allows, plus up to about 104.5 s of blocking per call (10 × 10 s timeouts + 9 × 0.5 s sleeps). That is the retry amplification the policy says has already caused outages.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The retry loop re-raises the original `OSError` from the final attempt and skips the sleep after it. `test_fetch_with_retry_single_attempt_does_not_sleep` checks the no-sleep behavior with a recording `sleep` stub.\n- Range validation is tested on both sides (0 and 11). The default-count test pins the boundary value, so changing the cap will make these tests fail visibly.\n\n## Not reviewed\n- Draft status of PR #11 (`AGENTS.md:10` requires opening pull requests as drafts first). `../pr.json` has no draft field. To check, query the PR's `isDraft` field on the hosting service.\n- Whether `make selfcheck` was run before the `app/` change was committed (`AGENTS.md:9`). There is no evidence of it in the diff, commit message or `../pr.json`, and this review did not run it.",
+    "duration_ms": 36560,
+    "cost_usd": 0.1072154,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mVQSVNKAgw/review-pr.ZSfL8T",
+  "head_sha": "306b3e614819cc100c2a575161b481ad838f270b",
+  "base_sha": "42c68c1e5388c7f5b7c3050c15d7cd0d2cd0dcdf",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "59d9a9208b3c39140c9e1db2bd75d0eef8a7513a"
+}

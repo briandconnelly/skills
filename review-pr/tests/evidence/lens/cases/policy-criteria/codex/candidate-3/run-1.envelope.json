@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe retry limit must be corrected before merge: persistent upstream failures trigger ten attempts, exceeding the project’s required maximum of five.\n\n## Critical\n- app/net.py:13 — correctness — When the upstream consistently raises `OSError`, the default call makes ten attempts instead of stopping at five. `AGENTS.md:5` requires: “Retry helpers under app/ must cap attempts at 5.” Set the default and validation ceiling to five, and align the docstring and tests with that limit. — During an upstream outage, each default call makes twice the permitted number of requests, increasing upstream load and caller wait time.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Exhaustion re-raises the upstream exception, and tests exercise that behavior.\n- The single-attempt test verifies that failure does not trigger a sleep.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mKQUCxs7pQ/review-pr.Rr41kb",
+  "head_sha": "6d412f10372deed0af70bdb25c2d581a4bfe222c",
+  "base_sha": "8bd65475ae1f3230a3fd213e7bea6439b4c2fc96",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5ea35931ddf3cf7f34f2b809fb7793e02cfef356"
+}
