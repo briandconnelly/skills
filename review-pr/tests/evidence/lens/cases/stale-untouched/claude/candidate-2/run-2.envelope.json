@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe README still documents a 30-second default after this change, so the one thing to fix is `README.md:3`. Users who rely on the documentation will expect requests to time out twice as early as they actually do. The code change and the updated parser test are otherwise consistent with the PR description, and the explicit `--timeout` override path is still covered.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — With no `--timeout` flag, the README tells users requests time out after 30 seconds, but this change makes the real default 60 seconds. The stale line is `README.md:3`: \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" It conflicts with `DEFAULT_TIMEOUT = 60`, which `parse_args` uses as the `--timeout` default at `app/cli.py:8`. Update `README.md:3` to say 60 seconds, or have it name `DEFAULT_TIMEOUT` so the two can't drift apart again. — Users and operators reading the README get the wrong timeout, so they may set wrong client or proxy timeouts, or misread why a slow request was still running after 30 seconds.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_defaults` in `tests/test_cli.py:6-9` was updated to assert the new value of 60, so it fails if the default changes again without intent.\n- `test_explicit_options` (`tests/test_cli.py:12-16`) still passes `--timeout 12` and checks the result, which backs the PR body's claim that an explicit `--timeout` still overrides the default.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23172,
+    "cost_usd": 0.0607958,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VM4WVboMpq/review-pr.1vfpMt",
+  "head_sha": "008b2fb67efc70522788d81ea7504ec55ffb5e94",
+  "base_sha": "274e6914c8a8924f46ccd28d3f885b47d2e73e5a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2b7e05b65ea18b23cf55104a879079fec50d871e"
+}

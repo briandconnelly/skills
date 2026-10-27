@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`preview` has to be fixed before merge because its \"outside home\" check does not catch path traversal. `Path.is_relative_to` compares paths as text without resolving them, so a relative path containing `..` can read any file the process can access. The only added outside-path test passes an absolute path, so it does not exercise this case.\n\n## Critical\n- app/paths.py:12 — correctness — `preview(home, \"../../etc/passwd\")` reads and returns `/etc/passwd` when it should raise `ValueError(\"outside home\")`. The candidate `home/../../etc/passwd` is never resolved, and `PurePath.is_relative_to` only checks whether the text starts with `home`, so the check passes. A symlink inside `home` that points outside it also gets through. To fix this, resolve both sides first (`root = Path(home).resolve()`, `candidate = (root / relative).resolve()`, then `candidate.is_relative_to(root)`). Then add a test with a `\"../outside.txt\"` relative path, because the current case at tests/test_paths.py:20 (an absolute `tmp_path / \"outside.txt\"`) only covers the absolute-path branch. — Any caller that passes a user-supplied relative path can read the first 200 characters of arbitrary files outside the selected home directory, which is the exact case the guard exists to stop.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The new tests check the 200-character truncation with a 500-character file (tests/test_paths.py:17-18), so a change to the preview length would be caught.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23685,
+    "cost_usd": 0.0785974,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.b0gPtsQk5A/review-pr.FyHyge",
+  "head_sha": "36bed730d78da7420106af348a26481c87e22506",
+  "base_sha": "77809fb8cd59385a9b3a37827d746ec54993fd8a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "312e947297a5eed3df84a384ff31317e4c2847ba"
+}

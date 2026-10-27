@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect must be fixed before merge: `approved` now uses a strict `>`, so a release with exactly the configured minimum number of approvals (2 by default) is blocked. That contradicts the module docstring, and no test checks that boundary. Separately, a non-service `review_note` key was added to the generated catalog; this is an optional correction. The `healthy` change and the catalog rename did not produce any findings in the reviewed scope.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — `approved(2, minimum=2)` used to return `True` and now returns `False`, because the comparison changed from `approvals >= minimum` to `approvals > minimum`. The module docstring at `zzz-release/gate.py:1` still says \"A release needs at least the configured number of approvals.\" The existing tests in `tests/test_release.py:11-16` only check 3 approvals (passes) and 1 approval (blocked), so they cannot catch this boundary change. Recommended fix: restore `>=` and add `assert gate.approved(2, minimum=2)` to `tests/test_release.py`. If a stricter rule is intended, update the docstring and the PR description to say so instead. — Releases with exactly the required number of approvals (2 by default) would be wrongly blocked, and no test protects the documented \"at least\" rule.\n\n## Important\n(none)\n\n## Suggestions\n- aaa-generated/catalog.json:6002 — correctness — The catalog now has a top-level `\"review_note\"` entry whose value is a string. Every other top-level key in this file maps a service name to a `{\"port\", \"enabled\"}` object. Any consumer that loops over catalog entries and reads `entry[\"port\"]` would raise a `TypeError` on this key. Because the file sits under `aaa-generated/`, regenerating it would also likely drop the entry. No in-repo code reads the catalog, so the risk is limited to external consumers. Recommended fix: remove the line and restore the closing `}` of `production-service-1499` without the trailing comma. — Downstream tools that parse the catalog as a name→service map would fail on this entry, and the generated file would no longer match its generator's output.\n\n## Strengths\n- The catalog rename is consistent across the whole diff: every one of the 3,000 changed entry lines follows the same pattern. Each `legacy-service-NNNN` became `production-service-NNNN`, and each port moved from `1NNNN` to `2NNNN` (1,500 entries).\n- `healthy` at `services/registry.py:88` behaves the same as before for list inputs, and `tests/test_release.py:19-21` covers both the empty and the non-empty case.\n\n## Not reviewed\n- Pinned diff lines 2234–8979 of `../pr.diff` (the middle of the `aaa-generated/catalog.json` hunk) were not read line by line. Instead, every added and removed line in the diff was counted against the expected rename patterns. All 3,007 `+` lines and 3,006 `-` lines were accounted for, and none were left unexplained.",
+    "duration_ms": 68931,
+    "cost_usd": 0.32613420000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.9E00QiOCfP/review-pr.OqLXK7",
+  "head_sha": "c4a64b26ca02223b6c1c7323c036c4317cd18942",
+  "base_sha": "008cdb584a3d28c9079f23cbf2393b7fa76d3456",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7d2ff71db687c3c730bacd93e7ca95644c10437d"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`select_failures` needs a fix before it can be relied on. It compares raw report paths with the requested set and skips the `normalize()` step that `select_explicit` uses. As a result, failed tests reported with a `./` prefix are silently left out of the selection. The refactors to `select_cached` and `_select_normalized` keep their existing behavior.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — A runner report such as `{\"failed\": [\"./tests/test_x.py\"]}` with `requested={\"tests/test_x.py\"}` returns `[]`, because `select_failures` checks `path in requested` without normalizing. `select_explicit` at `app/selection.py:6` handles the same situation with `normalize(path) in requested` and still returns the original spelling. That is the behavior this docstring describes (\"preserving its original spelling\"), and `test_explicit_paths_accept_dot_prefix` locks it in for explicit selection. Changing line 20 to `if normalize(path) in requested` would fix it. A test case for a report path with a `./` prefix should be added alongside `test_failure_report_selection` in `tests/test_selection.py:12`, because the current test only uses paths that are already normalized. — Failed tests that the runner reports with a `./` prefix are dropped from the re-run selection without any error, so failures can go unretried.\n\n## Suggestions\n(none)\n\n## Strengths\n- The rewrite of `_select_normalized` from `filter`/`lambda` to a list comprehension and the extraction of `normalized` in `select_cached` keep the existing behavior. `test_cached_paths_are_normalized_by_caller` checks this.\n- The new `tests/test_selection.py` covers the existing explicit and cached selectors with input that has a `./` prefix.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20422,
+    "cost_usd": 0.053975800000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.2tBhodKaLX/review-pr.TglOMG",
+  "head_sha": "a495938ccfaa499c62600f1867d9c18cd26c40bf",
+  "base_sha": "4df934b5e84435703e99f1c268a98eb1cb614558",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ed32e75281b481994f665e3126f3223cb7dce520"
+}

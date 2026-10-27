@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`Cache.set` needs fixing before merge. It stores keys without lower-casing them, but `get` always looks keys up in lower case, so any value stored under a mixed-case key can never be read back. The added round-trip test only stores a lower-case key, so it passes despite this defect. The `DEFAULT_TTL` change and its updated comment are consistent with each other.\n\n## Critical\n- app/cache.py:27 — correctness — `c.set(\"Alpha\", 1)` followed by `c.get(\"Alpha\")` (or `c.get(\"alpha\")`) returns `None`, because `set` writes `self._store[key]` with the original casing while `get` reads `self._store.get(key.lower())` at app/cache.py:17. This breaks the rule in the comment at app/cache.py:14-15: \"every path into _store lower-cases the key first, or mixed-case callers create duplicate entries that never expire together\". `test_set_then_get_round_trip` (tests/test_cache.py:10-14) only calls `set(\"alpha\", ...)`, so it cannot catch this. Store under `key.lower()` in `set`, and add a test that calls `set` with a mixed-case key and reads it back with a different casing. — Callers moving from direct `_store` access to `set` with any mixed-case key always get a cache miss, and nothing signals an error. Their mixed-case entries also pile up in `_store` because `get` never finds them to evict them.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_entries_expire` patches `time.monotonic` with a fixed clock, so the expiry check is deterministic and does not depend on real sleeps.\n- The `DEFAULT_TTL` comment was updated in the same hunk as the value, so the comment and code agree (\"expire 300 seconds\" / `DEFAULT_TTL = 300`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 25088,
+    "cost_usd": 0.06263840000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.jHg2XKNUUg/review-pr.LF4hPz",
+  "head_sha": "d1f42723f4de11d73b90c6f451eb4842a6017929",
+  "base_sha": "00b23760abff741028b301eb4948e880c26e4645",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9a69f4a44c331193c05789ba930b8b338d43c289"
+}

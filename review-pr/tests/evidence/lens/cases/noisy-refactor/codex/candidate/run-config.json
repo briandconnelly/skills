@@ -1,0 +1,10 @@
+{
+  "collection_id": "c3e4242e6e797730dae66084dc3768f2cca58443",
+  "runner": "codex",
+  "case": "noisy-refactor",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "20abcd0fcd2e6dfac691dc0e47954434b7ee48876dfab5cef3b6e2fe4a1ecab4"
+}

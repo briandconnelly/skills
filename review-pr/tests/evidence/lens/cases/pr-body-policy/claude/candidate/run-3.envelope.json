@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nTwo important problems need fixing. `slugify` matches only ASCII letters and digits, so accented titles lose letters and non-Latin titles produce an empty slug. The PR description also lacks the `## Testing` section that `AGENTS.md` requires. No critical defects were found in the two changed files.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — A title such as `\"Café Menu\"` becomes `\"caf-menu\"`, and a title such as `\"日本語\"` becomes `\"\"`, because the pattern `[^a-z0-9]+` treats every non-ASCII letter as a separator. The PR body says the helper \"replaces runs of non-alphanumeric characters\", but `é` and CJK characters are alphanumeric (`\"é\".isalnum()` is true) and still get replaced. One fix is to transliterate first: apply `unicodedata.normalize(\"NFKD\", ...)`, drop combining marks, then decide how to handle scripts that still produce an empty slug (for example, raise an error or fall back to a caller-supplied ID). Add test cases for both kinds of input. — Pages with accented titles get wrong URLs. Pages with non-Latin titles get an empty slug, so their URLs collide with each other and with any other empty-slug page.\n- PR body — correctness — The PR description has no `## Testing` section. `AGENTS.md:4` says \"Every pull-request description has a `## Testing` section that says how the change was verified.\" The current body has only the one-sentence feature summary. Add a `## Testing` section that says how the change was checked, for example by running `tests/test_slug.py`. — The PR breaks a project contributor rule, and readers cannot tell from the description how the change was verified.\n\n## Suggestions\n(none)\n\n## Strengths\n- Both new modules open with a docstring that states their purpose, as `AGENTS.md:3` requires.\n- `tests/test_slug.py` covers collapsing repeated separators, trimming at both ends, input made only of hyphens, and empty input.\n\n## Not reviewed\n(none)",
+    "duration_ms": 25972,
+    "cost_usd": 0.064371,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.StAB5FVDxI/review-pr.FyIcJO",
+  "head_sha": "17e83149dbbbd4e8d29d0f42317b9499a85283ae",
+  "base_sha": "b44f6e75990bc1b4d39abed70b8f3283a83bb002",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e24bebf93eb7704cb8acfe2a1fe5d38989f1eff2"
+}

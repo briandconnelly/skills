@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne fix is needed before this lands: the new `CRITERION_HINT` tells users to leave out \"shall\", but the validator still rejects any criterion without \"shall\" when `require_shall` is enabled. The PR body says the change \"keeps the existing validator options\", so the hint now contradicts one of the options it keeps. No other defects turned up in the reviewed scope.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — When `require_shall=True`, a user who follows the new hint and writes `- Save the result` is rejected, because the hint says \"Write criteria as direct action bullets without the word shall.\" while `accepts_criterion` at app/criteria.py:7-8 returns `\" shall \" in text`. The existing test at tests/test_criteria.py:20-21 already asserts that `- Save the result` is rejected under that option, and `config.example.yml:1` shows `require_shall` as a supported setting. Fix it by choosing the hint text based on `require_shall`, for example a second constant or a small function that returns the \"shall\" wording when that option is on. Or remove \"without the word shall\" so the hint is true under both settings. — Deployments with `require_shall: true` show users a hint that guarantees their criterion fails validation, with nothing to explain why.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` (app/criteria.py:12) now gives the exact prefix `` `- ` ``, which matches the `text.startswith(\"- \")` check at app/criteria.py:5.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21731,
+    "cost_usd": 0.08051900000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7KEiaASNNc/review-pr.2wEta6",
+  "head_sha": "a0667a85ab693a1f65a775829fe2357863d3c8fc",
+  "base_sha": "b7110d3acb2e1d90d397cff15136a4e6acce1d88",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "53aca445c61f39bc73ea40c9e18100c80d9e97ff"
+}

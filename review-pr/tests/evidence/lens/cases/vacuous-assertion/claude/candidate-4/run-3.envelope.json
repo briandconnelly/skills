@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne test needs fixing. `test_rejects_legacy_header` does not check the version header it names, because its input has no `END` line and still uses a `REPORT v1` header. The production change in `app/report.py` is correct for the inputs this review traced. `test_rejects_unsupported_header_with_complete_report` does cover the new rejection branch, so the defect found here is Important rather than Critical.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:10 — tests — `test_rejects_legacy_header` builds `\"REPORT v1\\nversion=v0\"`, so `parse_report` returns `None` because the `END` line is missing (`app/report.py:3`), not because the header is checked. `fixture.rsplit(\"v1\", 1)` replaces only the last `\"v1\"`, which sits in the body line `version=v1`. The header stays `REPORT v1` and no `END` line is ever added, so the test would still pass if the check at `app/report.py:5` were deleted or went back to `startswith(\"REPORT \")`. The comment at line 9, \"changing the fixture's version to v0\", describes a header change the code never makes. Recommended fix: use a complete report with a legacy header, such as `parse_report(\"REPORT v0\\nvalue=ok\\nEND\") is None`, or delete the test, since `test_rejects_unsupported_header_with_complete_report` already covers that input. — The test is presented as regression protection for the version check, but it cannot catch a regression in that check, which gives maintainers false confidence.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_rejects_unsupported_header_with_complete_report` (`tests/test_report.py:15-17`) sends a complete, well-formed report with a `REPORT v0` header. That test fails under the old `startswith(\"REPORT \")` check and passes under the new exact match, so it really tests the change.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21932,
+    "cost_usd": 0.05221340000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ALBKsoQCDw/review-pr.NHmMwS",
+  "head_sha": "81b65974f0dee4e811d1ba14ae0c2f8ed2c9f712",
+  "base_sha": "a82d51962ac78513c2d286feaad383b2011d20ae",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9c413b0ba81296e9dc11da216b185d31785db854"
+}

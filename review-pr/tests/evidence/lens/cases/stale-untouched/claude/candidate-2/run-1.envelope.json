@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect should be fixed: the README still documents the old 30-second default, so after this change users will be told the wrong timeout. The code change in `app/cli.py` is correct, and the updated `test_defaults` checks the new value. This review found no correctness or silent-failure defects in the code that changed.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — Once `DEFAULT_TIMEOUT = 60` lands, `README.md:3` is wrong: it still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" The README's only job here is to describe the default this diff changes, and the diff does not update it. Fix: change `README.md:3` to say 60 seconds, so it matches `DEFAULT_TIMEOUT`. — Users reading the README will expect requests to fail after 30 seconds when they actually wait up to 60. That gives them a false picture when they tune `--timeout` or debug slow upstreams.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_cli.py:8` now asserts `args.timeout == 60` through `parse_args([])`. It tests the default users actually get, not the constant, so it would fail if the parser stopped using `DEFAULT_TIMEOUT`.\n- The PR says an explicit `--timeout` still overrides the default. The existing test `test_explicit_options` (`tests/test_cli.py:13-16`) still checks this by passing `--timeout 12`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22261,
+    "cost_usd": 0.06829460000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VM4WVboMpq/review-pr.PcEyAl",
+  "head_sha": "008b2fb67efc70522788d81ea7504ec55ffb5e94",
+  "base_sha": "274e6914c8a8924f46ccd28d3f885b47d2e73e5a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2b7e05b65ea18b23cf55104a879079fec50d871e"
+}

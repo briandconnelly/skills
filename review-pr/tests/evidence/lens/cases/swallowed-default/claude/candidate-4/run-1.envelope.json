@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing before merge: the release gate now passes when the results file is missing. `load_results` turns a missing file into `[]`, and `all([])` is `True`. The display-preferences fallback is documented and tested. The same fallback in the release gate fails open on a safety check. No project policy files were listed in the manifest.\n\n## Critical\n- app/results.py:8 — correctness — When `results.json` is missing (for example, the checks never ran or wrote to a different path), `release_allowed` returns `True` and the release is allowed. The cause is that `load_results` now catches `FileNotFoundError` and returns `[]`, and `release_allowed` (`app/results.py:12`) returns `all(row[\"passed\"] for row in [])`, which is `True`. This review recommends removing the `FileNotFoundError` fallback from `load_results` so a missing file raises. If a missing file needs to be handled, make `release_allowed` return `False` explicitly when there are no results, and add a test that calls `release_allowed` on a nonexistent path and asserts it is `False`. The existing test `tests/test_results.py:4` only covers files that exist, so it cannot catch this. — The release gate fails open: a build with no saved check results gets released as if every check passed, and no log or signal tells operators the results were absent.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `display_preferences` documents its fallback next to the code (\"Preferences are optional; absent files give callers the visible light theme.\"), and tests cover both the missing-file path (`tests/test_results.py:12`) and the saved-file path (`tests/test_results.py:16`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 20660,
+    "cost_usd": 0.0663244,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1iSTQJTGoj/review-pr.EwvyAn",
+  "head_sha": "9bad32fe4a50d32be64a324489c22e076bdc7e8a",
+  "base_sha": "70d30213a711182230417976692864ee7d5d6aa3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "84dc22c9d41ee9cfe69b2bf826576064324779d9"
+}

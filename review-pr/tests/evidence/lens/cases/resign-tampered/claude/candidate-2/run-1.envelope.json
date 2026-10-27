@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`refresh_fingerprints` needs fixing before merge. It overwrites the stored fingerprint of every name it is given, so a tracked file that was edited by hand gets its fingerprint replaced with the edited content's hash. The pull-request description says those stored fingerprints exist to catch exactly that kind of edit. `register_new_files` keeps existing entries as intended, and its test exercises an edited tracked file.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Calling `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` after `tracked.txt` was edited by hand replaces its stored digest with the edited file's hash, so `verify` then returns `True` for the tampered file. The loop assigns `entries[name] = fingerprint(root / name)` with no check for an existing entry. That contradicts the description's statement that \"Existing fingerprints let verification detect hand-edited tracked files\" and the test name `test_refresh_registers_new_files_and_keeps_unchanged_entries`. The existing test at tests/test_integrity.py:38 keeps `tracked.txt` unchanged, so it can't catch this. To fix it, either skip names already in `entries` (as `register_new_files` does on line 24) or fold this function into `register_new_files`. Then add a test that edits a tracked file before the refresh and asserts that its original digest is kept and that `verify` returns `False`. — Running the documented \"refresh after adding new files\" step accepts any edits made since the last fingerprinting, so the integrity check passes for altered tracked files and operators are not alerted.\n\n## Suggestions\n(none)\n\n## Strengths\n- `register_new_files` only adds names that aren't already in the manifest (app/integrity.py:24). Its test at tests/test_integrity.py:53 edits a tracked file, passes a duplicate name and passes an empty list, then asserts that the original digest is kept and that `verify` returns `False`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23226,
+    "cost_usd": 0.07653779999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Byto1nGjlh/review-pr.LWmliM",
+  "head_sha": "f40c7552a77d460b60c90a9bc5898a024c18e052",
+  "base_sha": "61fccd92deaeaf3f781ab91a1d1b7f8670588955",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bf73933964390dd48ca7e0b949d778445fc5d1fa"
+}

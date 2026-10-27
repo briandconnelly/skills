@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe refresh helper should preserve existing fingerprints: overwriting them allows hand-edited tracked files to pass verification, contrary to the stated integrity behavior.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — When `names` includes an edited tracked file alongside a new file, `refresh_fingerprints` replaces the tracked file’s original digest, causing `verify` to return `True` despite the edit. The unconditional assignment overwrites existing entries; preserve those entries by applying the membership check used in `register_new_files`. — Refreshing the manifest after adding files can erase evidence of edits to tracked files.\n\n## Suggestions\n(none)\n\n## Strengths\n- The registration test verifies that existing fingerprints survive edits and that verification still detects the changed file.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TCaRN0WrKh/review-pr.w4A966",
+  "head_sha": "395ae2c002237ab8f10ab7346bdcf36228e02f0d",
+  "base_sha": "e5d2026f1d72d77cf8baa3bc39be21a22d08e19e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ad0ffc78a41f60066c1cdece1cf82b7ddd8ec4b8"
+}

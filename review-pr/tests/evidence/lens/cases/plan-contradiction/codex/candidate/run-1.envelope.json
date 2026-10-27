@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe compatibility transition should be fixed because existing `--wait` invocations fail despite the documented one-release alias.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Existing invocations such as `--wait 12` now terminate with an argument error instead of setting the timeout. The parser registers only `--timeout`, while `docs/adr/007-timeout.md:5` promises to accept `--wait` for one release and emit a deprecation warning. Restore the alias, implement its warning, and add coverage for that invocation. — Existing scripts using `--wait` stop working during the promised compatibility period.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover the retained default timeout and both output formats.\n- Tests check rejection of malformed timeout arguments and unsupported formats.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QHEygC9koF/review-pr.0Quo8I",
+  "head_sha": "e517367b37e78e655932aad918ffac37c4a0db7a",
+  "base_sha": "74a769c5c85f23dbd13026f929d0af0f2832f752",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c707e7fd807f82ef0a13f2a9074552f778428f53"
+}

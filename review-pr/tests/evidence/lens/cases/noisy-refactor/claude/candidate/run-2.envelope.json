@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne change needs fixing before merge. `requirement_proven([])` now returns `True` where it used to return `False`, so a requirement with no criteria passes release review. The PR body says \"No behavior change is intended.\" All the other changed lines were enumerated against the diff. They are mechanical: `List`/`Dict` → `list`/`dict`, `log.warn` → `log.warning`, and the `itemgetter` sort key. None of them showed a defect.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — When `criteria` is empty (`[]`), `requirement_proven` now returns `True` (`0 == 0`), where the removed line `return bool(criteria) and all(item[\"proven\"] for item in criteria)` returned `False`. The `if not criteria:` branch at line 9 only logs `\"requirement has no criteria\"` and then falls through, so the vacuous comparison passes. The fix is to return early: put `return False` right after the warning at line 10 (or restore `bool(criteria) and all(...)`). Then add `assert not requirement_proven([])` to `test_requirement_proof` in `tests/test_handlers.py:17`. That test currently checks only non-empty lists, so it cannot catch this regression. — A requirement with no criteria now counts as proven for release review, so unproven requirements pass the gate silently. This contradicts the PR's stated \"no behavior change\".\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- In `app/handlers/h040_sorting.py:6`, `key=itemgetter(\"name\")` gives the same result as the removed `lambda row: row[\"name\"]`, and `test_by_name_orders_rows` (`tests/test_handlers.py:13`) tests it.\n- In all 180 `app/handlers/h*_records.py` files, the added lines are only the built-in generic signatures and `log.warning(...)` calls; enumerating the 2,160 such added lines against the diff turned up no logic changes.\n\n## Not reviewed\n- The 180 files `app/handlers/h000_records.py` through `app/handlers/h179_records.py` were not opened in full at the PR head. This review checked every added and removed line in them by pattern enumeration over `../pr.diff` and read sample hunks, but not the unchanged parts of each file.",
+    "duration_ms": 60733,
+    "cost_usd": 0.17264279999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.IjretLjLV3/review-pr.KdoQbF",
+  "head_sha": "24ef186acca2add0c8b6976fde6df2fe76cc1839",
+  "base_sha": "a47564d7fe6aee55bc672feb91571ff91f3db8ef",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "14b304acdf5de4c8bf6b3cd58f52cc16ef5d0950"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` needs fixing before merge. It tells users to leave out the word \"shall\", but the `require_shall=True` option that this PR keeps rejects every criterion without \" shall \". Anyone using that option who follows the hint will have their criteria rejected. That is an Important defect, and it remains open. No other defects were found in the reviewed scope.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — When `require_shall=True`, a criterion written the way the new hint says, such as `\"- Save the result\"`, is rejected. The hint \"Write criteria as direct action bullets without the word shall.\" conflicts with `return \" shall \" in text` at `app/criteria.py:8`, and `tests/test_criteria.py:20-21` (`test_plain_bullet_under_shall_option`) asserts that this exact input is rejected. The PR body says it \"Keeps the existing validator options\". Recommended fix: keep the hint neutral about \"shall\", or choose the hint text based on `require_shall`. For example, add a `criterion_hint(require_shall)` helper that tells users to include \"shall\" when the option is on. — Users with `require_shall: true` in their config get guidance that is guaranteed to produce rejected criteria, and the hint gives them no way to see why.\n\n## Suggestions\n(none)\n\n## Strengths\n- The new `BULLET_HINT` gives the exact prefix (`- `), which matches the `text.startswith(\"- \")` check at `app/criteria.py:5`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24244,
+    "cost_usd": 0.0636204,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7KEiaASNNc/review-pr.2RZV9G",
+  "head_sha": "a0667a85ab693a1f65a775829fe2357863d3c8fc",
+  "base_sha": "b7110d3acb2e1d90d397cff15136a4e6acce1d88",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "53aca445c61f39bc73ea40c9e18100c80d9e97ff"
+}

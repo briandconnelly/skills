@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nRestore rejection of empty requirement criteria before merge: the refactor changes `requirement_proven([])` from `False` to `True`, incorrectly treating an unsupported requirement as proven.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Calling `requirement_proven([])` now returns `True`. The empty-input branch only logs a warning, after which `sum(...)` and `len(criteria)` both equal zero; the previous `bool(criteria)` guard rejected this case. Return `False` immediately after the warning and add an empty-list regression test, since the existing proof tests exercise only nonempty lists. — Release review can classify a requirement with no criteria as proven.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The sorting helper preserves ascending name ordering, with an existing test asserting the resulting row order.\n- The record handlers retain their scaling calculations and empty-batch returns while replacing deprecated logging calls.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.X2AJZAy8yv/review-pr.UmrEpK",
+  "head_sha": "5d473431b0d3bc7af30acc5510c9fff0de5bc76a",
+  "base_sha": "3f2e8d4bcc4ff0707c76dd4e4884f1f8c96ee551",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c3e4242e6e797730dae66084dc3768f2cca58443"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nEqual-value adoption should have test coverage because the new mode records a change and rewrites the file even when the setting already matches. The current tests leave that boundary unverified.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — tests — Adopting `{\"theme\": \"dark\"}` when `theme` is already `\"dark\"` has no test verifying the returned changes or resulting file bytes. This branch unconditionally records the key and triggers serialization; the adoption test only exercises a different value, and the unchanged-value test exercises replacement. Add an equal-value adoption test that establishes the expected change list and file contents. — Regressions in adoption’s equal-value behavior can pass the existing suite.\n\n## Suggestions\n(none)\n\n## Strengths\n- The adoption test checks both the returned key and the persisted setting.\n- Existing replacement tests cover changed values and byte preservation for unchanged values.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cCKdvcOCoC/review-pr.ktNVLM",
+  "head_sha": "df7bedbfd4bbc54c92e9752cda430d31e725b806",
+  "base_sha": "4bc63b071dd27c6e4130b1229eb7350f3c7b4e79",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "41c4777bf9d840d576bbba265bed6cb2ffc64b1a"
+}

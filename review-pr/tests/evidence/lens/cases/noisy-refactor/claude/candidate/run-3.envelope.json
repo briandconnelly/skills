@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Critical defect needs fixing before merge. The rewrite of `requirement_proven` makes an empty criteria list count as proven, which goes against the PR description's statement that \"No behavior change is intended.\" The typing and `log.warning` changes look mechanical in every hunk this review checked. The `itemgetter` sort key behaves the same as the lambda it replaces.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — `requirement_proven([])` now returns `True`; before this change it returned `False`. With no criteria, `sum(...)` is `0` and `len(criteria)` is `0`, so `proven == len(criteria)` passes. The removed line `return bool(criteria) and all(item[\"proven\"] for item in criteria)` returned `False` here because of the `bool(criteria)` guard. The function still logs \"requirement has no criteria\" at line 10 and then reports success anyway. To fix it, keep the empty-input guard, for example `return bool(criteria) and proven == len(criteria)` or the original `all(...)` form. Also add `assert not requirement_proven([])` to `tests/test_handlers.py:17`, which currently tests only a non-empty passing list and a non-empty failing list. — A requirement with no criteria now passes the release-review proof check instead of failing it. This weakens a release gate even though the PR description says behavior is unchanged, and no test would catch it.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `app/handlers/h040_sorting.py:8` swaps `lambda row: row[\"name\"]` for `itemgetter(\"name\")`. The two give the same ordering and raise the same `KeyError` on a missing key, and `tests/test_handlers.py:13` covers the change.\n\n## Not reviewed\n- This review read the hunks for `app/handlers/h000_records.py` and `app/handlers/h001_records.py` line by line. For the other 178 record handlers (`app/handlers/h002_records.py` through `app/handlers/h179_records.py`), it checked the changes by counting patterns across the whole diff instead of reading each hunk. All 1,080 `def step_N` signature changes, all 1,080 `log.warn`→`log.warning` changes and all 181 removed `from typing import Dict, List` lines account for every added or removed line except those in `h040_sorting.py`, `h091_requirements.py` and `review.txt`.\n- The repository has no `pyproject.toml`, `setup.cfg`, `setup.py` or `.python-version`, so this review could not confirm which Python version is supported. The built-in generic annotations (`list[dict[str, int]]`) need Python 3.9 or later.",
+    "duration_ms": 69107,
+    "cost_usd": 0.2364292,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.IjretLjLV3/review-pr.4t9LQ0",
+  "head_sha": "24ef186acca2add0c8b6976fde6df2fe76cc1839",
+  "base_sha": "a47564d7fe6aee55bc672feb91571ff91f3db8ef",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "14b304acdf5de4c8bf6b3cd58f52cc16ef5d0950"
+}

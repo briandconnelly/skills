@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `finished_at` column needs fixing before merge. In `models/processes.sql` it holds the time of the `started` event, so every non-NULL value is a start time for a process that is still running, labelled as a finish time. Its schema description also gives the wrong meaning for NULL. The model keeps one row per process, but no row in the new column holds what its name and documentation say.\n\n## Critical\n- models/processes.sql:10 — correctness — For a process whose latest event is `started` (process 20 in `sources/process_events.sql:9`), `finished_at` is set to `'2026-01-01T00:01:00Z'`, but that is the start time of a process that is still running, and the same row reports `state = 'started'`. The expression `case when event_type = 'started' then occurred_at end` keeps only the `started` timestamp. The allowed event types are only `'created', 'started', 'cleared'` (`sources/process_events.sql:4`), so no finish event exists to draw from. Meanwhile `models/schema.yml:11` documents the column as \"Timestamp when the process finished.\" Was this meant to be a start time? If so, rename the column to `started_at` and update `schema.yml:11`. If a finish time is intended, say which event marks completion (for example `cleared`) and use that event's `occurred_at`. — Consumers who read `finished_at` will treat every running process as finished at the moment it started, and will see NULL for processes that really ended (for example after `cleared`).\n\n## Important\n- models/schema.yml:17 — comments — For process 30, which was `started` and then `cleared` (`sources/process_events.sql:10-11`), `finished_at` is NULL, which contradicts the documented \"NULL means the process has never been started.\" The CASE in `models/processes.sql:10` returns NULL whenever the latest event is anything other than `started`, so NULL also covers processes that were started and later cleared. Fix the column's logic (see the Critical finding) first, then rewrite this line to match what NULL actually means. — Anyone who trusts this catalog text will wrongly decide that started-then-cleared processes never ran.\n\n## Suggestions\n(none)\n\n## Strengths\n- The `row_number() ... where recency = 1` filter is unchanged, so the model still returns exactly one row per `process_id`, as the description says.\n\n## Not reviewed\n(none)",
+    "duration_ms": 33720,
+    "cost_usd": 0.09834499999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AJgyLGpMAO/review-pr.niC62P",
+  "head_sha": "ceee95dd5c108e64d069ce961f72ff5c312d1441",
+  "base_sha": "e8b518d190026065ca95abeb3480e2bfb0412a58",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a5f55174cd7309363c7fb3e9f77be61a3f68998c"
+}

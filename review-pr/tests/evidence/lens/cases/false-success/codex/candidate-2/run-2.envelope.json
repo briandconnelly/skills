@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe save failure path should be fixed because an unavailable destination produces a success message and status even though no report is written.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Saving to a path whose parent directory does not exist reports success without creating the report. The `except OSError: pass` discards `FileNotFoundError`, then execution prints “Report saved” and returns `0`; the unavailable-destination test accepts this behavior without checking the outcome. Propagate the error or return an explicit failure, and announce success only after the write succeeds. — Users and callers cannot detect that their report was not saved.\n\n## Suggestions\n(none)\n\n## Strengths\n- The successful-save test verifies the report contents, return value, and destination message.\n- Cleanup tests cover existing files, absent files, and propagation of other filesystem errors.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wzIgZ1floD/review-pr.SbRwYj",
+  "head_sha": "1deb9c0161ea6d0f1ad559c7110cd58fadeaa247",
+  "base_sha": "19340b74c3a3a1e054fbabf71fbec820a4d126d0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df4c1aff3533a211bbc9aa875ec777873da6b9a3"
+}

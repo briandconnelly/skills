@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe preview containment check must be fixed before merge because relative traversal and symlinks allow reading files outside the selected home directory.\n\n## Critical\n- app/paths.py:12 — correctness — With `home=\"/srv/home\"` and `relative=\"../secret.txt\"`, preview returns content from `/srv/secret.txt` if that file exists and is readable. `is_relative_to()` checks lexical ancestry without resolving `..` or symlinks, so both traversal paths and links inside home can pass this check. Resolve both paths before checking containment, reject resolved targets outside home, and add regression tests for both cases. — Callers can obtain the first 200 characters of readable files outside the intended directory.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests cover short previews, truncation to 200 characters, and rejection of an absolute outside path.\n- The settings path helper has a direct behavior assertion.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.aRW0jncXer/review-pr.3cHWL1",
+  "head_sha": "325fc2bc1e35a92749d73f96193c55e08414879d",
+  "base_sha": "3cdbbb8e89455ef2cee3c9fc5532e4ea3acecd9d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "49be5a02ad60d1d7aed0245ecc1b1038b8350a73"
+}

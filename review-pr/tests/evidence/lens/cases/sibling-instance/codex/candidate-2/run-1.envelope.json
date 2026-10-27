@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe invitation password validator should also enforce twelve characters: it still accepts passwords below the minimum stated in the PR description.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — An eight-character password such as `\"xxxxxxxx\"` remains accepted by the invitation validator despite the new twelve-character requirement. This change leaves `app/invite.py:1` at eight, and `tests/test_invite.py:8` explicitly expects acceptance at that length. Update the invitation minimum and its boundary tests alongside signup and reset. — Invitation password validation permits passwords that signup and reset reject, leaving the stated security requirement incompletely enforced.\n\n## Suggestions\n(none)\n\n## Strengths\n- Signup and reset tests assert rejection at eleven characters and acceptance at twelve and thirteen.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.8vqg03jKbb/review-pr.gQ8jVI",
+  "head_sha": "b532579b61afb5fba899af963a7af9f7b10d28e2",
+  "base_sha": "075f881feba521bc8693d81a59073898075ea569",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ee31fa85e64c7b4ed454eae466f5895ece31b81f"
+}

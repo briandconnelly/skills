@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `status()` shortens the revision to 7 characters, but `history()` and `completed()` use 12. The docstring says the status line should match history, so the status line cannot be matched against history or completion output. The added test never checks the revision part of the status line, so it does not catch this. No other defects were found in the reviewed scope.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For revision `0123456789abcdef…`, `status(REVISION, 2)` returns `Running: 0123456 (attempt 2)`, but `history(REVISION)` returns `History: 0123456789ab`, so the two lines show different identifiers. The docstring at app/display.py:13 says \"Show the deployment revision using the same identifier as history.\" However, `short_revision = revision[:7]` does not match `revision[:12]` in `history` (app/display.py:5) and `completed` (app/display.py:8). To fix it, use `revision[:12]`, or better, a shared helper that all three functions call. Then add an exact assertion such as `assert status(REVISION, 2) == \"Running: 0123456789ab (attempt 2)\"` to `test_running_status_contains_attempt`. — Operators comparing a running deployment's status line with its history or completion entry see a different revision string. The current test only checks `startswith(\"Running: \")` and `endswith(\"(attempt 2)\")` (tests/test_display.py:14-15), so it does not protect against this mismatch.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` is a small helper, and `test_attempt_label` tests its exact output for two inputs.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21249,
+    "cost_usd": 0.053474400000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xtp4qLe3Z8/review-pr.WtNQ4X",
+  "head_sha": "6ed4734af487a23cf2ca23f5a97168fd6f24f304",
+  "base_sha": "2f6989672e1d058009bd5556943eb28463a6c0d1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d5d154b3f0c4ed968a2e755e4003b12719dac812"
+}

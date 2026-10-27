@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `status()` shortens the revision to 7 characters, but `history()` and `completed()` use 12. The new status line therefore shows a different identifier than the docstring promises. No other defects were found in the two changed files.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — For `REVISION = \"0123456789abcdef…\"`, `status(REVISION, 2)` returns `\"Running: 0123456 (attempt 2)\"`, while `history(REVISION)` returns `\"History: 0123456789ab\"`, so the running status uses a different identifier than history. The docstring at `app/display.py:13` says \"Show the deployment revision using the same identifier as history\", but line 14 uses `revision[:7]` and `history` at `app/display.py:5` uses `revision[:12]`. The added test at `tests/test_display.py:14-15` only checks the `\"Running: \"` prefix and `\"(attempt 2)\"` suffix, so it cannot catch this. To fix: change line 14 to `revision[:12]`, or share one helper with `history`/`completed`, and assert the full string `\"Running: 0123456789ab (attempt 2)\"` in the test. — Operators matching a running deployment against history or \"Deployed:\" lines see a 7-character prefix where those lines show 12, so they can't match the entries by string. The current test would also let a future truncation change slip through.\n\n## Suggestions\n(none)\n\n## Strengths\n- `attempt_label` has its own test with exact-equality checks for two attempt values (`tests/test_display.py:21-22`).\n\n## Not reviewed\n(none)",
+    "duration_ms": 21915,
+    "cost_usd": 0.066958,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xtp4qLe3Z8/review-pr.B1xx5b",
+  "head_sha": "6ed4734af487a23cf2ca23f5a97168fd6f24f304",
+  "base_sha": "2f6989672e1d058009bd5556943eb28463a6c0d1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d5d154b3f0c4ed968a2e755e4003b12719dac812"
+}

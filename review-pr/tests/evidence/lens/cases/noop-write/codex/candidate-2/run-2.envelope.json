@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nOnly optional corrections were found in the reviewed scope: the equal-value adoption boundary needs a test defining its change-list and file-write behavior.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- app/config.py:13 — tests — With `{\"theme\":\"dark\"}` already stored and `merge(path, {\"theme\": \"dark\"}, adopt=True)`, no test checks the resulting change list or file bytes. The adoption test changes `\"light\"` to `\"dark\"`; the existing equal-value test exercises only replacement. Add an equal-value adoption test that asserts the intended return value and file contents. — Changes to whether identical-value adoption records a change and rewrites the file could pass the current tests unnoticed.\n\n## Strengths\n- Added tests verify that both adoption and replacement persist differing values.\n- The existing replacement test checks byte preservation when the value is unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cCKdvcOCoC/review-pr.cffg7y",
+  "head_sha": "df7bedbfd4bbc54c92e9752cda430d31e725b806",
+  "base_sha": "4bc63b071dd27c6e4130b1229eb7350f3c7b4e79",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "41c4777bf9d840d576bbba265bed6cb2ffc64b1a"
+}

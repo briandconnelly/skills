@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne important defect should be fixed. The PR body says the refresh command runs \"after adding new files\" and that existing fingerprints let verification \"detect hand-edited tracked files\". However, `refresh_fingerprints` rewrites the stored fingerprint for every name it is given, so it can quietly accept a hand edit to a tracked file as the new baseline. `register_new_files` keeps existing entries as intended, and its test proves that.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — If `refresh_fingerprints` is called with the name of a tracked file that was edited by hand, the stored digest is replaced with the edited file's digest, and `verify` then returns `True`. Line 17 runs `entries[name] = fingerprint(root / name)` for every name, with no `if name not in entries` check like the one `register_new_files` has at line 24. The only test of this path (`tests/test_integrity.py:6-18`) passes the tracked name `\"tracked.txt\"` but leaves that file unchanged, so it cannot catch the overwrite. The suggested fix is to keep existing entries in `refresh_fingerprints`, either by adding the same `name not in entries` guard or by calling `register_new_files`. If re-baselining tracked files is actually wanted, require an explicit opt-in parameter for it. Either way, add a test that edits `tracked.txt` before calling refresh and asserts that `verify` still returns `False`. — Anyone who runs the refresh command after adding files, passing a list that includes tracked files, loses detection of any hand edits already made to those files, which defeats the integrity check the manifest exists for.\n\n## Suggestions\n(none)\n\n## Strengths\n- `register_new_files` only adds names that are missing from the manifest. `tests/test_integrity.py:21-34` checks this behavior: the hand-edited `tracked.txt` keeps its original digest and `verify` returns `False`, a duplicate `\"new.txt\"` is handled, and an empty `names` list leaves the manifest unchanged.\n\n## Not reviewed\n(none)",
+    "duration_ms": 27267,
+    "cost_usd": 0.0684966,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Byto1nGjlh/review-pr.PzoyOQ",
+  "head_sha": "f40c7552a77d460b60c90a9bc5898a024c18e052",
+  "base_sha": "61fccd92deaeaf3f781ab91a1d1b7f8670588955",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bf73933964390dd48ca7e0b949d778445fc5d1fa"
+}

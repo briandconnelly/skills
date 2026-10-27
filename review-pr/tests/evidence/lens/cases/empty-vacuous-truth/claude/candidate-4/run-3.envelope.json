@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne issue needs fixing: `requirement_proven` has lost its empty-input guard. Because of that, a requirement with no criteria is now reported as proven. This review found no other defects in the two changed files, both of which were read in full.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:3 — correctness — `requirement_proven([])` now returns `True`, but the base version returned `False`. With no criteria, `sum(...)` is `0` and `len(criteria)` is `0`, so `proven == len(criteria)` holds. The old code `bool(criteria) and all(...)` deliberately rejected this case. To fix it, restore the guard, for example `return bool(criteria) and proven == len(criteria)` (or keep the original `all(...)` form), and add `assert not requirement_proven([])` to `test_requirement_with_evidence` in tests/test_proof.py:6. No test currently covers empty input. — Any requirement with no evidence attached is reported as proven, so status summaries show unproven requirements as satisfied, and no test would catch the regression.\n\n## Suggestions\n(none)\n\n## Strengths\n- `reviewed_batch` rejects an empty batch with a clear `ValueError` message. tests/test_proof.py:11-17 covers the empty, all-reviewed and mixed cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 18599,
+    "cost_usd": 0.050596199999999994,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.oE6j59F1YF/review-pr.zwZE5y",
+  "head_sha": "b3b34bfeb960889446e7160e69c697cc856a23f0",
+  "base_sha": "aced55fb0fd000155cf088ea8c3711d5f1542fdb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "99493d58631b8672c99d8b9267260075f4a04dc5"
+}

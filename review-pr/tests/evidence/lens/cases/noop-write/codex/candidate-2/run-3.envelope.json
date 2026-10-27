@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe same-value adoption boundary should receive regression coverage. The added adoption test exercises only a differing value, leaving adoption’s unconditional change recording and resulting file rewrite unprotected.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — tests — Adopting `{\"theme\": \"dark\"}` into a file already containing `{\"theme\":\"dark\"}` has no test protecting the returned change list or resulting file contents. The adoption branch unconditionally records the key and triggers serialization, while the existing same-value test exercises only replacement. Add a same-value adoption test asserting the recorded key and resulting file bytes. — Regressions in adoption’s behavior for already matching settings could pass the current tests.\n\n## Suggestions\n(none)\n\n## Strengths\n- Replacement tests verify both updating a differing value and preserving the original bytes when the value matches.\n- The added adoption test checks both the returned change list and persisted configuration.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cCKdvcOCoC/review-pr.pgL56H",
+  "head_sha": "df7bedbfd4bbc54c92e9752cda430d31e725b806",
+  "base_sha": "4bc63b071dd27c6e4130b1229eb7350f3c7b4e79",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "41c4777bf9d840d576bbba265bed6cb2ffc64b1a"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe optional JSON destination should be fixed: placing bare `--json` before `--junit` consumes the latter as a filename and rejects a valid invocation.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — `parse_args([\"--json\", \"--junit\", \"results.xml\"])` raises `ValueError(\"unknown option: results.xml\")` instead of selecting both reports. The JSON branch consumes any following argument as its destination, including `--junit`. Check that the next argument is not an option before assigning and consuming it, and add regression coverage for this ordering. — Users cannot combine the default JSON destination with a following JUnit option.\n\n## Suggestions\n(none)\n\n## Strengths\n- Tests verify that `--junit` rejects missing paths and following options.\n- The explicit JSON destination test verifies the written file’s contents.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.HuBzB6oeTE/review-pr.WGJ97e",
+  "head_sha": "cf4d67e8e7b18191290494f3080dfdac500ef737",
+  "base_sha": "fce930b2358f652c96ccac5517630842f899d1ff",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a6863cbf2ef1026c10016ae51db1290a0fff4509"
+}

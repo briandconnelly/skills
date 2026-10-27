@@ -1,0 +1,10 @@
+{
+  "collection_id": "2b7e05b65ea18b23cf55104a879079fec50d871e",
+  "runner": "claude",
+  "case": "stale-untouched",
+  "snapshot": "candidate-2",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "20abcd0fcd2e6dfac691dc0e47954434b7ee48876dfab5cef3b6e2fe4a1ecab4"
+}

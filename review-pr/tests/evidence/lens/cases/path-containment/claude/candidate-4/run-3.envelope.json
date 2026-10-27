@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe containment check in `preview` needs fixing before merge. `Path.is_relative_to` only compares path parts as text, so a relative path containing `..`, or a symlink inside home, still gets past the check and reads files outside the home directory. The added test only tries an absolute outside path, so it cannot catch this. No other defects were found in the reviewed scope.\n\n## Critical\n- app/paths.py:12 — correctness — Calling `preview(home, \"../secret.txt\")` returns the contents of a file outside home instead of raising `ValueError`. Line 12 builds `candidate = Path(home) / relative`, and line 12 checks `candidate.is_relative_to(Path(home))`. That method only compares path parts without resolving them, so `home/../secret.txt` still starts with `home` and passes, and `read_text()` at line 14 then follows the `..`. The same happens with a symlink inside home that points elsewhere. Suggested fix: resolve both paths first, e.g. `base = Path(home).resolve(); candidate = (base / relative).resolve()`, then check `candidate.is_relative_to(base)`. Also add a test case that passes `\"../outside.txt\"` alongside the existing absolute-path case at tests/test_paths.py:20. — Any caller that passes a user-supplied relative path can read the first 200 characters of any file the process can access, which defeats the \"outside home\" guard this function is meant to provide.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_preview` checks the 200-character cut-off with a 500-character file, so a wrong slice bound would make it fail.\n- `settings_file` has a direct equality test against the expected path.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20898,
+    "cost_usd": 0.05665200000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.b0gPtsQk5A/review-pr.Aud03N",
+  "head_sha": "36bed730d78da7420106af348a26481c87e22506",
+  "base_sha": "77809fb8cd59385a9b3a37827d746ec54993fd8a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "312e947297a5eed3df84a384ff31317e4c2847ba"
+}

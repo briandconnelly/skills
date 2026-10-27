@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing. The new `adopt` branch has no equality check, so adopting a value the file already holds is still recorded as a change and the file gets rewritten. That breaks the module's stated promise to preserve untouched configuration files, which `replace` keeps. No other defects were found in `app/config.py` or `tests/test_config.py`.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — Calling `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file that holds `{\"theme\":\"dark\"}` returns `[\"theme\"]` and rewrites the file as indented JSON, when it should return `[]` and leave the bytes alone. The `elif adopt:` branch at lines 13–15 assigns and appends without the `current[key] != value` check that the `replace` branch has at lines 19–21. Any recorded change triggers `path.write_text(json.dumps(current, indent=2) + \"\\n\")` at line 23. This goes against the module docstring \"Merge settings while preserving untouched configuration files.\" (app/config.py:1) and the byte-preservation behaviour that `test_unchanged_replacement_preserves_bytes` locks in for `replace`. Recommended fix: guard the adopt assignment with `if current[key] != value:`, as in the replace branch, and add an adopt version of the unchanged-bytes test. If adoption is meant to list every existing key on purpose, record the key without assigning, and write the file only when a value actually changed. — Running adopt mode against an already-matching config reformats a user's hand-edited file and reports changes that never happened, so callers that act on the change list (logs, prompts, restarts) fire for no reason.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_replace_updates_different_setting` (tests/test_config.py:27) adds coverage for the replace-with-different-value path, which the existing tests did not cover. It checks both the returned change list and the file contents after parsing.\n\n## Not reviewed\n(none)",
+    "duration_ms": 21455,
+    "cost_usd": 0.07126860000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.G5NqgDJdcj/review-pr.FxTCZ3",
+  "head_sha": "2d6f06baf9482eab12b14d4a0d6054c182c22e72",
+  "base_sha": "67584102fd86e4c4dc1e969d8179d47f17678557",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "767cb41e56539ea1a18f0b15828033b2c0ed1a85"
+}

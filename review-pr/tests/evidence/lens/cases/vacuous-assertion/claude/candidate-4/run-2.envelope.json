@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change in `app/report.py:5` correctly rejects any header other than `REPORT v1`, but one of the two new tests should be fixed: `test_rejects_legacy_header` passes without ever reaching the version check. Regression protection for the new check comes only from `test_rejects_unsupported_header_with_complete_report`. This review found no correctness or silent-failure defects in the changed code.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — `test_rejects_legacy_header` builds the input `\"REPORT v1\\nversion=v0\"`, so its header is still `REPORT v1`, and the test can't fail if the version check breaks. `rsplit(\"v1\", 1)` replaces only the last `v1`, which is in the body line `version=v1`, not in the header. The fixture also has no `END` line, so `parse_report` returns `None` at `app/report.py:3-4` before it reaches the header check at line 5. The comment at line 9 (\"changing the fixture's version to v0\") describes the intended input, not the actual one. To fix it, use a literal complete report with a legacy header, for example `\"REPORT v0\\nvalue=ok\\nEND\"`, or delete the test, since `test_rejects_unsupported_header_with_complete_report` already covers that input. — Maintainers reading the test name and comment will believe there are two guards for the legacy-header rejection when there is only one. If someone later reverts the check to `startswith(\"REPORT \")`, this test still passes.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_rejects_unsupported_header_with_complete_report` (tests/test_report.py:15-17) uses a report that passes the `END` and length checks, so it isolates the new header check. Under the old `startswith(\"REPORT \")` logic it would fail.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22943,
+    "cost_usd": 0.0562322,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ALBKsoQCDw/review-pr.JTiqyP",
+  "head_sha": "81b65974f0dee4e811d1ba14ae0c2f8ed2c9f712",
+  "base_sha": "a82d51962ac78513c2d286feaad383b2011d20ae",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9c413b0ba81296e9dc11da216b185d31785db854"
+}

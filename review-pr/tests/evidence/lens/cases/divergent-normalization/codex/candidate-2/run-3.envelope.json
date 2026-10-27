@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.164.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFailure-report selection should normalize paths when matching requests. It currently omits matching failures whose reported paths begin with `./`.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — For `report={\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, `select_failures` returns `[]` instead of `[\"./tests/test_x.py\"]`. Its membership check uses the original path, whereas `select_explicit` normalizes paths before matching. Compare `normalize(path)` against `requested` while returning the original spelling, and add a regression test for this input. — Requested failed tests with a `./` prefix are omitted from the selection.\n\n## Suggestions\n(none)\n\n## Strengths\n- The added failure-report test covers matching paths, exclusion of unrequested paths, and an empty failure list.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.4XFUNw9d00/review-pr.qZXIrF",
+  "head_sha": "72c7b640272f42b8506ce147ebc6c914ad87d748",
+  "base_sha": "9ceb71f335c0624b795f215e37c753f5bcf1f024",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "022d619e14e59aa9c445eea2679fa7d2845f97da"
+}

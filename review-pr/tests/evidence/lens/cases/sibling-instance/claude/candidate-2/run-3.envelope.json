@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe invite validator still accepts passwords of 8 to 11 characters, so the twelve-character policy this pull request sets out to enforce is not applied everywhere. This should be fixed. The signup and reset changes are correct, and their boundary tests are sound.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — An 8-to-11-character password such as `\"x\" * 10` is still accepted through the invite flow, because the diff raises `MIN_PASSWORD_LENGTH` to 12 only in `app/signup.py` and `app/reset.py` and leaves `app/invite.py:1` at `MIN_PASSWORD_LENGTH = 8`. The PR body says this change \"raises the minimum in the password validators,\" but `app/invite.py:5` (`return len(password) >= MIN_PASSWORD_LENGTH`) still enforces the old value. In addition, `tests/test_invite.py:6-8` still asserts `length >= 8`, so that test currently treats the old minimum as correct. Recommended fix: set `app/invite.py:1` to 12 and update `tests/test_invite.py` to the `[0, 8, 11, 12, 13]` / `length >= 12` boundaries used for signup and reset. — Users who join through an invite can still set passwords shorter than the twelve-character security policy allows, and the test suite would flag a correct fix to that validator as a failure.\n\n## Suggestions\n(none)\n\n## Strengths\n- `tests/test_signup.py:6` and `tests/test_reset.py:6` test lengths 11, 12 and 13, so an off-by-one mistake (`>` instead of `>=`, or a minimum of 11 or 13) would make them fail.\n- In each changed module the minimum is a single named constant, and `accepts_password` reads it, so the boundary is set in only one place per module.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26312,
+    "cost_usd": 0.0726064,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.znBveiUI3h/review-pr.e3aRWQ",
+  "head_sha": "84636d836da3b6a7d69a51107ddf97ff1dbbd67c",
+  "base_sha": "f268b8c49c8eb902046c5b0fc2d6c1918ba964cf",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9eb551cc15a565d31bfea6d5f8754d4fd842062d"
+}

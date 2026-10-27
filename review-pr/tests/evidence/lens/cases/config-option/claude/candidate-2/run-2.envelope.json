@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect should be fixed before merge. The new `CRITERION_HINT` gives advice that the still-supported `require_shall=True` validator mode rejects, so anyone who follows the hint with that option on will have every criterion refused. The `BULLET_HINT` rewording matches the `startswith(\"- \")` check, and no other defects were found in the reviewed scope.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — With `require_shall=True`, a criterion written the way the new hint says, such as `- Save the result`, is rejected. The hint now reads \"Write criteria as direct action bullets without the word shall.\" but `accepts_criterion` still returns `\" shall \" in text` when `require_shall` is set (`app/criteria.py:7-8`). `tests/test_criteria.py:20-21` confirms that `- Save the result` fails under that option. The pull-request body says it keeps the existing validator options, and `config.example.yml:1` still exposes `require_shall`. One fix is to keep the \"without shall\" wording only for the default mode and give a separate hint for `require_shall`. Another is to phrase the hint so it doesn't forbid \"shall\". — When projects set `require_shall: true`, users who follow the displayed hint get every criterion rejected, with no clue that the hint caused it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `BULLET_HINT` now gives the exact `- ` prefix, which matches the `text.startswith(\"- \")` check in `app/criteria.py:5`.\n- The existing tests (`tests/test_criteria.py`) still cover both `require_shall` modes for bulleted and non-bulleted input, and the change to `app/criteria.py` doesn't touch validator logic.\n\n## Not reviewed\n(none)",
+    "duration_ms": 23594,
+    "cost_usd": 0.0665772,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7KEiaASNNc/review-pr.13VPcS",
+  "head_sha": "a0667a85ab693a1f65a775829fe2357863d3c8fc",
+  "base_sha": "b7110d3acb2e1d90d397cff15136a4e6acce1d88",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "53aca445c61f39bc73ea40c9e18100c80d9e97ff"
+}

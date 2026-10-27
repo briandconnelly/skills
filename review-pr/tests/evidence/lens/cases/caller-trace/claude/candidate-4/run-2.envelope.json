@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.311",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: when the command adopts a setting, it now prints the adoption message twice. `plan` already emits it as progress, and `cli.run` now prints it again from the new `adopt` change entry. The audit-entry part of the change works as described and is tested.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Running the command with a setting that already exists, e.g. `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)`, now produces `[\"Adopted theme\", \"Adopted theme\"]` instead of one progress line. `plan` still calls `emit(f\"Adopted {name}\")` at app/planner.py:8, and the new `{\"kind\": \"adopt\", ...}` entry is then emitted again by `app/cli.py:6-9`, which skips only `kind == \"audit\"`. Before this change, adopt records were not in `changes`, so only the progress line was printed. The PR body says the command \"continues to render actionable changes,\" so the fix is either to make `cli.run` skip `kind == \"adopt\"` as it skips audit entries, or to drop the progress `emit` in `plan`. Either way, add a `run`-level adoption test that asserts the exact `messages` list: today `test_adoption_progress` calls `plan` directly and `test_command_adds_setting` covers only the add path, so no test catches this. — Every adoption run shows duplicate \"Adopted …\" lines to command users, and no test guards against it.\n\n## Suggestions\n(none)\n\n## Strengths\n- `test_audit_is_returned_without_command_output` checks two behaviors through the public `run` entry point: the audit record is returned, and it is not printed.\n\n## Not reviewed\n(none)",
+    "duration_ms": 26582,
+    "cost_usd": 0.0689892,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xYp0ATHPPG/review-pr.llzUvW",
+  "head_sha": "1b5e3fe5e99112c99ac2aa7dad047f4b0d5c6dc2",
+  "base_sha": "87ab20f0ac6e9c5173fb9f80016654390c6aaaaa",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d27c976960406ec85cfd777fa35c1e83dc89dc40"
+}
