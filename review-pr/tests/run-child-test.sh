@@ -55,9 +55,10 @@ expected_cwd="$(cd "$dir/repo" && pwd -P)"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
 argv="$(cat "$FAKE_ARGV")"
 prompt="$(awk '/^-p$/{p=1;next} /^--output-format$/{exit} p' "$FAKE_ARGV")"
-for h in '## Summary' '## Critical' '## Important' '## Suggestions' '## Strengths' '## Not reviewed'; do
+for h in '## Summary' '## Changes' '## Critical' '## Important' '## Suggestions' '## Not reviewed'; do
   grep -qF -- "$h" <<<"$prompt" || { echo "FAIL: prompt lacks heading $h"; FAIL=1; }
 done
+grep -qF -- '## Strengths' <<<"$prompt" && { echo "FAIL: prompt still names the removed Strengths heading"; FAIL=1; }
 grep -qF -- '../policy-manifest.json' <<<"$prompt" || { echo "FAIL: prompt does not require the policy manifest"; FAIL=1; }
 grep -qF -- '../pr.diff' <<<"$prompt" || { echo "FAIL: prompt does not require the pinned diff file"; FAIL=1; }
 grep -q 'git diff' <<<"$prompt" && { echo "FAIL: prompt still asks the child to run git diff"; FAIL=1; }
