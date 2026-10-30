@@ -65,10 +65,12 @@ function valid_finding(line,   fields, count, j, impact_idx, last) {
   count=split(line, fields, " — ")
   if (count<5 || fields[1] !~ /^- (.+:[1-9][0-9]*( \[base\])?|PR body)$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
   for (j=3;j<=count;j++) if (fields[j] ~ /^[[:space:]]*$/) return 0
-  # A trailing "Fix: <non-blank>" field is the fix; the field before it is the impact.
+  # "Fix:" may start only the last field; elsewhere it means a misplaced " — ".
+  for (j=4;j<count;j++) if (fields[j] ~ /^Fix:/) return 0
+  # A last field starting "Fix:" is the fix and must be exactly "Fix: <non-blank>…";
+  # the field before it is the impact.
   last=fields[count]
-  if (last ~ /^Fix:[[:space:]]*$/) return 0
-  if (last ~ /^Fix: [^[:space:]]/) return count>=6
+  if (last ~ /^Fix:/) return (last ~ /^Fix: [^[:space:]]/) && count>=6
   return 1
 }
 function check_section(name, findings,   b, L, i, m, nonblank, none) {
