@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical issue needs fixing: `fetch_with_retry` allows up to 10 attempts and uses 10 by default, but the project policy says retry helpers must stop at 5. The same pull request changes that rule to 10 instead of following it. This review read the policy manifest, `AGENTS.md`, `../pr.json`, the full pinned diff, `app/net.py` and `tests/test_net.py`. It traced the retry loop, the range check and each added test. The retry loop is otherwise correct: it re-raises the last `OSError` and skips the sleep after the final failure. `tests/test_net.py:74-91` covers that no-sleep path.\n\n## Changes\nThe pull request adds `fetch_with_retry` to `app/net.py`, along with five tests and a text fixture. It also changes the retry cap in `AGENTS.md` from 5 to 10, replacing the stated outage rationale with \"The upstream now sheds load itself.\"\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry at 5 attempts, as policy requires — A default call such as `fetch_with_retry(url)` against an upstream that is down makes 10 calls to `fetch`, twice the allowed number. The policy file supplied for this review says at `AGENTS.md:5`: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The check `if not 1 <= attempts <= 10` and the default `attempts=10` at `app/net.py:13` break that rule. The diff does not bring the code into line with the rule; it rewrites `AGENTS.md:5` to say 10, and the only support offered is the PR body's claim that the upstream now sheds load. Nothing in the repository backs that claim. — During an upstream outage, each caller makes 10 requests instead of 5 and can block for up to about 104.5 s (10 × the 10 s `fetch` timeout plus 9 × 0.5 s sleeps) instead of about 52 s. This is the outage pattern the rule was written to prevent. — Fix: Change the bound and the default to 5 in `app/net.py:13`, `:16`, `:19` and `:20`. Update `tests/test_net.py:53` to expect 5 calls and `tests/test_net.py:95` to test `(0, 6)`. Drop the `AGENTS.md` edit from this pull request, or move it to a separate policy change with evidence that the upstream now sheds load.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 32087,
+    "cost_usd": 0.0887642,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dYCWWY5dEy/review-pr.chVszx",
+  "head_sha": "b387c18fe757aef07502aa8eea4147c9c83c88ec",
+  "base_sha": "7e6c8369a91211d7e890b09874914c1b151d2d17",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7d466b6410cb292b9b4445f751fe14cbf38dd790"
+}

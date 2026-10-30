@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nAdoption should preserve files when the incoming values already match: it currently records a change and rewrites an unchanged configuration. This review traced merge behavior and file writes, and read all existing and added tests without running them.\n\n## Changes\nThe pull request adds an `adopt` option that updates existing settings and records their keys, plus tests for adoption and replacement.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — Skip adoption writes when the value is unchanged — With `{\"theme\":\"dark\"}` already stored, `merge(path, {\"theme\": \"dark\"}, adopt=True)` reports `[\"theme\"]` and reformats the file despite no setting changing. The adoption branch appends the key unconditionally, triggering the write at line 23; replacement checks equality first. This contradicts the module’s stated preservation of untouched configuration files. — Callers receive a false change signal, and adopting an already matching setting unnecessarily changes the file’s bytes.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FOSEZDasgO/review-pr.foWxWk",
+  "head_sha": "269c5a4ac27dcdb3579774b015718d2361ecd789",
+  "base_sha": "6bb539388b5028e7b8a903301296d16fe776df01",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6fb28bc786551f2ca7582d42b79c1533000ea94a"
+}

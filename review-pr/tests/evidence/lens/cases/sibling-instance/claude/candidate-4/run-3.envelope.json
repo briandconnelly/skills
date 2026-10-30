@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne validator still allows passwords shorter than twelve characters, and that needs fixing: `app/invite.py:1` keeps `MIN_PASSWORD_LENGTH = 8` while this PR raises the signup and reset validators to 12. That leaves the invite path below the new security policy. This review read every changed file, the untouched `app/invite.py`, `app/tokens.py` and `tests/test_invite.py`, and searched the repository for other password-length constants. The updated tests in `tests/test_reset.py` and `tests/test_signup.py` test both sides of the new boundary (11 rejected, 12 accepted). This review read those tests but did not run them.\n\n## Changes\nThe PR raises `MIN_PASSWORD_LENGTH` from 8 to 12 in `app/signup.py` and `app/reset.py`, and moves the boundary cases in their tests to 0, 8, 11, 12 and 13. It also adds a one-line `review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Raise the invite validator minimum to twelve — An invited user who sets an 8-to-11-character password, such as `\"x\" * 8`, still gets through because `app/invite.py:1` keeps `MIN_PASSWORD_LENGTH = 8` and `app/invite.py:5` checks `len(password) >= MIN_PASSWORD_LENGTH`. This PR changes the same constant in `app/signup.py:1` and `app/reset.py:1` only, but the description says it \"raises the minimum in the password validators\". `tests/test_invite.py:6-8` still expects `length >= 8`. — Accounts created through invites can still get passwords that break the twelve-character security policy this PR is meant to enforce, and the invite test will keep the old minimum in place. — Fix: Set `MIN_PASSWORD_LENGTH = 12` in `app/invite.py:1`, and change `tests/test_invite.py:6-8` to the `[0, 8, 11, 12, 13]` / `length >= 12` form used in the other two tests.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 37289,
+    "cost_usd": 0.091609,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TRTihstfU2/review-pr.QIXMA2",
+  "head_sha": "933e5b812cdb8f6b43b06ca5f6fe74d35c704e62",
+  "base_sha": "7a97ec61a2047766a15a7436f56675a7c3636857",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "55bf89d407a111c9124e781797237ea42543fbff"
+}

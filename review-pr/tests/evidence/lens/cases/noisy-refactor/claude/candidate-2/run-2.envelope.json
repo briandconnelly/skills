@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing before merge: the new counting logic in `requirement_proven` returns `True` for an empty criteria list, which reverses the old result. The PR description says \"No behavior change is intended\", so this is a regression. This review read the full hunks for `h000_records.py`, `h001_records.py`, `h040_sorting.py` and `h091_requirements.py`, plus `tests/test_handlers.py`. It checked the other 178 record handlers by matching every added and removed diff line against the `h000` pattern: 2160 of 2167 added lines and 2340 of 2345 removed lines matched, and the rest belong to the special files. The `itemgetter(\"name\")` change in `by_name` keeps the old ordering and still raises `KeyError` for a row without a name, as the lambda did.\n\n## Changes\nThe PR replaces `typing.List`/`Dict` with built-in generics and `log.warn` with `log.warning` in 180 record handlers and `h091_requirements.py`. It also switches `by_name` to `operator.itemgetter`, rewrites `requirement_proven` to count proven criteria with `sum`, and adds a one-line root file `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Return False when criteria is empty — `requirement_proven([])` now returns `True`, but before this change it returned `False`. The old `return bool(criteria) and all(...)` short-circuited on an empty list. The new `proven = sum(...)` / `return proven == len(criteria)` compares `0 == 0`. The guard at lines 9–10 only logs \"requirement has no criteria\" and then falls through to that comparison. — A requirement with no criteria now counts as proven in release review, so a release can pass with no evidence at all. The PR description says no behavior change is intended. `tests/test_handlers.py:17-19` has no empty-list case, so the test suite will not catch this. — Fix: Return `False` inside the `if not criteria:` block after the warning, or restore `bool(criteria) and all(item[\"proven\"] for item in criteria)`. Add `assert not requirement_proven([])` to `test_requirement_proof`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- `app/handlers/h002_records.py` through `app/handlers/h179_records.py` (178 files): this review did not read each hunk line by line. It checked them by regex counts of all added and removed lines in `../pr.diff` against the `h000_records.py` pattern.",
+    "duration_ms": 71725,
+    "cost_usd": 0.2741268,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QpxnWBqX2b/review-pr.pQtcXq",
+  "head_sha": "1814e33a66c37eba85d5f06434de33801a710bc1",
+  "base_sha": "ad2275cdf2147e815f268913cc40611369617eba",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "80a7e5780e852cdda0143109065de273d3b86acd"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nPlease fix `requirement_proven` before merge. The new counting returns `True` for an empty criteria list, so a requirement with no criteria now passes release review. The PR body says no behavior change is intended. This review read the `h091_requirements.py` and `h040_sorting.py` hunks and the existing tests in `tests/test_handlers.py`. It also used pattern counts to check that the changed lines in all 180 `*_records.py` files are only the typing, `warn`→`warning` and import replacements. The `itemgetter(\"name\")` change in `by_name` gives the same result as the old lambda, and `test_by_name_orders_rows` covers it.\n\n## Changes\nThe PR replaces `typing.List`/`Dict` with built-in generics and `Logger.warn` with `Logger.warning` across 181 handler modules. It switches `by_name` to `operator.itemgetter` and rewrites `requirement_proven` to compare a sum of proven flags against the list length. It also adds a one-line `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:11 — correctness — Return False again when criteria is empty — When `criteria` is `[]`, `requirement_proven` now returns `True`; before this change it returned `False`. The old code was `bool(criteria) and all(...)`. The new code computes `proven = sum(...)` (0) and returns `proven == len(criteria)`, which is `0 == 0`. Line 9 still logs \"requirement has no criteria\", but nothing stops the empty list from passing. `tests/test_handlers.py:17-19` only checks non-empty inputs, so no test catches this. — A requirement with no criteria is now reported as proven to release review, and the PR says no behavior change is intended. — Fix: Return `False` (or restore `bool(criteria) and all(item[\"proven\"] for item in criteria)`) when `criteria` is empty, and add `assert not requirement_proven([])` to `test_requirement_proof`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- This review did not open the 180 `app/handlers/h*_records.py` files at the PR head one by one. It checked their changed lines against the diff by count instead: 1,080 removed and 1,080 added `step_N` signatures, 1,080 removed `warn` and 1,080 added `warning` calls, and 180 removed `typing` imports. Those counts, plus the other files' lines, add up to all 4,513 changed lines.\n- The repository does not declare a supported Python version (no `pyproject.toml`, `setup.cfg`, `setup.py`, `tox.ini` or `.python-version`). This review could not confirm that every runtime supports built-in generic annotations, which need Python 3.9 or later.",
+    "duration_ms": 77738,
+    "cost_usd": 0.2603436,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QpxnWBqX2b/review-pr.yzyTRJ",
+  "head_sha": "1814e33a66c37eba85d5f06434de33801a710bc1",
+  "base_sha": "ad2275cdf2147e815f268913cc40611369617eba",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "80a7e5780e852cdda0143109065de273d3b86acd"
+}

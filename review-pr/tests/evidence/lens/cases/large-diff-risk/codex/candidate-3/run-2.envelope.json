@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe approval threshold should be fixed because it rejects releases with exactly the required approvals. This review read the complete diff, surrounding code, and existing tests; no tests were run.\n\n## Changes\nThe pull request refreshes catalog service names and ports, simplifies the health predicate, and changes the release approval comparison from inclusive to exclusive.\n\n## Critical\n(none)\n\n## Important\n- zzz-release/gate.py:5 — correctness — Restore the inclusive approval threshold — With `approvals=2` and `minimum=2`, your changed predicate returns `False` despite meeting the configured minimum. The `>` comparison contradicts the module’s contract: “A release needs at least the configured number of approvals.” Existing tests exercise approval counts of three and one, leaving equality unchecked. — Releases that meet the configured minimum are blocked until an extra approval is obtained. — Fix: Restore `>=` and add a regression test asserting that exactly the minimum approvals succeeds.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.9L8WjQHiK0/review-pr.L8NjD0",
+  "head_sha": "d0a13ce9f0e009dba6aa65d9b82bc9c356c421b8",
+  "base_sha": "bbef2b08b30f15500a2ceb572afdf54725be26a1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "27faac48f4923eb90e41ef7867e6e5fd0e77d5ce"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing: `save_report` ignores write failures, still prints that the report was saved, and returns 0, so users are told a save worked when it didn't. This review read all of `app/reports.py` and `tests/test_reports.py` and traced each new function against its tests; no tests were run. `cleanup_report` catches only `FileNotFoundError`, explains why in a comment, and has a test (`test_cleanup_preserves_other_errors`) checking that other `OSError`s still reach the caller.\n\n## Changes\nAdds `save_report`, which writes the rendered report to a path and prints where it went, and `cleanup_report`, which deletes a temporary report and treats a missing file as already cleaned up. Also adds tests for both functions.\n\n## Critical\n- app/reports.py:8 — silent-failure — Propagate write errors instead of reporting success — When `path.write_text` raises `OSError` (for example, the destination's parent directory doesn't exist, as in `tmp_path / \"missing\" / \"report.txt\"`), `except OSError: pass` discards it, then line 10 prints `Report saved to {path}` and line 11 returns 0. Nothing is logged, and the return value is the same as on success, so the caller can't tell the save failed. — Users and scripts that check the exit code are told the report was saved when no file exists, and the report is lost without any error to act on. — Fix: Remove the `try`/`except` or re-raise, and print the success message only after `write_text` returns. Also update `test_save_with_unavailable_destination` (tests/test_reports.py:13), which has no assertions and passes while the bug is present, to expect the error, e.g. `with pytest.raises(OSError):`, or a non-zero return with no success message.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21324,
+    "cost_usd": 0.052955600000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.o0FsBW19e6/review-pr.HHiXEd",
+  "head_sha": "46b55491394a71b23510a2f63b4ad19ca94a3c84",
+  "base_sha": "f28d1cf124560b52c30baf3953c31f6552c22996",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "eb173432ec5b4f33c691fc75ad25766da3db63c0"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing. When the write fails, `save_report` discards the `OSError`, prints \"Report saved to …\" anyway, and returns 0, so a failed save looks like a successful one. This review read both changed files in full and traced the success and failure paths of `save_report` and `cleanup_report` against the added tests. These tests were read, not run. `cleanup_report` catches only `FileNotFoundError`, which matches its comment, and `test_cleanup_preserves_other_errors` checks that other errors still propagate.\n\n## Changes\nAdds `save_report`, which writes the rendered report to a path and prints where it went. Also adds `cleanup_report`, which deletes a temporary report and does nothing if the file is already gone, plus tests for both.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Stop reporting success after a failed report write — If you call `save_report(tmp_path / \"missing\" / \"report.txt\")`, or use any destination where `write_text` raises `OSError` (missing directory, no permission, full disk), the function still prints \"Report saved to <path>\" and returns 0. The `except OSError: pass` at lines 8–9 swallows the error, and lines 10–11 then run as if the write succeeded. No log, comment or return value tells the caller that the fallback happened. — Users and calling scripts are told the report was saved when no file exists, so they lose the report without any sign of an error. — Fix: Let the `OSError` propagate, or return a non-zero code and print an actionable message to stderr naming the path and `strerror`. Only print the success line after `write_text` succeeds. Then rewrite `test_save_with_unavailable_destination` (tests/test_reports.py:46–47). It has no assertions and passes today even though the bug exists. It should assert either `pytest.raises(OSError)` or a non-zero return with no success message on stdout.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19606,
+    "cost_usd": 0.052896799999999994,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.o0FsBW19e6/review-pr.Kn4PyR",
+  "head_sha": "46b55491394a71b23510a2f63b4ad19ca94a3c84",
+  "base_sha": "f28d1cf124560b52c30baf3953c31f6552c22996",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "eb173432ec5b4f33c691fc75ad25766da3db63c0"
+}

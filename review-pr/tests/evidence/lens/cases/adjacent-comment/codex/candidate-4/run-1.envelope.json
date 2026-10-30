@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe mixed-case write defect should be fixed because `set` stores keys that `get` cannot retrieve. This review read both changed files and all existing tests; tests were not run.\n\n## Changes\nThe pull request adds `Cache.set`, raises the default TTL from 60 to 300 seconds, and adds round-trip, default-value, and expiry tests.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — Normalize keys before storing entries — Calling `set(\"ALPHA\", 1)` followed by `get(\"ALPHA\")` returns `None`. You store the original key, but `get` always looks up `key.lower()`, violating the documented case-insensitive behavior. The round-trip test writes only a lowercase key. — Callers using uppercase or mixed-case keys cannot retrieve their cached values.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.93AX8rarqN/review-pr.kaCWfB",
+  "head_sha": "e0a000076c5dcc800875f8ff52d0b103024b5fe4",
+  "base_sha": "390b64688714d886c0bc6387fb5fb586421aaf3b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ee35834966366fdf24cd8dec77eab51692cf35d1"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the containment check in `preview` before merge: it compares paths only as text, so a relative argument such as `../secret.txt` passes the check and the function reads a file outside the home directory. This review read the full diff, `app/paths.py`, and `tests/test_paths.py`; it did not run the tests. The change to `settings_file` and its test are correct as written.\n\n## Changes\nThe pull request adds `preview(home, relative)`, which returns the first 200 characters of a file under the home directory and raises `ValueError` for paths outside it. It also adds `settings_file(home)`, tests for both functions, and a one-line text file, `tests/review-note.txt`.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before the home containment check — Calling `preview(home, \"../secret.txt\")` passes the check and reads `<home>/../secret.txt`, which is outside home. `Path.is_relative_to` compares path components as text and does not collapse `..`, so `Path(home) / \"../secret.txt\"` still starts with `home`'s components. A symlink inside home that points elsewhere also passes. The only negative test (`tests/test_paths.py:20`) uses an absolute path outside home, which fails the check for a different reason, so the traversal case is never tested. — Any caller that passes a user-supplied relative path can read any file the process can access, up to 200 characters per call; this is the exact case the `\"outside home\"` guard exists to block. — Fix: Compare resolved paths: `base = Path(home).resolve(); candidate = (base / relative).resolve(); if not candidate.is_relative_to(base): raise ValueError(...)`. Add tests for `\"../outside.txt\"` and for a symlink inside home that points outside it.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24266,
+    "cost_usd": 0.0624312,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.qMw6kT8DYi/review-pr.Ff94tg",
+  "head_sha": "95319f5cf5fd2fef22aac04d57426a4431a95ee8",
+  "base_sha": "5841760352ef88a501fac7568f72f62c501a86b3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1cfddad60821b67f3eef6cc89f401a2f7b176b1e"
+}

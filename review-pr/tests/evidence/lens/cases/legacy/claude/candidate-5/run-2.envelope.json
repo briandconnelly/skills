@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect must be fixed before merge: deleting `app/defaults.json` makes `app/startup.py`'s `load_defaults()` raise `FileNotFoundError` on every call. Two more should be fixed: `is_valid_port` rejects port 65535, and `load_config` hides every read or parse failure behind `{}`. This review read every changed file, the deleted file's old side in the diff, and `app/startup.py`, and searched the repository for callers of the new functions. This review read the tests but did not run them. The new `parse_timeout(\"1500ms\")` test does exercise the added millisecond branch.\n\n## Changes\nThe pull request adds `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host`, plus a millisecond suffix in `parse_timeout`, along with tests. It also deletes `app/defaults.json` and adds `docs/reviewer.md` and a text fixture.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — Every call to `load_defaults()` fails with `FileNotFoundError` because this pull request deletes `app/defaults.json`. The stale reader is `app/startup.py:6`, which still does `Path(__file__).with_name(\"defaults.json\").read_text()`, and nothing in the diff changes it. The pull-request description does not mention or explain the deletion. — Any startup path that calls `load_defaults()` crashes instead of getting `{\"timeout\": 30}`.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False` because the check is `0 < p < 65535`, but the docstring on line 21 promises \"a usable TCP port (1-65535)\". `tests/test_parse.py:16` tests only the lower bound and 8080, so nothing catches the off-by-one at the upper end. — Configurations using port 65535, which is a valid TCP port, are rejected as invalid. — Fix: Use `0 < p <= 65535` and add an assertion for 65535 and 65536.\n- app/parse.py:30 — silent-failure — Stop swallowing all errors in load_config — When the config file is missing, unreadable, or contains malformed JSON such as `{\"timeout\": 5,`, `load_config` returns `{}` and the caller cannot tell this apart from a valid empty config. `except Exception` catches `OSError`, `ValueError`/`JSONDecodeError` and anything else, with no log or signal, and the docstring (\"Load the JSON config at path.\") does not document the fallback. No test covers this error path. — A user who makes a typo in the config silently runs on defaults, with nothing pointing them to the broken file. — Fix: Narrow the fallback to `FileNotFoundError` if a missing file is meant to be safe, and let parse errors propagate or log them with the path.\n\n## Suggestions\n- app/parse.py:35 — comments — Fix normalize_host docstring for empty input — The docstring says normalize_host \"returns None when h is empty\", but `normalize_host(\"\")` returns `\"\"` (line 37: `return \"\"`). — A caller that follows the docstring and checks `is None` will treat an empty host as valid.\n- app/parse.py:40 — tests — Test the trailing-dot branch of normalize_host — No test passes input like `\"Example.COM.\"`, so nothing exercises the trailing-dot branch added on lines 40–41. `tests/test_parse.py:28` only checks case folding with input that has no trailing dot. — Nothing guards against a regression that strips no dot or strips more than one.\n\n## Not reviewed\n(none)",
+    "duration_ms": 33525,
+    "cost_usd": 0.09842279999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NJVxvGtTwZ/review-pr.mYhGj0",
+  "head_sha": "2995d93a3c9ee1b77dcab7355f2d9e81d9856800",
+  "base_sha": "cfc046c7778e4acaf34891bc7641c7ade87e9a12",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cc932152ffb4e7b3aa242472ebe1658a6e9aeea8"
+}

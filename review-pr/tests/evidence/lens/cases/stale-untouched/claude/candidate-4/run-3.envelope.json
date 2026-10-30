@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne fix is needed: `README.md:3` still says requests time out after 30 seconds, but this pull request changes the default to 60, so users reading the docs get the wrong default. This review traced `DEFAULT_TIMEOUT` from `app/cli.py:3` into the `--timeout` argument at `app/cli.py:8` and read the parser tests. It found no correctness or silent-failure defects in the parser change. The updated `test_defaults` in `tests/test_cli.py:8` checks the new default through `parse_args([])`, and `test_explicit_options` in `tests/test_cli.py:14-15` still covers the explicit `--timeout` override. This review read the tests but did not run them.\n\n## Changes\nThe pull request raises `DEFAULT_TIMEOUT` in `app/cli.py` from 30 to 60 seconds and updates the default-value assertion in `tests/test_cli.py`. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n(none)\n\n## Important\n- README.md:3 — comments — Update the README default timeout to 60 seconds — Because `app/cli.py:3` now sets `DEFAULT_TIMEOUT = 60`, the README line \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" is now false. `parse_args([])` returns `timeout == 60`, as the updated test at `tests/test_cli.py:8` asserts, and the README is not part of the diff. — Users who read the README expect a 30-second timeout when the CLI waits 60 seconds, so they may pass `--timeout` for no reason or misdiagnose slow failures.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19150,
+    "cost_usd": 0.053684800000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BNZ72xIJbK/review-pr.a03Smu",
+  "head_sha": "e434894dd5a5a3c8623e7255124ac8437fe549be",
+  "base_sha": "90c099785b758d0e351ebcbdc9e937f61d9631be",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "061e0d43e58c2dcde32bead1bee64120c5469b1d"
+}

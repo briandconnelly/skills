@@ -1,0 +1,10 @@
+{
+  "collection_id": "45ad7122673483cf44770d6faaa74eebdacf377f",
+  "runner": "codex",
+  "case": "stale-untouched",
+  "snapshot": "candidate-4",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "b58a1aa0579f096c61eba0f02cc214b53cc00bc9fb8b1c675bb46d838ee4e56f"
+}

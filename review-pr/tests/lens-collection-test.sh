@@ -29,12 +29,12 @@ printf '%s\n' run >> "$OFFLINE_CALLS"
 jq -n --rawfile manifest "$OFFLINE_MANIFEST" '
   ($manifest | split("\n") | map(split("\t")) |
     map(select(.[0] // "" | startswith("PLANT-")) |
-      "- " + (.[1] | split(",")[0]) + " — " + (.[2] | split(",")[0]) + " — Defect — Impact") |
+      "- " + (.[1] | split(",")[0]) + " — " + (.[2] | split(",")[0]) + " — Title — Defect — Impact") |
     join("\n")) as $bullets |
   {type:"result", is_error:false, result:(
     "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOffline fixture.\n\n" +
-    "## Critical\n(none)\n\n## Important\n" + $bullets +
-    "\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n(none)\n")}
+    "## Changes\nFixture change summary.\n\n## Critical\n(none)\n\n## Important\n" + $bullets +
+    "\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)\n")}
 '
 EOF
 chmod +x "$S/bin/claude"

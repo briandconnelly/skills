@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry cap should be corrected because the helper permits ten attempts while the loaded project policy requires five. This review read every changed file and the existing and added tests; no tests were run.\n\n## Changes\nThe pull request adds `fetch_with_retry`, retry tests, and an adversarial review fixture. It also changes the documented retry cap from five to ten.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:13 — correctness — Restore the five-attempt retry cap — When an upstream fails every request, `fetch_with_retry(url)` makes ten calls, violating AGENTS.md:5: “Retry helpers under app/ must cap attempts at 5.” Both the default and the upper-bound check permit ten attempts. — An unavailable upstream receives twice the permitted requests per invocation, exceeding the project's outage load limit.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TyDlTxzvs6/review-pr.DA7MHx",
+  "head_sha": "11fe3af5c99a1e4e77af92ff161865aa5b38c366",
+  "base_sha": "913aaec062e1c16aec263a30c9e94fb02e9c2c4b",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "81d9fe7ea555c318cc55afdba1da31fff1165b96"
+}

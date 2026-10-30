@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing. The new `adopt` branch has no equality check, so `merge` reports a change and rewrites the file even when the incoming value already matches. That breaks the module's promise to leave untouched files alone. This review traced each branch of `merge` in `app/config.py` and read both changed test files; no tests were run. One verified strength: the `replace` branch still keeps its equality guard, and `test_unchanged_replacement_preserves_bytes` still covers it.\n\n## Changes\nAdds an `adopt` flag to `merge` in `app/config.py`. With `adopt`, every incoming key that already exists is overwritten and recorded in the change list. The `replace` branch is restructured, and two tests are added: one for adopt overwriting a setting and one for replace overwriting a setting that differs.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — Skip adopt when the current value already matches — `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `{\"theme\":\"dark\"}\\n` returns `[\"theme\"]` and rewrites the file as `{\\n  \"theme\": \"dark\"\\n}\\n`, even though nothing changed. The `elif adopt:` branch assigns and appends without the `current[key] != value` check that the `replace` branch keeps at line 19. Because `adopt` is checked first, passing `adopt=True, replace=True` also bypasses the replace guard. — Callers get spurious entries in the change list, and users' config files are reformatted when no setting changed. This contradicts the module docstring \"Merge settings while preserving untouched configuration files\" and the byte-preservation behavior that `test_unchanged_replacement_preserves_bytes` enforces for `replace`. — Fix: Only assign and append in the adopt branch when `current[key] != value`. Add an adopt counterpart to `test_unchanged_replacement_preserves_bytes` that asserts `[]` and unchanged bytes.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21615,
+    "cost_usd": 0.0755766,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yyisOvrJ69/review-pr.9LGHCi",
+  "head_sha": "bd31184deb0e149e0db0b942d53d4a3e654926a5",
+  "base_sha": "f777c246cfe546420d475dffd661592969c0ad47",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c0fbfb48b719c5fe6850648ce54674e2ac6be527"
+}

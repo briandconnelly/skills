@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing: the containment check in `preview` compares paths as text without resolving them, so a relative path containing `..` gets past the check and the function reads files outside the home directory. This review read `app/paths.py` and `tests/test_paths.py` at the PR head in full, plus the added `tests/review-note.txt` through the diff, and followed `preview` from its input to `read_text`. The review found no project policy files, because the manifest is empty. This review read the tests but did not run them.\n\n## Changes\nThe PR adds `preview(home, relative)` to `app/paths.py`, which returns the first 200 characters of a file only when the path falls under `home`, and `settings_file(home)`, which returns `home/settings.toml`. It adds tests for both helpers and a one-line text file, `tests/review-note.txt`.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before the home containment check — `preview(home, \"../secret.txt\")` reads `secret.txt` from the parent of `home` instead of raising `ValueError`. `Path.is_relative_to` only compares path parts as text: `Path(home) / \"../secret.txt\"` becomes `home/../secret.txt`, which still begins with `home`'s parts, so the check passes and line 14 reads the file outside home. A symlink inside `home` that points elsewhere also gets past the check for the same reason. The only rejection case in the test, at `tests/test_paths.py:20`, uses an absolute path, which `/` swaps in whole, so that test cannot catch this bypass. — Any caller that passes a user-supplied relative path can read the first 200 characters of any file the process can access, which defeats the only purpose of the check. — Fix: Compare `(Path(home) / relative).resolve()` against `Path(home).resolve()` with `is_relative_to`, and read the resolved path. Add test cases for `\"../outside.txt\"` and for a symlink inside `home` that points outside it.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 25342,
+    "cost_usd": 0.0702854,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.qMw6kT8DYi/review-pr.MpY1lW",
+  "head_sha": "95319f5cf5fd2fef22aac04d57426a4431a95ee8",
+  "base_sha": "5841760352ef88a501fac7568f72f62c501a86b3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1cfddad60821b67f3eef6cc89f401a2f7b176b1e"
+}

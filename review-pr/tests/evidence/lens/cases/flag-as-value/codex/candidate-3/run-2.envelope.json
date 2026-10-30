@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe optional JSON destination should preserve a following `--junit` flag; currently, that valid combination fails. This review read both changed files and all available tests; no tests were run.\n\n## Changes\nThe pull request adds optional JSON destinations and a function that writes selected reports, with tests for standalone JSON and JUnit arguments.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:16 — correctness — Preserve following flags when JSON has no path — For `[\"--json\", \"--junit\", \"report.xml\"]`, you consume `--junit` as the JSON destination and then raise `ValueError(\"unknown option: report.xml\")`. Both the destination assignment and index increment check only whether another argument exists, without checking whether it is an option. — Users cannot request default JSON output followed by an explicit JUnit destination. — Fix: Consume the following argument only when it is a path; otherwise retain `results.json` and process the following flag normally.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TSfPk2Rad4/review-pr.Ol3Ktf",
+  "head_sha": "8bc2fd295edd53906a6aeb53872fbfa71ee6e0eb",
+  "base_sha": "562cd2697de880026505ce8c1e13c278bcf9a01e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8ae73e05f0a9e7101a16066fe611c433831a8c50"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`Cache.set` needs a fix before merge: it stores keys without lower-casing them, but `get` always looks up the lower-cased key, so any value set under a mixed-case key can never be read back. This review read `app/cache.py` and `tests/test_cache.py` in full. It traced `set` against the case-insensitivity rule documented at `app/cache.py:14-15` and against the `get` lookup path. It also read the new tests but did not run them. One strength: `test_entries_expire` patches `time.monotonic` on the module that `app/cache.py` calls through, so the expiry check runs on fixed times instead of real clock time.\n\n## Changes\nThe pull request adds a `Cache.set(key, value)` method and raises `Cache.DEFAULT_TTL` from 60 to 300 seconds, with the comment updated to match. It also adds tests for the set/get round trip, the default TTL value and expiry.\n\n## Critical\n- app/cache.py:27 — correctness — Lower-case the key in Cache.set — `cache.set(\"Alpha\", 1)` followed by `cache.get(\"Alpha\")` returns `None`, because `set` writes `self._store[\"Alpha\"]` while `get` reads `self._store.get(key.lower())` (`app/cache.py:17`). This breaks the rule documented at `app/cache.py:14-15`: \"every path into _store lower-cases the key first, or mixed-case callers create duplicate entries that never expire together.\" `test_set_then_get_round_trip` only sets the already lower-case key `\"alpha\"`, so it cannot catch this. — Any caller that sets a key containing upper-case characters gets a cache miss on every read. That entry is also never removed, because `get`'s expiry deletion only runs on the lower-cased key, so these entries stay in `_store` for the life of the cache. — Fix: Write `self._store[key.lower()] = ...`, and add a test that calls `set` with a mixed-case key (for example `\"Alpha\"`) and then reads it back with `get`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 27776,
+    "cost_usd": 0.06611,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.RicFPhaWJK/review-pr.oYfy7J",
+  "head_sha": "37ef635d5b88d7b6ded82f6b38718d58dacdf4b4",
+  "base_sha": "d91725d1cc45e841b2c36eeedad8d1679d7fcc66",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8c187f80109ede7108469a2d21d016f12e9f587f"
+}

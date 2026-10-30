@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe duplicate adoption output should be fixed because adopting an existing setting now emits the same message twice. This review traced planning and command rendering and read all changed files and existing tests; no tests were run.\n\n## Changes\nThe pull request adds adoption records and a settings-count audit record to returned plans. It adds tests for audit records and suppressed audit output.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Render adoption progress only once — Calling `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, messages.append)` now produces `[\"Adopted theme\", \"Adopted theme\"]`. The planner emits the message at line 8, then the new adoption record reaches `app/cli.py:9`, which renders every non-audit record. — Users see duplicate progress messages whenever they adopt an existing setting. — Fix: Preserve the planner's progress emission and returned adoption record, and exclude adoption records from command rendering.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Z2L8Scmu0X/review-pr.GU8ehc",
+  "head_sha": "f52e38ebcc6b1809e727f249d4b9dae36ae35384",
+  "base_sha": "956dfd054c9b179301892e56e11204bd50e11c24",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "3f74d0a75ef1a70da3ea46282a47d0e2b1edb3a6"
+}

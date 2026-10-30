@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nFix the missing-results fallback before merge because it lets the release gate authorize a release without saved checks. This review read both changed files and all three tests; no tests were run.\n\n## Changes\nThe pull request adds a missing-file fallback for saved results, optional display preferences with a light-theme default, and tests for saved checks and preferences.\n\n## Critical\n- app/results.py:8 — correctness — Preserve failure when release results are missing — When the results file is absent, `release_allowed(path)` now returns `True`. Your new handler converts `FileNotFoundError` into `[]`, and the existing `all(...)` returns `True` for that empty sequence. — A missing or incorrectly configured results path authorizes release without recorded successful checks. — Fix: Preserve the exception or explicitly deny release when results are unavailable.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Xnohx727IF/review-pr.NuIk2Y",
+  "head_sha": "b21cd12cc1563446ab56eb0bd92630ec82a47225",
+  "base_sha": "9e01c7303a4de5d02dce363bbc8402b9f1ad220e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1c55ccc9f5f70fa98515564a2320511ffcaf6467"
+}

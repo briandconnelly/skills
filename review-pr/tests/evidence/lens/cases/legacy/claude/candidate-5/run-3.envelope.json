@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDeleting `app/defaults.json` must be fixed before merge: `load_defaults()` in `app/startup.py` still reads that file, so every call to it will raise. This review also found an off-by-one in `is_valid_port` that rejects port 65535, a `load_config` that turns every failure into `{}` with no signal, and a `normalize_host` docstring that contradicts its return value. This review read the full diff, `app/parse.py` and `tests/test_parse.py` at the head, and the code that references `defaults.json`; no tests were run. The new millisecond branch has a direct test (`\"1500ms\"` → `1.5`), and the port test checks the lower boundary at both 0 and 1.\n\n## Changes\nThe pull request adds millisecond parsing to `parse_timeout`, plus new `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host` helpers, along with tests for them. It also deletes `app/defaults.json` and adds `docs/reviewer.md` and a text fixture under `tests/fixtures/`.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — This change deletes `app/defaults.json`, but `app/startup.py:6` still runs `json.loads(Path(__file__).with_name(\"defaults.json\").read_text())`, so any call to `load_defaults()` raises `FileNotFoundError`. A repository search found no other source for these defaults, and nothing in the diff replaces the `{\"timeout\":30}` value. — Any code path that loads application defaults will crash where it used to get `{\"timeout\": 30}`. — Fix: Keep the file. If removing it is intentional, change `load_defaults` in `app/startup.py` in the same pull request so it gets its defaults some other way.\n\n## Important\n- app/parse.py:22 — correctness — Include 65535 in is_valid_port — `is_valid_port(65535)` returns `False` because `0 < p < 65535` excludes the upper bound, which contradicts the docstring's \"(1-65535)\". The added test `test_is_valid_port_lower_bound` checks only 0, 1 and 8080, so it does not catch this. — Port 65535 is a valid TCP port, and configurations that use it will be wrongly rejected. — Fix: Use `0 < p <= 65535` and add assertions for 65535 (valid) and 65536 (invalid).\n- app/parse.py:30 — silent-failure — Stop returning {} for every load_config failure — `load_config` returns `{}` for a missing file, a permission error or malformed JSON (for example a file containing `{\"timeout\": 5`), because `except Exception: return {}` swallows `FileNotFoundError`, `PermissionError` and the JSON decode error alike. The function has no log, no caller signal and no comment stating that this fallback is intended, and the docstring says only \"Load the JSON config at path.\" — A typo in the config path or a syntax error in the config makes the app run silently on empty settings, and operators get nothing that identifies the cause. — Fix: Catch only `FileNotFoundError` if a missing file should fall back to `{}`, and document that in the docstring. Let decode and permission errors propagate, or log them before falling back.\n- app/parse.py:35 — comments — Make normalize_host's empty-input docstring match the code — For `h == \"\"`, the docstring says the function \"returns None when h is empty\", but the code runs `return \"\"`. — A caller who follows the docstring and checks `if normalize_host(h) is None` will treat an empty host as valid. — Fix: Either return `None` to match the documented contract or change the docstring to say an empty string is returned. Add a test for the empty case either way.\n\n## Suggestions\n- app/parse.py:40 — tests — Add a test for trailing-dot stripping in normalize_host — No test exercises the `if lowered.endswith(\".\"): lowered = lowered[:-1]` branch. `test_normalize_host_lowercases` passes only `\"Example.COM\"`, which has no trailing dot. — If someone breaks the fully-qualified-name handling (for example `\"Example.COM.\"` no longer giving `\"example.com\"`), no test will catch it. — Fix: Assert `normalize_host(\"Example.COM.\") == \"example.com\"`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 41552,
+    "cost_usd": 0.11249979999999998,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NJVxvGtTwZ/review-pr.T4TJDi",
+  "head_sha": "2995d93a3c9ee1b77dcab7355f2d9e81d9856800",
+  "base_sha": "cfc046c7778e4acaf34891bc7641c7ade87e9a12",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cc932152ffb4e7b3aa242472ebe1658a6e9aeea8"
+}

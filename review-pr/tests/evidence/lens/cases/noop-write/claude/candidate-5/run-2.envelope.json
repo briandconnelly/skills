@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: the adopt branch counts a key as changed even when its value is already the same, so an adoption that should do nothing still rewrites the config file. This review read the full `app/config.py` and `tests/test_config.py` at the PR head and compared the adopt branch with the replace branch, which skips equal values. It also searched the repository for other callers of `merge` and found none outside the tests. The replace path keeps its equality guard, and the PR adds a test for replacing a different value (`tests/test_config.py:27`).\n\n## Changes\nThe PR adds an `adopt` parameter to `merge` in `app/config.py`. With `adopt=True`, every incoming key that already exists is overwritten and recorded in the change list. The PR also adds tests for adopting a key and for replacing a different value.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — correctness — Skip unchanged values in the adopt branch — Calling `merge(path, {\"theme\": \"dark\"}, adopt=True)` on a file containing `{\"theme\":\"dark\"}\\n` returns `[\"theme\"]` and rewrites the file as `{\\n  \"theme\": \"dark\"\\n}\\n`, when it should return `[]` and leave the file alone. The `elif adopt:` branch at lines 13–15 assigns the value and appends the key without the `current[key] != value` check that the replace branch uses at line 19, so `changes` is non-empty and line 23 rewrites the file. This contradicts the module docstring \"Merge settings while preserving untouched configuration files.\" (`app/config.py:1`) and the byte-preservation behaviour that `test_unchanged_replacement_preserves_bytes` asserts for replace. Because adopt is checked before replace, passing `adopt=True, replace=True` also loses replace's no-op guarantee. The added `test_adopt_updates_setting` only covers a value that differs, so nothing exercises the equal-value case. — Running adoption on a config that already matches reformats the user's file and reports changes that did not happen; any caller that acts on a non-empty change list (logging, reloads, commits) will act on these false changes. — Fix: Guard the adopt branch with `if current[key] != value:` as the replace branch does, and add a test like `test_unchanged_replacement_preserves_bytes` that uses `adopt=True`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 27557,
+    "cost_usd": 0.0679818,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yyisOvrJ69/review-pr.h6Nq1b",
+  "head_sha": "bd31184deb0e149e0db0b942d53d4a3e654926a5",
+  "base_sha": "f777c246cfe546420d475dffd661592969c0ad47",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c0fbfb48b719c5fe6850648ce54674e2ac6be527"
+}

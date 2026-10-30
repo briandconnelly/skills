@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe refresh helper should preserve recorded fingerprints because refreshing an edited tracked file currently makes verification accept it. This review read both changed files in full and traced their behavior against the tests; no tests were run.\n\n## Changes\nThe pull request adds helpers to refresh manifest fingerprints and register previously unlisted files, with tests for registration, preservation, and empty input.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Preserve existing fingerprints during refresh — When an edited tracked file is supplied alongside a new file, `refresh_fingerprints` overwrites the tracked file’s recorded digest, causing `verify` to return true despite the edit. The refresh test supplies an unchanged tracked file, so it does not detect this loss of integrity checking. — Users refreshing the manifest after adding files can erase the evidence needed to detect hand-edited tracked content. — Fix: Preserve existing entries as `register_new_files` does, and test refreshing with both an edited tracked file and a new file.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.S7ZTEKxpG5/review-pr.FoUVdV",
+  "head_sha": "8ddba5cb175fba72fd3ac65e92f3e3dfd06efb37",
+  "base_sha": "ef1ee04daec805e7839fcaa4432531aa98f3bdca",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c6d87343d90b70d77baa459170f9e07113c1330a"
+}

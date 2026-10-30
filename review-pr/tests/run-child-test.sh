@@ -55,9 +55,10 @@ expected_cwd="$(cd "$dir/repo" && pwd -P)"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh" high)"
 argv="$(cat "$FAKE_ARGV")"
 prompt="$(awk '/^-p$/{p=1;next} /^--output-format$/{exit} p' "$FAKE_ARGV")"
-for h in '## Summary' '## Critical' '## Important' '## Suggestions' '## Strengths' '## Not reviewed'; do
+for h in '## Summary' '## Changes' '## Critical' '## Important' '## Suggestions' '## Not reviewed'; do
   grep -qF -- "$h" <<<"$prompt" || { echo "FAIL: prompt lacks heading $h"; FAIL=1; }
 done
+grep -qF -- '## Strengths' <<<"$prompt" && { echo "FAIL: prompt still names the removed Strengths heading"; FAIL=1; }
 grep -qF -- '../policy-manifest.json' <<<"$prompt" || { echo "FAIL: prompt does not require the policy manifest"; FAIL=1; }
 grep -qF -- '../pr.diff' <<<"$prompt" || { echo "FAIL: prompt does not require the pinned diff file"; FAIL=1; }
 grep -q 'git diff' <<<"$prompt" && { echo "FAIL: prompt still asks the child to run git diff"; FAIL=1; }
@@ -177,7 +178,7 @@ grep -qF 'cannot determine PR number' <<<"$err" \
   || { echo "FAIL: missing PR number diagnostic absent: $err"; FAIL=1; }
 
 # Contract-valid, unavailable-diff, and missing native results are distinguished.
-VALID_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nLooks sound.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n(none)\n'
+VALID_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nLooks sound.\n\n## Changes\nFixture change summary.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)\n'
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" "$SRC/run-child.sh")"
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: valid review failed schema validation: $out"; FAIL=1; }
@@ -194,7 +195,7 @@ out="$(printf '%s' "$J" | FAKE_NATIVE="$native" "$SRC/run-child.sh")"
 jq -e '.schema_valid == false and (.schema_errors | length > 0) and .review != null' <<<"$out" >/dev/null \
   || { echo "FAIL: malformed report broke the public JSON envelope: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: malformed report leaked the checkout"; FAIL=1; }
-SENT_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nCould not read the diff.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n(none)\n\n## Not reviewed\n- DIFF-UNAVAILABLE: denied\n'
+SENT_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nCould not read the diff.\n\n## Changes\nFixture change summary.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- DIFF-UNAVAILABLE: denied\n'
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_RESULT="$SENT_RESULT" "$SRC/run-child.sh")"
 [ "$(jq -r .diff_unavailable <<<"$out")" = true ] || { echo "FAIL: diff sentinel not detected"; FAIL=1; }

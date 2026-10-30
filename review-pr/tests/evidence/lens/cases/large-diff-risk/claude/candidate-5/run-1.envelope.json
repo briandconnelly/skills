@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release gate in `zzz-release/gate.py` needs fixing before merge. The change from `>=` to `>` means a release with exactly the required number of approvals is now blocked, and the module docstring still says \"at least\". The catalog regeneration also adds a non-service top-level key with a string value, which breaks the catalog's otherwise uniform service-entry shape. This review read the whole pinned diff. It confirmed by line counts that all 1,500 catalog entries changed only by the `legacy-` → `production-` rename and the 1xxxx → 2xxxx port shift, apart from the added key. It also read every changed file and `tests/test_release.py`, but did not run them.\n\n## Changes\nThe pull request regenerates `aaa-generated/catalog.json`: 1,500 `legacy-service-NNNN` entries become `production-service-NNNN` with ports moved from 10000–11499 to 20000–21499, and a `review_note` key is added. It also rewrites `healthy()` in `services/registry.py` as `not failures` and changes the approval comparison in `zzz-release/gate.py`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` so the minimum approval count passes — `approved(2, minimum=2)` now returns `False` because the comparison changed from `approvals >= minimum` to `approvals > minimum`. The module docstring at `zzz-release/gate.py:1` still reads \"A release needs at least the configured number of approvals.\" `tests/test_release.py:11-16` checks only 3 and 1 approvals with `minimum=2`, so no test covers the boundary value 2, and both tests pass under either operator. — Any release that reaches exactly the required number of approvals (2 by default) is blocked, so in effect the requirement becomes `minimum + 1`, and the existing tests cannot catch the regression. — Fix: Revert to `approvals >= minimum` and add a test asserting `gate.approved(2, minimum=2)` is true.\n\n## Important\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` key from the catalog — The regenerated catalog adds the top-level key `\"review_note\"` with a string value. Every other one of the 1,500 top-level keys maps a service name to an object with `port` and `enabled`. A consumer that iterates the catalog and reads `entry[\"port\"]` or `entry[\"enabled\"]` gets `TypeError: string indices must be integers` on this entry. A consumer that treats every top-level key as a service name registers a bogus service. — The deployment catalog no longer has a uniform shape, so any tool that loads it as name → service config fails or misbehaves on this entry. The key also does not look like generator output, so the next regeneration will either drop it or show that the file was edited by hand.\n\n## Suggestions\n(none)\n\n## Not reviewed\n- Consumers of `aaa-generated/catalog.json` outside this repository: nothing in the checked-out tree reads the file, so this review could not confirm which tools would hit the `review_note` entry or whether they depend on the old `legacy-service-*` names or 10000-range ports.",
+    "duration_ms": 79859,
+    "cost_usd": 0.386789,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.EEiChqXh6M/review-pr.5qOFYc",
+  "head_sha": "f95a1a4e2933955e18525dcc58b19ed8bdd7957e",
+  "base_sha": "323ac4b8b17b9ed2fd02383702ad013360ca6b4a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "899b32f975d8a0fb067890262b76ebf0bcf8577e"
+}

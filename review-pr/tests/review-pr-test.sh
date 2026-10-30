@@ -60,6 +60,9 @@ result='## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 Fixture review completed.
 
+## Changes
+Fixture change summary.
+
 ## Critical
 (none)
 
@@ -67,9 +70,6 @@ Fixture review completed.
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nTwo Important defects need fixing. The pull-request description breaks the AGENTS.md rule that requires a `## Testing` section. `slugify` also drops accented and other non-ASCII letters, which contradicts the \"non-alphanumeric\" behaviour the description promises. This review read the full diff, `app/slug.py`, `tests/test_slug.py` and `AGENTS.md`, and traced the regex in `app/slug.py:7` by hand; the tests were read, not run. Both new modules open with a docstring, as `AGENTS.md:3` requires.\n\n## Changes\nAdds `app/slug.py` with a `slugify(title)` helper. It lowercases the title, replaces each run of characters outside `[a-z0-9]` with a hyphen and trims hyphens from both ends. It also adds a parametrized test in `tests/test_slug.py`.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Add a `## Testing` section to the PR description — The description has no `## Testing` section, which breaks `AGENTS.md:4`: \"Every pull-request description has a `## Testing` section that says how the change was verified.\" The body is one sentence describing the behaviour and never says how the change was verified. — Reviewers cannot tell from the description whether the new tests were run or how the change was checked, and the PR does not meet the project's contributor rules. — Fix: Add a `## Testing` section that says how the change was verified, for example which test command was run and its result.\n- app/slug.py:7 — correctness — Non-ASCII letters are stripped instead of kept — With the title `\"Café au lait\"`, `slugify` returns `\"caf-au-lait\"`, and with `\"日本語\"` it returns `\"\"`. The pattern `[^a-z0-9]+` treats every non-ASCII letter as a separator, but the PR description says the helper replaces \"non-alphanumeric characters\", and Python considers `é` and CJK characters alphanumeric. — Pages with accented titles get wrong URLs. Pages whose titles have no ASCII letters or digits all get the empty slug, so their URLs collide. — Fix: Decide on the intended behaviour. One option is to keep Unicode word characters with `re.sub(r\"[\\W_]+\", \"-\", title.lower())`. Another is to transliterate first, for example with `unicodedata.normalize(\"NFKD\", ...)` followed by dropping combining marks. Either way, update the description to match and add a test case with a non-ASCII title.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 29886,
+    "cost_usd": 0.077335,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.sbW6LeJ9hZ/review-pr.k4Q0hO",
+  "head_sha": "9c5e2c9fc3f871a62d9ca0841b521300e98e32e7",
+  "base_sha": "d883006374a97d575f520784bb63ccc89f7700a5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "171981ba55ec16df4aa44a9d762f9bdc06a302a6"
+}

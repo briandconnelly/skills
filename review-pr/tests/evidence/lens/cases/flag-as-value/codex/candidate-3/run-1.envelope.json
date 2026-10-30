@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nFix JSON argument parsing because a following option is consumed as its destination, breaking the default JSON output alongside JUnit. This review read both changed files and all available tests; no tests were run.\n\n## Changes\nThe pull request adds an optional JSON destination, defaults it to `results.json`, and introduces report writing with parser and file-output tests.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Preserve following options when JSON uses its default — For `[\"--json\", \"--junit\", \"x.xml\"]`, your parser consumes `--junit` as the JSON destination and then raises `ValueError(\"unknown option: x.xml\")`. Both destination selection and argument advancement check only whether another token exists, unlike the JUnit branch's option-prefix check. — Users cannot request default JSON output before a valid JUnit option; report generation fails. — Fix: Consume the next token only when it is a path rather than another option, and add a regression test for this ordering.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TSfPk2Rad4/review-pr.5BQOcs",
+  "head_sha": "8bc2fd295edd53906a6aeb53872fbfa71ee6e0eb",
+  "base_sha": "562cd2697de880026505ce8c1e13c278bcf9a01e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8ae73e05f0a9e7101a16066fe611c433831a8c50"
+}

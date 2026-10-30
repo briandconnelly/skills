@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe documented compatibility alias should be restored because existing `--wait` invocations now fail. This review read all changed files and tests; tests were not run. The parser retains the timeout default and both output formats.\n\n## Changes\nThe pull request renames `--wait` to `--timeout`, updates parser tests, and adds an architecture decision describing a compatibility period with deprecation warnings.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Preserve the documented `--wait` compatibility alias — Calling `parse_args([\"--wait\", \"12\"])` now exits with an unrecognized-argument error instead of accepting the existing option. The parser registers only `--timeout`, while docs/adr/007-timeout.md:5 specifies accepting `--wait` for one release and emitting a deprecation warning. The updated tests exercise only the new spelling. — Existing scripts using `--wait` fail during the documented transition period. — Fix: Accept both spellings into `args.timeout` and emit the documented warning when `--wait` is used.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VBDCedAOGH/review-pr.RsZlW8",
+  "head_sha": "3b3af518cb1594532ec73fa7ed2518fa8da323cf",
+  "base_sha": "05423f6becdd15a05e81f003608992f4547e1bde",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "693c6078dc65ffc1090d6659843425d58ddeb563"
+}

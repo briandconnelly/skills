@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nSave failures should be surfaced because an unavailable destination currently produces a success message and returns zero. This review read both changed files and their tests; no tests were run. Cleanup correctly ignores absent files while preserving other errors.\n\n## Changes\nThe pull request adds report saving with a destination announcement and cleanup for optional temporary reports. It adds tests for saving and cleanup.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Surface write failures before announcing success — When the destination’s parent directory does not exist, `save_report` discards `FileNotFoundError`, prints “Report saved,” and returns zero. The broad `OSError` handler also hides permission and storage failures. The unavailable-destination test only calls the function and does not check failure reporting. — Users and callers receive a success message and zero status even though the report was not saved. — Fix: Propagate the write error, or provide an actionable diagnostic and nonzero status; announce success only after writing succeeds.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.23LWJ1QnoU/review-pr.vVQZJ8",
+  "head_sha": "028dd3a79474468eefad3d42642d03830f6cc1c2",
+  "base_sha": "80fc7592d0df624c3db2323c5a944e9fa2e5583b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "897be1e33cd4a21309331e2613831f626bcf1292"
+}

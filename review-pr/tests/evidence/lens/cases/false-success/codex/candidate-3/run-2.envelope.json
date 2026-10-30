@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe save command should surface write failures because an unavailable destination currently produces a success message and status 0. This review read the complete diff, both changed files and their tests; no tests were run.\n\n## Changes\nThe pull request adds report saving with a destination announcement, optional temporary-report cleanup, and tests for saving and cleanup.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Surface failed report writes — For `missing/report.txt` whose parent directory does not exist, `save_report` swallows `FileNotFoundError`, prints “Report saved,” and returns 0. The `OSError` handler discards the failure and continues through the success path. — Users and callers receive a success indication even though no report was created, with no information to diagnose the failure. — Fix: Propagate the exception, or report the destination and underlying error and return a nonzero status without announcing success.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.23LWJ1QnoU/review-pr.rjeVBE",
+  "head_sha": "028dd3a79474468eefad3d42642d03830f6cc1c2",
+  "base_sha": "80fc7592d0df624c3db2323c5a944e9fa2e5583b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "897be1e33cd4a21309331e2613831f626bcf1292"
+}

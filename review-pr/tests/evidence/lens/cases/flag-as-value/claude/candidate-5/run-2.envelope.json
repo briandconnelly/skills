@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: when `--json` comes right before another flag, `--json` takes that flag as its path. This breaks the combination the description promises, using `--json` \"alongside the required --junit destination\", whenever `--json` comes first. This review read both changed files in full and traced `parse_args` and `write_reports` through the flag orderings the PR description implies. No tests were run. The `--junit` change keeps the earlier missing-path check, and the added tests cover both of its error paths: a bare `--junit` and `--junit --json`.\n\n## Changes\nThis PR adds a `--json` option to `parse_args`, which writes to `results.json` when no path is given or to an explicit path when one is. It also adds `write_reports`, which writes each parsed report to its destination, and a new `tests/test_cli.py`.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Don't treat a following flag as the JSON path — `parse_args([\"--json\", \"--junit\", \"out.xml\"])` sets `json` to `\"--junit\"` and then fails with `ValueError(\"unknown option: out.xml\")`. The cause is that lines 15–19 accept any next argument as the destination. They don't check for a leading `--` the way the `--junit` branch does on line 7. — Users who put `--json` before `--junit` get a confusing error about their JUnit path, and neither report is written. The same happens with any later flag, which the parser takes as a filename. This also makes the comment on line 12 (\"JSON can use its default destination when no path is supplied\") false for that input. The added tests only check `--json` alone or with an explicit path, so they don't catch this. — Fix: Use the default destination when `args[i + 1].startswith(\"--\")`, as line 7 does, and add a test for `[\"--json\", \"--junit\", \"x.xml\"]` that expects `{\"json\": \"results.json\", \"junit\": \"x.xml\"}`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23848,
+    "cost_usd": 0.06181880000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.gPYbcZUOwF/review-pr.bOx0a9",
+  "head_sha": "1f239184291a3b5971ff511abf8013bceee22d96",
+  "base_sha": "0affbf4f7ff03a6b3849e393454ac018d69d93c0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "91637319c0bc44bf163d7c38d58a1f4fe7ffe86e"
+}

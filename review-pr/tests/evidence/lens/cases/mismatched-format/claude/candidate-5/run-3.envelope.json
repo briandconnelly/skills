@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`status()` needs one fix before merge. It shortens the revision to 7 characters, but its own docstring says it uses the same identifier as `history()`, which shows 12 characters. A running deployment therefore shows a different revision string from the history and completion output. This review read the full pinned diff and both changed files at the PR head (`app/display.py` and `tests/test_display.py`). It traced `status()` and `attempt_label()` against the existing `history()` and `completed()` helpers. The new `attempt_label()` test checks exact output for two attempt numbers.\n\n## Changes\nThe PR adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, which build a \"Running: <revision> (attempt N)\" line. It also adds two tests for them in `tests/test_display.py`.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Shorten the status revision to 12 characters like history — For `REVISION = \"0123456789abcdef...\"`, `status(REVISION, 2)` returns `\"Running: 0123456 (attempt 2)\"`, while `history(REVISION)` returns `\"History: 0123456789ab\"` and `completed(REVISION)` returns `\"Deployed: 0123456789ab\"`. The docstring at `app/display.py:13` says \"Show the deployment revision using the same identifier as history.\", but line 14 uses `revision[:7]` and `history()` at `app/display.py:5` uses `revision[:12]`. The added test at `tests/test_display.py:14-15` only checks the prefix and suffix, so it passes with either length. — Operators comparing a running deployment with history or completion output see two different identifiers for the same revision, and no test catches the mismatch. — Fix: Use `revision[:12]` to match `history()` and `completed()`, and assert the full string in the test, for example `status(REVISION, 2) == \"Running: 0123456789ab (attempt 2)\"`. If a 7-character form is intended for the compact line, fix the docstring to say so instead.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23435,
+    "cost_usd": 0.058711000000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.e5Q4EmeLq0/review-pr.O8oDyx",
+  "head_sha": "4ce16fad8f5510a8a78efc3e8d02ecfe565b8cfc",
+  "base_sha": "0b3ee563517575857e852b4be50831b9522676ec",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c23e918fc636ce1c010038075095ab4934908f96"
+}

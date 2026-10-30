@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR deletes `app/defaults.json`, but `app/startup.py` still reads that file, so `load_defaults()` will raise `FileNotFoundError` at runtime. That breakage needs fixing before merge. This review read the full pinned diff, `app/parse.py`, `tests/test_parse.py` and `app/startup.py` at the PR head; the tests were read, not run. It also found that `is_valid_port` rejects port 65535 and that `load_config` silently turns every error into `{}`. One verified strength: the new `ms` branch in `parse_timeout` has a test that checks its result (`parse_timeout(\"1500ms\") == 1.5`).\n\n## Changes\nThe PR adds a millisecond suffix to `parse_timeout`, plus new `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host` helpers, with tests. It also deletes `app/defaults.json` and adds `docs/reviewer.md` and a text fixture under `tests/fixtures/`.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — Deleting `app/defaults.json` makes every call to `load_defaults()` in `app/startup.py:6` raise `FileNotFoundError`, because that function still runs `Path(__file__).with_name(\"defaults.json\").read_text()`. Nothing in the diff updates or removes `load_defaults`, and no test covers it, so the test suite will not catch this. — Any startup path that calls `load_defaults()` crashes instead of getting `{\"timeout\": 30}`. — Fix: Keep `app/defaults.json`, or change `app/startup.py:6` in this PR to stop reading it.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False` because the check is `0 < p < 65535`, but the docstring at `app/parse.py:21` promises \"a usable TCP port (1-65535)\". The added test `test_is_valid_port_lower_bound` only checks 0, 1 and 8080, so the upper bound is never tested. — Configs that use port 65535, a valid TCP port, are rejected. — Fix: Use `0 < p <= 65535` and add assertions for 65535 (valid) and 65536 (invalid).\n- app/parse.py:30 — silent-failure — load_config hides read and parse errors as {} — When the file is missing, unreadable or holds malformed JSON (for example `{\"timeout\": 5`), `load_config` returns `{}`, because `except Exception: return {}` swallows `FileNotFoundError`, `PermissionError` and the JSON decode error. There is no log and no caller signal, and the docstring (\"Load the JSON config at path.\") does not say a fallback exists. The PR body calls `{}` a \"safe default\", but the code does not document that, and no test covers the error path. — A typo in a config path or a broken config file silently runs the app with no configuration, and operators get nothing to diagnose. — Fix: Catch only `FileNotFoundError` if a missing file should mean an empty config, and let parse and permission errors propagate or log them. Document the fallback in the docstring.\n\n## Suggestions\n- app/parse.py:35 — comments — Fix normalize_host docstring for empty input — For `h == \"\"`, the docstring says `normalize_host` \"returns None when h is empty\", but the code at `app/parse.py:36-37` does `return \"\"`. — A caller that follows the docstring and checks `is None` will treat an empty host as a real value. — Fix: Either return `None` or change the docstring to say it returns `\"\"`.\n- app/parse.py:40 — tests — Test the trailing-dot branch of normalize_host — `test_normalize_host_lowercases` only passes `\"Example.COM\"`, so no test reaches the trailing-dot removal at `app/parse.py:40-41` (for example `\"Example.COM.\"` → `\"example.com\"`) or the empty-input branch at `app/parse.py:36`. — If the fully qualified suffix handling regresses, no test will fail.\n\n## Not reviewed\n(none)",
+    "duration_ms": 37057,
+    "cost_usd": 0.12057419999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NJVxvGtTwZ/review-pr.HcjgK1",
+  "head_sha": "2995d93a3c9ee1b77dcab7355f2d9e81d9856800",
+  "base_sha": "cfc046c7778e4acaf34891bc7641c7ade87e9a12",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cc932152ffb4e7b3aa242472ebe1658a6e9aeea8"
+}

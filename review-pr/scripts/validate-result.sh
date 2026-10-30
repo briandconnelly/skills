@@ -14,7 +14,7 @@ fi
 
 awk -v coverage="$COVERAGE" '
 BEGIN {
-  want[1]="Summary"; want[2]="Critical"; want[3]="Important"; want[4]="Suggestions"; want[5]="Strengths"; want[6]="Not reviewed"
+  want[1]="Summary"; want[2]="Changes"; want[3]="Critical"; want[4]="Important"; want[5]="Suggestions"; want[6]="Not reviewed"
   n=0; cur=""; nerr=0; du=0; seen_text_before=0
 }
 function err(m) { errs[++nerr]=m }
@@ -44,7 +44,11 @@ END {
   # Findings sections: (none) or finding bullets only
   split("Critical Important Suggestions", fs, " ")
   for (i=1;i<=3;i++) check_section(fs[i], 1)
-  check_section("Strengths", 0)
+  # Changes: non-blank prose; (none) is not allowed
+  if (n>=2 && "Changes" in body) {
+    if (body["Changes"] ~ /^[[:space:]]*$/) err("Changes is empty")
+    else if (body["Changes"] ~ /^[[:space:]]*\(none\)[[:space:]]*$/) err("Changes: (none) is not allowed")
+  }
   check_section("Not reviewed", 0)
   # Sentinel: first bullet of Not reviewed, nowhere else
   nr=body["Not reviewed"]; nl=split(nr, lines, "\n"); first=""
@@ -57,10 +61,16 @@ END {
   print (du ? "true" : "false")
   for (i=1;i<=nerr;i++) print errs[i]
 }
-function valid_finding(line,   fields, count, j) {
+function valid_finding(line,   fields, count, j, impact_idx, last) {
   count=split(line, fields, " — ")
-  if (count<4 || fields[1] !~ /^- (.+:[1-9][0-9]*( \[base\])?|PR body)$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
+  if (count<5 || fields[1] !~ /^- (.+:[1-9][0-9]*( \[base\])?|PR body)$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
   for (j=3;j<=count;j++) if (fields[j] ~ /^[[:space:]]*$/) return 0
+  # "Fix:" may start only the last field; elsewhere it means a misplaced " — ".
+  for (j=4;j<count;j++) if (fields[j] ~ /^Fix:/) return 0
+  # A last field starting "Fix:" is the fix and must be exactly "Fix: <non-blank>…";
+  # the field before it is the impact.
+  last=fields[count]
+  if (last ~ /^Fix:/) return (last ~ /^Fix: [^[:space:]]/) && count>=6
   return 1
 }
 function check_section(name, findings,   b, L, i, m, nonblank, none) {
@@ -71,7 +81,7 @@ function check_section(name, findings,   b, L, i, m, nonblank, none) {
     nonblank++
     if (L[i]=="(none)") { none++; continue }
     if (L[i] !~ /^- /) { err(name ": line is neither (none) nor a bullet: " substr(L[i],1,40)); continue }
-    if (findings && !valid_finding(L[i])) err(name ": bullet is not \"- path:line — lens — sentence — why\" (or \"- PR body — lens — sentence — why\"): " substr(L[i],1,60))
+    if (findings && !valid_finding(L[i])) err(name ": bullet is not \"- path:line — lens — title — defect — impact[ — Fix: fix]\" (or \"- PR body — …\"): " substr(L[i],1,60))
   }
   if (none && nonblank!=1) err(name ": (none) mixed with other lines")
   if (nonblank==0) err(name ": empty section")

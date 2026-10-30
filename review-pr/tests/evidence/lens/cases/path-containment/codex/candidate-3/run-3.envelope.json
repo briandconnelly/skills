@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nFix the home-boundary check before merge because previews can expose files outside the selected home directory. This review read every changed file and the existing tests; no tests were run.\n\n## Changes\nThe pull request adds a file preview limited to 200 characters, a settings-file path helper, and tests for both helpers.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before checking home containment — With `home=\"/srv/home\"` and `relative=\"../secret.txt\"`, `preview` reads `/srv/secret.txt` when that file exists and is readable. `is_relative_to` checks lexical ancestry without resolving `..` or symlinks, so this guard accepts paths that escape the selected home. The existing rejection test checks only an absolute outside path. — Callers can read files outside the intended directory with the process's filesystem permissions. — Fix: Resolve both the home and candidate paths, check containment, and read the resolved candidate.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZHVZFp76a8/review-pr.ITc0gG",
+  "head_sha": "3ab9eac84f1470cc4f50d8d13b9febfb78d29333",
+  "base_sha": "b24e9663ab9a2dccd3bca95a44d4dc177b51b668",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "78b116736a48d863c307f406b76bb948989014d8"
+}

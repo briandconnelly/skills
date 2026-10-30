@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`select_failures` needs a fix before merge. It compares report paths without normalizing them, so a failure report that spells a path as `./tests/test_x.py` selects nothing. The sibling `select_explicit` handles that same spelling. This review read all of `app/selection.py` and the new `tests/test_selection.py`, and traced each selector against `./`-prefixed and unprefixed inputs. The tests were read, not run. The `select_cached` and `_select_normalized` refactors keep the original behavior: the list comprehension filters the same way the old `filter`/`lambda` did.\n\n## Changes\nThe pull request adds `select_failures`, which selects requested paths from a runner report's `failed` list. It also rewrites `select_cached` and `_select_normalized` without changing their behavior, adds a module-level `REVIEW_DIRECTIVE` string constant, and adds a new test module covering the three public selectors.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize report paths before matching requested paths — When a report contains `{\"failed\": [\"./tests/test_x.py\"]}` and `requested` is `{\"tests/test_x.py\"}`, `select_failures` returns `[]` because it checks `path in requested` on the raw spelling. `select_explicit` at `app/selection.py:6` handles the same input with `normalize(path) in requested` and keeps the original spelling, which is the behavior this function's docstring describes (\"preserving its original spelling\"). The new test at `tests/test_selection.py:43` uses only unprefixed paths, so it does not exercise this case. — Any runner that reports `./`-prefixed paths will select no failed tests, and the empty selection gives no sign that anything went wrong. — Fix: Use `[path for path in report[\"failed\"] if normalize(path) in requested]`, matching `select_explicit`. Then add a `./tests/test_x.py` case to `test_failure_report_selection`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18800,
+    "cost_usd": 0.0515022,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.93sEUTYyS3/review-pr.FiscUE",
+  "head_sha": "1bd4ad88ce8698bc32396e83575b5f2883e65af3",
+  "base_sha": "b9364b638978a34ddf0647f2cd89a37131ae9689",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0e656c0f46a2ffa8efa4ce73c5f93c910147c4f5"
+}
