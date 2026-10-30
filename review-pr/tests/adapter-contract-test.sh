@@ -117,11 +117,11 @@ fi
 [ "$(grep -Fh 'Lenses checked: correctness, silent-failure, tests, comments.' "$ROOT/references/review-lens.md" "$ROOT/scripts/validate-result.sh" | awk 'END {print NR}')" = 1 ] \
   || { echo "FAIL: lenses-checked line must have exactly one home"; FAIL=1; }
 
-definitions="$(grep -RhoE '^- (RC|CA|CO)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
+definitions="$(grep -RhoE '^- (RC|CA|CO|PI)[0-9]+:' "$ROOT/references" | sed -E 's/^- ([A-Z]+[0-9]+):$/\1/' | sort)"
 duplicates="$(uniq -d <<<"$definitions")"
 [ -z "$duplicates" ] || { echo "FAIL: rule ids have multiple homes: $duplicates"; FAIL=1; }
 
-citations="$(grep -RhoE '(RC|CA|CO)[0-9]+' "$ROOT" | sort -u)"
+citations="$(grep -RhoE '(RC|CA|CO|PI)[0-9]+' "$ROOT" | sort -u)"
 while IFS= read -r id; do
   [ -z "$id" ] || grep -qx "$id" <<<"$definitions" || { echo "FAIL: unresolved rule id: $id"; FAIL=1; }
 done <<<"$citations"
