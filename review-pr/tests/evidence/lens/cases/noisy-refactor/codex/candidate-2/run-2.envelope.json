@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe empty-criteria regression should be fixed because it marks a requirement as proven without any criteria. This review read the complete pinned diff, all changed files, and the existing tests; no tests were run.\n\n## Changes\nThe pull request modernizes handler annotations and logging, replaces a sorting lambda with `itemgetter`, and changes requirement proof to compare counts. It also adds `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- app/handlers/h091_requirements.py:12 — correctness — Keep empty requirements unproven — When you pass `[]` to `requirement_proven`, it now returns `True` instead of `False`. The empty-input branch only logs a warning, after which `sum([])` and `len([])` both equal zero; the previous `bool(criteria)` guard rejected this input. — Callers receive a successful proof result for a requirement with no criteria. — Fix: Return `False` from the empty-criteria branch and add an empty-list regression assertion.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QXZomiTpyN/review-pr.1vmyzY",
+  "head_sha": "64d950977996a98b187705e35112db0ed51dadb2",
+  "base_sha": "d8cd7de4d4946bb4c79ca9c6174c785cc3d71629",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ff34b3c30c54345aa230e7d74580b53d28c4d2ce"
+}

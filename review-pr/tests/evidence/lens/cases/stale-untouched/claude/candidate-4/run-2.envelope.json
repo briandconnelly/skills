@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: after this change the README still tells users the default timeout is 30 seconds. This review read `app/cli.py`, the full `tests/test_cli.py`, and the README, and searched the repository for other references to the timeout. The `--timeout` override and invalid-value handling are unchanged. Existing tests cover both (`tests/test_cli.py:13-23`), and `test_defaults` now checks the new value of 60. This review read the tests but did not run them.\n\n## Changes\nThe pull request changes `DEFAULT_TIMEOUT` in `app/cli.py` from 30 to 60 and updates the test for the default to match. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — Update the README default timeout to 60 seconds — With `DEFAULT_TIMEOUT = 60`, the line in `README.md:3` that reads \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" is now wrong. A plain run with no `--timeout` waits 60 seconds, as `test_defaults` asserts at `tests/test_cli.py:8`. This review searched the repository and found no other documentation of the default. — Users and operators who read the README will expect requests to fail after 30 seconds and may set alerts or retries to match, when the real wait is twice as long.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23045,
+    "cost_usd": 0.0549628,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BNZ72xIJbK/review-pr.HWV3Z1",
+  "head_sha": "e434894dd5a5a3c8623e7255124ac8437fe549be",
+  "base_sha": "90c099785b758d0e351ebcbdc9e937f61d9631be",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "061e0d43e58c2dcde32bead1bee64120c5469b1d"
+}

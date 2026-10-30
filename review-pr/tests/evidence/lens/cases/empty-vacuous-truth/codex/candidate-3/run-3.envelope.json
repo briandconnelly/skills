@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the empty-criteria regression because it marks a requirement proven without evidence. This review read both changed files and all repository tests; no tests were run.\n\n## Changes\nThe pull request replaces the requirement proof check with a count comparison and adds a batch review helper with tests.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:3 — correctness — Preserve the unproven result for empty criteria — Calling `requirement_proven([])` now returns `True`, whereas the previous implementation returned `False`. The sum and length are both zero, so the comparison succeeds. The added requirement tests cover only nonempty lists. — Requirements with no criteria are incorrectly reported as proven.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FOpwbzWCtR/review-pr.ulySrJ",
+  "head_sha": "2850097a2c77f64e3d77db45990a967b3d3c593b",
+  "base_sha": "c667e8024515d4cb9f3e3e384ca18f8747ba0215",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2f391f5ded87eef40fdbf74a9b9a01669657d717"
+}

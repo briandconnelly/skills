@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing before merge: the parser drops `--wait` completely, while the ADR added in this pull request says `--wait` stays as an alias for one release and warns when used. Existing scripts that pass `--wait` will exit with an argparse error. This review read all of `app/cli.py`, `tests/test_cli.py` and the new ADR, and searched the repository for other uses of `wait` and `timeout`; `app/cli.py` is the only consumer of the renamed attribute. One verified strength: the default (30) and the `json`/`csv` format choices are unchanged, as the PR body says, and the tests check both.\n\n## Changes\nThe pull request renames the CLI option `--wait` to `--timeout` in `parse_args` and updates the tests to match. It also adds ADR 007, which describes the terminology change, and a one-line `review.txt` file at the repository root.\n\n## Critical\n- app/cli.py:6 — correctness — Keep `--wait` as a deprecated alias for `--timeout` — `parse_args([\"--wait\", \"12\"])` now fails with \"unrecognized arguments\" and exit code 2, because the only option defined is `--timeout`. The ADR added in this diff says \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" (docs/adr/007-timeout.md:5), but the code has no alias and no warning, and no test passes `--wait`. — Any existing script or automation that calls the CLI with `--wait` stops working right after this release, with no deprecation period, which contradicts the decision this pull request records. — Fix: Register `--wait` with `dest=\"timeout\"` and a custom `argparse.Action` that calls `warnings.warn(..., DeprecationWarning)` (or writes to stderr) before storing the value. Then add tests checking that `[\"--wait\", \"12\"]` gives `args.timeout == 12` and emits the warning, and that `--timeout` does not warn.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 26312,
+    "cost_usd": 0.0848944,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AMyYbThv5W/review-pr.5kPNGu",
+  "head_sha": "3cb08910ae4897be72253439a42615ec022eeb0e",
+  "base_sha": "c4c26f4ff15fa2fe5570452c3d6b18b7af005b3d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9eefe7dbcc00615d32fbc1f9c53c06a5c8ac1ce3"
+}

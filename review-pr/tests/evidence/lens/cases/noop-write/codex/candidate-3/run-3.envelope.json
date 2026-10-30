@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nAdoption should preserve the file when incoming values already match; it currently rewrites unchanged configuration. This review read both changed files and all existing tests; tests were not run.\n\n## Changes\nThe pull request adds adoption mode, records adopted keys, and adds tests for adoption and replacement updates.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — correctness — Preserve file bytes when adoption changes no values — For a file containing `{\"theme\":\"dark\"}\\n`, calling `merge(path, {\"theme\": \"dark\"}, adopt=True)` rewrites the file despite leaving its settings unchanged. The adoption branch unconditionally appends the key, triggering `write_text` and replacing the original formatting. This breaks the module’s stated preservation behavior; the tests cover unchanged replacement but only changed-value adoption. — Users lose existing formatting and receive a file modification when adopting an identical value. — Fix: Track actual value changes separately from adopted keys so you can report adoption without writing unchanged settings.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FOSEZDasgO/review-pr.OXFdfo",
+  "head_sha": "269c5a4ac27dcdb3579774b015718d2361ecd789",
+  "base_sha": "6bb539388b5028e7b8a903301296d16fe776df01",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6fb28bc786551f2ca7582d42b79c1533000ea94a"
+}

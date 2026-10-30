@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect has to be fixed before merge. With the new `FileNotFoundError` fallback in `load_results`, `release_allowed` allows a release when the results file is missing, so the gate fails open. This review traced `release_allowed` → `load_results` in `app/results.py` and read the three added tests in `tests/test_results.py` without running them. The `display_preferences` fallback has an adjacent comment explaining its default, and both of its branches (missing file and saved file) have tests.\n\n## Changes\n`load_results` now returns `[]` when the results file is missing. The PR also adds `display_preferences`, which defaults to `{\"theme\": \"light\"}` when the preferences file is absent, plus a `REVIEW_NOTE` constant and tests for release gating and preferences.\n\n## Critical\n- app/results.py:8 — correctness — Fail closed when the results file is missing — If the results file does not exist (for example, the check run never wrote it, or the path is wrong), `load_results` returns `[]`, and `release_allowed` then evaluates `all(row[\"passed\"] for row in [])`, which is `True`. Before this change, the same input raised `FileNotFoundError`, which blocked the release. The fallback logs nothing and has no comment saying a missing file should mean the release is allowed. No test covers this branch: `test_saved_checks_control_release` only writes existing files. — A release can pass the gate with zero saved checks, and nothing tells operators that the results were absent. — Fix: Let `FileNotFoundError` propagate from `load_results`, or have `release_allowed` return `False` when the file is missing or the results list is empty. Add a test asserting `not release_allowed(tmp_path / \"missing.json\")`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23498,
+    "cost_usd": 0.0513696,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ORM0oGusf1/review-pr.rWXyC8",
+  "head_sha": "ae6166f85ebbe8ffe323064e7d0de8507d37dbbe",
+  "base_sha": "433de6e11777397a45edb4963955b44ad7ef822f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2ac7726d3c4eef5473baab602d086a2647d58d17"
+}

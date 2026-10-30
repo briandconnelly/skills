@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect must be fixed before merge: `preview` checks containment on the unresolved path. A relative path containing `..` passes that check, and the function then reads files outside the home directory. This review read `app/paths.py`, `tests/test_paths.py` and `tests/review-note.txt` in full. It traced how `Path.is_relative_to` handles `..` segments and symlinks. It did not run any tests. The added tests for the 200-character truncation and for `settings_file` match the code they exercise.\n\n## Changes\nThe PR adds `preview(home, relative)` in `app/paths.py`, which returns the first 200 characters of a file under `home` and rejects paths outside it, plus `settings_file(home)`, which returns `home/settings.toml`. It also adds tests for both helpers and a one-line text file, `tests/review-note.txt`.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before the outside-home check — Calling `preview(home, \"../secret.txt\")` returns the contents of a file outside `home` instead of raising `ValueError`. `Path(home) / \"../secret.txt\"` produces `home/../secret.txt`. `is_relative_to` compares path parts without resolving them, so it returns `True` because the path begins with `home`, and `read_text()` then opens the parent directory's file. A symlink inside `home` that points elsewhere passes the check the same way. — Any caller that passes a user-chosen relative path can read arbitrary files the process can access, which defeats the guard this function exists to provide. — Fix: Compare resolved paths, e.g. `base = Path(home).resolve(); candidate = (base / relative).resolve(); if not candidate.is_relative_to(base): raise ValueError(...)`. Also add test cases for `\"../outside.txt\"` and for a symlink inside `home`; the only rejection case in `tests/test_paths.py:20` uses an absolute path, which never exercises `..` traversal.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 25227,
+    "cost_usd": 0.082705,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.qMw6kT8DYi/review-pr.noqSSe",
+  "head_sha": "95319f5cf5fd2fef22aac04d57426a4431a95ee8",
+  "base_sha": "5841760352ef88a501fac7568f72f62c501a86b3",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1cfddad60821b67f3eef6cc89f401a2f7b176b1e"
+}

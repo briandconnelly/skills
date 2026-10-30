@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nFix duplicate adoption output: the command now emits each adoption message twice. This review traced planner records through command rendering and read all existing and added tests; no tests were run.\n\n## Changes\nThe pull request adds adoption records and audit metadata to settings plans, with tests for audit suppression and empty-input audit results.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Emit each adoption message only once — With `current={\"theme\": \"dark\"}` and `incoming={\"theme\": \"dark\"}`, `run()` emits `\"Adopted theme\"` twice. The planner emits progress at line 8, then the new adoption record causes `app/cli.py:9` to emit the same message again. The existing adoption test calls only `plan()`, so it does not detect the command-level duplication. — Users receive duplicate progress messages whenever the command adopts an existing setting. — Fix: Preserve the planner’s progress emission and prevent the command renderer from emitting adoption records again.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Z2L8Scmu0X/review-pr.SDjIzI",
+  "head_sha": "f52e38ebcc6b1809e727f249d4b9dae36ae35384",
+  "base_sha": "956dfd054c9b179301892e56e11204bd50e11c24",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "3f74d0a75ef1a70da3ea46282a47d0e2b1edb3a6"
+}

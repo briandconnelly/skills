@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important fix remains: `README.md:3` still says requests time out after 30 seconds, but the default is now 60. This review read the one-line change in `app/cli.py`, the parser tests and the README, and searched the repository for other references to the old timeout. The code change is correct: `parse_args` reads `DEFAULT_TIMEOUT` (`app/cli.py:8`), and `test_defaults` checks the new value of 60. `test_explicit_options` checks that an explicit `--timeout` overrides the default.\n\n## Changes\nThe PR raises `DEFAULT_TIMEOUT` in `app/cli.py` from 30 to 60 seconds and updates `test_defaults` to expect 60. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — Update the README default timeout to 60 seconds — Once `DEFAULT_TIMEOUT = 60` is merged, the README is wrong: at `README.md:3` it still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" A search of the repository found no other mention of the timeout default, so the README is the only user documentation of this value, and it is now stale. — Users who rely on the README will expect requests to fail after 30 seconds when they actually wait up to 60, so they may set wrong expectations or add a needless `--timeout 30` thinking it changes nothing. — Fix: Change `README.md:3` to say 60 seconds.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19589,
+    "cost_usd": 0.07363360000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BNZ72xIJbK/review-pr.S9rXdW",
+  "head_sha": "e434894dd5a5a3c8623e7255124ac8437fe549be",
+  "base_sha": "90c099785b758d0e351ebcbdc9e937f61d9631be",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "061e0d43e58c2dcde32bead1bee64120c5469b1d"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nFix the legacy-header test because its fixture exits before header validation and never changes the header to v0. This review read both changed files and all repository tests; the separate complete-report test exercises unsupported-version rejection. Tests were read, not run.\n\n## Changes\nThe pull request requires the exact header `REPORT v1` and adds tests intended to reject legacy headers.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — Give the legacy-header test a complete v0 report — For `REPORT v1\\nversion=v0`, this test passes because the fixture lacks `END`, so parsing returns before checking the header. The replacement changes the body’s version and leaves the header at v1. — This test cannot detect the legacy-header defect it claims to guard. — Fix: Use `REPORT v0\\nvalue=ok\\nEND`, or consolidate this test with the existing complete-report rejection test.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wFTGrrBGiT/review-pr.0UBip0",
+  "head_sha": "29bc740d8d600707b4a082990530567870c76966",
+  "base_sha": "b4647eab21df26e2eb52288ea266e6d4fee1c460",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "aa6d6393fa5f85e698e0be9d7a699da31ea875d4"
+}

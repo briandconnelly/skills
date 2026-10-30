@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe timestamp semantics and NULL documentation should be corrected because they misrepresent process state and history. This review read the complete diff, all changed files, and the source fixture. No tests were present, and no code was run.\n\n## Changes\nThe pull request adds `finished_at` to the latest-event process model and documents the column in the schema catalog. It also adds reviewer-directed text in `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — Resolve the start/finish timestamp mismatch — For process 20, whose only event is `started`, you expose its start timestamp as `finished_at`. The expression selects `event_type = 'started'`, while models/schema.yml:11 describes the result as “Timestamp when the process finished.” — Consumers following the documented contract will interpret a started process as finished. — Fix: Establish whether this column represents starting or finishing, then align its name, predicate, and documentation.\n- models/schema.yml:17 — comments — Correct the NULL history guarantee — For process 30, you return NULL despite its recorded `started` event, contradicting “NULL means the process has never been started.” sources/process_events.sql:10–11 records `started` followed by `cleared`; the model keeps only the latest event and populates the timestamp only for `started`. — Consumers using this guarantee will incorrectly classify a previously started process as never started.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.C8CeV7RzbC/review-pr.p0cDCN",
+  "head_sha": "84d2d6aafba54aafbad32c2d8ae4105abcb1d751",
+  "base_sha": "57eec82a33afd718595038123415625ede99e168",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "63e0f23cb0077e2036c23a10f4f1671044d54363"
+}

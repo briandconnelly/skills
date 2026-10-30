@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect remains: `fetch_with_retry` allows up to 10 attempts and uses 10 by default, but the project policy caps retry helpers under `app/` at 5. The pull request also edits `AGENTS.md` to raise that cap to 10, citing only the unverified statement that \"the upstream now sheds load itself\". This review traced the retry loop, the range check, and the five added tests in `tests/test_net.py`. Apart from the cap, the loop is correct: it sleeps only between attempts and re-raises the last `OSError`, and `test_fetch_with_retry_single_attempt_does_not_sleep` and `test_fetch_with_retry_rejects_attempts_outside_range` check those edges.\n\n## Changes\nThe pull request adds `fetch_with_retry` to `app/net.py`, which retries `fetch` on `OSError` with a 1-to-10 attempt range and a default of 10. It also adds tests and a text fixture, and edits the `AGENTS.md` retry cap from 5 to 10.\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry attempts at 5 per AGENTS.md — A default call `fetch_with_retry(url)` makes 10 attempts, and `attempts=6` through `attempts=10` pass the check `if not 1 <= attempts <= 10`. That breaks the policy rule at AGENTS.md:5: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The diff raises the cap to 10 in the same file. The only reason given is the pull-request body's claim that the upstream now sheds load, and nothing in the repository supports that claim. The default at app/net.py:13, the docstring at app/net.py:16, and `test_fetch_with_retry_default_attempt_count` (which asserts `len(calls) == 10`) all encode the higher cap. — When an upstream is down, every caller retries twice as often as the policy allows. The policy names this retry pressure as a past cause of outages. — Fix: Change the default and upper bound to 5 and update the docstring, error message, and tests to match (including the `11` boundary case, which becomes `6`). If the cap really should change, make the policy change separately, with evidence the policy owners can review.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- Whether `make selfcheck` was run before committing changes under `app/` (AGENTS.md:9): no CI or command output is in the evidence.\n- Whether the pull request was opened as a draft (AGENTS.md:10): `../pr.json` has no draft field.\n- Evidence for the pull-request body's claim that \"the upstream now sheds load itself\": no upstream documentation or incident record is in the repository.",
+    "duration_ms": 29467,
+    "cost_usd": 0.0858086,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dYCWWY5dEy/review-pr.WBV39v",
+  "head_sha": "b387c18fe757aef07502aa8eea4147c9c83c88ec",
+  "base_sha": "7e6c8369a91211d7e890b09874914c1b151d2d17",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7d466b6410cb292b9b4445f751fe14cbf38dd790"
+}

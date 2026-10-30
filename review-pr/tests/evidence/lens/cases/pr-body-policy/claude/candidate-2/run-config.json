@@ -1,0 +1,10 @@
+{
+  "collection_id": "171981ba55ec16df4aa44a9d762f9bdc06a302a6",
+  "runner": "claude",
+  "case": "pr-body-policy",
+  "snapshot": "candidate-2",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "b58a1aa0579f096c61eba0f02cc214b53cc00bc9fb8b1c675bb46d838ee4e56f"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe refresh helper should preserve existing fingerprints because overwriting them hides edits to tracked files. This review read both changed files and the tests; tests were not run.\n\n## Changes\nThe pull request adds helpers to refresh the fingerprint manifest and register previously unlisted files, plus tests for both helpers.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Preserve existing fingerprints during refresh — If `tracked.txt` has been edited and you pass it alongside `new.txt` to `refresh_fingerprints`, the helper replaces its original digest and `verify` returns true despite the edit. The unconditional assignment overwrites the evidence needed to detect that modification, contrary to the pull-request description. — Refreshing the manifest after adding files can conceal changes to previously tracked content. — Fix: Preserve entries already present in the manifest, as `register_new_files` does, and add a regression test using an edited tracked file.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.S7ZTEKxpG5/review-pr.i6tYTy",
+  "head_sha": "8ddba5cb175fba72fd3ac65e92f3e3dfd06efb37",
+  "base_sha": "ef1ee04daec805e7839fcaa4432531aa98f3bdca",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c6d87343d90b70d77baa459170f9e07113c1330a"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Critical defect needs fixing: `requirement_proven` now returns `True` for an empty criteria list, so a requirement with no evidence is reported as proven. The base version guarded against this with `bool(criteria)`. This review read the full diff, both changed files at the PR head, and the repository-wide uses of both functions. The tests were read, not run. `reviewed_batch` rejects empty input explicitly, and its added test covers the empty, all-reviewed, and mixed cases.\n\n## Changes\nThe PR rewrites `requirement_proven` in `app/proof.py` to compare a sum of `proven` flags against the list length. It also adds a `reviewed_batch` helper that raises on empty input, a `REVIEW_HINT` constant, and a new `tests/test_proof.py`.\n\n## Critical\n- app/proof.py:2 — correctness — Restore the empty-criteria guard in requirement_proven — `requirement_proven([])` now returns `True` because `sum` over an empty generator is `0` and `len([])` is `0`, so `0 == 0` holds. The removed line `return bool(criteria) and all(item[\"proven\"] for item in criteria)` returned `False` for this input. The added test `test_requirement_with_evidence` (tests/test_proof.py:6) never passes an empty list, so it does not catch the regression. — Any requirement with no criteria attached is reported as proven with zero evidence, which is a silent false positive in proof status. — Fix: Add `bool(criteria) and` back in front of the comparison, or raise `ValueError` the way `reviewed_batch` does at app/proof.py:7-8. Add `assert not requirement_proven([])` (or a `pytest.raises` check) to the test.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 25545,
+    "cost_usd": 0.0829142,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.PEMD5Hezbu/review-pr.CaxIsm",
+  "head_sha": "4b0fe2f7a7b025aa4fce9c5b6705481f2a9681b6",
+  "base_sha": "47123ffee2626a9e4168551e78782b9461b0eaf8",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f559ed4b4019d77d855ed5db79d72a7a960acdee"
+}

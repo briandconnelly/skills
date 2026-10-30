@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nYou need to fix `save_report` before merge. It swallows every `OSError` from the write, then prints \"Report saved to …\" and returns 0, so a failed save looks like a success. This review read `app/reports.py` and `tests/test_reports.py` in full but ran nothing. `cleanup_report` handles errors correctly: it ignores only `FileNotFoundError`, and `test_cleanup_preserves_other_errors` checks that other `OSError`s still propagate.\n\n## Changes\nThe PR adds `save_report`, which writes the rendered report to a path and prints where it went, and `cleanup_report`, which deletes a temporary report and ignores one that is already gone. It also adds tests for both.\n\n## Critical\n- app/reports.py:8 — silent-failure — Stop reporting success when the report write fails — If the destination directory does not exist (e.g. `tmp_path / \"missing\" / \"report.txt\"`), or the path is unwritable or the disk is full, `path.write_text` raises `OSError`. `except OSError: pass` discards that error, and lines 10–11 then print `Report saved to {path}` and return 0. The caller and the user cannot tell that nothing was written. — Users are told their report was saved when no file exists, and the report is lost without any error signal or log. — Fix: Let the `OSError` propagate, or catch it, print an error naming the path and the OS reason (e.g. `e.strerror`), and return a non-zero status without printing the success message.\n\n## Important\n- tests/test_reports.py:46 — tests — Assert the outcome in test_save_with_unavailable_destination — `test_save_with_unavailable_destination` calls `save_report` on a path in a missing directory but asserts nothing about the return value, stdout or file. It passes with the current false-success behavior and would pass with any error handling that doesn't raise. — The failure path of `save_report` has no regression protection, so the false \"Report saved\" message and the 0 return value go undetected. — Fix: Assert the intended contract, either `pytest.raises(OSError)` or a non-zero return with no \"Report saved\" line in `capsys` output, plus `not path.exists()`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23045,
+    "cost_usd": 0.07362740000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.o0FsBW19e6/review-pr.z7ErLS",
+  "head_sha": "46b55491394a71b23510a2f63b4ad19ca94a3c84",
+  "base_sha": "f28d1cf124560b52c30baf3953c31f6552c22996",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "eb173432ec5b4f33c691fc75ad25766da3db63c0"
+}

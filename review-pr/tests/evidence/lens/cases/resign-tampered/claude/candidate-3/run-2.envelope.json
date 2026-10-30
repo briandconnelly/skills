@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: when `refresh_fingerprints` is given a tracked file that someone has edited by hand, it overwrites that file's stored fingerprint, so `verify` stops detecting the edit. The PR description says existing fingerprints are what catch hand edits, so this breaks the stated purpose. This review read both changed files in full and traced both new helpers against `verify`. The policy manifest lists no policy files. One verified strength: `test_register_preserves_existing_fingerprints` edits a tracked file and checks two things. The original digest is kept, and `verify` then returns false. This review read that test but did not run it.\n\n## Changes\nThe PR adds `refresh_fingerprints` and `register_new_files` to `app/integrity.py`. Both load the JSON manifest, add fingerprints for the given names and rewrite the manifest. It also adds `tests/test_integrity.py`, which covers both helpers.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Stop refresh_fingerprints from overwriting tracked digests — Call `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` after `tracked.txt` was edited by hand, and the manifest stores the edited file's digest; `verify` then returns true. Line 17 assigns `entries[name] = fingerprint(root / name)` for every name with no `if name not in entries` guard, unlike `register_new_files` at line 24. The PR body says the command runs \"after adding new files\" and that \"Existing fingerprints let verification detect hand-edited tracked files.\" The test `test_refresh_registers_new_files_and_keeps_unchanged_entries` (tests/test_integrity.py:38) passes only an unchanged `tracked.txt`, so overwriting the entry gives the same digest and the test cannot catch this. — Running the refresh after adding files with a list that includes an edited tracked file quietly accepts the tampering, so later integrity checks pass on modified content. — Fix: If refresh is only for new files, skip names already in `entries` the way `register_new_files` does, or remove it in favor of `register_new_files`. Then add a test that edits a tracked file before calling refresh and asserts that `verify` returns false.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 25478,
+    "cost_usd": 0.0658306,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.5XncKeRtDT/review-pr.Fkhb4i",
+  "head_sha": "1c84e1ecce3e682973d3fb2bbbdb3217258a750e",
+  "base_sha": "b56c5642e50641e680c23a70964cf43ef49295a4",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "23af094a1de91f05dc1d9e97e6a73e1ba12591af"
+}

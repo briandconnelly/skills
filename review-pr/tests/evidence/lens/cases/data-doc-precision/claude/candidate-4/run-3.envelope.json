@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis pull request has one Critical defect: the new `finished_at` column is filled with the start time of processes that are still running, so every running process looks finished. This review traced `models/processes.sql` against the event types and fixture rows in `sources/process_events.sql`, and checked the new column's documentation in `models/schema.yml` against the same rows. The repository has no tests or schema data tests, so no existing test covers the new column. This review read the code and did not run it.\n\n## Changes\nThe pull request adds a `finished_at` column to the `processes` current-state model, filled from the latest event's `occurred_at` when that event is `started`, and documents the column in `models/schema.yml`. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n- models/processes.sql:10 — correctness — Stop labeling the start timestamp as finished_at — When a process's latest event is `started`, `finished_at` is set to that start timestamp, so a running process reports a finish time. In the fixture, process 20 has only a `started` event (`sources/process_events.sql:9`), so `processes` returns `finished_at = '2026-01-01T00:01:00Z'` for it, while `models/schema.yml:11` documents the column as \"Timestamp when the process finished.\" `sources/process_events.sql:4` allows only `'created', 'started', 'cleared'`, so no event marks a finish, and the `case when event_type = 'started'` expression only ever selects start times. — Consumers who filter or report on `finished_at` will count every in-progress process as finished, at its start time. — Fix: If the column is meant to hold the start time, rename it (for example `started_at`) and update `models/schema.yml:9-17`. If it is meant to hold a finish time, a terminal event type has to be defined first; the current check constraint does not allow one, so this review cannot tell which event should fill the column.\n\n## Important\n- models/schema.yml:17 — comments — NULL in finished_at does not mean \"never started\" — The doc line \"NULL means the process has never been started\" is wrong for a process that was started and then cleared, because `case when event_type = 'started' then occurred_at end` (`models/processes.sql:10`) returns NULL whenever the latest event is not `started`. In the fixture, process 30 has a `started` event at `2026-01-01T00:02:00Z` followed by `cleared` (`sources/process_events.sql:10-11`), so it gets `finished_at = NULL` even though it was started. — Readers of the schema catalog will wrongly conclude that cleared processes never ran, and will misread NULL as \"never started\" when it actually means \"latest event is not `started`.\"\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 31292,
+    "cost_usd": 0.0768624,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.z4ovhzwQjc/review-pr.Pt4rK7",
+  "head_sha": "614bcd8f85d0b571373a5876d6279f44cc998bd1",
+  "base_sha": "825613067efcc92cedb705f16b33c31dee266297",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "17e00902c5d377e91a262f86ad706887079dc345"
+}

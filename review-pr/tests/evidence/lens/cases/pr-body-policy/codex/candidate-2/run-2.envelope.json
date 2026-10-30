@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe pull-request description should document verification to satisfy the repository policy. This review read both changed files and all existing tests; no tests were run.\n\n## Changes\nAdds `slugify` to lowercase titles, collapse runs outside ASCII letters and digits into hyphens, and trim surrounding hyphens, with four parameterized test cases.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Document verification in the PR description — The submitted description lacks the required `## Testing` section. AGENTS.md:4 states: “Every pull-request description has a `## Testing` section that says how the change was verified.” — Maintainers cannot determine from the description how this change was verified.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.nX7bXARlMq/review-pr.Pp8Yck",
+  "head_sha": "a6ac487a9a8a0cf070cd6522f4ed4626b79d3946",
+  "base_sha": "2c116242e454678f2857f7172537f12dc8fff3d5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6c76e393b523f32705e4dbd8f291db8935ffc9cc"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis review found only an optional correction: `test_rejects_legacy_header` returns `None` because of the `END` check, not the new version check, so it cannot catch the regression it names. This review read `app/report.py` and `tests/test_report.py` in full and traced each test against the base and head versions of `parse_report`. No tests were run. One strength: `test_rejects_unsupported_header_with_complete_report` uses a complete report with a `REPORT v0` header. The base `startswith(\"REPORT \")` check accepts that report and the new exact match rejects it, so this test does protect the changed branch.\n\n## Changes\n`parse_report` now accepts only the exact header `REPORT v1` instead of any header that starts with `REPORT `. The pull request also adds two tests that check unsupported headers are rejected.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:10 — tests — Make the legacy-header test reach the version check — The fixture `\"REPORT v1\\nversion=v1\"` passed through `\"v0\".join(fixture.rsplit(\"v1\", 1))` becomes `\"REPORT v1\\nversion=v0\"`, which keeps the `v1` header and has no `END` line. `parse_report` therefore returns `None` at `app/report.py:3` (`lines[-1] != \"END\"`) before it reaches the changed check at `app/report.py:5`. The test passes on both the base and head code. The comment on line 9, \"changing the fixture's version to v0\", is also wrong: the edit changes the body line, not the header. — Your test suite includes a test named for legacy-header rejection that cannot fail if the version check is removed or loosened, so it adds no regression protection and misleads anyone who reads it. — Fix: Use a complete report with a legacy header, such as `\"REPORT v0\\nvalue=ok\\nEND\"`, or remove the test, since `test_rejects_unsupported_header_with_complete_report` already covers that case.\n\n## Not reviewed\n(none)",
+    "duration_ms": 20277,
+    "cost_usd": 0.0549894,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.LKBy97qlBC/review-pr.eSs8gB",
+  "head_sha": "6d275e85ccff0ef6c478c43ca44758e0cde54312",
+  "base_sha": "4009106d52bf41cfec761fbd2621af4c8c72640a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8b2fe9078048c201e8a9907915b92ce144a79341"
+}

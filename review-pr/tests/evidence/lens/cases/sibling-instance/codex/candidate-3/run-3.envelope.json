@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe invitation password path should also enforce the new minimum: it still accepts passwords shorter than twelve characters. This review read every changed file and all existing validator tests; signup and reset have coverage at eleven and twelve characters. Tests were read, not run.\n\n## Changes\nRaises the signup and reset password minimum from eight to twelve characters and updates their boundary tests. Also adds `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Apply the new minimum to invitation passwords — An eight-character password such as `xxxxxxxx` still passes the invitation validator despite the stated twelve-character requirement. The changed constants leave `app/invite.py:1` at eight, and `tests/test_invite.py:8` still expects acceptance at that length. — Users setting passwords through invitations can bypass the new minimum with eight- through eleven-character passwords. — Fix: Update the invitation validator and its boundary tests to enforce twelve characters.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6okvQ8KSEs/review-pr.noz5h2",
+  "head_sha": "ba2b12523899c1c5d71962660dd98d94b8f9b884",
+  "base_sha": "4a4e73c821bb39ffc2a582777f4e872bf7789f7f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f7699ecd91b628f0a20c333a861be3f01c05a57d"
+}

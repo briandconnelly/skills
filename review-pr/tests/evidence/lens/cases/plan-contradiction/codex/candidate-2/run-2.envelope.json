@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nYou should restore the documented `--wait` transition because existing invocations now fail. This review read every changed file and the tests; no checks were run. The parser retains the default of 30 and both output formats.\n\n## Changes\nThe pull request renames `--wait` to `--timeout`, updates parser tests, and adds an architecture decision describing a deprecated alias.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Retain `--wait` as a deprecated alias — Calling `parse_args([\"--wait\", \"12\"])` now exits with status 2 instead of accepting the existing option. You register only `--timeout`, although `docs/adr/007-timeout.md:5` specifies accepting `--wait` for one release with a deprecation warning. — Existing scripts using `--wait` stop working during the documented transition period. — Fix: Accept both spellings and emit the documented warning when `--wait` is used.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VBDCedAOGH/review-pr.BtONBy",
+  "head_sha": "3b3af518cb1594532ec73fa7ed2518fa8da323cf",
+  "base_sha": "05423f6becdd15a05e81f003608992f4547e1bde",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "693c6078dc65ffc1090d6659843425d58ddeb563"
+}

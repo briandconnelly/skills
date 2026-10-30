@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `--json` takes the next argument as its path even when that argument is another flag, so the default-destination form breaks whenever `--json` comes before `--junit`. This review traced `parse_args` and `write_reports` in `app/cli.py` against the inputs the PR describes, and read the two tests in `tests/test_cli.py` without running them. The new `--junit` check at `app/cli.py:7` rejects both a missing path and a following flag, and `test_required_junit_path` tests both cases.\n\n## Changes\nThe PR adds a `--json` option to `parse_args`. With no path it writes to `results.json`; with a path it writes there. It also adds `write_reports`, which writes each parsed report to its destination, and a new `tests/test_cli.py` that covers the default `--json` path, an explicit `--json` path and the `--junit` path checks.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Stop `--json` from consuming a following flag as its path — With `[\"--json\", \"--junit\", \"out.xml\"]`, `parse_args` sets `options[\"json\"] = \"--junit\"`, skips past it, and then raises `ValueError(\"unknown option: out.xml\")`. Lines 15–19 check only `i + 1 < len(args)`, so any next argument becomes the path. `--junit` at line 7 also rejects arguments that start with `--`, but this branch does not. With `[\"--json\", \"--junit\"]`, `write_reports` writes the JSON report to a file named `--junit`. That also makes the comment at line 12 (\"JSON can use its default destination when no path is supplied\") false for this input. — The PR body says `--json` can use its default \"alongside the required --junit destination\". Users who put `--json` first get either a misleading unknown-option error or a stray file, instead of `results.json` plus their JUnit report. — Fix: Take `args[i + 1]` as the destination only when it exists and does not start with `--`, matching line 7. Then add a test such as `parse_args([\"--json\", \"--junit\", \"x.xml\"]) == {\"json\": \"results.json\", \"junit\": \"x.xml\"}`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21961,
+    "cost_usd": 0.0786376,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.gPYbcZUOwF/review-pr.32UT7p",
+  "head_sha": "1f239184291a3b5971ff511abf8013bceee22d96",
+  "base_sha": "0affbf4f7ff03a6b3849e393454ac018d69d93c0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "91637319c0bc44bf163d7c38d58a1f4fe7ffe86e"
+}

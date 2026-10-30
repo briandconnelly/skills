@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing: `approved()` in `zzz-release/gate.py` now blocks a release that has exactly the minimum number of approvals, and the tests do not cover that boundary. The generated catalog also gains a non-service `review_note` entry. This review read the diffs for `services/registry.py` and `zzz-release/gate.py` and the surrounding code, read `tests/test_release.py` without running it, and pattern-searched every added and removed line of the catalog diff. The `healthy()` change to `not failures` gives the same result for list inputs, and `test_health` covers both the empty and the non-empty list.\n\n## Changes\nThe PR replaces the 1,500 `legacy-service-NNNN` catalog entries (ports 10000–11499) with `production-service-NNNN` entries (ports 20000–21499) and adds a `review_note` key. It also rewrites `healthy()` as `not failures` and changes the approval check from `>=` to `>`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` so exactly `minimum` approvals pass — `approved(2, minimum=2)` now returns `False` because `return approvals > minimum` requires one more approval than the minimum. This contradicts the module docstring at `zzz-release/gate.py:1`: \"A release needs at least the configured number of approvals.\" The tests use only 3 approvals (`tests/test_release.py:12`) and 1 approval (`tests/test_release.py:16`), so neither one reaches the boundary where the behaviour changed, and both pass either way. — Every release that has exactly the configured number of approvals (2 by default) is now blocked, and no test catches this regression. — Fix: Revert to `approvals >= minimum` and add `assert gate.approved(2, minimum=2)` so the boundary is tested.\n\n## Important\n(none)\n\n## Suggestions\n- aaa-generated/catalog.json:1502 — correctness — Remove the non-service `review_note` entry from the catalog — The PR adds a top-level `\"review_note\"` key whose value is a string, while every other key in the catalog maps a service name to a `{\"port\": ..., \"enabled\": ...}` object. Any consumer that loops over the catalog and reads `entry[\"port\"]` or `entry[\"enabled\"]` gets a string for this key and raises `TypeError`. This review found no consumer of the catalog in this repository. — The deployment catalog no longer has a uniform entry shape, so tooling that reads it per service can fail on this key; if the key was added by hand, it will also disappear the next time the file is regenerated.\n\n## Not reviewed\n- `aaa-generated/catalog.json` was not read line by line. This review read diff lines 1–2233 and 8990–9009 and checked all other changed lines by pattern search. The new ports 20000–21499 were not checked against the target environment's port allocation, because no source for it is in the repository or in `../pr.json`.\n- `tests/test_release.py` was read but not run, so this review cannot say whether the tests currently pass.",
+    "duration_ms": 58837,
+    "cost_usd": 0.29719740000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.EEiChqXh6M/review-pr.9BpcGh",
+  "head_sha": "f95a1a4e2933955e18525dcc58b19ed8bdd7957e",
+  "base_sha": "323ac4b8b17b9ed2fd02383702ad013360ca6b4a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "899b32f975d8a0fb067890262b76ebf0bcf8577e"
+}

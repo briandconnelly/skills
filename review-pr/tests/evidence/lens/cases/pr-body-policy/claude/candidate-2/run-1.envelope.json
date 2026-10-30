@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nTwo things need fixing. `slugify` removes non-ASCII letters, so titles in other scripts become wrong or empty slugs, and the PR description has no `## Testing` section, which the project policy requires. This review read `AGENTS.md`, the PR title and body, the full diff, and both new files at the PR head. It traced `slugify` against the four parametrized test cases and against non-ASCII input. Collapsing runs of separators and trimming hyphens at the ends work as described and are tested by the `\"  Already--hyphenated  \"` and `\"---\"` cases.\n\n## Changes\nThe PR adds `app/slug.py` with a `slugify(title)` helper that lowercases a title, replaces runs of characters outside `[a-z0-9]` with one hyphen, and trims hyphens from the ends. It also adds a parametrized test in `tests/test_slug.py`.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — Handle non-ASCII letters in slugify — For `\"Café\"`, `slugify` returns `\"caf\"`, and for `\"日本語\"` it returns `\"\"`, because `[^a-z0-9]+` treats every non-ASCII letter as a separator. The PR body says the function replaces \"runs of non-alphanumeric characters\", but `é` and CJK characters are alphanumeric (`\"é\".isalnum()` is `True`), so the code is narrower than the description. No test covers non-ASCII input. — Pages with titles that are fully non-Latin get an empty slug, and every such page maps to the same URL; accented titles lose letters and can collide (`\"Café\"` and `\"Caf\"` both become `\"caf\"`). — Fix: Choose one behavior and test it: keep Unicode letters with `re.sub(r\"[\\W_]+\", \"-\", title.lower())`, or transliterate first (for example, NFKD-normalize and drop combining marks) and decide what an empty result should become. Then update the PR body to match.\n- PR body — correctness — Add the required `## Testing` section — The PR description is one paragraph and has no `## Testing` section. `AGENTS.md:4` says: \"Every pull-request description has a `## Testing` section that says how the change was verified.\" — Reviewers cannot tell from the description whether or how the new helper and its tests were run, which the project policy requires.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 27390,
+    "cost_usd": 0.0852838,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.sbW6LeJ9hZ/review-pr.cqCyeg",
+  "head_sha": "9c5e2c9fc3f871a62d9ca0841b521300e98e32e7",
+  "base_sha": "d883006374a97d575f520784bb63ccc89f7700a5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "171981ba55ec16df4aa44a9d762f9bdc06a302a6"
+}

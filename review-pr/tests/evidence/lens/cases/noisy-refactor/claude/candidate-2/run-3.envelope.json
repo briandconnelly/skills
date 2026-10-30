@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing: `requirement_proven([])` now returns `True` instead of `False`, so a release-review requirement with no criteria counts as proven. The PR body says \"No behavior change is intended.\" This review read the policy manifest (empty), the PR metadata, the special-case hunks in `h040_sorting.py` and `h091_requirements.py`, both of those files at head, and `tests/test_handlers.py`. It also matched every added and removed line in the 180 `*_records.py` hunks against the expected mechanical edits. The `itemgetter(\"name\")` change in `by_name` keeps the old sort behavior, and the `log.warn` to `log.warning` replacement is complete in every touched handler.\n\n## Changes\nThe pull request replaces `typing.List`/`typing.Dict` with built-in generics and `Logger.warn` with `Logger.warning` across 181 handler modules. It also switches `by_name` to `operator.itemgetter`, rewrites `requirement_proven` to compare a sum of proven flags with `len(criteria)`, and adds a one-line `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Return False for a requirement with no criteria — For `criteria=[]`, the new code computes `proven = 0` and returns `0 == 0`, which is `True`. The removed line `return bool(criteria) and all(item[\"proven\"] for item in criteria)` returned `False` for that input. Line 10 logs \"requirement has no criteria\" and then carries on into the success comparison, and nothing else stops the empty case. — Release review now treats a requirement that has no criteria as proven, which reverses a safety check the PR body says should not change. — Fix: Return `False` inside the `if not criteria:` branch after the warning, or restore `bool(criteria) and all(...)`. Add `assert not requirement_proven([])` to `tests/test_handlers.py:17`. The current test checks only non-empty lists.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- 178 of the 180 `app/handlers/h*_records.py` files (h002 to h179) were not read line by line. This review read the h000 and h001 hunks in full. For the rest, it checked every added and removed line in `../pr.diff` by pattern-matching against the four mechanical edits: the dropped `typing` import, the `step_N` signature, and the `log.warn`/`log.warning` lines. Those lines account for 4,501 of the 4,512 changed lines; the other 11 are in `h040_sorting.py`, `h091_requirements.py` and `review.txt`, which were read directly. Unchanged context lines in those 178 files were not inspected.\n- The repository has no `pyproject.toml`, `setup.cfg`, `setup.py`, `tox.ini`, `.python-version` or requirements file. This review therefore could not confirm the minimum supported Python version needed for the built-in `list[...]`/`dict[...]` annotations, which require 3.9 or later.",
+    "duration_ms": 62428,
+    "cost_usd": 0.21302759999999998,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QpxnWBqX2b/review-pr.FZkJqy",
+  "head_sha": "1814e33a66c37eba85d5f06434de33801a710bc1",
+  "base_sha": "ad2275cdf2147e815f268913cc40611369617eba",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "80a7e5780e852cdda0143109065de273d3b86acd"
+}

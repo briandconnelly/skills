@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect remains open: the invite flow still accepts 8-character passwords, so the twelve-character policy described in this pull request can be bypassed. This review traced every `MIN_PASSWORD_LENGTH` definition and every `accepts_password` caller and test in the repository, and found that `app/invite.py` still uses the old minimum. The updated parametrizations in `tests/test_reset.py:6` and `tests/test_signup.py:6` include 11 and 12, so they cover both sides of the new boundary for those two modules.\n\n## Changes\nThe pull request raises `MIN_PASSWORD_LENGTH` from 8 to 12 in `app/reset.py` and `app/signup.py` and changes their boundary tests to check 0, 8, 11, 12 and 13. It also adds a one-line `review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Raise the invite flow's minimum password length to 12 — The pull request raises the minimum only in signup and reset, so `app/invite.py:1` still has `MIN_PASSWORD_LENGTH = 8`. As a result, `app.invite.accepts_password(\"x\" * 9)` returns `True`. The PR body says \"This raises the minimum in the password validators\" and says the policy \"now requires passwords of at least twelve characters\". `app/invite.py:4-5` is the same validator, and `tests/test_invite.py:6-8` still asserts `length >= 8`. — A user who sets a password through an invite can still choose an 8- to 11-character password, which bypasses the security policy this change is meant to enforce. — Fix: Set `MIN_PASSWORD_LENGTH = 12` in `app/invite.py:1`, and change `tests/test_invite.py:6-8` to the same `[0, 8, 11, 12, 13]` / `length >= 12` form used in the other two test files.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24437,
+    "cost_usd": 0.0930478,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TRTihstfU2/review-pr.fvXLyM",
+  "head_sha": "933e5b812cdb8f6b43b06ca5f6fe74d35c704e62",
+  "base_sha": "7a97ec61a2047766a15a7436f56675a7c3636857",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "55bf89d407a111c9124e781797237ea42543fbff"
+}

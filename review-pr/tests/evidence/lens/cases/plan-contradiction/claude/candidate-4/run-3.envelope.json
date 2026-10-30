@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne critical defect needs fixing: `app/cli.py` drops `--wait` outright, so every existing invocation that passes it now exits with a usage error. The ADR this pull request adds says the opposite: it decides that `--wait` stays as an alias for one release and warns when used. This review read the full diff, `app/cli.py`, and `tests/test_cli.py`, and searched the repository for other uses of `wait`/`timeout`; nothing outside the changed files reads `args.wait`. The tests were read, not run. They do keep the default of 30 and the `json`/`csv` choices covered under the new option name, as the description says.\n\n## Changes\nThe pull request renames the CLI option `--wait` to `--timeout` in `app/cli.py` and updates `tests/test_cli.py` to match. It also adds `docs/adr/007-timeout.md` describing the transition and a one-line `review.txt` at the repository root.\n\n## Critical\n- app/cli.py:6 — correctness — Keep `--wait` as a deprecated alias for `--timeout` — Calling `parse_args([\"--wait\", \"12\"])` now ends with argparse's \"unrecognized arguments\" error and `SystemExit` code 2. Before this change it returned `wait=12`. The diff replaces `parser.add_argument(\"--wait\", type=int, default=30)` with a `--timeout`-only argument, but `docs/adr/007-timeout.md:5` states \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" No code path accepts `--wait` or emits that warning, and argparse prefix matching cannot reach `--timeout` from `--wait`. — Any existing script or job that passes `--wait` fails at startup with no deprecation period, which contradicts the decision recorded in the same pull request. — Fix: Register the old spelling so it fills the same destination, for example a separate `--wait` argument with `dest=\"timeout\"` and `type=int` whose use triggers `warnings.warn(..., DeprecationWarning)` or a stderr notice. Add tests asserting that `[\"--wait\", \"12\"]` yields `timeout == 12` and produces the warning, and that `[\"--wait\", \"bad\"]` still exits with code 2.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24428,
+    "cost_usd": 0.064947,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AMyYbThv5W/review-pr.EEsTSK",
+  "head_sha": "3cb08910ae4897be72253439a42615ec022eeb0e",
+  "base_sha": "c4c26f4ff15fa2fe5570452c3d6b18b7af005b3d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9eefe7dbcc00615d32fbc1f9c53c06a5c8ac1ce3"
+}

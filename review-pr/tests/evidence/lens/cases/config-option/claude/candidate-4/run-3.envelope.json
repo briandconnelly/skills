@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: the new `CRITERION_HINT` tells authors to leave out \"shall\", but `accepts_criterion` with `require_shall=True` rejects every bullet that does. The PR body says the validator options stay unchanged, so this option is still supported and the hint now contradicts it. This review read the full diff, `app/criteria.py`, `tests/test_criteria.py` and `config.example.yml`. The `BULLET_HINT` rewording is accurate: it names the exact `\"- \"` prefix that `app/criteria.py:5` checks for.\n\n## Changes\nThe pull request rewrites `CRITERION_HINT` to ask for direct action bullets without the word \"shall\", and rewrites `BULLET_HINT` to show the literal `- ` prefix. It also adds a one-line `review.txt` at the repository root.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Make the criterion hint depend on require_shall — When `require_shall: true` is configured, an author who follows the new hint and writes `- Save the result` has the criterion rejected. The hint says \"Write criteria as direct action bullets without the word shall.\", but `app/criteria.py:7-8` returns `\" shall \" in text` when `require_shall` is set. `tests/test_criteria.py:20-21` confirms that `\"- Save the result\"` is rejected under that option. `config.example.yml:1` shows `require_shall` as a supported setting, and the PR body says the validator options are kept. — Authors on deployments with `require_shall: true` get guidance that guarantees validation failure, with no hint telling them what the validator actually requires. — Fix: Either provide a second hint for the `require_shall` case and pick between the two hints the same way the validator switches modes, or reword the single hint so it does not forbid \"shall\".\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24326,
+    "cost_usd": 0.06931620000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wZWUoUhC44/review-pr.1Fx8AX",
+  "head_sha": "26f5e26f92bf8aab26a802e27a2fdd06beb373c1",
+  "base_sha": "2b7fd8a171ad41603692b5e0b35e508ad7032b84",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "dc994ba05657ada5da5156bca46319529ac787be"
+}

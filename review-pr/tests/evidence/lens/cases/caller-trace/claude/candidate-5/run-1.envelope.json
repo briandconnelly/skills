@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `run` now prints each adopted setting twice, because `plan` still emits progress for adopted settings and also returns an `adopt` entry, and the CLI loop renders that entry again. This review traced `plan` in `app/planner.py` through the rendering loop in `app/cli.py` and read the existing and added tests in `tests/test_planner.py`; it did not run them. One verified strength: `test_empty_plan_returns_audit` covers the empty-input boundary, asserting that the audit entry is returned and that nothing is printed.\n\n## Changes\n`plan` now returns an `adopt` change for each setting already in `current`, and appends an `audit` change with the incoming setting count. Two tests cover the audit entry through `run`, and the PR adds an `app/review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Stop emitting adopted settings twice in `run` — Calling `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)` now emits `[\"Adopted theme\", \"Adopted theme\"]` instead of `[\"Adopted theme\"]`. `plan` still calls `emit(f\"Adopted {name}\")` at line 8 and now also appends `{\"kind\": \"adopt\", ...}`. The loop at `app/cli.py:6-9` skips only `kind == \"audit\"`, so it emits the adopt message a second time. No test calls `run` with an existing setting, so the suite misses this; `test_adoption_progress` calls `plan` directly. — Every adopted setting is printed twice in the command's output, which contradicts the PR body's claim that the command keeps rendering the same actionable changes. — Fix: Choose one source for adoption output. Either have `app/cli.py` skip `adopt` entries as it skips `audit`, or drop the progress `emit` in `plan` if callers of `plan` alone do not need it. Then add a `run` test that has an existing setting and asserts a single `\"Adopted theme\"` message.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24983,
+    "cost_usd": 0.0822264,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.DtyqhPfATh/review-pr.MuUhko",
+  "head_sha": "a6a18008a42214eb22d1238a6f37c67c0294615e",
+  "base_sha": "40b1d8ed156c7d2d6ad2f2ef4e8ab4edd7be5c53",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "92e35f49505af8299005d5cc4b061ee6474424cf"
+}

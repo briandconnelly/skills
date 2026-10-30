@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nOnly optional corrections were found in the reviewed scope: one added test cannot exercise the version check it names. This review read both changed files in full; the other added test covers unsupported-header rejection with a complete report. Tests were read, not run.\n\n## Changes\nThe pull request requires the exact `REPORT v1` header and adds tests for rejecting unsupported versions.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:11 — tests — Make the legacy-header test reach header validation — For the generated input `REPORT v1\\nversion=v0`, `parse_report` returns `None` because `END` is missing, before checking the header. Your `rsplit(\"v1\", 1)` changes the payload rather than the header, so this assertion also passes with the old implementation. — This test cannot detect the header-validation regression it claims to guard, although the complete-report test below covers unsupported-version rejection. — Fix: Use a complete report with `REPORT v0` as its header and `END` as its final line.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wFTGrrBGiT/review-pr.GXeK2v",
+  "head_sha": "29bc740d8d600707b4a082990530567870c76966",
+  "base_sha": "b4647eab21df26e2eb52288ea266e6d4fee1c460",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "aa6d6393fa5f85e698e0be9d7a699da31ea875d4"
+}

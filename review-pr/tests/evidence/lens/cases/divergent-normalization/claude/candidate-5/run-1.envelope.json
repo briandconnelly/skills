@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.312",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`select_failures` needs a fix before merge: it compares report paths to `requested` without the `normalize` step that `select_explicit` uses, so a failed test the report lists as `./tests/...` never gets selected. This review read both changed files in full, traced the new selector against `normalize` and `select_explicit` in `app/selection.py`, and read the three added tests. It did not run them. The `select_cached` and `_select_normalized` rewrites behave the same as the code they replace.\n\n## Changes\nThe pull request adds `select_failures`, which picks requested paths out of a runner report's `failed` list. It also rewrites `select_cached` and `_select_normalized` without changing their behavior, and adds `tests/test_selection.py` covering the explicit, cached and failure-report selectors.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize report paths before matching in select_failures — A report of `{\"failed\": [\"./tests/test_x.py\"]}` with `requested={\"tests/test_x.py\"}` returns `[]` rather than `[\"./tests/test_x.py\"]`. The comparison is a raw `path in requested`. The docstring promises the same contract as `select_explicit` (line 6), \"preserving its original spelling\", and `select_explicit` keeps the original spelling while matching on `normalize(path) in requested`. The added test at tests/test_selection.py:13 only uses paths without the `./` prefix, so it can't catch this. — Any runner that reports failures with a `./` prefix, such as pytest run as `pytest ./tests`, gets those failed tests silently left out of the selection, so they don't re-run. — Fix: Use `[path for path in report[\"failed\"] if normalize(path) in requested]` to match `select_explicit`, and add a test with a `./`-prefixed report entry.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23380,
+    "cost_usd": 0.0780156,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.93sEUTYyS3/review-pr.wU6wxo",
+  "head_sha": "1bd4ad88ce8698bc32396e83575b5f2883e65af3",
+  "base_sha": "b9364b638978a34ddf0647f2cd89a37131ae9689",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0e656c0f46a2ffa8efa4ce73c5f93c910147c4f5"
+}

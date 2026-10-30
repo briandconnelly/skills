@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe pull-request description should document verification in the policy-required `## Testing` section. This review read every changed file and all existing tests; numeric-character preservation lacks coverage. Tests were read, not run.\n\n## Changes\nThe pull request adds a title-to-slug helper that lowercases text, replaces runs outside ASCII letters and digits with hyphens, and trims surrounding hyphens. It adds four parameterized test cases.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Add the required Testing section — This pull request’s description contains no `## Testing` section. AGENTS.md:4 requires: “Every pull-request description has a `## Testing` section that says how the change was verified.” — Reviewers lack the required record of how you verified this change.\n\n## Suggestions\n- app/slug.py:7 — tests — Test preservation of numeric characters — For `Page 123`, the numeric-character preservation path has no test. None of the four slug cases contains digits, and the only other test imports the package. — A regression that turns `Page 123` into `page` instead of `page-123` would leave the existing assertions satisfied.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.nX7bXARlMq/review-pr.mAe80f",
+  "head_sha": "a6ac487a9a8a0cf070cd6522f4ed4626b79d3946",
+  "base_sha": "2c116242e454678f2857f7172537f12dc8fff3d5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6c76e393b523f32705e4dbd8f291db8935ffc9cc"
+}

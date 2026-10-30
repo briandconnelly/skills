@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nAdd coverage for adopting an already-matching setting, because that boundary’s change reporting and file rewrite behavior remain unchecked. This review read the complete diff, both changed files, and all existing tests; no tests were run.\n\n## Changes\nThe pull request adds an adoption option that updates existing settings and records adopted keys, while retaining replacement behavior. It adds tests for adoption and replacement with different values.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — tests — Test adoption of already-matching settings — For `{\"theme\":\"dark\"}` with incoming `{\"theme\": \"dark\"}` and `adopt=True`, no test exercises the equal-value adoption boundary. Your adoption test changes `\"light\"` to `\"dark\"`, while the existing equal-value test uses `replace=True`; neither checks adoption’s unconditional change recording and resulting file rewrite. — Regressions in change reporting and file preservation for already-matching adopted settings have no test protection.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FOSEZDasgO/review-pr.y8GLNU",
+  "head_sha": "269c5a4ac27dcdb3579774b015718d2361ecd789",
+  "base_sha": "6bb539388b5028e7b8a903301296d16fe776df01",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6fb28bc786551f2ca7582d42b79c1533000ea94a"
+}
