@@ -22,25 +22,25 @@ VALID='## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 Adds a port validator. One real bug, otherwise sound.
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
-- app/parse port.py:12 — correctness — is_valid_port rejects 65535 — off-by-one excludes a legal port
+- app/parse port.py:12 — correctness — Port 65535 rejected — is_valid_port uses < 65535 — Legal port 65535 cannot be configured
 
 ## Important
 (none)
 
 ## Suggestions
-- app/parse.py:20 — tests — normalize_host trailing-dot branch has no test — a regression there would ship silently
-
-## Strengths
-- Small, focused diff
+- app/parse.py:20 — tests — Trailing dot untested — normalize_host trailing-dot branch has no test — A regression there would ship silently
 
 ## Not reviewed
 (none)'
 
 check valid true false <<<"$VALID"
 # A finding about the pull-request description cites the exact location token `PR body`.
-SUGGESTION='- app/parse.py:20 — tests — normalize_host trailing-dot branch has no test — a regression there would ship silently'
-PR_BODY_BULLET='- PR body — correctness — the description lacks the Dev Tables section AGENTS.md requires — reviewers cannot check the tables'
+SUGGESTION='- app/parse.py:20 — tests — Trailing dot untested — normalize_host trailing-dot branch has no test — A regression there would ship silently'
+PR_BODY_BULLET='- PR body — correctness — Dev Tables missing — The description lacks the section AGENTS.md requires — Reviewers cannot check the tables'
 check pr-body-location true false <<<"${VALID/"$SUGGESTION"/"$PR_BODY_BULLET"}"
 for bad in 'PR body [base]' 'pr body' 'PR-body' ' PR body' 'PR body:'; do
   check "pr-body-variant:$bad" false false <<<"${VALID/"$SUGGESTION"/"${PR_BODY_BULLET/PR body/$bad}"}"
@@ -49,6 +49,9 @@ check missing-coverage false false <<<"$(sed '/^Lenses checked:/d' <<<"$VALID")"
 check marker-only-summary false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 (none)
 
@@ -56,9 +59,6 @@ Lenses checked: correctness, silent-failure, tests, comments.
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -72,6 +72,9 @@ check valid-all-none true false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 Docs only.
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 (none)
 
@@ -79,9 +82,6 @@ Docs only.
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -90,6 +90,9 @@ check sentinel true true <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 Could not read the diff.
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 (none)
 
@@ -97,9 +100,6 @@ Could not read the diff.
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -109,13 +109,13 @@ check missing-heading false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 (none)
 
 ## Important
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -131,13 +131,13 @@ x
 ## Important
 (none)
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -152,6 +152,9 @@ check body-neither-none-nor-bullets false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
 Looks fine to me.
 
@@ -161,25 +164,22 @@ Looks fine to me.
 ## Suggestions
 (none)
 
-## Strengths
-(none)
-
 ## Not reviewed
 (none)'
 check unknown-lens false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
-- app/parse.py:12 — style — foo — bar
+- app/parse.py:12 — style — foo — bar — baz
 
 ## Important
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -188,8 +188,11 @@ check no-path-line false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
 
+## Changes
+Adds is_valid_port to app/parse.py.
+
 ## Critical
-- parse.py — correctness — foo — bar
+- parse.py — correctness — foo — bar — baz
 
 ## Important
 (none)
@@ -197,14 +200,14 @@ x
 ## Suggestions
 (none)
 
-## Strengths
-(none)
-
 ## Not reviewed
 (none)'
 check sentinel-misplaced false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
+
+## Changes
+Adds is_valid_port to app/parse.py.
 
 ## Critical
 - DIFF-UNAVAILABLE: nope
@@ -215,14 +218,14 @@ x
 ## Suggestions
 (none)
 
-## Strengths
-(none)
-
 ## Not reviewed
 (none)'
 check sentinel-not-first false false <<<'## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 x
+
+## Changes
+Adds is_valid_port to app/parse.py.
 
 ## Critical
 (none)
@@ -231,9 +234,6 @@ x
 (none)
 
 ## Suggestions
-(none)
-
-## Strengths
 (none)
 
 ## Not reviewed
@@ -245,14 +245,33 @@ important_section=$'## Important\n(none)'
 check backslash-heading false false <<<"${VALID/"$critical_heading"/## Crit\\ical}"
 check tab-heading false false <<<"${VALID/"$critical_heading"/$'## Crit\tical'}"
 check quoted-heading false false <<<"${VALID/"$critical_heading"/## \"Critical\"}"
-check none-before-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'(none)$'\n'- app.py:1 — correctness — bad — breaks}"
-check none-after-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'- app.py:1 — correctness — bad — breaks$'\n'(none)}"
+check none-before-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'(none)$'\n'- app.py:1 — correctness — Bad — bad — breaks}"
+check none-after-bullet false false <<<"${VALID/"$important_section"/## Important$'\n'- app.py:1 — correctness — Bad — bad — breaks$'\n'(none)}"
 check duplicate-none false false <<<"${VALID/"$important_section"/## Important$'\n'(none)$'\n'(none)}"
-check prose-em-dash true false <<<"${VALID/off-by-one excludes a legal port/off-by-one — excludes a legal port}"
-check blank-impact false false <<<"${VALID/off-by-one excludes a legal port/   }"
+check prose-em-dash true false <<<"${VALID/uses < 65535/uses < 65535 — and more}"
+check blank-impact false false <<<"${VALID/Legal port 65535 cannot be configured/   }"
 check zero-line false false <<<"${VALID/parse port.py:12/parse port.py:0}"
 check deleted-file true false <<<"${VALID/parse port.py:12/parse port.py:12 [base]}"
 check invalid-side false false <<<"${VALID/parse port.py:12/parse port.py:12 [head]}"
+
+FIX_BULLET='- app/parse port.py:12 — correctness — Port 65535 rejected — is_valid_port uses < 65535 — Legal port 65535 cannot be configured'
+BUG="$FIX_BULLET"
+withbug() { printf '%s' "${VALID/"$BUG"/"$1"}"; }
+check five-field true false <<<"$VALID"
+check six-field-fix true false <<<"$(withbug "$BUG — Fix: Restore the bit")"
+check defect-with-dashes-and-fix-text true false <<<"$(withbug '- a.py:1 — tests — T — one — Fix: x — more — plain impact')"
+check impact-starting-fixing true false <<<"$(withbug '- a.py:1 — tests — T — defect — Fixing this restores startup')"
+check four-field false false <<<"$(withbug '- a.py:1 — tests — T — defect')"
+check blank-fix false false <<<"$(withbug "$BUG — Fix: ")"
+check fix-without-impact false false <<<"$(withbug '- a.py:1 — tests — T — defect — Fix: x')"
+check strengths-present false false <<<"${VALID/"## Not reviewed"/"## Strengths
+- Small
+
+## Not reviewed"}"
+check changes-missing false false <<<"$(awk '/^## Changes/{skip=1;next} /^## Critical/{skip=0} !skip' <<<"$VALID")"
+check changes-none false false <<<"${VALID/"Adds is_valid_port to app/parse.py."/(none)}"
+check changes-blank false false <<<"${VALID/"Adds is_valid_port to app/parse.py."/   }"
+check changes-sentinel false false <<<"${VALID/"Adds is_valid_port to app/parse.py."/DIFF-UNAVAILABLE: x}"
 check empty false false <<<''
 
 [ "$FAIL" = 0 ] && echo "validate-result-test: OK"
