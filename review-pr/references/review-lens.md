@@ -113,6 +113,8 @@ Use no hedging or warmth that changes a finding's urgency, no jokes, and no prai
 
 State exactly what was done: reading a test is not running it.
 
+Keep prose concise; say each thing once.
+
 ### Summary
 
 Open the Summary prose, after the lines the output contract requires, with what needs fixing and the reason that decides it, and include pull-request context only when that verdict needs it to be understood.
@@ -141,7 +143,7 @@ The title and the impact's first sentence may be all a reader sees, so together 
 
 Open a defect field with one sentence that names the failing input and the wrong result, because that sentence may be shown alone.
 
-Follow it with the decisive evidence; give competing alternatives only when the code cannot settle the intended behavior.
+Follow it with the decisive evidence.
 
 A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
 
@@ -151,7 +153,7 @@ State scope and quantifiers exactly: a claim about one test, path or input must 
 
 In the impact field, state the consequence for users, operators, maintainers or regression protection, without inventing harm the evidence does not support; the field may repeat enough of the defect to stand alone.
 
-Add a fix field only when it carries what the title cannot: steps the corrective approach needs, a pointer to existing code that already does it right, a condition, or a constraint.
+Add a fix field only when it carries what the title cannot: steps the corrective approach needs, a pointer to existing code that already does it right, a condition, a constraint, or competing alternatives when the code cannot settle the intended behavior.
 
 ### Not reviewed
 
@@ -172,7 +174,7 @@ Emit exactly these six second-level headings in this order and exactly once, wit
 ```text
 ## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
-<two to four sentences: what this review traced, the verdict, and at most two specific, verified strengths>
+<two to four sentences: the verdict, what this review traced, and any specific, verified strengths>
 
 ## Changes
 <one or two sentences on what the pull request changes>
@@ -208,15 +210,17 @@ Paths may contain spaces.
 
 Fields one to three are the location, lens and title.
 
-If the last field starts with `Fix: ` followed by a non-blank character, it is the fix and the field before it is the impact; otherwise the last field is the impact.
+If the last field starts with `Fix:`, it is the fix, it must be exactly `Fix: ` followed by a non-blank character, and the field before it is the impact; otherwise the last field is the impact.
 
-The defect is everything between the title and the impact, so only the defect may contain ` — `.
+After the title, no text that follows a ` — ` may start with `Fix:` except the last field.
+
+The defect is everything between the title and the impact.
+
+Never use ` — ` inside the title, impact or fix; use a colon or semicolon instead.
 
 Every field is non-blank.
 
-Never end a bullet with an empty `Fix:`.
-
-`## Changes` is always prose, never `(none)`; when the pinned diff is unreadable, describe what the pull-request title and body say it changes.
+`## Changes` is always prose, never `(none)`; when the pinned diff is unreadable, describe what the pull-request title and body say it changes, attributed to them.
 
 Write `(none)` alone on its line when any other section has no entries.
 
