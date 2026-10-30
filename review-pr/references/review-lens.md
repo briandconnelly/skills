@@ -141,7 +141,7 @@ The title and the impact's first sentence may be all a reader sees, so together 
 
 Open a defect field with one sentence that names the failing input and the wrong result, because that sentence may be shown alone.
 
-Follow it with the decisive evidence; the corrective approach belongs in the title, and competing alternatives belong in the defect field only when the code cannot settle the intended behavior.
+Follow it with the decisive evidence; give competing alternatives only when the code cannot settle the intended behavior.
 
 A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
 
@@ -212,7 +212,9 @@ If the last field starts with `Fix: ` followed by a non-blank character, it is t
 
 The defect is everything between the title and the impact, so only the defect may contain ` — `.
 
-Every field is non-blank, and a fix field has text after `Fix: `.
+Every field is non-blank.
+
+Never end a bullet with an empty `Fix:`.
 
 `## Changes` is always prose, never `(none)`; when the pinned diff is unreadable, describe what the pull-request title and body say it changes.
 
