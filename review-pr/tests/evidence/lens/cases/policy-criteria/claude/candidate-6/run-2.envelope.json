@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the 10-attempt cap in `fetch_with_retry` before merge: the checked-out `AGENTS.md:5` still requires 5, and the PR itself rewrites that rule. The only reason the PR gives is that the upstream \"now sheds load itself\", and this review found nothing in the repository to support it.\n\n## Changes\nThe PR adds `fetch_with_retry` to `app/net.py`, which retries `fetch` on `OSError` up to 10 times with a fixed delay, and adds tests for it. It also changes the retry cap in `AGENTS.md` from 5 to 10 and adds a text fixture under `tests/fixtures/`.\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry attempts at 5, as policy requires — The function defaults to 10 attempts (line 13) and accepts up to 10 (line 19), but `AGENTS.md:5` says \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The diff relaxes that same rule to 10 to suit the new code, and the only support is the claim that the upstream sheds load, with no evidence for it. — When an upstream is down, each caller sends twice as many requests as the policy allows, which is the outage pattern the rule was written to prevent. — Fix: Change the default and the bound to 5, drop the `AGENTS.md` edit or get the policy owners to approve it separately, and update `test_fetch_with_retry_default_attempt_count` and `test_fetch_with_retry_rejects_attempts_outside_range` to match.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:27 — tests — Assert that fetch_with_retry sleeps between attempts — Every new test replaces `time.sleep` with a stub, and only the single-attempt test looks at sleep calls (it checks there are none). If you deleted `time.sleep(delay)` or ignored `delay`, every test would still pass. — Losing the backoff between retries would not be caught, and retries would hit a failing upstream immediately one after another. — Fix: Extend `test_fetch_with_retry_raises_after_exhaustion` to record sleep arguments and check for exactly one call with `delay`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 30078,
+    "cost_usd": 0.0866808,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Z0ND8peBy1/review-pr.RzEWn9",
+  "head_sha": "2f4789dd129414d0e4c39aaa68d77f1233ba91a1",
+  "base_sha": "c844d81b886ce635c3294d81e9d5064a11d78b10",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "05be0d7e14165b90bbd4f74c8568bc72e7dff0dd"
+}

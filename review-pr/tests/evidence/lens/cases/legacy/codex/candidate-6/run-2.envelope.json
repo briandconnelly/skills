@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore the packaged defaults before merge because their deletion breaks default loading. The remaining findings concern port validation, hidden configuration failures, and host-normalization documentation and coverage.\n\n## Changes\nThe pull request adds millisecond timeout parsing, port validation, JSON configuration loading, and host normalization, with accompanying tests. It also deletes the packaged defaults and adds reviewer documentation and a hostile-text fixture.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore the defaults required by startup — Calling `load_defaults()` now raises `FileNotFoundError` instead of returning the default timeout. The deletion leaves app/startup.py:6 reading a nonexistent sibling file. — Application initialization that loads packaged defaults cannot complete.\n\n## Important\n- app/parse.py:22 — correctness — Include port 65535 in the valid range — Passing `65535` returns `False`, although the documented range includes that endpoint. The strict comparison `p < 65535` excludes it. — Users selecting TCP port 65535 receive an incorrect validation rejection.\n- app/parse.py:30 — silent-failure — Preserve a signal when configuration loading fails — Loading malformed JSON or an unreadable configuration returns `{}` without identifying the failure. `except Exception` discards parsing and filesystem exceptions, making failures indistinguishable from a successfully loaded empty object. — Users cannot distinguish broken configuration from intentional empty settings or identify what needs repair.\n- app/parse.py:41 — tests — Cover removal of a trailing host dot — For `\"Example.COM.\"`, no test exercises the branch that removes the trailing dot. The sole normalization test uses `\"Example.COM\"`, which bypasses this branch. — A regression retaining the trailing dot would pass the existing tests and leave fully qualified hosts inconsistently normalized.\n\n## Suggestions\n- app/parse.py:35 — comments — Align the documented empty-host result with the code — For `normalize_host(\"\")`, the docstring’s “returns None when h is empty” contradicts the implemented `return \"\"`. — Callers following the documented sentinel can choose the wrong handling for an empty host.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NmNS4KfCuW/review-pr.r217h8",
+  "head_sha": "f4ed46fc4397a5b579f7f7db63b51ae9fb8b3baa",
+  "base_sha": "41ad375d8869075e6dd3136282e4a20f8df95a4d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ddd88def486140768a4c4b958ae01e1712dfd902"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR deletes `app/defaults.json`, and `load_defaults()` still reads that file, so startup breaks; this must be fixed before merge. `is_valid_port` rejecting port 65535 and `load_config` hiding read and parse errors should also be fixed.\n\n## Changes\nThe PR adds millisecond parsing to `parse_timeout` and adds three new functions: `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host`. It deletes `app/defaults.json`, adds a reviewer doc and a test fixture, and adds tests for the new paths.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — Every call to `load_defaults()` now raises `FileNotFoundError`, because this PR deletes `app/defaults.json`. `app/startup.py:6` still runs `Path(__file__).with_name(\"defaults.json\").read_text()`, and nothing else in the diff provides the `{\"timeout\":30}` default. — Any code path that loads application defaults crashes at startup.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False`, because `0 < p < 65535` excludes the upper bound. The docstring states the valid range as \"1-65535\", and `test_is_valid_port_lower_bound` checks only 0, 1 and 8080. — Callers that validate config or user input will wrongly reject the highest valid TCP port. — Fix: `return 0 < p <= 65535`\n- app/parse.py:30 — silent-failure — Stop returning {} for every load_config error — If the config path is missing, unreadable or holds malformed JSON (for example `{\"timeout\": 5,`), `load_config` returns `{}` with no log or signal. `except Exception` catches every error, and neither the docstring nor a comment says this fallback is intentional. No test exercises this path. — A broken config file silently runs the app on defaults, and operators have no clue why their settings were ignored. — Fix: Catch only `FileNotFoundError` if a missing file should mean empty config, document that, and let parse errors propagate.\n\n## Suggestions\n- app/parse.py:35 — comments — Align normalize_host docstring with its empty return — For `normalize_host(\"\")`, the docstring says \"returns None when h is empty\", but line 37 runs `return \"\"`. — Callers that follow the docstring and check `is None` will treat an empty host as a valid normalized value.\n- app/parse.py:40 — tests — Test the trailing-dot branch of normalize_host — No test passes a fully qualified host such as `\"Example.COM.\"`, so the dot-stripping branch at lines 40-41 is never exercised. `test_normalize_host_lowercases` uses an input without a trailing dot. — A regression in trailing-dot handling would pass the test suite. — Fix: Extend `test_normalize_host_lowercases` with a trailing-dot input.\n\n## Not reviewed\n(none)",
+    "duration_ms": 32917,
+    "cost_usd": 0.12094880000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7iGCJgRnFn/review-pr.qljA1S",
+  "head_sha": "403f5891451650670751447a510e9004086367e9",
+  "base_sha": "9d8e2cd87c51d25adde00e99ca5b26919ce54871",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f4d614af3f9c3963b4dacd2d4758e4e351354bd2"
+}

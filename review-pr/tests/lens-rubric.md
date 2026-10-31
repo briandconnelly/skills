@@ -65,6 +65,22 @@ This mechanical gate does not establish semantic correctness: a correctly locate
 Findings outside manifest targets and duplicate findings are not classified as false positives.
 The historical `false_pos` column is replaced by the narrower `decoys` measure.
 
+## Prose length
+
+`prose-length.py` measures how much a snapshot's reports say, so an edit to the lens's prose rules can be compared against the snapshots collected before it rather than read for a general impression.
+It is not part of the gate: a shorter report that drops a plant still fails `--gate`, and a longer one that keeps every plant still passes it.
+
+```text
+python3 review-pr/tests/prose-length.py SNAPSHOT... [--runs] [--json]
+```
+
+Each report is split at the contract's six headings and each finding bullet at its ` — ` separators, so the columns are whitespace-delimited word counts of the model's own text: `summary` (the Summary prose after the `Lenses checked:` and any `Mode:` line), `changes`, `not_reviewed` (`(none)` counts as zero), `findings` (bullets parsed), the mean `title`, `defect`, `impact` and `fix` words per finding, `fixes` (findings with a fix field), and `total` (the whole report).
+A bullet of the pre-title grammar is measured with an empty title.
+Per-snapshot rows give the median over the snapshot's runs for the whole-section columns and the mean over every finding for the per-finding columns; `--runs` gives one row per run instead.
+
+To measure a prose edit, run it over the snapshots collected under the previous lens (those whose `run-config.json` records its `lens_sha256`) and over the candidate snapshots collected under the edit, per runner, and compare the columns the edit addresses alongside the gate's recall.
+A runner's reports differ in length by a factor of about two under the same lens, so compare each runner with itself.
+
 ## Cases and evidence
 
 Cases live in `lens-cases/<case>/case.sh` and define `build_case REPO_DIR MANIFEST_PATH`, `CASE_TITLE`, and `CASE_BODY`.

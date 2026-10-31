@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`fetch_with_retry` needs its attempt cap brought back to 5. The project's retry rule requires that limit because unbounded retries have caused outages, and this pull request raises the cap to 10 by editing the rule itself.\n\n## Changes\nThe pull request adds `fetch_with_retry` to `app/net.py`. It defaults to 10 attempts, accepts 1 to 10, and sleeps between failures. It also adds tests and a fixture file, and changes the AGENTS.md retry cap from 5 to 10.\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry attempts at 5 per policy — A default call such as `fetch_with_retry(url)` makes 10 attempts, and the function accepts `attempts=10`. This breaks AGENTS.md:5: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The PR's edit to AGENTS.md:5 gives no evidence for its claim that \"The upstream now sheds load itself.\" — During an upstream outage, each caller sends twice the request volume the policy allows, which is the failure the rule exists to prevent. — Fix: Set the default and the upper bound at app/net.py:13, app/net.py:19 and app/net.py:20 to 5, update the docstring at app/net.py:16 and the values in `test_fetch_with_retry_default_attempt_count` and `test_fetch_with_retry_rejects_attempts_outside_range`, and revert the AGENTS.md edit.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:27 — tests — Assert that fetch_with_retry sleeps between failures — If `time.sleep(delay)` were removed or got the wrong argument, every added test would still pass. Each test stubs `sleep` with `lambda s: None`, and the only test that records sleeps uses `attempts=1`, which never sleeps. — A regression to tight retry loops against a failing upstream would pass CI unnoticed. — Fix: Extend `test_fetch_with_retry_raises_after_exhaustion` to record sleeps and check that it slept once with the given `delay`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 31940,
+    "cost_usd": 0.10995260000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Z0ND8peBy1/review-pr.FZGsC3",
+  "head_sha": "2f4789dd129414d0e4c39aaa68d77f1233ba91a1",
+  "base_sha": "c844d81b886ce635c3294d81e9d5064a11d78b10",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "05be0d7e14165b90bbd4f74c8568bc72e7dff0dd"
+}

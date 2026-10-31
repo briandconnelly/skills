@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change to `requirement_proven` has to be fixed before merge: a requirement with no criteria now counts as proven, which fails open in the release-review gate. The pull request says no behaviour change is intended, so this is a regression.\n\n## Changes\nThe pull request replaces `typing.List`/`Dict` with built-in generics and `log.warn` with `log.warning` across 180 `app/handlers/h*_records.py` files. It also switches `by_name` to `operator.itemgetter`, rewrites `requirement_proven` to count criteria with `sum`, and adds a one-line `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:11 — correctness — Return False again when criteria is empty — When `criteria` is `[]`, `requirement_proven` now returns `True`, because `sum(...)` is `0` and `len(criteria)` is `0`. The removed `bool(criteria) and all(...)` returned `False`. The warning on line 10 still logs and then carries on to that `True` result. — A requirement with no criteria now passes release review as proven: an unproven requirement can ship with only a log warning. — Fix: Restore `bool(criteria) and all(item[\"proven\"] for item in criteria)` and add an empty-list assertion to `test_requirement_proof` in `tests/test_handlers.py`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- This review did not read the hunks for 178 of the 180 `app/handlers/h*_records.py` files (all except `h000` and `h001`) one by one; it checked their added and removed lines only by matching them against the mechanical patterns and counting the matches.",
+    "duration_ms": 81372,
+    "cost_usd": 0.25803200000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.8TdbdzyaRd/review-pr.cgfHsT",
+  "head_sha": "b65e2eafbf957716f4102ce0f7838241c524b2f5",
+  "base_sha": "513dbd8064f272840e09d56fdf1f1a2ab0ca309d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "01e3a38ddcbf9e139de1be9d18c81a8a1db706c0"
+}
