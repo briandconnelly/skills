@@ -87,14 +87,28 @@ def measure(report):
 
 
 def load_reports(snapshot):
+    """Each run's report text, as score-lens.py reads it.
+
+    A run without a report in its envelope falls back to the sibling native output. Codex
+    writes that file as JSONL and a timeout can leave it partial, so an unreadable sibling
+    means no report for an incomplete run and an error only for a run that claims completion.
+    """
     for env in sorted(Path(snapshot).glob("run-*.envelope.json")):
         data = json.loads(env.read_text())
         review = data.get("review") or {}
+        completed = data.get("exit") == 0 and review.get("status") == "completed"
         text = review.get("result")
         if text is None:
             sib = env.with_name(env.name.replace(".envelope.json", ".json"))
             if sib.exists():
-                text = json.loads(sib.read_text()).get("result")
+                try:
+                    text = json.loads(sib.read_text()).get("result")
+                except ValueError:
+                    if completed:
+                        raise ValueError(
+                            f"{env.name}: completed run has no readable report"
+                        ) from None
+                    text = None
         if text:
             yield env.name.split(".")[0], text
 

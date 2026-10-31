@@ -2,7 +2,7 @@
 """Offline checks for the prose-length measure described in lens-rubric.md."""
 
 # Standard-library test runner keeps the offline gate dependency-free.
-# ruff: noqa: PT009
+# ruff: noqa: PT009, PT027
 
 import importlib.util
 import json
@@ -126,6 +126,23 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(got["findings"], "3")
             self.assertEqual(got["defect"], "8.7")
             self.assertEqual(got["fix"], "6")
+
+    def test_unreadable_native_sibling_is_skipped_for_an_incomplete_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = Path(tmp)
+            (snap / "run-1.envelope.json").write_text(
+                json.dumps({"exit": 0, "review": {"status": "completed", "result": REPORT}})
+            )
+            # A timed-out Codex run: no report in the envelope and a partial JSONL sibling.
+            (snap / "run-2.envelope.json").write_text(json.dumps({"exit": 1, "review": None}))
+            (snap / "run-2.json").write_text('{"type":"thread.started"}\n{"type":"turn.started"}\n')
+            self.assertEqual([run for run, _ in PROSE.load_reports(snap)], ["run-1"])
+            # The same sibling under a run that claims completion is an error, as in score-lens.py.
+            (snap / "run-2.envelope.json").write_text(
+                json.dumps({"exit": 0, "review": {"status": "completed"}})
+            )
+            with self.assertRaisesRegex(ValueError, "no readable report"):
+                list(PROSE.load_reports(snap))
 
     def test_runs_rows_keep_per_finding_means(self):
         with tempfile.TemporaryDirectory() as tmp:
