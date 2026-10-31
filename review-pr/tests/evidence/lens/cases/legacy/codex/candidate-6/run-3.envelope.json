@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore the defaults resource before merge because its deletion makes every call to `load_defaults()` fail.\n\n## Changes\nThe pull request adds millisecond timeout parsing, port validation, configuration loading, and host normalization, with accompanying tests and reviewer fixtures. It also deletes the bundled defaults file.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore the resource required by load_defaults — Calling `load_defaults()` now raises `FileNotFoundError` because you delete its required resource; `app/startup.py:6` still reads that exact file without a fallback. — Callers can no longer load the bundled timeout defaults.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 — Passing `65535` returns `False`, although your documented range includes it; the strict upper comparison excludes that valid endpoint. — Users configuring TCP port 65535 receive an incorrect validation failure.\n- app/parse.py:30 — silent-failure — Expose configuration loading failures — Passing a missing file or malformed JSON returns `{}` because you catch every `Exception` without logging or signaling failure. Your docstring does not explain this fallback. — Callers cannot distinguish a failed configuration load from a successfully loaded empty object.\n- app/parse.py:40 — tests — Cover trailing-dot normalization — For `\"Example.COM.\"`, your new suffix-removal branch has no test coverage; the only host test uses `\"Example.COM\"` and never enters it. — Removing or breaking trailing-dot stripping would leave the current host-normalization test passing. — Fix: Extend `test_normalize_host_lowercases` with a trailing-dot case.\n\n## Suggestions\n- app/parse.py:35 — comments — Align the empty-host documentation and return value — For `normalize_host(\"\")`, your docstring promises “returns None when h is empty,” but the implementation executes `return \"\"`. — Callers following the documented contract cannot reliably detect empty hosts with an `is None` check. — Fix: Choose the intended empty-host result and align the documentation and implementation.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NmNS4KfCuW/review-pr.OFCi09",
+  "head_sha": "f4ed46fc4397a5b579f7f7db63b51ae9fb8b3baa",
+  "base_sha": "41ad375d8869075e6dd3136282e4a20f8df95a4d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ddd88def486140768a4c4b958ae01e1712dfd902"
+}

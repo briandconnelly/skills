@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix \"Restore the empty-criteria check in requirement_proven\" before merge: the rewrite now reports a requirement with no criteria as proven, which contradicts the description's \"No behavior change is intended.\"\n\n## Changes\nAcross the handler modules, the pull request replaces `typing.List`/`typing.Dict` with built-in generics and changes `log.warn` to `log.warning`. It also switches `by_name` to an `operator.itemgetter` sort key, rewrites `requirement_proven` to compare a sum of proven criteria against the list length, and adds a top-level `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Restore the empty-criteria check in requirement_proven — `requirement_proven([])` now returns `True` because `sum(...)` and `len(criteria)` are both 0. The old `bool(criteria) and all(...)` returned `False`, and the `if not criteria:` branch at line 9 logs a warning but does not return. — A requirement with no criteria is treated as proven, so release review can pass something that has no supporting proof. — Fix: Use `return bool(criteria) and proven == len(criteria)` (or restore the original expression), and add an empty-list case to `test_requirement_proof` in `tests/test_handlers.py`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- This review read 1 of the 180 changed `app/handlers/h*_records.py` files (`h000_records.py`) in full in the pinned diff. For the other 179, it checked their changed lines against the import, signature and `log.warning` substitution patterns rather than reading each one.",
+    "duration_ms": 62276,
+    "cost_usd": 0.22382640000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.8TdbdzyaRd/review-pr.OkhnTi",
+  "head_sha": "b65e2eafbf957716f4102ce0f7838241c524b2f5",
+  "base_sha": "513dbd8064f272840e09d56fdf1f1a2ab0ca309d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "01e3a38ddcbf9e139de1be9d18c81a8a1db706c0"
+}

@@ -107,17 +107,21 @@ When shortening or rephrasing a finding, preserve its failing condition, causal 
 
 Refer to the review as "this review" rather than in the first person; quoted text keeps its own wording.
 
-Write plain, active sentences about the code and what this review traced, and address the author directly in finding prose.
+Write plain, active sentences about the code, and address the author directly in finding prose.
 
 Use no hedging or warmth that changes a finding's urgency, no jokes, and no praise that is not specific and verified.
 
 State exactly what was done: reading a test is not running it.
 
-Keep prose concise; say each thing once.
+Explain each thing once: a fact stated in one field, sentence or section is not explained again in another, though a field repeats a condition where the rules below require that field to stand alone.
+
+Length guidance never permits dropping or merging a finding, changing its severity, or removing a failing condition, a distinct outcome, a citation or a qualification.
 
 ### Summary
 
-Open the Summary prose, after the lines the output contract requires, with what needs fixing and the reason that decides it, and include pull-request context only when that verdict needs it to be understood.
+Write the Summary prose, after the lines the output contract requires, as one or two sentences: what needs fixing and the reason that decides it, naming a finding by its title at most, with pull-request context only when that verdict needs it to be understood.
+
+Do not list the files, functions or tests this review read; describe what was traced in a phrase, and only when the verdict depends on it.
 
 State the verdict with the urgency of the highest-severity defect that remains open, as the output contract defines each severity.
 
@@ -127,7 +131,7 @@ Never describe the review as an approval or a request for changes, and never spe
 
 A code or policy defect claimed in `## Summary` must also appear in a finding section; coverage limits and neutral context are not defect claims.
 
-Name at most two strengths, each verified and relevant, in the Summary prose, and never one that a `## Not reviewed` bullet leaves open.
+Name at most one strength, as a clause, only when it is verified and bears on the verdict, and never one that a `## Not reviewed` bullet leaves open.
 
 Limit any assurance to what was reviewed; when `## Not reviewed` is not `(none)`, do not describe the unreviewed part as safe or complete.
 
@@ -147,13 +151,15 @@ Follow it with the decisive evidence.
 
 A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
 
-Keep a defect field to about two to four sentences unless completeness needs more.
+Keep a defect field to about 40 words in one to three sentences, never restating the title; add a sentence only for a second, independent piece of evidence or a distinct outcome.
 
 State scope and quantifiers exactly: a claim about one test, path or input must not read as a claim about all of them.
 
-In the impact field, state the consequence for users, operators, maintainers or regression protection, without inventing harm the evidence does not support; the field may repeat enough of the defect to stand alone.
+In the impact field, state in one sentence of about 20 words the consequence for users, operators, maintainers or regression protection, without inventing harm the evidence does not support; keep the triggering condition when the title does not carry it, and do not repeat the defect's evidence.
 
 Add a fix field only when it carries what the title cannot: steps the corrective approach needs, a pointer to existing code that already does it right, a condition, a constraint, or competing alternatives when the code cannot settle the intended behavior.
+
+Keep a fix to one sentence; include code only when the fix is a single expression, and name a test to extend rather than describing its assertions.
 
 ### Not reviewed
 
@@ -165,6 +171,8 @@ Resolve a question the checked-out code can answer from that code, and report an
 
 Name each unavailable piece of evidence precisely enough that a person could obtain it, such as the repository and path or the query to run.
 
+Keep each bullet to one sentence; name a set of unread files by its directory or pattern and count rather than listing each, and omit how this review's tools fell short except in a `DIFF-UNAVAILABLE` bullet.
+
 Verify each count against an enumeration of the counted items before stating it.
 
 ## Output contract
@@ -174,7 +182,7 @@ Emit exactly these six second-level headings in this order and exactly once, wit
 ```text
 ## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
-<two to four sentences: the verdict, what this review traced, and any specific, verified strengths>
+<one or two sentences: what needs fixing and the reason that decides it>
 
 ## Changes
 <one or two sentences on what the pull request changes>

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDeleting `app/defaults.json` must be fixed before merge, because `load_defaults()` in `app/startup.py` still reads that file and will raise on every call. `is_valid_port` also rejects port 65535, and `load_config` hides every failure behind `{}`.\n\n## Changes\nThis pull request adds millisecond parsing to `parse_timeout`, and adds the new helpers `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host`, with tests for each. It also deletes `app/defaults.json` and adds a reviewer doc and a test fixture.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — Every call to `load_defaults()` now raises `FileNotFoundError`, because the file is deleted. `app/startup.py:6` still runs `Path(__file__).with_name(\"defaults.json\").read_text()`, and nothing in the diff changes that caller. — Any startup path that loads application defaults crashes once this merges. — Fix: Keep `app/defaults.json`, or change `app/startup.py:6` to use the new source of defaults in the same pull request.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False`, because `0 < p < 65535` excludes the upper bound. The docstring promises \"1-65535\". `tests/test_parse.py:16` checks only the lower bound, so nothing catches this. — Configs or callers that use port 65535 are rejected as invalid. — Fix: `0 < p <= 65535`, and add an upper-bound case next to `test_is_valid_port_lower_bound`.\n- app/parse.py:30 — silent-failure — Stop returning {} for every load_config error — A missing file, a permission error or malformed JSON all return `{}`, because `except Exception` swallows them with no log or signal to the caller. No comment explains the fallback; the docstring says only \"Load the JSON config at path\". — A typo in a config file silently runs the app with empty config, and operators get no indication of why their settings were ignored. — Fix: Catch only `FileNotFoundError` if a missing file should mean empty config, and let decode and permission errors propagate or log them.\n\n## Suggestions\n- app/parse.py:35 — comments — Fix normalize_host docstring for empty input — The docstring says \"returns None when h is empty\", but `normalize_host(\"\")` returns `\"\"` (line 37: `return \"\"`). — Callers that follow the docstring and check `is None` will treat an empty host as valid. — Fix: Decide which return value is intended, then update either the docstring or line 37 so they match.\n- app/parse.py:40 — tests — Cover the trailing-dot and empty branches of normalize_host — `normalize_host(\"Example.COM.\")` and `normalize_host(\"\")` are never exercised. `test_normalize_host_lowercases` passes input with no trailing dot, so the strip on lines 40-41 and the early return on line 36 are untested. — A regression in stripping fully qualified names or in empty-input handling would not fail any test. — Fix: Extend `test_normalize_host_lowercases` with trailing-dot and empty-string cases.\n\n## Not reviewed\n(none)",
+    "duration_ms": 28074,
+    "cost_usd": 0.08951900000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7iGCJgRnFn/review-pr.T4lmTk",
+  "head_sha": "403f5891451650670751447a510e9004086367e9",
+  "base_sha": "9d8e2cd87c51d25adde00e99ca5b26919ce54871",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f4d614af3f9c3963b4dacd2d4758e4e351354bd2"
+}

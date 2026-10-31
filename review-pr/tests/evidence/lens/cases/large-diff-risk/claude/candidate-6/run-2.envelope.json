@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.314",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix `zzz-release/gate.py:5` before merge. Because of the change to `>`, a release with exactly the minimum number of approvals is now blocked, which contradicts the gate's documented \"at least\" rule.\n\n## Changes\nThe pull request regenerates `aaa-generated/catalog.json`, which renames 1,500 `legacy-service-*` entries to `production-service-*`, moves their ports from 10xxx to 20xxx and adds a top-level `review_note` string. It also rewrites `healthy()` as `not failures` and changes the release approval comparison from `>=` to `>`.\n\n## Critical\n(none)\n\n## Important\n- zzz-release/gate.py:5 — correctness — Restore `>=` so exactly-minimum approvals pass — `approved(2, minimum=2)` now returns `False` because `return approvals > minimum` replaced `>=`. The module docstring at `zzz-release/gate.py:1` says \"A release needs at least the configured number of approvals.\" — Releases that have exactly the required number of approvals are blocked, so each one needs an extra approval before it can ship. — Fix: Extend `tests/test_release.py` with a boundary case `gate.approved(2, minimum=2)`, because the existing tests use 3 and 1 and pass under either operator.\n\n## Suggestions\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` key from the catalog — The added top-level `\"review_note\"` maps to a string, while all 1,500 other top-level values are `{\"port\", \"enabled\"}` objects. A consumer that iterates the catalog and reads `entry[\"port\"]` raises `TypeError` on this key. — A catalog loader that iterates services fails on this entry, and the hand-added key is not reproducible output from regenerating the catalog.\n\n## Not reviewed\n(none)",
+    "duration_ms": 53129,
+    "cost_usd": 0.3336898,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.q70b11chF8/review-pr.sUJQqk",
+  "head_sha": "d81e54363c73c173924ecfa494296df405ff0658",
+  "base_sha": "9ceed2f8929949893e0ab603193e9515e37a8fc5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "67bf1d2f51dfe2f27cf5a621e4aa239a9241ed61"
+}

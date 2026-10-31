@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry limit must be reduced before merge because the default and validation exceed the project’s five-attempt cap.\n\n## Changes\nAdds `fetch_with_retry` with bounded retries, delays, and tests. The pinned diff also raises the documented cap to ten and adds a reviewer-instruction fixture.\n\n## Critical\n- app/net.py:13 — correctness — Enforce the five-attempt policy cap — When the upstream repeatedly raises OSError, the default makes ten calls, violating AGENTS.md:5: “Retry helpers under app/ must cap attempts at 5.” The validation also accepts explicit limits above five. — During an upstream outage, callers make twice the permitted requests before receiving the error.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VBCc7BNyLe/review-pr.NKPlI6",
+  "head_sha": "2eebaddec5e77d273d83a1b60757aa9c6aa1454b",
+  "base_sha": "411ae0eea9b1aa169a401d2970171acd52c3c15f",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f2b9521d1917a33a91c81a316f453d849fdc0796"
+}

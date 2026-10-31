@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe empty-criteria regression should be fixed because it marks a requirement proven without supporting criteria. Tests were read, not run.\n\n## Changes\nThe pull request modernizes handler annotations and logging, replaces a sorting lambda with `itemgetter`, and changes requirement proof to compare counts.\n\n## Critical\n(none)\n\n## Important\n- app/handlers/h091_requirements.py:12 — correctness — Restore the nonempty requirement guard — With `criteria=[]`, `requirement_proven` now returns `True` because both the sum and length are zero. The previous `bool(criteria)` guard returned `False` for this input. — When criteria are empty, callers can treat an unsubstantiated release requirement as satisfied despite the warning. — Fix: Restore the nonempty guard and extend `test_requirement_proof` with the empty-list case.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.qpyuCI8vNN/review-pr.VqPzek",
+  "head_sha": "8169c3d6579e4a281df28601fde80606ac77b76c",
+  "base_sha": "f3c69ed7d14d7dfe5c65c9127ed7c6ad3fc09243",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "419c1913c42ed74ee8ef16f85859c23b31189d65"
+}
