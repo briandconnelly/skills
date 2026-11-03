@@ -170,6 +170,35 @@ description: >-
 ---
 EOF
 printf -- '---\nname: a\ndescription: |\n\tUse when testing\n---\n' | rejects 'tab-indented block'
+rejects 'indented sequence under description' <<'EOF'
+---
+name: a
+description:
+  - Use when reviewing authentication.
+---
+EOF
+rejects 'indented mapping under description' <<'EOF'
+---
+name: a
+description:
+  when: reviewing authentication
+---
+EOF
+rejects 'indented flow sequence under description' <<'EOF'
+---
+name: a
+description:
+  [Use when reviewing]
+---
+EOF
+reads 'plain scalar opening on the next line' '{"name":"a","description":"Use when reviewing authentication."}' <<'EOF'
+---
+name: a
+description:
+  Use when reviewing
+  authentication.
+---
+EOF
 long="$(printf 'x%.0s' $(seq 1 1025))"
 rejects 'description over 1024 characters' <<EOF
 ---

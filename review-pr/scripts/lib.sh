@@ -345,7 +345,15 @@ skill_frontmatter_json() {
       if (line ~ /^[ \t]/ || line == "") {
         if (cur == "name") { if (line != "") fail(3); next }
         if (cur != "description") next
-        if (mode == "plain") { sub(/^[ \t]+/, "", line); if (line != "") desc = desc (desc == "" ? "" : " ") line; next }
+        if (mode == "plain") {
+          sub(/^[ \t]+/, "", line)
+          if (line == "") next
+          # An indented collection is not a continuation: a sequence entry, a mapping key, or (opening the scalar)
+          # any indicator unquote() would reject on the key line.
+          if (line ~ /^[-?:]([ \t]|$)/ || line ~ /^[^ \t#][^:]*:([ \t]|$)/) fail(3)
+          if (desc == "" && line ~ /^[][{}&*!|>'\''"%@`,#]/) fail(3)
+          desc = desc (desc == "" ? "" : " ") line; next
+        }
         if (mode == "folded" || mode == "literal") {
           if (line == "") { blank++; next }
           # YAML indents with spaces only, and no block line may sit left of the first one.
