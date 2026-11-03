@@ -95,7 +95,8 @@ tree_listing() {
 # Paths stay NUL-delimited end to end (ls-tree -z), so names containing newlines or tabs are
 # neither split nor quoted.
 policy_paths() {
-  local p listing
+  # Byte-wise matching (C locale): in a UTF-8 locale a pattern fails to match a name that is not valid UTF-8.
+  local p listing LC_ALL=C
   listing="$(tree_listing "$1" "$2" --name-only)" || exit "$?"
   # The listing is unlinked once open, so a die mid-walk leaves nothing behind.
   # if/fi, not `&&`: under pipefail a non-matching final path would otherwise fail the whole loop.
@@ -174,7 +175,7 @@ policy_link_target() {
 # NUL-separated LINK TARGET pairs. Dies on a symlink RC11 does not admit, so a caller that must stop on refusal
 # runs it in the current shell, not a process substitution, before anything is restored.
 policy_index() {
-  local entry p oid target listing i
+  local entry p oid target listing i LC_ALL=C
   local -a links=() targets=()
   listing="$(tree_listing "$1" "$2")" || exit "$?"
   # shellcheck disable=SC2094 # Unlinking the open listing is deliberate: a die mid-walk leaves nothing behind.
@@ -205,15 +206,73 @@ policy_index() {
 }
 
 # restored_policy_paths DIR TREEISH -> NUL-separated paths that policy restoration writes from TREEISH.
+# Inside context_paths_json it reads the index that call already built for the same DIR and TREEISH, so the
+# adapter's selection does not walk the tree a second time.
 restored_policy_paths() {
   local entry
+  if [ -n "${_REVIEW_PR_INDEX_FILE:-}" ] && [ "$1" = "$_REVIEW_PR_INDEX_DIR" ] && [ "$2" = "$_REVIEW_PR_INDEX_TREE" ]; then
+    while IFS= read -r -d '' entry; do printf '%s\0' "${entry#*$'\t'}"; done < "$_REVIEW_PR_INDEX_FILE"
+    return 0
+  fi
   while IFS= read -r -d '' entry; do printf '%s\0' "${entry#*$'\t'}"; done < <(policy_index "$1" "$2")
 }
 
-# context_paths_json DIR TREEISH -> JSON array of adapter-selected passive policy paths.
+# nul_paths_json -> JSON array of the NUL-separated paths on stdin, in input order.
+# Dies on a path that is not valid UTF-8 (RC11): jq -R replaces such bytes with U+FFFD, so the array would name a
+# different file, and two such paths could become one entry. The check is that the JSON decodes back to the input
+# bytes exactly, which is the property callers rely on; iconv is not used because macOS iconv accepts sequences
+# above U+10FFFF that jq replaces.
+nul_paths_json() {
+  local paths json p bad=""
+  paths="$(mktemp "${TMPDIR:-/tmp}/review-pr-paths.XXXXXX")" || die 1 "cannot create a temporary file"
+  cat > "$paths"
+  json="$(jq -Rs -c 'split("\u0000") | map(select(length > 0))' < "$paths")" || { rm -f "$paths"; die 1 "jq failed"; }
+  if ! printf '%s' "$json" | jq -j '.[] | . + "\u0000"' | cmp -s - "$paths"; then
+    while IFS= read -r -d '' p; do
+      [ "$(printf '%s' "$p" | jq -Rs -j . && printf x)" = "${p}x" ] || { bad="$p"; break; }
+    done < "$paths"
+    rm -f "$paths"
+    [ -z "$bad" ] || die 1 "policy path is not valid UTF-8: $(printf '%q' "$bad")"
+    die 1 "policy paths do not round-trip through JSON"
+  fi
+  rm -f "$paths"
+  printf '%s\n' "$json"
+}
+
+# context_paths_json DIR TREEISH -> JSON array of adapter-selected passive policy paths, one per base source and
+# sorted by byte order (RC8). The base source of a path restored under a policy symlink is its path under the link
+# target; any other path is its own source. Sources come from base-tree link text only, never from the head.
+# Paths are validated by nul_paths_json first, so jq sees exact UTF-8; its string order is then byte order.
+# Grouping is O(n log n): each destination looks up its own ancestors in the link map rather than scanning entries.
 context_paths_json() {
-  adapter_context_paths "$1" "$2" \
-    | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
+  local work r LC_ALL=C
+  work="$(mktemp -d "${TMPDIR:-/tmp}/review-pr-context.XXXXXX")" || die 1 "cannot create a temporary directory"
+  # Both run in this shell, not a process substitution, so a refusal or selector failure stops here.
+  policy_index "$1" "$2" "$work/links" > "$work/records"
+  local _REVIEW_PR_INDEX_FILE="$work/records" _REVIEW_PR_INDEX_DIR="$1" _REVIEW_PR_INDEX_TREE="$2"
+  adapter_context_paths "$1" "$2" > "$work/selected" || { rm -rf "$work"; die 1 "adapter_context_paths failed"; }
+  _REVIEW_PR_INDEX_FILE=""
+  : > "$work/remove"
+  if [ "${#ADAPTER_ALWAYS_REMOVE[@]}" -gt 0 ]; then
+    for r in "${ADAPTER_ALWAYS_REMOVE[@]}"; do printf '%s\0' "$r" >> "$work/remove"; done
+  fi
+  nul_paths_json < "$work/selected" > "$work/selected.json"
+  nul_paths_json < "$work/links" > "$work/links.json"
+  nul_paths_json < "$work/remove" > "$work/remove.json"
+  # A destination equal to its source represents it; otherwise the first alias in byte order does.
+  jq -n -c --slurpfile sel "$work/selected.json" --slurpfile links "$work/links.json" --slurpfile rm "$work/remove.json" '
+    ($links[0]) as $l
+    | ([range(0; $l | length; 2) | {key: $l[.], value: $l[. + 1]}] | from_entries) as $map
+    | [ $sel[0][] as $d
+        | select(all($rm[0][]; . as $r | $d != $r and ($d | startswith($r + "/") | not)))
+        | ($d | split("/")) as $c
+        | (first(range($c | length; 0; -1) as $n | ($c[:$n] | join("/")) | select($map[.] != null)) // null) as $link
+        | {dest: $d, src: (if $link == null then $d else $map[$link] + $d[($link | length):] end)} ]
+    | group_by(.src)
+    | map((map(select(.dest == .src)) | first) // min_by(.dest) | .dest)
+    | sort
+  ' || { rm -rf "$work"; die 1 "cannot build the policy manifest"; }
+  rm -rf "$work"
 }
 
 # ensure_merge_base CLONE BASE_SHA HEAD_SHA PULL_REF

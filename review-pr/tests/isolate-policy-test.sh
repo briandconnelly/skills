@@ -85,8 +85,9 @@ want="$(jq -nc '[".claude/settings.json",".claude/skills/code-review/SKILL.md","
 . "$SRC/lib.sh"
 load_adapter claude
 manifest="$(context_paths_json "$R" "$BASE")"
-manifest_want="$(jq -nc '[".claude/skills/zebra-review/SKILL.md","AGENTS.md","CLAUDE.md","docs/AGENTS.md","sub/CLAUDE.md"] | sort')"
-[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] \
+# Unsorted: RC8 orders the manifest by byte order of the listed path.
+manifest_want='[".claude/skills/zebra-review/SKILL.md","AGENTS.md","CLAUDE.md","docs/AGENTS.md","sub/CLAUDE.md"]'
+[ "$manifest" = "$manifest_want" ] \
   || { echo "FAIL: passive policy manifest=$manifest"; FAIL=1; }
 
 # Config injected through the environment (GIT_CONFIG_COUNT / GIT_CONFIG_PARAMETERS) must not reach the
@@ -232,8 +233,9 @@ grep -q 'head file' "$fixture/sub/file.txt" || { echo "FAIL: non-policy head con
 want="$(jq -nc '[".agents/skills/evil/SKILL.md",".agents/skills/zebra/SKILL.md",".agents/skills/zebra/reference.md","AGENTS.md"] | sort')"
 [ "$(jq -c 'sort' <<<"$out")" = "$want" ] || { echo "FAIL: policy_changes under link targets=$out"; FAIL=1; }
 manifest="$(context_paths_json "$fixture" "$base")"
-manifest_want="$(jq -nc '[".claude/skills/zebra/SKILL.md","AGENTS.md","CLAUDE.md"] | sort')"
-[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] || { echo "FAIL: manifest through policy symlinks=$manifest"; FAIL=1; }
+# CLAUDE.md -> AGENTS.md is one base file, listed once at the restored target (RC8).
+manifest_want='[".claude/skills/zebra/SKILL.md","AGENTS.md"]'
+[ "$manifest" = "$manifest_want" ] || { echo "FAIL: manifest through policy symlinks=$manifest"; FAIL=1; }
 
 # Under Codex the same layout's .claude/skills and CLAUDE.md links are not policy: they are left as checked
 # out, while Codex's own .agents and AGENTS.md are restored from base.
@@ -250,8 +252,8 @@ grep -q 'base body' "$fixture/.agents/skills/zebra/SKILL.md" || { echo "FAIL: co
 grep -q 'base agents' "$fixture/AGENTS.md" || { echo "FAIL: codex did not restore AGENTS.md from base"; FAIL=1; }
 [ "$(jq -c 'sort' <<<"$out")" = "$want" ] || { echo "FAIL: codex policy_changes for the amicus layout=$out"; FAIL=1; }
 manifest="$(context_paths_json "$fixture" "$base")"
-manifest_want="$(jq -nc '[".agents/skills/zebra/SKILL.md","AGENTS.md"] | sort')"
-[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] || { echo "FAIL: codex manifest for the amicus layout=$manifest"; FAIL=1; }
+manifest_want='[".agents/skills/zebra/SKILL.md","AGENTS.md"]'
+[ "$manifest" = "$manifest_want" ] || { echo "FAIL: codex manifest for the amicus layout=$manifest"; FAIL=1; }
 
 # Codex policy that is itself a symlink (a skills directory and AGENTS.md) is restored from its base target.
 fixture="$S/codex-links"
@@ -286,9 +288,86 @@ grep -q 'HEAD INSTRUCTION' "$fixture/shared/skills/zebra/SKILL.md" || { echo "FA
 want="$(jq -nc '["docs/agents.md","shared/skills/evil/SKILL.md","shared/skills/zebra/SKILL.md"] | sort')"
 [ "$(jq -c 'sort' <<<"$out")" = "$want" ] || { echo "FAIL: codex policy_changes under link targets=$out"; FAIL=1; }
 manifest="$(context_paths_json "$fixture" "$base")"
-manifest_want="$(jq -nc '[".agents/skills/zebra/SKILL.md","AGENTS.md"] | sort')"
-[ "$(jq -c 'sort' <<<"$manifest")" = "$manifest_want" ] || { echo "FAIL: codex manifest through policy symlinks=$manifest"; FAIL=1; }
+manifest_want='[".agents/skills/zebra/SKILL.md","AGENTS.md"]'
+[ "$manifest" = "$manifest_want" ] || { echo "FAIL: codex manifest through policy symlinks=$manifest"; FAIL=1; }
 load_adapter claude
+
+# RC8: one manifest entry per base source. A file link folds into its restored target; two directory links to
+# one target keep the byte-order-first destination; equal bytes at two source paths stay two entries.
+fixture="$S/dedup"
+mkdir -p "$fixture/shared/skills/a" "$fixture/.claude" "$fixture/sub"
+git -C "$fixture" init -q -b main
+git -C "$fixture" config user.email t@example.com
+git -C "$fixture" config user.name t
+printf -- '---\nname: a\ndescription: base skill\n---\nbase body\n' > "$fixture/shared/skills/a/SKILL.md"
+printf '%s\n' 'same bytes' > "$fixture/AGENTS.md"
+printf '%s\n' 'same bytes' > "$fixture/sub/AGENTS.md"
+ln -s AGENTS.md "$fixture/CLAUDE.md"
+ln -s ../shared/skills "$fixture/.claude/skills"
+ln -s ../shared/skills "$fixture/.claude/agents"
+git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm base
+base="$(git -C "$fixture" rev-parse HEAD)"
+# Known positive: the equal-bytes pair shares one blob, so a blob-keyed dedup would drop one of them.
+[ "$(git -C "$fixture" rev-parse "$base:AGENTS.md")" = "$(git -C "$fixture" rev-parse "$base:sub/AGENTS.md")" ] \
+  || { echo "FAIL: known positive — AGENTS.md and sub/AGENTS.md do not share a blob"; FAIL=1; }
+# Without dedup the selector lists each source under every name.
+selected="$(adapter_context_paths "$fixture" "$base" | tr '\0' '\n' | LC_ALL=C sort | paste -sd, -)"
+[ "$selected" = ".claude/agents/a/SKILL.md,.claude/skills/a/SKILL.md,AGENTS.md,CLAUDE.md,sub/AGENTS.md" ] \
+  || { echo "FAIL: known positive — selector no longer lists aliases: $selected"; FAIL=1; }
+manifest="$(context_paths_json "$fixture" "$base")"
+manifest_want='[".claude/agents/a/SKILL.md","AGENTS.md","sub/AGENTS.md"]'
+[ "$manifest" = "$manifest_want" ] || { echo "FAIL: deduplicated manifest=$manifest"; FAIL=1; }
+
+# A selected path under ADAPTER_ALWAYS_REMOVE is removed after restoration, so it is never listed.
+load_adapter codex
+fixture="$S/always-remove"
+mkdir -p "$fixture/.codex"
+git -C "$fixture" init -q -b main
+git -C "$fixture" config user.email t@example.com
+git -C "$fixture" config user.name t
+printf '%s\n' 'root' > "$fixture/AGENTS.md"
+printf '%s\n' 'removed' > "$fixture/.codex/AGENTS.md"
+git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm base
+base="$(git -C "$fixture" rev-parse HEAD)"
+adapter_context_paths "$fixture" "$base" | tr '\0' '\n' | grep -qx '.codex/AGENTS.md' \
+  || { echo "FAIL: known positive — codex selector does not select .codex/AGENTS.md"; FAIL=1; }
+manifest="$(context_paths_json "$fixture" "$base")"
+[ "$manifest" = '["AGENTS.md"]' ] || { echo "FAIL: manifest lists a path ADAPTER_ALWAYS_REMOVE deletes: $manifest"; FAIL=1; }
+load_adapter claude
+
+# RC11: a policy path that is not valid UTF-8 fails rather than being renamed by JSON encoding.
+# Built with plumbing: the filesystem may refuse the name, but a base tree can carry it.
+fixture="$S/non-utf8"
+mkdir -p "$fixture"; git -C "$fixture" init -q -b main
+blob="$(printf '%s\n' 'policy' | git -C "$fixture" hash-object -w --stdin)"
+bad=$'bad\377/AGENTS.md'
+printf '100644 blob %s\t%s\0' "$blob" "$bad" "$blob" AGENTS.md \
+  | GIT_INDEX_FILE="$S/non-utf8.index" git -C "$fixture" update-index -z --add --index-info
+tree="$(GIT_INDEX_FILE="$S/non-utf8.index" git -C "$fixture" write-tree)"
+[ "$(git -C "$fixture" ls-tree -r -z --name-only "$tree" | LC_ALL=C tr '\0' '\n' | LC_ALL=C grep -c AGENTS.md)" = 2 ] \
+  || { echo "FAIL: known positive — non-UTF-8 fixture tree does not hold both policy files"; FAIL=1; }
+# Classification is byte-wise: a non-UTF-8 policy path is still policy, so isolation removes and restores it.
+policy_paths "$fixture" "$tree" | LC_ALL=C tr '\0' '\n' | LC_ALL=C grep -qxF "$bad" \
+  || { echo "FAIL: a non-UTF-8 AGENTS.md is not classified as policy"; FAIL=1; }
+rc=0; err="$(context_paths_json "$fixture" "$tree" 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 1 ] || { echo "FAIL: non-UTF-8 policy path exit $rc"; FAIL=1; }
+grep -qF 'policy path is not valid UTF-8' <<<"$err" || { echo "FAIL: non-UTF-8 diagnostic missing: $err"; FAIL=1; }
+# Known positive for the instrument: jq alone folds two distinct invalid names into one string.
+[ "$(printf 'a\377\0a\376\0' | jq -Rs -c 'split("\u0000") | map(select(length > 0)) | unique | length')" = 1 ] \
+  || { echo "FAIL: known positive — jq no longer folds invalid UTF-8"; FAIL=1; }
+rc=0; err="$(printf 'ok\0a\377\0' | nul_paths_json 2>&1 >/dev/null)" || rc=$?
+if [ "$rc" != 1 ] || ! grep -qF 'policy path is not valid UTF-8' <<<"$err"; then
+  echo "FAIL: nul_paths_json accepted a non-UTF-8 path (exit $rc): $err"; FAIL=1
+fi
+# macOS iconv accepts these, jq does not: a code point above U+10FFFF and a UTF-16 surrogate.
+for seq in '\364\220\200\200' '\355\240\200'; do
+  rc=0; err="$(printf 'ok\0x%by\0' "$seq" | nul_paths_json 2>&1 >/dev/null)" || rc=$?
+  if [ "$rc" != 1 ] || ! grep -qF 'policy path is not valid UTF-8' <<<"$err"; then
+    echo "FAIL: nul_paths_json accepted invalid UTF-8 $seq (exit $rc): $err"; FAIL=1
+  fi
+done
+[ "$(printf 'a\0tab\tb\0new\nc\0\303\251\0' | nul_paths_json)" = '["a","tab\tb","new\nc","é"]' ] \
+  || { echo "FAIL: nul_paths_json changed valid paths"; FAIL=1; }
 
 # Git must replace a head-side symlinked ancestor without writing through it.
 fixture="$S/ancestor"; outside="$S/outside"

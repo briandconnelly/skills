@@ -5,7 +5,7 @@ set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
 . "$HERE/lib.sh"
-need_cmd jq
+need_cmd jq; need_cmd cmp
 
 [ "$#" -eq 4 ] || die 2 "usage: isolate-policy.sh RUNNER DIR BASE_SHA HEAD_SHA"
 RUNNER="$1"; DIR="$2"; BASE="$3"; HEAD="$4"
@@ -26,7 +26,7 @@ while IFS= read -r -d '' _link && IFS= read -r -d '' target; do LINK_TARGETS+=("
 MERGE_BASE="$(g merge-base "$BASE" "$HEAD")" || die 1 "no merge base for $BASE and $HEAD"
 # A path under a base policy symlink's target is policy too: the reviewer reads its base copy at the link.
 is_policy_change() {
-  local t
+  local t LC_ALL=C
   adapter_is_policy_path "$1" && return 0
   if [ "${#LINK_TARGETS[@]}" -gt 0 ]; then
     for t in "${LINK_TARGETS[@]}"; do case "$1" in "$t"|"$t"/*) return 0;; esac; done
@@ -36,7 +36,7 @@ is_policy_change() {
 # --no-renames: a rename reports only its destination, which would hide a policy file renamed out of policy.
 changes="$(
   while IFS= read -r -d '' p; do if is_policy_change "$p"; then printf '%s\0' "$p"; fi; done < <(g diff -z --name-only --no-renames "$MERGE_BASE" "$HEAD") \
-    | jq -Rs -c 'split("\u0000") | map(select(length > 0))'
+    | nul_paths_json
 )"
 
 while IFS= read -r -d '' p; do rm -f "${DIR:?}/$p"; done < <(policy_paths "$DIR" "$HEAD")

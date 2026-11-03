@@ -18,7 +18,15 @@ printf '%s\n' base > "$WORK/file.txt"
 printf '%s\n' 'Review fixture policy.' > "$WORK/AGENTS.md"
 # The default branch selects a filter by name; the clone must not run a caller-configured driver.
 printf '%s\n' '* filter=evil' > "$WORK/.gitattributes"
-git -C "$WORK" add file.txt AGENTS.md .gitattributes
+# RC9 counts base sources, not names: three distinct policy files reached by six names.
+mkdir -p "$WORK/sub" "$WORK/skills/a" "$WORK/.claude"
+printf '%s\n' 'Nested fixture policy.' > "$WORK/sub/AGENTS.md"
+printf -- '---\nname: a\ndescription: fixture skill\n---\nbody\n' > "$WORK/skills/a/SKILL.md"
+ln -s AGENTS.md "$WORK/CLAUDE.md"
+ln -s AGENTS.md "$WORK/sub/CLAUDE.md"
+ln -s ../skills "$WORK/.claude/skills"
+ln -s ../skills "$WORK/.claude/agents"
+git -C "$WORK" add file.txt AGENTS.md .gitattributes sub skills CLAUDE.md .claude
 git -C "$WORK" commit -qm base
 MERGE_BASE_SHA="$(git -C "$WORK" rev-parse HEAD)"
 git -C "$WORK" checkout -qb feature
@@ -56,6 +64,7 @@ EOF
 cat > "$FAKEBIN/claude" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = --version ]; then printf '%s\n' '2.1.251 (Claude Code)'; exit 0; fi
+[ -z "${FAKE_CLAUDE_LOG:-}" ] || printf '%s\n' review >> "$FAKE_CLAUDE_LOG"
 result='## Summary
 Lenses checked: correctness, silent-failure, tests, comments.
 Fixture review completed.
@@ -139,6 +148,22 @@ err="$(REVIEW_PR_MAX_POLICY_FILES=0 REVIEW_PR_SCRATCH="$S/capped/" "$SRC/review-
 grep -qF 'exceeding REVIEW_PR_MAX_POLICY_FILES=0' <<<"$err" \
   || { echo "FAIL: policy manifest cap diagnostic missing: $err"; FAIL=1; }
 [ -z "$(find "$S/capped" -name .review-pr -print -quit)" ] || { echo "FAIL: policy cap leaked a checkout"; FAIL=1; }
+
+# The bound applies to distinct base sources: six names for three files pass at 3 and fail at 2, before any review.
+out="$(FAKE_CLAUDE_LOG="$S/claude-calls-at-bound" REVIEW_PR_MAX_POLICY_FILES=3 REVIEW_PR_KEEP=1 REVIEW_PR_SCRATCH="$S/at-bound/" "$SRC/review-pr.sh" owner/repo 12)" \
+  || { echo "FAIL: three distinct policy files exceeded REVIEW_PR_MAX_POLICY_FILES=3"; FAIL=1; }
+# Known positive for the no-child check below: a review that runs is logged.
+[ -s "$S/claude-calls-at-bound" ] || { echo "FAIL: known positive — the fake child did not log its run"; FAIL=1; }
+manifest="$(cat "$(jq -r .dir <<<"${out:-null}")/policy-manifest.json" 2>/dev/null || true)"
+[ "$manifest" = '[".claude/agents/a/SKILL.md","AGENTS.md","sub/AGENTS.md"]' ] \
+  || { echo "FAIL: deduplicated checkout manifest=$manifest"; FAIL=1; }
+rc=0
+err="$(FAKE_CLAUDE_LOG="$S/claude-calls" REVIEW_PR_MAX_POLICY_FILES=2 REVIEW_PR_SCRATCH="$S/below-bound/" "$SRC/review-pr.sh" owner/repo 12 2>&1 >/dev/null)" || rc=$?
+[ "$rc" = 1 ] || { echo "FAIL: three distinct policy files under REVIEW_PR_MAX_POLICY_FILES=2 exit $rc"; FAIL=1; }
+grep -qF 'base policy manifest has 3 files, exceeding REVIEW_PR_MAX_POLICY_FILES=2' <<<"$err" \
+  || { echo "FAIL: deduplicated bound diagnostic missing: $err"; FAIL=1; }
+[ ! -s "$S/claude-calls" ] || { echo "FAIL: the child ran although the manifest exceeded the bound"; FAIL=1; }
+[ -z "$(find "$S/below-bound" -name .review-pr -print -quit)" ] || { echo "FAIL: deduplicated bound leaked a checkout"; FAIL=1; }
 
 out="$(REVIEW_PR_KEEP=1 REVIEW_PR_SCRATCH="$S/kept/" "$SRC/review-pr.sh" owner/repo 12)"
 dir="$(jq -r .dir <<<"$out")"

@@ -15,7 +15,7 @@ load_adapter "$RUNNER"
 MAX_POLICY_FILES="${REVIEW_PR_MAX_POLICY_FILES:-40}"
 [[ "$MAX_POLICY_FILES" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_POLICY_FILES must be a non-negative integer, got '$MAX_POLICY_FILES'"
 
-for c in git jq gh; do need_cmd "$c"; done
+for c in git jq gh cmp; do need_cmd "$c"; done
 
 # Only github.com is supported: qualify every gh call with the host so GH_HOST cannot redirect it.
 REPO="github.com/$SLUG"
