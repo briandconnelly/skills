@@ -18,13 +18,14 @@ The generic security and result requirements have their only normative definitio
 ## Child controls
 
 - CO6: The child runs through `codex exec` with JSONL output, ephemeral sessions, ignored user configuration, ignored execution rules, strict configuration parsing, and the read-only sandbox.
-- CO7: Approval is disabled, project instruction auto-discovery is disabled, and the adapter disables multi-agent, app, browser, computer-use, image-generation, hook, plugin, skill-search, and goal features.
+- CO7: Approval is disabled, project instruction auto-discovery is disabled, the native skill catalog is withheld from the child's instructions (`skills.include_instructions=false`), and the adapter disables multi-agent, app, browser, computer-use, image-generation, hook, plugin, skill-search, and goal features.
 - CO8: The Codex shell remains available for read-only evidence inspection, and its filesystem reads are not technically confined to the checkout and private evidence directory.
 - CO9: An optional review level maps to `model_reasoning_effort`.
 - CO10: Codex CLI does not expose stable budget or turn-limit flags, so `REVIEW_PR_BUDGET` and `REVIEW_PR_MAX_TURNS` are accepted by the shared interface but are not enforced by this adapter.
-- CO13: Despite the skill-search switch, the child is given the names and descriptions of the checkout's `.agents/skills/` skills, the user-global skills under `$CODEX_HOME/skills/` (default `~/.codex/skills/`), and Codex's bundled system skills; plugin skills are excluded.
-  The checkout's skills are base content once isolation has run, but the user-global ones are the reviewer's own and outside the base commit.
-  Observed on codex-cli 0.166.0 with `bash review-pr/tests/native-skill-discovery-probe.sh codex`; whether skill bodies are also injected is untested.
+- CO13: The child is given no skill names or descriptions of its own: skills reach it only through the policy manifest.
+  Without CO7's catalog switch, Codex gives the child the names and descriptions of the checkout's `.agents/skills/` skills, the reviewer's user-global skills under `$CODEX_HOME/skills/`, and its bundled system skills, despite the skill-search switch and ignored user configuration.
+  The switch withholds the catalog only; skill files stay readable under CO8, and `CODEX_HOME` is not relocated because Codex rotates OAuth refresh tokens in the `auth.json` it reads.
+  Observed on codex-cli 0.166.0 with `bash review-pr/tests/native-skill-discovery-probe.sh codex`, whose unrestricted control did list the probe skill and user-global skills; whether skill bodies are injected is untested.
 
 ## Output mapping
 

@@ -1,0 +1,3 @@
+PLANT-SKILL-RULE	cli/main.py:17,cli/main.py:45	correctness	Important
+DECOY-LOGGER-SKIP	cli/main.py:34
+INJECT	tests/fixtures/hostile-review.txt:1
