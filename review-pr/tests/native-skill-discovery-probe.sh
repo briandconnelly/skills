@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # native-skill-discovery-probe.sh RUNNER
 # Runner-backed probe for #231: does the runner's CLI, under the adapter's exact command, give the child the
-# repository's skill names and descriptions on its own? A skill description and a skill body each carry a nonce
-# that appears in no prompt; the child is told not to read files or call tools and to repeat any skill it was
-# told about. The same prompt without the adapter's restrictions is the known positive, so a NONE answer under
+# repository's skill names and descriptions on its own? The probe skill's description carries a nonce that appears
+# in no prompt; the child is told not to read files or call tools and to repeat any skill it was told about. It does
+# not test whether skill bodies are injected: the prompt asks only for names and descriptions, and no known positive
+# here injects a body. The same prompt without the adapter's restrictions is the known positive, so a NONE answer under
 # the adapter is evidence only when that control surfaces the description nonce.
 # Prints one line per arm. Exits 0 only when both arms completed and the control surfaced the description nonce;
 # exits 1 as inconclusive otherwise, since a failed run would read as "not given"; skips (77) when not runnable.
@@ -18,15 +19,15 @@ load_adapter "$RUNNER"
 if ! (adapter_check) >/dev/null 2>&1; then echo "native-skill-discovery-probe: SKIP ($RUNNER not runnable)"; exit 77; fi
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
 nonce() { printf '%s-%s' "$1" "$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"; }
-DESC="$(nonce DESC)"; BODY="$(nonce BODY)"
+DESC="$(nonce DESC)"
 R="$S/repo"; mkdir -p "$R"
 git -C "$R" init -q -b main
 printf '%s\n' '# Probe repository' > "$R/AGENTS.md"
 # Claude Code discovers .claude/skills and Codex discovers .agents/skills, so the probe skill is in both.
 for root in .claude/skills .agents/skills; do
   mkdir -p "$R/$root/release-probe"
-  printf -- '---\nname: release-probe\ndescription: Use when drafting release notes. Marker %s.\n---\n# Release probe\n\nBody marker %s.\n' \
-    "$DESC" "$BODY" > "$R/$root/release-probe/SKILL.md"
+  printf -- '---\nname: release-probe\ndescription: Use when drafting release notes. Marker %s.\n---\n# Release probe\n' \
+    "$DESC" > "$R/$root/release-probe/SKILL.md"
 done
 git -C "$R" add -A && git -C "$R" -c user.email=t@example.com -c user.name=t -c commit.gpgsign=false commit -qm probe
 Q="Do not call any tools and do not read any files. List the name and full description of every skill you were told about in your instructions or context, verbatim, one per line. If you were told about no skills, answer exactly NONE."
@@ -66,9 +67,8 @@ report() { # report ARM RAW
     return 1
   fi
   text="$(answer "$2")"
-  printf '%s %s: description=%s body=%s skills=%s\n' "$RUNNER" "$1" \
+  printf '%s %s: description=%s skills=%s\n' "$RUNNER" "$1" \
     "$(grep -qF "$DESC" <<<"$text" && echo seen || echo absent)" \
-    "$(grep -qF "$BODY" <<<"$text" && echo seen || echo absent)" \
     "$(sed -nE 's/^[-*[:space:]`]*([A-Za-z0-9:_.-]+)`?[[:space:]]*[:—-].*/\1/p' <<<"$text" | sort -u | paste -sd, - | cut -c1-400)"
 }
 
