@@ -70,6 +70,8 @@ for runner in codex claude; do
   done
   # A control that never surfaces the skill cannot back a negative adapter result.
   rejects "$runner" none none
+  grep -q 'the control did not surface the probe skill' "$S/$runner-none-none.out" \
+    || { echo "FAIL: $runner none/none was not rejected for the missing control nonce: $(cat "$S/$runner-none-none.out")"; FAIL=1; }
 done
 [ "$FAIL" = 0 ] && echo "native-skill-discovery-probe-test: OK"
 exit "$FAIL"
