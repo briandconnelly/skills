@@ -13,7 +13,7 @@ The generic security and result requirements have their only normative definitio
 
 - CO3: `AGENTS.md`, `AGENTS.override.md`, `.agents/`, and `.codex/` are reviewer-policy paths restored from the base commit.
 - CO4: `.codex/` is removed after restoration because it can contain executable runner configuration and rules.
-- CO5: For each directory, `AGENTS.override.md` takes precedence over `AGENTS.md`, and the selected instruction file plus Codex skill instructions are passive context listed in the policy manifest.
+- CO5: For each directory, `AGENTS.override.md` takes precedence over `AGENTS.md`, and the selected instruction file plus Codex skill instructions are the adapter's passive-context selection, listed in the policy manifest per RC8.
 
 ## Child controls
 
