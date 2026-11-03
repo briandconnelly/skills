@@ -53,6 +53,7 @@ adapter_build_command() {
     --sandbox read-only --color never --strict-config
     -c 'approval_policy="never"'
     -c 'project_doc_max_bytes=0'
+    -c 'skills.include_instructions=false'
     --disable multi_agent
     --disable apps
     --disable browser_use

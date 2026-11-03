@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # native-skill-discovery-probe.sh RUNNER
-# Runner-backed probe for #231: does the runner's CLI, under the adapter's exact command, give the child the
-# repository's skill names and descriptions on its own? The probe skill's description carries a nonce that appears
-# in no prompt; the child is told not to read files or call tools and to repeat any skill it was told about. It does
-# not test whether skill bodies are injected: the prompt asks only for names and descriptions, and no known positive
-# here injects a body. The same prompt without the adapter's restrictions is the known positive, so a NONE answer under
-# the adapter is evidence only when that control surfaces the description nonce.
-# Prints one line per arm. Exits 0 only when both arms completed and the control surfaced the description nonce;
-# exits 1 as inconclusive otherwise, since a failed run would read as "not given"; skips (77) when not runnable.
+# Runner-backed probe for #231 and #234: does the runner's CLI, under the adapter's exact command, give the child any
+# skill names and descriptions on its own (the repository's, the reviewer's user-global ones, or bundled ones)? The
+# probe skill's description carries a nonce that appears in no prompt; the child is told not to read files or call
+# tools and to repeat any skill it was told about. It does not test whether skill bodies are injected: the prompt asks
+# only for names and descriptions, and no known positive here injects a body. The same prompt without the adapter's
+# restrictions is the known positive, so a NONE answer under the adapter is evidence only when that control surfaces
+# the description nonce. The control proves only that the repository's skill reaches an unrestricted child; a
+# user-global skill is covered because the adapter arm must list no skill at all, not because one is planted.
+# Prints one line per arm. Exits 0 only when both arms completed, the control surfaced the description nonce, and the
+# adapter arm answered exactly NONE; exits 1 as LEAK when the adapter arm listed anything, and as inconclusive when an
+# arm failed, since a failed run would read as "not given"; skips (77) when not runnable.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
 RUNNER="${1:-}"
@@ -90,6 +93,11 @@ echo "$rc" > "$S/control.raw.status"
 report control "$S/control.raw" || FAIL=1
 if [ "$FAIL" = 0 ] && ! answer "$S/control.raw" | grep -qF "$DESC"; then
   echo "$RUNNER: INCONCLUSIVE, the control did not surface the probe skill, so a negative adapter result is no evidence"
+  FAIL=1
+fi
+# Command substitution drops trailing newlines; any other whitespace in or around the answer is not NONE.
+if [ "$FAIL" = 0 ] && [ "$(answer "$S/adapter.raw")" != NONE ]; then
+  echo "$RUNNER: LEAK, the adapter arm was told about skills on its own rather than only through the policy manifest"
   FAIL=1
 fi
 exit "$FAIL"

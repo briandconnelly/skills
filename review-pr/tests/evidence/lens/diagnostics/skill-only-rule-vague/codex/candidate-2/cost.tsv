@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/diagnostics/skill-only-rule-vague/codex/candidate-2	1	117600	107904	1259	NA	1	NA	11	2
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/diagnostics/skill-only-rule-vague/codex/candidate-2	2	117730	87040	1236	NA	1	NA	12	3
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/diagnostics/skill-only-rule-vague/codex/candidate-2	3	101632	81024	1322	NA	1	NA	12	3

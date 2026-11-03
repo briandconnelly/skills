@@ -44,7 +44,7 @@ args="$(printf '<%s>\n' "${ADAPTER_COMMAND[@]}")"
 for arg in \
   '<codex>' '<exec>' '<--json>' '<--ephemeral>' '<--ignore-user-config>' '<--ignore-rules>' \
   '<--sandbox>' '<read-only>' '<--strict-config>' '<approval_policy="never">' \
-  '<project_doc_max_bytes=0>' '<model_reasoning_effort="high">' '<PROMPT-SENTINEL>';
+  '<project_doc_max_bytes=0>' '<skills.include_instructions=false>' '<model_reasoning_effort="high">' '<PROMPT-SENTINEL>';
 do
   grep -qF "$arg" <<<"$args" || { echo "FAIL: Codex command lacks $arg"; FAIL=1; }
 done
