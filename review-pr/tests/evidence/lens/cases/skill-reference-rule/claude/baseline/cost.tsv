@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/baseline	1	85254	61016	5940	0.3249	31	61109	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/baseline	2	86559	66869	5733	0.2855	33	62234	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/baseline	3	60626	44519	5064	0.2390	31	50118	NA	NA

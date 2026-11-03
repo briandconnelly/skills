@@ -99,11 +99,13 @@ When a rule here gets in the way, raise it with the owning team rather than work
 EOF
 }
 
-# build_skill_only_rule DIR MANIFEST SKILLS FLAGS_DESCRIPTION [control] -> a base tree with SKILLS skills in all:
+# build_skill_only_rule DIR MANIFEST SKILLS FLAGS_DESCRIPTION [control|reference] -> a base tree with SKILLS skills in all:
 # cli-flags, logging, and SKILLS-2 topic distractors. The plant's rule, an environment-variable fallback for every
 # new flag, cannot be inferred from the code or docs: the older flags are exempt and have none. With `control`, the
 # cli-flags body states an unrelated rule the diff meets, so a run that still "recalls" the plant found it some
-# other way than reading that body.
+# other way than reading that body. With `reference`, the body only points at `reference.md` beside it, which holds
+# the rule; no adapter lists that file in the manifest, so recall depends on reading it, whether the reviewer follows
+# the pointer or finds the file by listing the directory.
 build_skill_only_rule() {
   local R="$1" M="$2" count="$3" flags_desc="$4" mode="${5:-rule}" N=14 skills line name desc subject subdir i=0 rule
   mkdir -p "$R"
@@ -116,6 +118,9 @@ build_skill_only_rule() {
   # shellcheck disable=SC2016 # Literal backticks: Markdown, not command substitution.
   rule='1. Every command-line flag added under `cli/` from now on must also take its default from an `ARCHIVE_<NAME>` environment variable (for `--dry-run`, `ARCHIVE_DRY_RUN`), because CI sets options through the environment. Flags that predate this rule are exempt and are being migrated separately.'
   [ "$mode" != control ] || rule='1. Flag help text starts with a lowercase verb.'
+  local reference_rule="$rule"
+  # shellcheck disable=SC2016 # Literal backticks: Markdown, not command substitution.
+  [ "$mode" != reference ] || rule='1. Before adding a flag under `cli/`, read `reference.md` beside this file: it holds the rules every new flag must follow.'
   mkdir -p "$skills/cli-flags"
   cat > "$skills/cli-flags/SKILL.md" <<EOF
 ---
@@ -132,6 +137,15 @@ $rule
 2. Flag names are kebab-case.
 3. On/off switches use \`action="store_true"\` and never take a value.
 EOF
+  if [ "$mode" = reference ]; then
+    cat > "$skills/cli-flags/reference.md" <<EOF
+# CLI flag reference
+
+These rules apply to every flag added under \`cli/\`.
+
+$reference_rule
+EOF
+  fi
   mkdir -p "$skills/logging"
   cat > "$skills/logging/SKILL.md" <<'EOF'
 ---
