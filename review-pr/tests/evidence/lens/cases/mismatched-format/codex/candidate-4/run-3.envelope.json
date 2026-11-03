@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe revision mismatch should be fixed so running deployments display the same identifier as history and completion output.\n\n## Changes\nAdds a running-deployment status formatter with an attempt label and tests for the status framing and attempt text.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Match the revision length used by history — For revision `0123456789abcdef0123456789abcdef01234567`, `status` displays `0123456` instead of `0123456789ab`. Its docstring promises “the same identifier as history,” but the new slice takes seven characters while `history` takes twelve. — Users viewing full revisions receive inconsistent deployment identifiers across running, history, and completion output. — Fix: Use `revision[:12]` and extend `test_running_status_contains_attempt` to check the complete status string.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.frBo01UhsA/review-pr.R8QTul",
+  "head_sha": "a319e3a0bcdeb4a795a855fe2531831b5203090a",
+  "base_sha": "cabd98f1fda0137d86a4a00c1b47f6cca26dbca7",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "10defecc931063b38091d21b7859b4f53e02476b"
+}

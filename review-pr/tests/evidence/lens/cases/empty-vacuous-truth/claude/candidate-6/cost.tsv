@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/claude/candidate-6	1	30889	23667	1542	0.0933	6	23564	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/claude/candidate-6	2	31403	28098	2170	0.0754	6	23208	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/claude/candidate-6	3	31169	28098	1655	0.0633	6	18534	NA	NA

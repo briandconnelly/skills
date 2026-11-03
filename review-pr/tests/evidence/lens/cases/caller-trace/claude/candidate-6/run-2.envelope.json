@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `adopt` records make the command print every adopted setting twice, which contradicts the pull request's stated goal of keeping progress output unchanged during adoption. This should be fixed before merge.\n\n## Changes\n`plan()` now returns an `adopt` record for each setting that already exists, and adds a final `audit` record that reports how many incoming settings were processed. The pull request also adds two `run()` tests for the audit record and a one-line `app/review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Stop emitting adopted settings twice from `run()` — `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)` now sends `[\"Adopted theme\", \"Adopted theme\"]`. `plan()` already calls `emit` at app/planner.py:8, and the loop in app/cli.py:7 now emits the new `adopt` message again because it skips only `audit`. — Every adoption run shows duplicated progress lines; no test catches this because none calls `run()` with an existing setting. — Fix: Either skip `adopt` in app/cli.py:7 or drop the direct `emit` at app/planner.py:8, then add a `run()` case next to `test_adoption_progress`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23312,
+    "cost_usd": 0.08340900000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dzIyAPaVJU/review-pr.bKWJ1J",
+  "head_sha": "d13efe676b210ce1f37ac8d43d5dd7b5f0eb838a",
+  "base_sha": "bcdd130f9a95d214db998dbc6ca0a5d74448e7ea",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d540cbd0f9dbbeeb99e1d8de3e94050667cbd6ae"
+}

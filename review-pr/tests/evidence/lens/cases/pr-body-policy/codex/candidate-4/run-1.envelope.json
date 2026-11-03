@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nAdd the required verification section to the pull-request description; its absence violates repository policy.\n\n## Changes\nAdds an ASCII slug helper that lowercases titles, replaces separator runs with hyphens, and trims surrounding hyphens. Parameterized tests cover capitalization, repeated separators, and empty results.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Add the required Testing section — The description omits verification details, violating AGENTS.md:4: “Every pull-request description has a `## Testing` section that says how the change was verified.” — Reviewers lack the verification account required by the repository’s contribution policy.\n\n## Suggestions\n- app/slug.py:7 — tests — Cover numeric titles in the slug tests — For `\"123\"`, no test checks that digits survive slugification. The regex explicitly accepts digits, but neither the added examples nor the existing import test exercises that path. — A regression that removes digits could pass the current suite while producing empty slugs for numeric page titles.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cSCDMhlbct/review-pr.RcA2yj",
+  "head_sha": "5ea1835e225a0bbbea7314f1cd024da05f99f165",
+  "base_sha": "c56d54f98712d0b461e723ad3303baa9a9ad1d56",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "35429e3a6ca9067e7e05915de88fc55dd460e871"
+}

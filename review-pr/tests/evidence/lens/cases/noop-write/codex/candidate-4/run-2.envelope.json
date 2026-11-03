@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe adoption path should preserve unchanged settings instead of reporting and writing them as changes.\n\n## Changes\nThe pull request adds an `adopt` flag to the settings merger and tests adoption and replacement of different values.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — correctness — Skip unchanged values during adoption — With `{\"theme\":\"dark\"}` already stored, your `merge(path, {\"theme\":\"dark\"}, adopt=True)` returns `[\"theme\"]` and rewrites the file. The unconditional append bypasses the equality check used by replacement, violating the module’s untouched-file preservation contract. — Users lose existing formatting and incur unnecessary configuration writes when adopting settings that already match. — Fix: Apply the equality check during adoption and extend `test_unchanged_replacement_preserves_bytes` to cover adoption.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.l4zlzKcMBx/review-pr.943OWz",
+  "head_sha": "9f8dc1bc90f213ac51ea6dc05e9756c7c44bc892",
+  "base_sha": "9885008696277c81f853388818d0316ea87b9338",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e6c889b84d566167378f68a1c15a8f91b58b7e4e"
+}

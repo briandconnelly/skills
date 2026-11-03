@@ -9,14 +9,14 @@ SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/s
 . "$SRC/lib.sh"
 load_adapter claude
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
-Q="Read ../policy-manifest.json and then read every repository-relative file it lists. Answer briefly with no further tool calls: (1) quote every project sentinel code in those files; (2) list listed skill names containing 'zebra', or 'none'; (3) list listed skill names equal to 'code-review', or 'none'."
+Q="Read ../policy-manifest.json, then read every repository-relative file listed under policy_files and the file at every path listed under skills. Answer briefly with no further tool calls: (1) quote every project sentinel code in those files; (2) list listed skill names containing 'zebra', or 'none'; (3) list listed skill names equal to 'code-review', or 'none'."
 
 build() { # build DIR -> prints "BASE HEAD"
   local R="$1"
   git -C "$R" init -q -b main; git -C "$R" config user.email t@example.com; git -C "$R" config user.name t
   mkdir -p "$R/.claude/skills/zebra-review"
   echo '# Project sentinel: PLATYPUS-7741' > "$R/CLAUDE.md"
-  printf -- '---\nname: zebra-review\ndescription: Project review skill sentinel ZEBRA-3310\n---\nbody\n' > "$R/.claude/skills/zebra-review/SKILL.md"
+  printf -- '---\nname: zebra-review\ndescription: Project review skill sentinel ZEBRA-3310\n---\nBody sentinel: SKILLBODY-5170\n' > "$R/.claude/skills/zebra-review/SKILL.md"
   echo 'base' > "$R/src.txt"
   mkdir -p "$R/sub"; echo 'plain' > "$R/sub/file.txt"
   echo '# Nested sentinel: BASENEST-2211' > "$R/sub/CLAUDE.md"
@@ -29,6 +29,8 @@ build() { # build DIR -> prints "BASE HEAD"
   git -C "$R" add -A && git -C "$R" commit -qm base
   local base; base="$(git -C "$R" rev-parse HEAD)"
   git -C "$R" checkout -q -b pr-head
+  # The head edits the indexed skill's body; only the base body may reach the child.
+  printf -- '---\nname: zebra-review\ndescription: Project review skill sentinel ZEBRA-3310\n---\nBody sentinel: HEADBODY-0000\n' > "$R/.claude/skills/zebra-review/SKILL.md"
   cat > "$R/.claude/settings.json" <<EOF
 {"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch $R/HOOK-FIRED"}]}]}}
 EOF
@@ -65,9 +67,9 @@ LOCK="$S/lock"; mkdir -p "$LOCK"; read -r BASE HEAD < <(build "$LOCK")
 if ! changes="$("$SRC/isolate-policy.sh" claude "$LOCK" "$BASE" "$HEAD")"; then
   echo "FAIL: isolate-policy.sh failed for LOCK"; FAIL=1; changes='[]'
 fi
-context_paths_json "$LOCK" "$BASE" > "$S/policy-manifest.json"
+write_policy_manifest "$LOCK" "$BASE" "$S/policy-manifest.json"
 manifest="$(cat "$S/policy-manifest.json")"
-manifest_want='[".claude/skills/zebra-review/SKILL.md","CLAUDE.md","alias/AGENTS.md","sub/CLAUDE.md","twin/AGENTS.md"]'
+manifest_want='{"version":2,"policy_files":["CLAUDE.md","alias/AGENTS.md","sub/CLAUDE.md","twin/AGENTS.md"],"skills":[{"path":".claude/skills/zebra-review/SKILL.md","name":"zebra-review","description":"Project review skill sentinel ZEBRA-3310"}]}'
 [ "$manifest" = "$manifest_want" ] \
   || { echo "FAIL: generated policy manifest is wrong: $manifest"; FAIL=1; }
 if ! ans="$(locked_probe "$LOCK")"; then
@@ -85,8 +87,11 @@ grep -q 'LOCAL-9911' <<<"$ans" && { echo "FAIL: head CLAUDE.local.md sentinel le
 grep -q 'ALIASBASE-4417' <<<"$ans" || { echo "FAIL: base sentinel behind a deduplicated alias not loaded: $ans"; FAIL=1; }
 grep -q 'ALIASHEAD-6620' <<<"$ans" && { echo "FAIL: head alias/AGENTS.md sentinel leaked: $ans"; FAIL=1; }
 grep -q 'zebra-review' <<<"$ans" || { echo "FAIL: base project skill not listed: $ans"; FAIL=1; }
+# The body sentinel is not in the index, so it reaches the child only through a read of the restored skill file.
+grep -q 'SKILLBODY-5170' <<<"$ans" || { echo "FAIL: base skill body not read through the restricted child: $ans"; FAIL=1; }
+grep -q 'HEADBODY-0000' <<<"$ans" && { echo "FAIL: head skill body leaked: $ans"; FAIL=1; }
 [ ! -e "$LOCK/.claude/skills/code-review" ] || { echo "FAIL: shadow skill present on disk"; FAIL=1; }
-for p in .claude/settings.json .claude/skills/code-review/SKILL.md .mcp.json CLAUDE.md CLAUDE.local.md sub/CLAUDE.md alias/AGENTS.md; do
+for p in .claude/settings.json .claude/skills/code-review/SKILL.md .claude/skills/zebra-review/SKILL.md .mcp.json CLAUDE.md CLAUDE.local.md sub/CLAUDE.md alias/AGENTS.md; do
   jq -e --arg p "$p" 'index($p) != null' <<<"$changes" >/dev/null || { echo "FAIL: policy_changes lacks $p: $changes"; FAIL=1; }
 done
 

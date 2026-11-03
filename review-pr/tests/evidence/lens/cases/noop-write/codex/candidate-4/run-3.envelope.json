@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nAdd coverage for adoption of an already matching value: its change-list and file-write behavior remains untested. Tests were read, not run.\n\n## Changes\nThe pull request adds an adoption mode that records existing keys and writes incoming values. It retains replacement behavior and adds tests for adoption and replacement of differing values.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — tests — Cover adoption of an already matching value — When current and incoming values both equal `\"dark\"` and `adopt=True`, no test exercises the matching-value boundary. The adoption branch unconditionally records the key and triggers a file rewrite; the added adoption test uses differing values. — Regressions in change reporting or file preservation for already matching adopted settings would pass the current tests.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.l4zlzKcMBx/review-pr.b50Wkw",
+  "head_sha": "9f8dc1bc90f213ac51ea6dc05e9756c7c44bc892",
+  "base_sha": "9885008696277c81f853388818d0316ea87b9338",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e6c889b84d566167378f68a1c15a8f91b58b7e4e"
+}

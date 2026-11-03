@@ -20,7 +20,7 @@ mkjob() {
   git -C "$job/repo" init -q
   echo '{"number":12}' > "$job/pr.json"
   echo 'diff data' > "$job/pr.diff"
-  echo '[]' > "$job/policy-manifest.json"
+  echo '{"version":2,"policy_files":[],"skills":[]}' > "$job/policy-manifest.json"
   jq -n --arg d "$job" '{dir:$d, runner:"claude", base_sha:"b", head_sha:"h", merge_base_sha:"m", head_repo:"o/r", policy_changes:[".claude/x"],
     pr_state:"OPEN", pr_is_draft:false, pr_merged_at:null, pr_author:"octocat", pr_author_is_bot:false,
     diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
@@ -36,6 +36,8 @@ pwd -P > "$FAKE_CWD"
 if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCHILD"; wait; exit 0; fi
 echo "diag line" >&2
 [ -n "${FAKE_EMPTY:-}" ] && exit 0
+# The state a watchdog kill leaves when it wins the race with the child's output redirection.
+if [ -n "${FAKE_NO_OUTPUT_FILE:-}" ]; then rm -f ../runner-output.tmp; exit 0; fi
 if [ -n "${FAKE_NATIVE:-}" ]; then printf '%s\n' "$FAKE_NATIVE"; exit "${FAKE_EXIT:-0}"; fi
 if [ -n "${FAKE_RESULT:-}" ]; then
   jq -n --arg r "$(printf "$FAKE_RESULT")" '{type:"result",is_error:false,result:$r,total_cost_usd:1.5,duration_ms:60000,permission_denials:[]}'
@@ -124,6 +126,15 @@ elapsed=$(( $(date +%s) - start ))
 [ "$(jq -r .exit <<<"$out")" -gt 128 ] || { echo "FAIL: watchdog exit is not signal-derived"; FAIL=1; }
 gc="$(cat "$FAKE_GRANDCHILD")"
 if kill -0 "$gc" 2>/dev/null; then echo "FAIL: grandchild $gc survived"; FAIL=1; kill "$gc" 2>/dev/null || true; fi
+
+# A child killed before its output file exists still yields an error envelope and cleanup, not a set -e abort.
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+rc=0; out="$(printf '%s' "$J" | FAKE_NO_OUTPUT_FILE=1 "$SRC/run-child.sh" 2>/dev/null)" || rc=$?
+if [ "$rc" != 0 ] || ! jq -e '.review == null and .schema_valid == false and .schema_errors == ["no result"]' >/dev/null 2>&1 <<<"$out"; then
+  echo "FAIL: missing output file gave no missing-result envelope (exit $rc): $out"; FAIL=1
+fi
+[ ! -e "$dir" ] || { echo "FAIL: missing output file leaked the job"; FAIL=1; }
 
 # A watchdog that exits before the parent reaches kill must not suppress cleanup or output under set -e.
 J="$(mkjob)"

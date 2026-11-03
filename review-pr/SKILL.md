@@ -105,7 +105,7 @@ Runner references state whether the selected adapter can enforce the budget and 
 
 `REVIEW_PR_SCRATCH` optionally selects its parent directory and otherwise uses the operating system temporary directory.
 
-`REVIEW_PR_MAX_POLICY_FILES` controls the policy-manifest safety bound described by RC9 in [references/runner-contract.md](references/runner-contract.md).
+`REVIEW_PR_MAX_POLICY_FILES` and `REVIEW_PR_MAX_SKILL_INDEX` control the policy-manifest safety bounds described by RC9 in [references/runner-contract.md](references/runner-contract.md).
 
 ## Scope
 

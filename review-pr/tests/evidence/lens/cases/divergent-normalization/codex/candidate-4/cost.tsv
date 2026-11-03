@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/divergent-normalization/codex/candidate-4	1	81391	69376	971	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/divergent-normalization/codex/candidate-4	2	81882	64384	914	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/divergent-normalization/codex/candidate-4	3	65184	58624	965	NA	1	NA	6	0

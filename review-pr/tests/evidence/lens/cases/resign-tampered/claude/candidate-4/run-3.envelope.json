@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`refresh_fingerprints` overwrites the digest of every tracked file it is given, so a refresh after adding files hides earlier hand edits, which the PR body says verification must detect. Fix this before relying on the refresh command.\n\n## Changes\nAdds `refresh_fingerprints`, which rewrites manifest digests for the given names, and `register_new_files`, which adds digests only for names not already in the manifest. Both are in `app/integrity.py`, with new tests in `tests/test_integrity.py`.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Keep existing digests when refreshing after adding files — If you pass a hand-edited `tracked.txt` to `refresh_fingerprints` along with `new.txt`, it replaces the stored digest with the edited file's digest, and `verify` then returns True. Line 17 assigns `entries[name]` without checking whether the name is already tracked, unlike `register_new_files` at line 24. — Any hand edit made before a post-add refresh is silently accepted, which defeats the stated purpose of the manifest. — Fix: Either skip names already in `entries`, as `register_new_files` does, or keep the overwrite behaviour and state in the PR body and docstring that refresh re-baselines tracked files.\n\n## Suggestions\n- tests/test_integrity.py:12 — tests — Refresh test cannot catch overwritten edited digests — `test_refresh_registers_new_files_and_keeps_unchanged_entries` only refreshes a `tracked.txt` whose content matches its stored digest, so line 17 would pass whether it overwrites existing entries or keeps them. — If the overwrite defect stays or comes back, no test catches it. — Fix: Edit `tracked.txt` before the refresh call, as `test_register_preserves_existing_fingerprints` does, and assert the expected digest and `verify` result.\n\n## Not reviewed\n(none)",
+    "duration_ms": 24324,
+    "cost_usd": 0.0776742,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7D2S5SYOwr/review-pr.w7jhH9",
+  "head_sha": "3a8572989781648ab08a3ec709c14a87f46b86ad",
+  "base_sha": "74bae6d9d646dab7d7896af4e47660c056ba9c7b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "593daa0cdf70f6c4943aee088cc090766c816355"
+}

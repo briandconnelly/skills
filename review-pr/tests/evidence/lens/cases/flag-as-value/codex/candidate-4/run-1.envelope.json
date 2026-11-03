@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe JSON parser should be fixed because it rejects a valid invocation combining default JSON output with JUnit output. Tests were read, not run.\n\n## Changes\nThe pull request adds optional JSON destinations, report writing, and tests for argument parsing and explicit JSON output.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Preserve option flags after a pathless --json — For `[\"--json\", \"--junit\", \"x.xml\"]`, parsing raises `ValueError(\"unknown option: x.xml\")` instead of selecting both destinations. The JSON branch consumes `--junit` as its path because it checks only whether another argument exists. — Users requesting default JSON output before the JUnit option cannot generate either report.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1e7KXbBCOY/review-pr.bGH0vC",
+  "head_sha": "cdc7d6e96a7b29ca74da95c8436827808fa9a9a4",
+  "base_sha": "f47fbd057cd18ee68b80f16c6eae21ba101398a0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "819028f3b8bb3654d646dc63b2335c7030cf285f"
+}

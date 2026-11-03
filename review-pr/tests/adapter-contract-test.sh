@@ -42,6 +42,7 @@ printf '%s\n' \
   'adapter_check() { :; }' \
   'adapter_is_policy_path() { return 1; }' \
   'adapter_context_paths() { return 0; }' \
+  'adapter_is_skill_path() { return 1; }' \
   'adapter_build_command() { ADAPTER_COMMAND=(true); }' \
   'adapter_normalize() { :; }' > "$fake_adapter"
 repo="$fixture/repo"

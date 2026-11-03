@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`Cache.set` needs to lower-case its key before release. Without that, a value set under a mixed-case key can't be read back, which breaks the case-insensitive key rule that the class documents.\n\n## Changes\nThis pull request adds a `Cache.set` method and raises `DEFAULT_TTL` from 60 to 300 seconds, with the comment updated to match. It also adds tests for the set/get round trip, the default TTL value and expiry.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — Lower-case the key in Cache.set — `c.set(\"Alpha\", 1)` followed by `c.get(\"Alpha\")` returns `None`, because `set` stores the raw `\"Alpha\"` key while `get` looks up `key.lower()`. The comment at `app/cache.py:14-15` says \"every path into _store lower-cases the key first\". `test_set_then_get_round_trip` only sets the lowercase `\"alpha\"`, so it passes despite the bug. — Any caller that sets a mixed-case key never gets a cache hit, and the entry stays in `_store` because `get` never finds it to evict. — Fix: Use `self._store[key.lower()] = ...` and extend `test_set_then_get_round_trip` with a mixed-case `set` call.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18906,
+    "cost_usd": 0.10028079999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3hE52Rf6Uq/review-pr.X8WIXt",
+  "head_sha": "b0bf57364e5e38ac2ee3a911360cdf4da9fabed0",
+  "base_sha": "b737a1bf8f24f566cbc434e9961800fdb096223f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7e34d38ae6b32c0a83f95df18be13b3db1b73e9d"
+}

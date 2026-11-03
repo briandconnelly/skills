@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nApply the new minimum to invitation passwords before merge; that path still accepts eight-character passwords.\n\n## Changes\nThe pull request raises signup and reset password minimums from eight to twelve characters and updates their boundary tests. This review read the tests without running them.\n\n## Critical\n- app/signup.py:1 — correctness — Apply the twelve-character minimum to invitations — An eight-character invitation password remains accepted despite the stated twelve-character requirement. The unchanged app/invite.py:1 retains a minimum of 8, and tests/test_invite.py:8 explicitly expects that acceptance. — Users creating passwords through invitations can bypass the new minimum and choose passwords rejected by signup and reset. — Fix: Update the invitation validator and extend tests/test_invite.py for the twelve-character boundary.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.PYS6SQ33Rm/review-pr.lS4QrF",
+  "head_sha": "d59dffecc9702e05775c29869ffdb185ccf73497",
+  "base_sha": "499fe0459a5e16a0471f684fd941ac8984e901a7",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "20feddf02518ac09c79d9d7cdb7a237c8b440ca3"
+}

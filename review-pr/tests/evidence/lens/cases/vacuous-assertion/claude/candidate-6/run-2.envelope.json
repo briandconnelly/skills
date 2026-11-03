@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOnly optional corrections were found in the reviewed scope: `test_rejects_legacy_header` passes for the wrong reason. The header check itself is correct, and `test_rejects_unsupported_header_with_complete_report` exercises it.\n\n## Changes\n`parse_report` now accepts only the exact header `REPORT v1`; before this change it accepted any header starting with `REPORT `. The pull request also adds two tests that check unsupported headers are rejected.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:11 — tests — Make the legacy-header fixture complete and change its header — `rsplit(\"v1\", 1)` swaps the last `v1`, so the fixture becomes `\"REPORT v1\\nversion=v0\"`. The header is still `v1`, and the fixture has no `END` line. `parse_report` therefore returns `None` from the `END` check at `app/report.py:3`, even with the old `startswith` check, which contradicts the comment at line 9 (\"changing the fixture's version to v0\"). — This test cannot catch a regression in the version check, and its comment misdescribes what it covers. — Fix: Use `\"REPORT v0\\nvalue=ok\\nEND\"`, or delete this test because `test_rejects_unsupported_header_with_complete_report` already covers that input.\n\n## Not reviewed\n(none)",
+    "duration_ms": 27844,
+    "cost_usd": 0.0675078,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.jAzrJVrKQl/review-pr.GMj1Cm",
+  "head_sha": "623775e8767cfe8e481ce12111ec45c953a74f65",
+  "base_sha": "8957b048b74ac83e10ba62edef6ecea65e55b0b6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1d2bddb32eba88d1807e993f8c7f66f78fa32835"
+}

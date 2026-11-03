@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new status line truncates the revision to a different length than history and completed. Fix that so the deployment views show the same identifier, which is what the docstring promises.\n\n## Changes\nThe pull request adds `status(revision, attempt)` and an `attempt_label` helper to `app/display.py`. These produce a \"Running: <revision> (attempt N)\" line. It also adds two tests in `tests/test_display.py`.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Truncate the status revision to 12 characters like history — For the test `REVISION`, `status` prints `0123456` and `history` prints `0123456789ab`, because `revision[:7]` differs from the `[:12]` slicing at `app/display.py:5` and `app/display.py:9`. This also contradicts the docstring's \"using the same identifier as history.\" The added test at `tests/test_display.py:14-15` checks only the prefix and suffix, so it does not catch the mismatch. — Operators cannot match a running deployment's identifier against history or completion output by exact string, and a 7-character prefix is more likely to be ambiguous. — Fix: Use `revision[:12]`, or a shared helper that `history` and `completed` also call, and extend `test_running_status_contains_attempt` to assert the full string.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21850,
+    "cost_usd": 0.060448199999999994,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.M5im8zJ1Gl/review-pr.WUKnbP",
+  "head_sha": "230fd48bb4fed7d9c082081de20a83200c0c928d",
+  "base_sha": "a5ed74c1b99414bc11623b90f60321ea533be988",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5a0100669bcbb74dcbca40bcdeeab7cc3c1f6645"
+}

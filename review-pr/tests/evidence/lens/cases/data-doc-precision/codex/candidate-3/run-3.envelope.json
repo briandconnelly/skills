@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp contract should be corrected: the documented finish time comes from a start event, and the documented meaning of NULL contradicts the supplied event history.\n\n## Changes\nThe pull request adds `finished_at` to the latest-event process view and documents the new column in the schema catalog.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — Resolve the start/finish timestamp mismatch — For process 20’s lone `started` event, you expose its start timestamp as `finished_at` although no finish is recorded. The condition selects `'started'`, while models/schema.yml:11 defines the field as “Timestamp when the process finished.” — Consumers calculating completion times from the documented field receive start times for processes with only a start event.\n- models/schema.yml:17 — comments — Correct the documented meaning of NULL — For process 30’s `started` then `cleared` history, you return NULL despite documenting “NULL means the process has never been started.” The expression `case when event_type = 'started' then occurred_at end` examines only the latest event. — Consumers following this description misclassify previously started processes as never started when their latest event is `cleared`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wrhFrP0wlr/review-pr.ILIJOM",
+  "head_sha": "d46dd2896198474de2693c1147dca66c746b6a8f",
+  "base_sha": "4bc3cbded142513d7de5526015bd0a0f1d2fedb6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "cc1cfaa963c10fed8d33d56152c50f674657b4d2"
+}

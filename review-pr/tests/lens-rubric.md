@@ -99,7 +99,7 @@ Claude's JSON output has no tool transcript, so it cannot count file reads; Code
 Cases live in `lens-cases/<case>/case.sh` and define `build_case REPO_DIR MANIFEST_PATH`, `CASE_TITLE`, and `CASE_BODY`.
 The builder creates a fixture git repository with one `pr-N` / `pr-N-base` branch pair and writes its manifest.
 The collector builds and calibrates once before the first paid invocation and gives each run a fresh copy of that fixture.
-Each run's job is prepared as `checkout-pr.sh` prepares a real checkout: `isolate-policy.sh` restores the selected runner's reviewer policy from the base commit, head edits to policy paths are reported as `policy_changes`, and `policy-manifest.json` lists the base policy the child must read.
+Each run's job is prepared as `checkout-pr.sh` prepares a real checkout: `isolate-policy.sh` restores the selected runner's reviewer policy from the base commit, head edits to policy paths are reported as `policy_changes`, and `policy-manifest.json` lists the base policy and skill index the child reads, written by the same `write_policy_manifest` as a real checkout.
 A case can therefore plant a defect that is a defect only under base policy, and `lens-collection-test.sh` checks offline that the child sees the base policy and not the head's.
 The legacy fixture and its planted behaviors live in [lens-cases/legacy/case.sh](lens-cases/legacy/case.sh).
 [lens-cases/policy-criteria/case.sh](lens-cases/policy-criteria/case.sh) plants a retry cap stated only in base `AGENTS.md`, which the diff exceeds and also rewrites with its rationale updated; the code enforces the rewritten cap, so it complies with head policy and violates only the base's, and recall depends on applying the base policy rather than on noticing a missing ceiling.
@@ -206,8 +206,14 @@ Under [Adding a lens criterion](#adding-a-lens-criterion) a baseline that alread
    Each baseline must pass the [gate](#scoring-and-gate).
    A sensitivity case, such as `skill-only-rule`, must also meet recall: `score-lens.py --gate --require-recall` checks it, and a miss means the case is insensitive and is repaired.
    A scale case, such as `skill-only-rule-60`, need not meet recall under the unedited procedure; its recall is compared run by run with the candidate's.
-2. Predeclare the cost threshold the change must meet before collecting candidates, as a reduction in median input tokens per runner from [Cost](#cost).
+2. Predeclare the cost threshold the change must meet before collecting candidates, from [Cost](#cost), on the cost the procedure can change: the difference in median input tokens between the scale case and the sensitivity case, per runner.
+   A review carries a fixed cost the reading procedure does not touch, so a threshold on total tokens measures that fixed cost as much as the change.
 3. Edit the lens for the procedure change alone, as step 3 of [Adding a lens criterion](#adding-a-lens-criterion) requires for a criterion.
 4. Collect a `candidate` of every committed case on every runner, and run `REVIEW_PR_LENS_MATRIX=1 bash review-pr/tests/lens-evidence-test.sh`.
    The change lands only when every gate passes, the coverage check passes, and the scale case meets the predeclared threshold.
    Diagnostic cases, such as `skill-only-rule-vague`, are collected with `--diagnostic`; a miss there is documented, not a blocker.
+
+The skill index (#231) was the first change measured this way.
+Its threshold was predeclared as a 50% cut in total median input tokens on `skill-only-rule-60`, and it missed on both runners: claude 150k to 81k (46%) and codex 223k to 141k (37%), while claude's median cost fell 68% (USD 0.49 to 0.16).
+The cut on the cost the skills add, the 60-skill case minus the 21-skill case, was 87% on claude (64k to 9k) and 85% on codex (91k to 14k); that measure was chosen after the data were seen, and the owner shipped the change on it and on recall, which every rule case kept on both runners, so step 2 now names it in advance.
+Its candidates cover every committed case on both runners, three runs each, and pass every gate and the coverage check; two codex runs failed with a provider capacity error, one in the `skill-only-rule-vague` diagnostic and one in `empty-vacuous-truth`, whose snapshot was set aside and collected again.

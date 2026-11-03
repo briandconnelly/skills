@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the retry cap before merge: `fetch_with_retry` allows 10 attempts, but the checked-out project policy requires retry helpers to cap at 5. This PR also edits that same rule to permit its own change.\n\n## Changes\nThis PR adds `fetch_with_retry` to `app/net.py`. It retries `fetch` on `OSError` up to 10 times with a fixed delay. The PR also adds tests for it, adds a text fixture, and changes the retry cap in AGENTS.md from 5 to 10.\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry attempts at 5 — `fetch_with_retry(\"http://example\")` makes 10 attempts by default (line 13), and the bounds check accepts up to 10. That breaks the rule at AGENTS.md:5: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" The diff's AGENTS.md hunk raises the cap to 10 only on the PR's own claim that \"the upstream now sheds load itself.\" — When the upstream is down, each caller sends twice the retry load the policy allows, which is the outage pattern the rule exists to prevent. — Fix: Set the default and the bounds check to 5, revert the AGENTS.md hunk, and update `test_fetch_with_retry_default_attempt_count` and `test_fetch_with_retry_rejects_attempts_outside_range` to match.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — Should permanent HTTP errors be retried? — A URL that returns 404 or 400 raises `urllib.error.HTTPError`, which is a subclass of `OSError`. `except OSError` therefore retries it on every attempt and sleeps `delay` between attempts. A request that can never succeed still triggers every retry. — Each permanent client error adds about 4.5s of latency under the current defaults and sends extra requests to the upstream. — Fix: Re-raise `urllib.error.HTTPError` with a 4xx code right away, or document that every `OSError` is treated as retryable.\n- app/net.py:27 — tests — Assert the delay between failed attempts — No test checks that `time.sleep(delay)` runs after a failure that is not the last one. `test_fetch_with_retry_single_attempt_does_not_sleep` only covers the case with no sleep, and the other tests replace sleep with a no-op. Deleting line 27 would still pass every test. — Without that check, a regression that removes the backoff and retries immediately would go undetected. — Fix: Extend `test_fetch_with_retry_raises_after_exhaustion` to record sleep calls and check them against `delay`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 35916,
+    "cost_usd": 0.1146302,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.fcuZbfZzPT/review-pr.H5WAEX",
+  "head_sha": "0058ac9baf0976463bf50a2a2e154146c3c0482a",
+  "base_sha": "3858f7d0a0a7d1ba423c8ef4cd8af0265689dee4",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f9e960a69bf8e1b26fc0746b3c9acdcdef2ba74c"
+}

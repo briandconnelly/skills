@@ -38,6 +38,12 @@ adapter_context_paths() {
   done
 }
 
+# A selected Codex skill body (CO5): listed in the manifest's skill index rather than read unconditionally.
+adapter_is_skill_path() {
+  case "$1" in .agents/skills/*/SKILL.md) return 0;; esac
+  return 1
+}
+
 adapter_build_command() {
   local prompt="$1" level="$2"
   case "$level" in ''|low|medium|high|xhigh) ;; *) die 2 "LEVEL must be one of low|medium|high|xhigh, got '$level'";; esac

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis PR deletes `app/defaults.json` while `load_defaults` still reads it, so that call fails, and this must be fixed before merge. It also has two smaller problems: `is_valid_port` rejects port 65535, and `load_config` silently returns `{}` on any error.\n\n## Changes\nThe PR adds three helpers to `app/parse.py`: `is_valid_port`, `load_config` (which can use ujson), and `normalize_host`. It also lets `parse_timeout` accept a millisecond (`ms`) suffix, adds tests for the new code, adds two docs/fixture files, and deletes `app/defaults.json`.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore defaults.json or update load_defaults — `app/startup.py:6` still runs `Path(__file__).with_name(\"defaults.json\").read_text()`, and the deleted file is the only thing it reads. With the file gone, every call to `load_defaults()` raises `FileNotFoundError`. — Any startup path that calls `load_defaults()` crashes instead of getting the `{\"timeout\":30}` defaults. — Fix: Keep `app/defaults.json`, or change `load_defaults` and its callers in the same PR so they no longer need it.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False` because `0 < p < 65535` excludes the upper bound, but the docstring promises \"a usable TCP port (1-65535)\". `test_is_valid_port_lower_bound` only checks 0, 1 and 8080. — Configs that use port 65535 are wrongly rejected, and no test protects the upper bound. — Fix: Use `0 < p <= 65535` and add a 65535/65536 case to `test_is_valid_port_lower_bound`.\n- app/parse.py:30 — silent-failure — load_config swallows every error and returns {} — A missing file, a permission error or malformed JSON all hit `except Exception: return {}`, with no log or signal to the caller. The docstring \"Load the JSON config at path.\" does not mention this fallback either. — Operators with a typo in the config path or a broken JSON file get default settings without being told, which makes misconfiguration hard to diagnose. — Fix: Catch only `FileNotFoundError` for the default case and let parse errors raise; otherwise log the path and exception, and document the fallback in the docstring.\n\n## Suggestions\n- app/parse.py:35 — comments — Make normalize_host's empty-input docstring match the code — The docstring says \"returns None when h is empty\", but `if h == \"\": return \"\"` returns an empty string. — Callers that follow the docstring and check `is None` will treat an empty host as a real value.\n- app/parse.py:40 — tests — Test normalize_host's trailing-dot branch — No test covers the `lowered.endswith(\".\")` strip; `test_normalize_host_lowercases` only passes `\"Example.COM\"`, which has no trailing dot. — If the FQDN-suffix handling breaks, no test will catch it. — Fix: Add a case such as `\"Example.COM.\"` to `test_normalize_host_lowercases`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 32195,
+    "cost_usd": 0.12456620000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6PdW1xPfNj/review-pr.Q5PnE1",
+  "head_sha": "a0877053e0c888642139f0679bb71c115a671520",
+  "base_sha": "00f61da99d4523d5eb5c3b7c7a285d78d9e3ee86",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8b8fc79c15f9e202d3389e34eff45db1f7e7c7b4"
+}

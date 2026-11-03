@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe home containment check must be fixed before merge because parent traversal and symlinks allow previews outside the selected directory. Tests were read, not run.\n\n## Changes\nAdds a file preview limited to 200 characters, a settings-file path helper, and tests for previews, outside absolute paths, and settings paths.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before checking home containment — With `home=/srv/home` and `relative=../secret.txt`, `preview` reads `/srv/secret.txt` instead of rejecting it. `is_relative_to` checks lexical ancestry without resolving parent components or symlinks, so outward-pointing symlinks also bypass this check. — Parent traversal or an outward-pointing symlink lets callers read the first 200 characters of files outside the selected home. — Fix: Resolve both paths before checking containment, and extend `test_preview` with parent-traversal and outward-symlink cases.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.LmSruR6tHU/review-pr.XOcqGf",
+  "head_sha": "669c9c223727b9ecbdaecd5c6242e7b8e8b4ac8d",
+  "base_sha": "718a3d6b12910bb6ad4aecabe76a2a1e09f66e7f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1b9e3a2cf5c3178466bad911ec3e9dfa4d6f6a8d"
+}

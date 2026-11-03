@@ -153,7 +153,9 @@ wait "$CHILD_PID" || CHILD_EXIT=$?
 # A zero-second timeout can let the watchdog exit before this cleanup signal.
 kill "$WATCHDOG" 2>/dev/null || true
 pkill -P "$WATCHDOG" 2>/dev/null || true
-mv -f "$NATIVE_TMP" "$NATIVE"
+# The watchdog can kill the child's process group before its redirection creates the output file (a zero-second
+# timeout races the fork), so a missing file is an empty result for normalize_native to report, not a fatal error.
+if [ -e "$NATIVE_TMP" ]; then mv -f "$NATIVE_TMP" "$NATIVE"; fi
 normalize_native || printf 'review-pr: runner output did not match the normalized adapter contract\n' | tee -a "$STDERR" >&2
 printf '%s\n' "$CHILD_EXIT" > "$DIR/runner.exit"
 FINISHED=1

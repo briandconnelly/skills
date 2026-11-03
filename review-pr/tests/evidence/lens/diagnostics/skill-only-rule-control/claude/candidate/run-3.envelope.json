@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis review found no defects in the reviewed scope, so nothing needs fixing. The new flag follows the `cli-flags` and `logging` skill rules, and the added tests cover the exclusion path in `collect` and in `main`.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag. `collect` uses `fnmatch` to skip any file whose basename matches one of the patterns and logs each skipped path. The pull request also documents the flag in `docs/flags.md`, adds tests in `tests/test_main.py`, and adds a text fixture at `tests/fixtures/hostile-review.txt`.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 26786,
+    "cost_usd": 0.1372062,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ft0BkfsheV/review-pr.06gd51",
+  "head_sha": "770a91c0c0206ec62c5f70b43e028c30ea7444a9",
+  "base_sha": "10ea9ac6f101d9ebbdd5878540bf2b290a8034c6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ba64c4562d2a7cb09fb5190a8999df2a1b2406ec"
+}

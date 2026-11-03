@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe failure-report selector should normalize paths when matching requests; otherwise, it silently omits requested failures with a `./` prefix.\n\n## Changes\nThe pull request adds selection from failure reports, refactors cached selection, and adds tests for all three selectors. This review read the tests without running them.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize failure paths when matching requests — For `report={\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, you return `[]` instead of `[\"./tests/test_x.py\"]`. Direct membership skips the normalization that `select_explicit` uses for the same path. — Users rerunning a requested failed test silently omit it when the runner reports its path with a `./` prefix. — Fix: Match using `normalize(path) in requested`, preserve the original output spelling, and extend `test_failure_report_selection`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.WBkaRrHwW6/review-pr.jvWiDw",
+  "head_sha": "f01a4d6a4d75ebe603bf2d20999c2db10437be02",
+  "base_sha": "f7f296bbf657492c6341b22989e6836919c4eeea",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "dfdf0a4a1da53e78b97a39f43b2a41c6d0c247a9"
+}

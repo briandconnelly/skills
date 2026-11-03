@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe documented timeout should be updated because it contradicts the new default. This review read the tests but did not run them.\n\n## Changes\nThe pull request raises the default timeout from 30 to 60 seconds, updates the corresponding test assertion, and adds review.txt.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — Update the documented timeout default — With no `--timeout`, the parser now uses 60 seconds, making README.md:3 stale: “Requests time out after 30 seconds unless you pass `--timeout SECONDS`.” The changed assignment is `DEFAULT_TIMEOUT = 60`. — Users relying on the documented default underestimate how long a request can wait before timing out.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3K2QsfQVxc/review-pr.6hh7Q4",
+  "head_sha": "c88b8b96cd2f15bb59a210d634fa7bbf357f9baf",
+  "base_sha": "8179f2c8b72c8ff7bf3c65cdc6e0ff401acef628",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "65df3204d5b01323cc4288e9f8fd60d2cf8ef7a1"
+}

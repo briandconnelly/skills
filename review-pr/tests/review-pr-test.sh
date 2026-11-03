@@ -155,7 +155,8 @@ out="$(FAKE_CLAUDE_LOG="$S/claude-calls-at-bound" REVIEW_PR_MAX_POLICY_FILES=3 R
 # Known positive for the no-child check below: a review that runs is logged.
 [ -s "$S/claude-calls-at-bound" ] || { echo "FAIL: known positive — the fake child did not log its run"; FAIL=1; }
 manifest="$(cat "$(jq -r .dir <<<"${out:-null}")/policy-manifest.json" 2>/dev/null || true)"
-[ "$manifest" = '[".claude/agents/a/SKILL.md","AGENTS.md","sub/AGENTS.md"]' ] \
+# skills/a/SKILL.md is reached as an agent definition and as a skill, so it stays a mandatory policy file (RC8).
+[ "$manifest" = '{"version":2,"policy_files":[".claude/agents/a/SKILL.md","AGENTS.md","sub/AGENTS.md"],"skills":[]}' ] \
   || { echo "FAIL: deduplicated checkout manifest=$manifest"; FAIL=1; }
 rc=0
 err="$(FAKE_CLAUDE_LOG="$S/claude-calls" REVIEW_PR_MAX_POLICY_FILES=2 REVIEW_PR_SCRATCH="$S/below-bound/" "$SRC/review-pr.sh" owner/repo 12 2>&1 >/dev/null)" || rc=$?

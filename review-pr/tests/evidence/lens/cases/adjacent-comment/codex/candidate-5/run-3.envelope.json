@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe setter should normalize keys because mixed-case writes cannot be retrieved through the existing lookup. Tests were read, not run.\n\n## Changes\nThe pull request adds `Cache.set`, increases the default TTL to 300 seconds, and adds round-trip and expiry tests.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — Normalize keys before storing entries — Calling `set(\"Alpha\", 1)` makes subsequent `get(\"Alpha\")` return `None`: you store the original key, but `get` always searches for its lowercase form. — Callers using mixed-case keys lose access to stored values and can retain duplicate entries for the same logical key. — Fix: Store under `key.lower()` and extend `test_set_then_get_round_trip` with a mixed-case write.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.P8TEBXUzUN/review-pr.KdMjev",
+  "head_sha": "fbc466bcf27ca68ef2a1a9275ab482f40a74fe10",
+  "base_sha": "bc8fbff26b1b8df1f0acc326e013dc20d60972e1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a5025920b77146d32eeff04298ee24019a8f69ff"
+}

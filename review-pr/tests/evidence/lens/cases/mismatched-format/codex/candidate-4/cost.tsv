@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/codex/candidate-4	1	65173	47616	961	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/codex/candidate-4	2	65172	52992	926	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/codex/candidate-4	3	81176	58368	870	NA	1	NA	6	0

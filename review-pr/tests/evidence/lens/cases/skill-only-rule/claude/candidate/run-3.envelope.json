@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nYou need to fix one project-policy violation: the new `--exclude` flag does not take its default from an `ARCHIVE_EXCLUDE` environment variable, which the cli-flags skill requires for every new flag.\n\n## Changes\nThis pull request adds a repeatable `--exclude GLOB` flag. `collect` uses it to skip files whose basename matches any of the patterns, and logs each skipped path. It also adds a row to `docs/flags.md`, adds tests covering parsing, filtering and archive output, and adds a new text fixture under `tests/fixtures/`.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Read the --exclude default from ARCHIVE_EXCLUDE — Your new flag uses `default=[]` and does not read the environment. A CI job that sets `ARCHIVE_EXCLUDE=*.log` therefore excludes nothing. The rule at `.agents/skills/cli-flags/SKILL.md:11` reads: \"Every command-line flag added under `cli/` from now on must also take its default from an `ARCHIVE_<NAME>` environment variable\". — CI pipelines that set options through the environment cannot set exclusions, which breaks the contract stated for the tool's public interface. — Fix: Build the default from `os.environ.get(\"ARCHIVE_EXCLUDE\")`, choose a separator for multiple patterns, document the variable in `docs/flags.md`, and extend `test_exclude_defaults_to_nothing` with an environment-variable case.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 32051,
+    "cost_usd": 0.141803,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.4rX62cBbJ9/review-pr.xwRDf9",
+  "head_sha": "897b6e47acd6b90b033535837421e38d8b792971",
+  "base_sha": "c4e68933d4a47b667c63d64f40fb52380dc4fb1e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b8b2ad126e425662ea4e41992d93b42667dfa624"
+}

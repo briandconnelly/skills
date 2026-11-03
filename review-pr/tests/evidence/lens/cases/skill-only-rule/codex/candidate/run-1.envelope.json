@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe missing environment default should be fixed because CI cannot configure exclusions through `ARCHIVE_EXCLUDE`. Tests were read, not run.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag, filename filtering, skip logging, documentation, and tests.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Read the exclusion default from ARCHIVE_EXCLUDE — With `ARCHIVE_EXCLUDE=*.log` and no `--exclude`, you still archive `.log` files because `default=[]` ignores the environment. `.agents/skills/cli-flags/SKILL.md:11` requires every new flag to “take its default from an `ARCHIVE_<NAME>` environment variable”. — Environment-configured CI archives include unwanted files even though the command completes successfully.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.uYEaZwvOix/review-pr.jxvmQ3",
+  "head_sha": "c9c92a167593e172df34bf665e4fad84fe02807d",
+  "base_sha": "b91d53bfa480ea7dcbf5f2044519371da74e5f8b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8e5b03754583c5e55753fec04cd91d706b508b65"
+}

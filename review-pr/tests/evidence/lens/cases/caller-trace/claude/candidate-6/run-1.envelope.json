@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the duplicate adoption message before merge: once adoption records are part of the plan, the command prints each adopted setting twice.\n\n## Changes\n`plan` now adds an `adopt` record for each setting that already exists and appends an `audit` record with the number of incoming settings. Two tests were added that check the audit record is returned and is not printed by `run`.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Stop printing adopted settings twice in `run` — If you call `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)`, it prints `\"Adopted theme\"` twice. `plan` prints it as progress at `app/planner.py:8`, then `app/cli.py:6-9` prints every record that isn't an audit record, and that now includes the new `adopt` record. No test calls `run` with a setting that already exists. — Every adopted setting appears twice in the command output, which contradicts the PR body's description of the command output. — Fix: Either skip `adopt` records in `app/cli.py:7` the same way audit records are skipped, or stop printing progress from `plan`, then add a `run` adoption case next to `test_command_adds_setting`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 25796,
+    "cost_usd": 0.10675799999999998,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dzIyAPaVJU/review-pr.FqraG4",
+  "head_sha": "d13efe676b210ce1f37ac8d43d5dd7b5f0eb838a",
+  "base_sha": "bcdd130f9a95d214db998dbc6ca0a5d74448e7ea",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d540cbd0f9dbbeeb99e1d8de3e94050667cbd6ae"
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` should be fixed before merge. It tells users to leave out \"shall\", but deployments that set the validator option `require_shall` still reject any criterion without that word.\n\n## Changes\nThe pull request rewords `CRITERION_HINT` to ask for direct action bullets without \"shall\", and rewords `BULLET_HINT` to show the literal `- ` prefix. It also adds a one-line `review.txt` at the repository root.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Make CRITERION_HINT match the require_shall setting — With `require_shall=True`, a user who follows the new hint and writes `- Save the result` is rejected, because `accepts_criterion` returns `\" shall \" in text` (app/criteria.py:7-8). `tests/test_criteria.py:21` asserts that rejection, and the PR body says the option is kept. — Users on deployments with `require_shall: true` are told to write criteria that the validator then rejects. — Fix: Choose the hint wording based on `require_shall`, or keep a hint that does not mention \"shall\".\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 27358,
+    "cost_usd": 0.0680712,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.43Zt9W2Eni/review-pr.d8kFrt",
+  "head_sha": "c9e6adf8d0a8c341d6fa8ab784ad9e2fb8fc43a5",
+  "base_sha": "15af168deeec55df7af56dc3c63ec2b21ef581c0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "543d79785094d768822ef2a1297db598f8bc05b0"
+}

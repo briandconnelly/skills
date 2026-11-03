@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis review found no defects meeting the finding gates in the reviewed scope. Tests were assessed by reading; no checks were run.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag that filters files by name, logs skipped files, and documents the flag. It adds parser, collection, and archive-content tests.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.KX33MxaIB9/review-pr.CryPFI",
+  "head_sha": "5d965d5005d5382197af9c89463642b47c805e9b",
+  "base_sha": "1b5b14c657e8a92e6fec5e38f588e3546b9c7f29",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "81a918148dda74e9709714e247d74bddd781ffe6"
+}

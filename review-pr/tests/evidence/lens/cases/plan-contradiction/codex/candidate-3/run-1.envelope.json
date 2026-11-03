@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe documented compatibility transition needs fixing because existing `--wait` invocations fail instead of remaining supported for one release.\n\n## Changes\nThe pull request renames the parser option to `--timeout`, updates its tests, and adds a transition decision. It preserves the default of 30 and the JSON/CSV format choices.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Preserve the `--wait` alias during the transition — Passing `[\"--wait\", \"12\"]` now raises `SystemExit(2)` because the parser registers only `--timeout`. The decision in `docs/adr/007-timeout.md:5` promises alias support and a deprecation warning for one release. — Existing scripts using `--wait` stop with an argument error during the documented compatibility release. — Fix: Register both spellings with the `timeout` destination, warn when `--wait` is used, and extend `test_explicit_options`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VstqBAEUAL/review-pr.ZP7LKg",
+  "head_sha": "7e86226a1e06741d5d97e825111a85f9e62c06ff",
+  "base_sha": "63cdc2a746004b5516c8af60e4f8212f03cc4dc2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8528ed5b128cad30481f81e009e188e1d0120213"
+}

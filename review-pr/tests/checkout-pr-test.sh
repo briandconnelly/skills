@@ -38,8 +38,9 @@ cmp -s "$expected_diff" "$(jq -r .diff_path <<<"$out")" \
 [ "$(jq -r .headRefOid "$(jq -r .meta_path <<<"$out")")" = "$head" ] || { echo "FAIL: pr.json head mismatch"; FAIL=1; }
 jq -e 'has("title") and (.title | type == "string") and has("body") and (.body | type == "string")' "$(jq -r .meta_path <<<"$out")" >/dev/null \
   || { echo "FAIL: pr.json lacks string title/body evidence"; FAIL=1; }
-jq -e 'type == "array" and all(.[]; type == "string")' "$(jq -r .policy_manifest_path <<<"$out")" >/dev/null \
-  || { echo "FAIL: policy manifest is not a string array"; FAIL=1; }
+jq -e '.version == 2 and (.policy_files | type == "array" and all(.[]; type == "string"))
+  and (.skills | type == "array" and all(.[]; (.path, .name, .description) | type == "string"))' "$(jq -r .policy_manifest_path <<<"$out")" >/dev/null \
+  || { echo "FAIL: policy manifest does not match RC8's object"; FAIL=1; }
 case "$want_runner" in
   claude)
     [ ! -e "$clone/.claude/settings.json" ] || { echo "FAIL: settings.json present"; FAIL=1; }

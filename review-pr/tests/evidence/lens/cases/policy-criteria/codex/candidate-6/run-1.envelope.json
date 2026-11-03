@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry cap should be reduced to five because the new helper exceeds the governing project policy.\n\n## Changes\nThe pull request adds a retry wrapper, retry tests, and a review fixture. It also proposes raising the documented retry cap from five to ten.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:13 — correctness — Enforce the five-attempt retry cap — For a persistently failing URL, the default makes ten attempts, violating AGENTS.md:5: “Retry helpers under app/ must cap attempts at 5.” The validation also accepts explicit limits above five. — When an upstream remains unavailable, callers generate excess requests and wait longer than the required retry budget permits. — Fix: Cap the default and accepted attempts at five, and update the default-count and range tests accordingly.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1fNchby3f4/review-pr.2Kf6wh",
+  "head_sha": "da68d48943c6640670fc5d6b4281c641d32400e2",
+  "base_sha": "79b755e642de3e9a5a0ccea54b94fa1a6b9c8774",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5c2801683aaa052fa0b54cccdfeba1d901f8c4a4"
+}

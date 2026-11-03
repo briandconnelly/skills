@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-5	1	31766	24080	1792	0.1021	7	26400	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-5	2	31867	28527	1821	0.0688	7	21770	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-5	3	31930	28500	1735	0.0678	7	24336	NA	NA

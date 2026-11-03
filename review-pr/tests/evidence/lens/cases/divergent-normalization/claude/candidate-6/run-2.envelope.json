@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix `select_failures` so it normalizes report paths before matching: right now any failure the runner reports with a `./` prefix is left out without warning, so those failed tests never get re-selected.\n\n## Changes\nThe pull request adds `select_failures`, which picks requested paths from a runner report's `failed` list. It also rewrites `select_cached` and `_select_normalized` as list comprehensions without changing their behavior, and adds `tests/test_selection.py` covering all three selectors.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize report paths before matching requested set — A report with `{\"failed\": [\"./tests/test_x.py\"]}` and requested `{\"tests/test_x.py\"}` returns `[]`, because `path in requested` compares the raw spelling. `select_explicit` at `app/selection.py:6` handles the same spelling difference with `normalize(path) in requested`, and the new docstring's \"preserving its original spelling\" describes that pattern. `tests/test_selection.py:42-44` only uses unprefixed report paths, so no test catches this. — Runners that report `./`-prefixed paths have their failed tests silently left out of the re-run selection. — Fix: Use `[path for path in report[\"failed\"] if normalize(path) in requested]` and add a `./`-prefixed case to `test_failure_report_selection`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18411,
+    "cost_usd": 0.055585800000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.0vsNPwzyrr/review-pr.Jd7JIo",
+  "head_sha": "b80ee34e5d0c5524c4e3af8962fbd474f6009b22",
+  "base_sha": "d9f67119c485f9b8bfbee28562d20a1364b14872",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5ff441a98fb2a9019eebd7b0785e73690e402e22"
+}

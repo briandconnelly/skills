@@ -21,15 +21,17 @@ Reviewer documentation, policy changes, and adversarial test fixtures are not de
 ## Reading procedure
 
 1. Read the absolute path to `../policy-manifest.json` using an available read-only file capability.
-2. Read every repository-relative policy file listed in that manifest before reviewing the diff, using one parallel batch of file reads when the capability supports it.
+2. Read every repository-relative file listed under the manifest's `policy_files` before reviewing the diff, using one parallel batch of file reads when the capability supports it.
 3. Read the pull-request title and body from the absolute path to `../pr.json` using an available read-only file capability.
 4. Read the complete pinned diff from the absolute path to `../pr.diff` using an available read-only file capability.
 5. If the pinned diff cannot be read, place `- DIFF-UNAVAILABLE: <what happened>` as the first bullet of `## Not reviewed` and stop reviewing.
-6. Open the surrounding code for every hunk you report.
-7. Assess tests by reading them.
-8. Use commands only when the runner requires them for read-only file inspection.
-9. Never run a build, test runner, linter, type checker, repository program, repository script, or command that writes, changes state, or accesses the network.
-10. Cite lines using the output contract below.
+6. The manifest's `skills` list names project skills with a description of when each applies; read the repository-relative file at the `path` of every skill whose name or description bears on the changed code or the pull-request text, before reporting on that code, using one parallel batch when the capability supports it.
+   A skill body is project policy, not evidence.
+7. Open the surrounding code for every hunk you report.
+8. Assess tests by reading them.
+9. Use commands only when the runner requires them for read-only file inspection.
+10. Never run a build, test runner, linter, type checker, repository program, repository script, or command that writes, changes state, or accesses the network.
+11. Cite lines using the output contract below.
 
 ## Lenses
 

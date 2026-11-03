@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the `--json` parser so it does not consume a following flag as its path. Right now `--json --junit out.xml` fails, which breaks the \"alongside the required --junit destination\" use the PR description promises.\n\n## Changes\nThis PR adds a `--json` option to `parse_args`. With no path it defaults to `results.json`, and it otherwise takes the next argument as the path. It also adds `write_reports`, which writes each parsed report to its destination, and a new `tests/test_cli.py`.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Stop `--json` from consuming a following flag as its path — With `[\"--json\", \"--junit\", \"out.xml\"]`, `--json` takes `\"--junit\"` as its destination because line 15 only checks `i + 1 < len(args)`. Parsing then raises `ValueError(\"unknown option: out.xml\")`. No test in `tests/test_cli.py` covers `--json` followed by another flag. — Users who put `--json` before `--junit` get a misleading unknown-option error, and both reports fail to write. — Fix: Use the default when `args[i + 1].startswith(\"--\")`, as the `--junit` check on line 7 already does, and add a `--json --junit x.xml` case to `test_json_default_and_explicit_path`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 17701,
+    "cost_usd": 0.054274600000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dSdDszuRXG/review-pr.aC5PDX",
+  "head_sha": "e51d0537762d33969a1513b9def37c123aac3c3a",
+  "base_sha": "f0cfefa7a21d453b7771d8d17829fba978dee824",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "53c0906191e9a3f0e1a6e75ca201fe9130c76e32"
+}
