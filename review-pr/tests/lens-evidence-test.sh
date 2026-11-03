@@ -15,7 +15,10 @@ while IFS= read -r runner; do
     cat "$S/gate.err" >&2
     # A baseline that misses recall passes its gate but is no evidence that the current lens works.
     grep -Fxq 'lens quality gate: OK' "$S/gate.err" || continue
-    [ "$(jq -r .lens_sha256 "$snapshot/run-config.json")" != "$LENS_SHA256" ] || current=$((current+1))
+    if [ "$(jq -r .lens_sha256 "$snapshot/run-config.json")" = "$LENS_SHA256" ]; then
+      current=$((current+1))
+      printf '%s\t%s\n' "$(basename "$(dirname "$(dirname "$snapshot")")")" "$runner" >> "$S/current"
+    fi
   done
   # A lens edit must arrive with evidence collected under it, for every supported runner.
   if [ "$current" = 0 ]; then
@@ -25,6 +28,23 @@ while IFS= read -r runner; do
     echo "lens-evidence-test: $runner has $current snapshot(s) under the current lens"
   fi
 done < "$ROOT/scripts/adapters/supported"
+# Opt-in coverage check (lens-rubric.md, "Changing the reading procedure"): every committed case that is not
+# diagnostic-only needs a passing snapshot under the current lens on every supported runner.
+if [ "${REVIEW_PR_LENS_MATRIX:-0}" = 1 ]; then
+  : >> "$S/current"
+  missing=0
+  for case_dir in "$ROOT/tests/lens-cases/"*/; do
+    case_name="$(basename "$case_dir")"
+    [ "$case_name" != legacy ] || continue
+    ! grep -qx 'CASE_DIAGNOSTIC=1' "$case_dir/case.sh" || continue
+    while IFS= read -r runner; do
+      [ -n "$runner" ] || continue
+      grep -Fxq "$case_name"$'\t'"$runner" "$S/current" || { echo "MISSING: $case_name/$runner has no passing snapshot under the current lens"; missing=$((missing+1)); }
+    done < "$ROOT/scripts/adapters/supported"
+  done
+  if [ "$missing" -gt 0 ]; then echo "FAIL: $missing case-by-runner cells lack current-lens evidence"; FAIL=1
+  else echo "lens-evidence-test: every case has current-lens evidence on every runner"; fi
+fi
 for arm in claude/lens codex/lens baseline; do
   expected=4
   set --
