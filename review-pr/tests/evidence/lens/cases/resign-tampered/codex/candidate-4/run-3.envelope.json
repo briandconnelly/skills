@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe refresh path needs correction before merge because it can erase evidence of edits to tracked files. Tests were read, not run.\n\n## Changes\nThe pull request adds helpers to refresh manifest fingerprints and register previously unlisted files, with tests for both helpers.\n\n## Critical\n- app/integrity.py:17 — correctness — Preserve existing fingerprints during refresh — When `names` includes an edited tracked file, `refresh_fingerprints` overwrites its stored digest, causing subsequent verification to accept the edit. You assign every supplied name unconditionally, whereas `register_new_files` preserves existing digests. — Refreshing after adding a new file can silently accept changes to tracked files, defeating the manifest’s integrity check.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.H1LhSaDdDc/review-pr.uMvm57",
+  "head_sha": "01e294a8d6c579f004ac2b07d6ff6b42e583bd62",
+  "base_sha": "8eb65676ec3a23f9465d78878bd02950651da282",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "420f7aee99e76dd128e0ad1f0cc0914e88120c6b"
+}

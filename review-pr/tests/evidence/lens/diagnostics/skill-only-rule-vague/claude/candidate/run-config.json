@@ -1,0 +1,11 @@
+{
+  "collection_id": "2a85f404e3734f6b1293c2feb5c5e07681d18400",
+  "runner": "claude",
+  "case": "skill-only-rule-vague",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "165c81b8dfb911115de7272bc0e13f52222e4a1e573e17774570e55175b1233f",
+  "diagnostic": true
+}

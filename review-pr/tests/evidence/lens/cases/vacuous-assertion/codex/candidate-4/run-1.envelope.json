@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOnly optional corrections were found in the reviewed scope: the legacy-header test never reaches header validation.\n\n## Changes\nThe pull request requires the exact `REPORT v1` header and adds two rejection tests.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:10 — tests — Make the legacy fixture reach header validation — For the constructed `REPORT v1\\nversion=v0` input, parsing returns `None` at the terminator check. The fixture lacks `END`, and `rsplit(\"v1\", 1)` changes the payload while preserving the supported header. — This test passes even if you remove header validation, so it cannot detect the regression it names. — Fix: Remove this redundant test or use a complete legacy report as `test_rejects_unsupported_header_with_complete_report` does.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mshcmEtzhp/review-pr.senves",
+  "head_sha": "2fdc77ab5b5c789ca8fc6504a9dec7f91792f08d",
+  "base_sha": "ce34d1e6e5b28897540804de2a6acd507b85f697",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4b2f44946fbb1b18abb85589dd2e35c21f7faca1"
+}

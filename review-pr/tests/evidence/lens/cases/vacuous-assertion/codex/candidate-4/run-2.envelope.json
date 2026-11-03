@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy-header test should be corrected because its fixture is rejected before header validation.\n\n## Changes\nThe pull request requires the exact `REPORT v1` header and adds two rejection tests.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:10 — tests — Give the legacy-header test a complete v0 report — Your fixture becomes `REPORT v1\\nversion=v0` without `END`, so rejection occurs before header validation. The assertion passes even with the original prefix check. — Maintainers cannot rely on this test to detect acceptance of legacy headers.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mshcmEtzhp/review-pr.g7GcAb",
+  "head_sha": "2fdc77ab5b5c789ca8fc6504a9dec7f91792f08d",
+  "base_sha": "ce34d1e6e5b28897540804de2a6acd507b85f697",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4b2f44946fbb1b18abb85589dd2e35c21f7faca1"
+}

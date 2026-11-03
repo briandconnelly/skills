@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `finished_at` column needs fixing before merge: it publishes the start time of processes that are still running and never reports a real finish time. Its documented NULL meaning also contradicts the rows the model produces.\n\n## Changes\nThe pull request adds a `finished_at` column to the `processes` current-state model and documents it in `models/schema.yml`. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n- models/processes.sql:10 — correctness — finished_at holds the start time of running processes — For process 20, whose latest event is `started` at `2026-01-01T00:01:00Z`, `finished_at` returns that start time although the process has not finished. The CASE only matches `'started'`, and `sources/process_events.sql:4` allows no finish event type (`'created', 'started', 'cleared'`). — Consumers will read in-progress processes as finished at their start time, and no row ever gets a true finish timestamp. — Fix: Either rename the column to `started_at` and take `occurred_at` from the `started` event, or add a finish event type to the source and key the CASE on it.\n\n## Important\n- models/schema.yml:17 — comments — NULL meaning contradicts started-then-cleared processes — Process 30 was started (event 3) and then cleared (event 4), yet it gets `finished_at` NULL, while the docs say \"NULL means the process has never been started.\" The CASE only looks at the latest event, so any process whose last event is not `started` gets NULL. — Consumers filtering on `finished_at IS NULL` will wrongly count started-and-cleared processes as never started.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 34687,
+    "cost_usd": 0.0816206,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.lMwg3y4HKu/review-pr.jmfLPU",
+  "head_sha": "f09751792fd5b886d88c9b07f4f348afe761f2cb",
+  "base_sha": "c3dbe5cf5487ba7479cf4c3e7eee4f10f5c5c526",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1ba77e07554425048cb0fd32047211ecf0565d3b"
+}

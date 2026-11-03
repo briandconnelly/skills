@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/flag-as-value/claude/candidate-6	1	31685	23835	1594	0.0994	6	20644	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/flag-as-value/claude/candidate-6	2	30978	28273	1388	0.0550	6	18130	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/flag-as-value/claude/candidate-6	3	30816	28273	1415	0.0543	5	17701	NA	NA

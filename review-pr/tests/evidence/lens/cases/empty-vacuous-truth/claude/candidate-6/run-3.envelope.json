@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change to `requirement_proven` makes it treat an empty criteria list as proven. This needs fixing before merge because a requirement with no evidence would now be reported as satisfied.\n\n## Changes\nThe pull request rewrites `requirement_proven` to compare a sum of `proven` flags against the criteria count. It also adds `reviewed_batch`, which rejects empty batches, and adds `tests/test_proof.py` to cover both functions.\n\n## Critical\n- app/proof.py:2 — correctness — Return False for empty criteria in requirement_proven — `requirement_proven([])` now returns `True`, because `sum(...)` of nothing is `0` and that equals `len([])`. The base version returned `False` through `bool(criteria) and ...`. — Requirements with no criteria are reported as proven, so unproven requirements show a passing proof status. — Fix: restore the emptiness guard, `bool(criteria) and all(item[\"proven\"] for item in criteria)`, and extend `test_requirement_with_evidence` with an empty-list case.\n\n## Important\n- app/proof.py:2 — correctness — Count truthy proven flags instead of summing them — If a `proven` value is a non-boolean, `sum` gives the wrong result: `[{\"proven\": 2}, {\"proven\": 0}]` returns `True`, and a string value such as `\"yes\"` raises `TypeError`. The base `all(...)` handled both cases by truthiness. — Any criterion that stores a count or string marks a partly proven requirement as proven, or crashes the status check. — Fix: use `all(item[\"proven\"] for item in criteria)`, which also fixes the empty-list case together with the guard above.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18534,
+    "cost_usd": 0.0632636,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hKpTBzY0vm/review-pr.mOYTLe",
+  "head_sha": "38ec29598e90198b0b2c09259e48ca6315c25eb4",
+  "base_sha": "e995792538fcbd8525583a3b6c8f247cbd9f0845",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7f0d515f6466466fcd63a851dab620b143c932ef"
+}

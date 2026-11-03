@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore app/defaults.json before merge: `load_defaults` still reads it, so removing it breaks startup. The port upper-bound error and the silent `{}` from `load_config` should also be fixed.\n\n## Changes\nThis pull request adds `is_valid_port`, `load_config` (with an optional `ujson` accelerator) and `normalize_host`. It adds millisecond support to `parse_timeout`, deletes `app/defaults.json`, adds a reviewer doc and a test fixture, and extends `tests/test_parse.py`.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore app/defaults.json, which load_defaults still reads — Every call to `load_defaults()` now raises `FileNotFoundError`, because the stale `app/startup.py:6` still reads `Path(__file__).with_name(\"defaults.json\")`. The pull request does not touch that function or give it a fallback. — Any startup path that loads application defaults crashes instead of getting `{\"timeout\":30}`. — Fix: Keep the file, or remove `load_defaults` and its callers in the same change.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 in is_valid_port — `is_valid_port(65535)` returns `False` because `0 < p < 65535` excludes the upper bound, which contradicts the docstring's \"(1-65535)\" range. `test_is_valid_port_lower_bound` checks only 0, 1 and 8080. — A config using the valid port 65535 is rejected. — Fix: Use `0 < p <= 65535` and add a 65535/65536 case to `test_is_valid_port_lower_bound`.\n- app/parse.py:30 — silent-failure — load_config hides missing and malformed config files — `load_config` returns `{}` for a missing file, a permission error or invalid JSON, because `except Exception` swallows all three. No log or caller signal says why, and the docstring \"Load the JSON config at path.\" does not describe the fallback. — A config with a typo or the wrong path silently runs on defaults, and operators get no indication of why. — Fix: Catch only `FileNotFoundError` for the default case and let decode or permission errors propagate, or log them.\n\n## Suggestions\n- app/parse.py:35 — comments — Fix normalize_host docstring for the empty-input return value — The docstring says \"returns None when h is empty\", but `if h == \"\": return \"\"` returns an empty string for that input. — A caller who checks `normalize_host(h) is None`, as the docstring says, never matches empty input.\n- app/parse.py:40 — tests — Test the trailing-dot branch of normalize_host — No test passes a host ending in `.`, so nothing exercises the branch that strips the dot. `test_normalize_host_lowercases` covers only `\"Example.COM\"`. — A regression in fully qualified host handling, such as `\"Example.COM.\"`, would not be caught. — Fix: Extend `test_normalize_host_lowercases` with a trailing-dot input.\n\n## Not reviewed\n(none)",
+    "duration_ms": 31701,
+    "cost_usd": 0.15626800000000002,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.6PdW1xPfNj/review-pr.EX3FHi",
+  "head_sha": "a0877053e0c888642139f0679bb71c115a671520",
+  "base_sha": "00f61da99d4523d5eb5c3b7c7a285d78d9e3ee86",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "8b8fc79c15f9e202d3389e34eff45db1f7e7c7b4"
+}

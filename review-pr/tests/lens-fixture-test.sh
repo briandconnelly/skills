@@ -72,10 +72,9 @@ mkjob() {
     '{number:$n, title:$title, body:$body}' > "$job/pr.json"
   git -C "$job/repo" diff --no-ext-diff --no-textconv --binary "pr-$n-base...pr-$n" > "$job/pr.diff"
   # Prepare policy the way checkout-pr.sh does: base policy restored, head edits reported, manifest listed.
-  local changes manifest
+  local changes
   changes="$("$SRC/isolate-policy.sh" "$RUNNER" "$job/repo" "$base" "$head")" || die 1 "isolate-policy.sh failed for the fixture"
-  manifest="$(context_paths_json "$job/repo" "$base")"
-  printf '%s\n' "$manifest" > "$job/policy-manifest.json"
+  write_policy_manifest "$job/repo" "$base" "$job/policy-manifest.json"
   jq -n --arg d "$job" --arg b "$base" --arg h "$head" --arg runner "$RUNNER" --argjson changes "$changes" \
     '{dir:$d, runner:$runner, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:$changes, diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }

@@ -27,6 +27,11 @@ adapter_context_paths() {
   done < <(restored_policy_paths "$1" "$2")
 }
 
+# A selected Claude skill body (CA5): listed in the manifest's skill index rather than read unconditionally.
+adapter_is_skill_path() {
+  [[ "$1" =~ ^\.claude/skills/.*/SKILL\.md$ ]]
+}
+
 adapter_build_command() {
   local prompt="$1" level="$2" budget="$3" turns="$4" evidence_dir="$5"
   case "$level" in ''|low|medium|high|xhigh|max) ;; *) die 2 "LEVEL must be one of low|medium|high|xhigh|max, got '$level'";; esac

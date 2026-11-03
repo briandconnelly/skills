@@ -335,6 +335,59 @@ manifest="$(context_paths_json "$fixture" "$base")"
 [ "$manifest" = '["AGENTS.md"]' ] || { echo "FAIL: manifest lists a path ADAPTER_ALWAYS_REMOVE deletes: $manifest"; FAIL=1; }
 load_adapter claude
 
+# RC8 manifest: readable skills go to the index with their base name and description, read from the link
+# target's base blob; a skill whose frontmatter cannot be read stays a mandatory policy file; head edits never reach it.
+fixture="$S/skill-index"
+mkdir -p "$fixture/.agents/skills/good" "$fixture/.agents/skills/bad" "$fixture/.claude"
+git -C "$fixture" init -q -b main
+git -C "$fixture" config user.email t@example.com
+git -C "$fixture" config user.name t
+printf -- '---\nname: good\ndescription: Use when testing BASE-DESC-41.\n---\nbody\n' > "$fixture/.agents/skills/good/SKILL.md"
+printf '%s\n' 'no frontmatter here' > "$fixture/.agents/skills/bad/SKILL.md"
+printf '%s\n' 'root policy' > "$fixture/AGENTS.md"
+ln -s ../.agents/skills "$fixture/.claude/skills"
+git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm base
+base="$(git -C "$fixture" rev-parse HEAD)"
+printf -- '---\nname: good\ndescription: Use when testing HEAD-DESC-99.\n---\nbody\n' > "$fixture/.agents/skills/good/SKILL.md"
+mkdir -p "$fixture/.agents/skills/headonly"
+printf -- '---\nname: headonly\ndescription: Added by the PR.\n---\n' > "$fixture/.agents/skills/headonly/SKILL.md"
+git -C "$fixture" add -A && git -C "$fixture" -c commit.gpgsign=false commit -qm head
+head="$(git -C "$fixture" rev-parse HEAD)"
+git -C "$fixture" checkout -q --detach "$head"
+"$SRC/isolate-policy.sh" claude "$fixture" "$base" "$head" > /dev/null || { echo "FAIL: skill-index fixture isolation failed"; FAIL=1; }
+rc=0; write_policy_manifest "$fixture" "$base" "$S/skill-index.json" || rc=$?
+manifest="$(cat "$S/skill-index.json" 2>/dev/null || true)"
+manifest_want='{"version":2,"policy_files":[".claude/skills/bad/SKILL.md","AGENTS.md"],"skills":[{"path":".claude/skills/good/SKILL.md","name":"good","description":"Use when testing BASE-DESC-41."}]}'
+[ "$rc" = 0 ] && [ "$manifest" = "$manifest_want" ] || { echo "FAIL: skill-index manifest (exit $rc)=$manifest"; FAIL=1; }
+# Known positive: the head commit's copy carries a different description, so the base one above is not a coincidence.
+git -C "$fixture" show "$head:.agents/skills/good/SKILL.md" | grep -qF 'HEAD-DESC-99' \
+  || { echo "FAIL: known positive — head skill lacks its sentinel"; FAIL=1; }
+# RC9: both bounds fail before review, and the policy bound names how many fallbacks it counted.
+rc=0; err="$( (REVIEW_PR_MAX_POLICY_FILES=1 write_policy_manifest "$fixture" "$base" "$S/over.json") 2>&1)" || rc=$?
+if [ "$rc" != 1 ] || ! grep -qF 'has 2 files, exceeding REVIEW_PR_MAX_POLICY_FILES=1 (1 of them skills whose frontmatter could not be read)' <<<"$err"; then
+  echo "FAIL: policy bound (exit $rc): $err"; FAIL=1
+fi
+rc=0; err="$( (REVIEW_PR_MAX_SKILL_INDEX=0 write_policy_manifest "$fixture" "$base" "$S/over.json") 2>&1)" || rc=$?
+if [ "$rc" != 1 ] || ! grep -qF 'base skill index has 1 skills, exceeding REVIEW_PR_MAX_SKILL_INDEX=0' <<<"$err"; then
+  echo "FAIL: skill index bound (exit $rc): $err"; FAIL=1
+fi
+# Codex indexes its own .agents/skills the same way.
+load_adapter codex
+rc=0; manifest="$(policy_manifest_json "$fixture" "$base")" || rc=$?
+manifest_want='{"version":2,"policy_files":[".agents/skills/bad/SKILL.md","AGENTS.md"],"skills":[{"path":".agents/skills/good/SKILL.md","name":"good","description":"Use when testing BASE-DESC-41."}]}'
+[ "$rc" = 0 ] && [ "$manifest" = "$manifest_want" ] || { echo "FAIL: codex skill-index manifest (exit $rc)=$manifest"; FAIL=1; }
+load_adapter claude
+
+# Skill paths never pass through shell decoding: quotes, backslashes, tabs and newlines survive into the index.
+fixture="$S/odd-skill-paths"
+mkdir -p "$fixture"; git -C "$fixture" init -q -b main
+blob="$(printf -- '---\nname: odd\ndescription: Use when testing odd paths.\n---\n' | git -C "$fixture" hash-object -w --stdin)"
+odd=$'.claude/skills/q"b\\t\tn\n/SKILL.md'
+printf '100644 blob %s\t%s\0' "$blob" "$odd" | GIT_INDEX_FILE="$S/odd.index" git -C "$fixture" update-index -z --add --index-info
+tree="$(GIT_INDEX_FILE="$S/odd.index" git -C "$fixture" write-tree)"
+got="$(policy_manifest_json "$fixture" "$tree" | jq -j '.skills[0].path')"
+[ "$got" = "$odd" ] || { echo "FAIL: odd skill path changed in the index: $(printf '%q' "$got")"; FAIL=1; }
+
 # RC11: a policy path that is not valid UTF-8 fails rather than being renamed by JSON encoding.
 # Built with plumbing: the filesystem may refuse the name, but a base tree can carry it.
 fixture="$S/non-utf8"

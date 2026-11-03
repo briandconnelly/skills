@@ -30,11 +30,11 @@ load_adapter() { # load_adapter NAME
     die 3 "unsupported review runner: $name"
   fi
   [ -f "$adapter_dir/$name.sh" ] || die 3 "supported review runner is missing its adapter: $name"
-  unset -f adapter_check adapter_is_policy_path adapter_context_paths adapter_build_command adapter_normalize 2>/dev/null || true
+  unset -f adapter_check adapter_is_policy_path adapter_context_paths adapter_is_skill_path adapter_build_command adapter_normalize 2>/dev/null || true
   unset ADAPTER_POLICY_ROOTS ADAPTER_ALWAYS_REMOVE
   # shellcheck disable=SC1090
   . "$adapter_dir/$name.sh"
-  declare -F adapter_check adapter_is_policy_path adapter_context_paths adapter_build_command adapter_normalize >/dev/null \
+  declare -F adapter_check adapter_is_policy_path adapter_context_paths adapter_is_skill_path adapter_build_command adapter_normalize >/dev/null \
     || die 3 "runner adapter '$name' does not implement the required interface"
   declare -p ADAPTER_POLICY_ROOTS ADAPTER_ALWAYS_REMOVE >/dev/null 2>&1 \
     || die 3 "runner adapter '$name' does not declare its policy paths"
@@ -239,40 +239,197 @@ nul_paths_json() {
   printf '%s\n' "$json"
 }
 
-# context_paths_json DIR TREEISH -> JSON array of adapter-selected passive policy paths, one per base source and
-# sorted by byte order (RC8). The base source of a path restored under a policy symlink is its path under the link
-# target; any other path is its own source. Sources come from base-tree link text only, never from the head.
-# Paths are validated by nul_paths_json first, so jq sees exact UTF-8; its string order is then byte order.
-# Grouping is O(n log n): each destination looks up its own ancestors in the link map rather than scanning entries.
-context_paths_json() {
-  local work r LC_ALL=C
+# policy_selection_json DIR TREEISH -> JSON array of {path, oid, mandatory}: the adapter-selected passive policy
+# paths, one per base source and sorted by byte order (RC8), each with the base blob restored there. The base source
+# of a path restored under a policy symlink is its path under the link target; any other path is its own source.
+# Sources and blobs come from the base tree alone, never from the head. An entry is a skill (mandatory false) only
+# when every selected path that reaches its source is one, so a file selected as policy under any name stays policy.
+# Paths are validated by nul_paths_json first, so jq sees exact UTF-8 and its string order is byte order; grouping
+# is O(n log n), each destination looking up its own ancestors in the link map rather than scanning entries.
+policy_selection_json() {
+  local work r p entry LC_ALL=C
   work="$(mktemp -d "${TMPDIR:-/tmp}/review-pr-context.XXXXXX")" || die 1 "cannot create a temporary directory"
   # Both run in this shell, not a process substitution, so a refusal or selector failure stops here.
   policy_index "$1" "$2" "$work/links" > "$work/records"
   local _REVIEW_PR_INDEX_FILE="$work/records" _REVIEW_PR_INDEX_DIR="$1" _REVIEW_PR_INDEX_TREE="$2"
   adapter_context_paths "$1" "$2" > "$work/selected" || { rm -rf "$work"; die 1 "adapter_context_paths failed"; }
   _REVIEW_PR_INDEX_FILE=""
-  : > "$work/remove"
+  : > "$work/remove"; : > "$work/skills"; : > "$work/blobs"
   if [ "${#ADAPTER_ALWAYS_REMOVE[@]}" -gt 0 ]; then
     for r in "${ADAPTER_ALWAYS_REMOVE[@]}"; do printf '%s\0' "$r" >> "$work/remove"; done
   fi
+  while IFS= read -r -d '' p; do if adapter_is_skill_path "$p"; then printf '%s\0' "$p" >> "$work/skills"; fi; done < "$work/selected"
+  # Records are `MODE TYPE OID<TAB>PATH`; the pairs file maps each restored path to its base blob.
+  while IFS= read -r -d '' entry; do
+    p="${entry#*$'\t'}"; entry="${entry%%$'\t'*}"; printf '%s\0%s\0' "$p" "${entry##* }" >> "$work/blobs"
+  done < "$work/records"
   nul_paths_json < "$work/selected" > "$work/selected.json"
   nul_paths_json < "$work/links" > "$work/links.json"
   nul_paths_json < "$work/remove" > "$work/remove.json"
+  nul_paths_json < "$work/skills" > "$work/skills.json"
+  nul_paths_json < "$work/blobs" > "$work/blobs.json"
   # A destination equal to its source represents it; otherwise the first alias in byte order does.
-  jq -n -c --slurpfile sel "$work/selected.json" --slurpfile links "$work/links.json" --slurpfile rm "$work/remove.json" '
-    ($links[0]) as $l
-    | ([range(0; $l | length; 2) | {key: $l[.], value: $l[. + 1]}] | from_entries) as $map
+  jq -n -c --slurpfile sel "$work/selected.json" --slurpfile links "$work/links.json" --slurpfile rm "$work/remove.json" \
+    --slurpfile skills "$work/skills.json" --slurpfile blobs "$work/blobs.json" '
+    def pairs($a): [range(0; $a | length; 2) | {key: $a[.], value: $a[. + 1]}] | from_entries;
+    pairs($links[0]) as $map
+    | pairs($blobs[0]) as $oid
+    | ($skills[0] | map({key: ., value: true}) | from_entries) as $skill
     | [ $sel[0][] as $d
         | select(all($rm[0][]; . as $r | $d != $r and ($d | startswith($r + "/") | not)))
         | ($d | split("/")) as $c
         | (first(range($c | length; 0; -1) as $n | ($c[:$n] | join("/")) | select($map[.] != null)) // null) as $link
-        | {dest: $d, src: (if $link == null then $d else $map[$link] + $d[($link | length):] end)} ]
+        | {dest: $d, src: (if $link == null then $d else $map[$link] + $d[($link | length):] end), skill: ($skill[$d] == true)} ]
     | group_by(.src)
-    | map((map(select(.dest == .src)) | first) // min_by(.dest) | .dest)
-    | sort
+    | map(((map(select(.dest == .src)) | first) // min_by(.dest)) as $rep
+          | {path: $rep.dest, oid: $oid[$rep.dest], mandatory: any(.[]; .skill | not)})
+    | sort_by(.path)
   ' || { rm -rf "$work"; die 1 "cannot build the policy manifest"; }
   rm -rf "$work"
+}
+
+# context_paths_json DIR TREEISH -> JSON array of the paths policy_selection_json selects, skills included.
+context_paths_json() {
+  local selection
+  selection="$(policy_selection_json "$1" "$2")" || exit "$?"
+  jq -c 'map(.path)' <<<"$selection"
+}
+
+# json_string_exact FILE -> the JSON string of FILE's bytes, or failure when JSON cannot carry them exactly (bytes
+# that are not valid UTF-8, which jq would replace with U+FFFD).
+json_string_exact() {
+  local json
+  json="$(jq -Rs . < "$1")" || return 1
+  printf '%s' "$json" | jq -j . | cmp -s - "$1" || return 1
+  printf '%s\n' "$json"
+}
+
+# skill_frontmatter_json DIR OID -> {"name","description"} from the base blob OID of a SKILL.md, or failure.
+# The grammar is deliberately narrow (RC8): a leading `---` fence closed by `---`; top-level `key: value` lines,
+# comment lines, and indented continuation lines; `name` a single-line plain or quoted scalar; `description` a
+# plain scalar with indented continuation lines, a single-line quoted scalar, or a `>`/`|` block scalar. Other keys
+# and their indented children are skipped. Anything else, a duplicate or missing name or description, a double-quoted
+# escape, or a description over 1024 characters fails, and the caller lists that skill as a mandatory read instead.
+skill_frontmatter_json() {
+  local work name desc
+  work="$(mktemp -d "${TMPDIR:-/tmp}/review-pr-skill.XXXXXX")" || die 1 "cannot create a temporary directory"
+  git -C "$1" cat-file blob "$2" > "$work/skill" 2>/dev/null || { rm -rf "$work"; return 1; }
+  # shellcheck disable=SC2016 # awk program, not shell expansions.
+  if ! LC_ALL=C awk -v out_name="$work/name" -v out_desc="$work/desc" '
+    function fail(code) { err = code; exit }
+    function unquote(v,   inner) {
+      if (v ~ /^'\''/) {
+        if (v !~ /'\''$/ || length(v) < 2) fail(3)
+        v = substr(v, 2, length(v) - 2)
+        # Inside single quotes only a doubled quote may appear.
+        inner = v; gsub(/'\'''\''/, "", inner)
+        if (index(inner, "'\''")) fail(3)
+        gsub(/'\'''\''/, "'\''", v); return v
+      }
+      if (v ~ /^"/) {
+        if (v !~ /"$/ || length(v) < 2) fail(3)
+        v = substr(v, 2, length(v) - 2)
+        if (index(v, "\\") || index(v, "\"")) fail(3)
+        return v
+      }
+      sub(/[ \t]+#.*$/, "", v)
+      # A plain scalar may not open with a YAML indicator: a flow collection, anchor, alias, tag, block or quote
+      # character, directive or reserved character, or a sequence, complex-key or mapping marker before a space.
+      if (v ~ /^[][{}&*!|>'\''"%@`,#]/ || v ~ /^[-?:]([ \t]|$)/) fail(3)
+      return v
+    }
+    NR == 1 { if ($0 != "---") fail(2); next }
+    $0 == "---" { closed = 1; exit }
+    {
+      line = $0
+      if (line ~ /^[ \t]/ || line == "") {
+        if (cur == "name") { if (line != "") fail(3); next }
+        if (cur != "description") next
+        if (mode == "plain") { sub(/^[ \t]+/, "", line); if (line != "") desc = desc (desc == "" ? "" : " ") line; next }
+        if (mode == "folded" || mode == "literal") {
+          if (line == "") { blank++; next }
+          # YAML indents with spaces only, and no block line may sit left of the first one.
+          match(line, /^[ \t]*/)
+          if (index(substr(line, 1, RLENGTH), "\t")) fail(3)
+          if (indent == "") indent = RLENGTH
+          if (RLENGTH < indent) fail(3)
+          line = substr(line, indent + 1)
+          if (desc != "") desc = desc (mode == "literal" ? "\n" : (blank ? "\n" : " "))
+          while (blank-- > 1) desc = desc "\n"
+          blank = 0; desc = desc line; next
+        }
+        fail(3)
+      }
+      if (line ~ /^#/) { cur = ""; next }
+      if (!match(line, /^[A-Za-z0-9_-]+:([ \t]|$)/)) fail(3)
+      key = substr(line, 1, index(line, ":") - 1); val = substr(line, index(line, ":") + 1)
+      sub(/^[ \t]+/, "", val); sub(/[ \t]+$/, "", val)
+      cur = key
+      if (key == "name") { if (seen[key]++) fail(3); name = unquote(val); next }
+      if (key == "description") {
+        if (seen[key]++) fail(3)
+        if (val ~ /^[>|][-+]?$/) { mode = (val ~ /^>/) ? "folded" : "literal"; indent = ""; blank = 0; desc = ""; next }
+        if (val ~ /^['\''"]/) { mode = "quoted"; desc = unquote(val); next }
+        mode = "plain"; desc = unquote(val); next
+      }
+      cur = "other"
+    }
+    END {
+      if (err) exit err
+      if (!closed || name == "" || !seen["description"] || desc == "") exit 4
+      printf "%s", name > out_name; printf "%s", desc > out_desc
+    }
+  ' "$work/skill"; then rm -rf "$work"; return 1; fi
+  if ! name="$(json_string_exact "$work/name")" || ! desc="$(json_string_exact "$work/desc")"; then rm -rf "$work"; return 1; fi
+  rm -rf "$work"
+  jq -n -c --argjson name "$name" --argjson desc "$desc" \
+    'if ($name | length) > 64 or ($desc | length) > 1024 then error("too long") else {name: $name, description: $desc} end' \
+    2>/dev/null
+}
+
+# policy_manifest_json DIR TREEISH -> the policy-manifest.json object (RC8): {"version": 2, "policy_files": [...],
+# "skills": [{"path", "name", "description"}, ...]}, both lists sorted by path. A selected skill whose frontmatter
+# skill_frontmatter_json cannot read is listed in policy_files, so its body stays a mandatory read.
+# FALLBACK_FILE, when given, receives how many skills were listed in policy_files because their frontmatter could not
+# be read. Paths never leave JSON: each skill is addressed by its index, so no shell decoding can alter one.
+policy_manifest_json() {
+  local selection i n oid meta fallback=0 metas='{}'
+  selection="$(policy_selection_json "$1" "$2")" || exit "$?"
+  n="$(jq length <<<"$selection")"
+  for ((i = 0; i < n; i++)); do
+    [ "$(jq -r --argjson i "$i" '.[$i].mandatory' <<<"$selection")" = false ] || continue
+    oid="$(jq -r --argjson i "$i" '.[$i].oid' <<<"$selection")"
+    if meta="$(skill_frontmatter_json "$1" "$oid")"; then
+      metas="$(jq -c --arg i "$i" --argjson m "$meta" '. + {($i): $m}' <<<"$metas")"
+    else
+      fallback=$((fallback + 1))
+    fi
+  done
+  [ -z "${3:-}" ] || printf '%s\n' "$fallback" > "$3"
+  jq -c --argjson metas "$metas" '
+    to_entries
+    | {version: 2,
+       policy_files: ([.[] | select($metas[.key | tostring] == null) | .value.path] | sort),
+       skills: ([.[] | select($metas[.key | tostring] != null) | {path: .value.path} + $metas[.key | tostring]] | sort_by(.path))}
+  ' <<<"$selection"
+}
+
+# write_policy_manifest DIR TREEISH OUTPUT -> writes the manifest and enforces RC9's bounds, so checkout-pr.sh and the
+# lens collector prepare the same artifact.
+write_policy_manifest() {
+  local manifest max_files="${REVIEW_PR_MAX_POLICY_FILES:-40}" max_skills="${REVIEW_PR_MAX_SKILL_INDEX:-200}" n_files n_skills n_fallback fallback_file
+  [[ "$max_files" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_POLICY_FILES must be a non-negative integer, got '$max_files'"
+  [[ "$max_skills" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_SKILL_INDEX must be a non-negative integer, got '$max_skills'"
+  fallback_file="$(mktemp "${TMPDIR:-/tmp}/review-pr-fallback.XXXXXX")" || die 1 "cannot create a temporary file"
+  manifest="$(policy_manifest_json "$1" "$2" "$fallback_file")" || { rm -f "$fallback_file"; exit 1; }
+  n_fallback="$(cat "$fallback_file")"; rm -f "$fallback_file"
+  n_files="$(jq '.policy_files | length' <<<"$manifest")"
+  n_skills="$(jq '.skills | length' <<<"$manifest")"
+  [ "$n_files" -le "$max_files" ] \
+    || die 1 "base policy manifest has $n_files files, exceeding REVIEW_PR_MAX_POLICY_FILES=$max_files ($n_fallback of them skills whose frontmatter could not be read)"
+  [ "$n_skills" -le "$max_skills" ] \
+    || die 1 "base skill index has $n_skills skills, exceeding REVIEW_PR_MAX_SKILL_INDEX=$max_skills"
+  printf '%s\n' "$manifest" > "$3"
 }
 
 # ensure_merge_base CLONE BASE_SHA HEAD_SHA PULL_REF

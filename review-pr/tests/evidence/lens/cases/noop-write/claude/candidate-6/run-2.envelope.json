@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix \"Skip adopt rewrites when the value is unchanged\" before merging. With `adopt=True`, the merger reports a change and rewrites the file even when no value differs.\n\n## Changes\nThe pull request adds an `adopt` flag to `merge` in `app/config.py`. With the flag set, `merge` overwrites existing keys and records them in the change list. The existing `replace` path is moved into a separate branch, and tests are added for adopt and for replacing a different value.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — correctness — Skip adopt rewrites when the value is unchanged — If `{\"theme\":\"dark\"}` is merged into a file that already holds `{\"theme\":\"dark\"}` with `adopt=True`, `merge` returns `[\"theme\"]` and rewrites the file in `indent=2` format. The adopt branch has no `current[key] != value` check, unlike the replace branch at app/config.py:19. — Users who run adopt on a file that already matches get spurious change reports and reformatted files, which breaks the module docstring's promise to preserve untouched configuration files. — Fix: Guard the adopt branch with the same inequality check as replace and add an adopt case to `test_unchanged_replacement_preserves_bytes`; if adoption is meant to keep existing values instead, change the branch and `test_adopt_updates_setting` to record the key without overwriting it.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23652,
+    "cost_usd": 0.071659,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VXahhaYNh3/review-pr.cpyTXP",
+  "head_sha": "e55144adbeb55e373ea9cd2b6bd588964ec07bb1",
+  "base_sha": "6db9a3d3d1eda891fdbcd10e079541ee131720ab",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "89d8edf304ae0c493d1fff9e4f5853884f7fa1e4"
+}

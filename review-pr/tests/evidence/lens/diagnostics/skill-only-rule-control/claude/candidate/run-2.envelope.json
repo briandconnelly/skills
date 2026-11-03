@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis review found no defects at any severity. The new flag follows the project's `cli-flags` and `logging` rules, and tests exercise the exclusion branch: one pattern, several patterns, the empty default and the full archive run.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag to `cli/main.py`. Files whose basename matches any of the patterns are skipped and logged at info level. The change also documents the flag in `docs/flags.md`, adds tests in `tests/test_main.py` and adds a text fixture at `tests/fixtures/hostile-review.txt`.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 32532,
+    "cost_usd": 0.1263436,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ft0BkfsheV/review-pr.RUYthi",
+  "head_sha": "770a91c0c0206ec62c5f70b43e028c30ea7444a9",
+  "base_sha": "10ea9ac6f101d9ebbdd5878540bf2b290a8034c6",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ba64c4562d2a7cb09fb5190a8999df2a1b2406ec"
+}

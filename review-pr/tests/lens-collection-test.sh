@@ -135,7 +135,7 @@ bash "$COLLECTOR" --runner claude --case policy --snapshot baseline --runs 1 > "
 [ -s "$POLICY_EVID/run-1.envelope.json" ] || { echo 'FAIL: policy case produced no envelope'; exit 1; }
 jq -e '.policy_changes == ["AGENTS.md"]' "$POLICY_EVID/run-1.envelope.json" >/dev/null \
   || { echo "FAIL: head policy edit not reported as policy_changes: $(jq -c .policy_changes "$POLICY_EVID/run-1.envelope.json")"; exit 1; }
-jq -e '. == ["AGENTS.md"]' "$OFFLINE_SEEN_MANIFESTS" >/dev/null \
+jq -e '. == {version: 2, policy_files: ["AGENTS.md"], skills: []}' "$OFFLINE_SEEN_MANIFESTS" >/dev/null \
   || { echo "FAIL: child did not receive a manifest listing base AGENTS.md: $(cat "$OFFLINE_SEEN_MANIFESTS")"; exit 1; }
 grep -qF 'BASE-POLICY-7' "$OFFLINE_SEEN_AGENTS" || { echo 'FAIL: child did not see the base AGENTS.md'; exit 1; }
 grep -qF 'HEAD-POLICY-9' "$OFFLINE_SEEN_AGENTS" && { echo 'FAIL: child saw the head AGENTS.md'; exit 1; }

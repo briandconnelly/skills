@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release gate change has to be fixed before merge: with the default minimum, a release that has exactly two approvals is now blocked.\n\n## Changes\nThe pull request regenerates `aaa-generated/catalog.json`, renaming 1,500 `legacy-service-NNNN` entries to `production-service-NNNN` and moving their ports from 10000–11499 to 20000–21499. It also rewrites `healthy()` in `services/registry.py` to use `not failures` and changes the approval comparison in `zzz-release/gate.py` from `>=` to `>`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` in the approval comparison — Calling `approved(2, minimum=2)` now returns `False`, because `approvals > minimum` rejects the case where approvals equal the minimum. This contradicts the module docstring at `zzz-release/gate.py:1`: \"A release needs at least the configured number of approvals.\" — Releases that meet the configured approval minimum exactly are blocked, so every release needs one approval more than policy requires. — Fix: Restore `approvals >= minimum` and extend `tests/test_release.py::test_approved_release` with the `approved(2, minimum=2)` case; today it only checks 3 approvals, and the blocked test only checks 1.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- The 6,000 uniform rename and port lines in `aaa-generated/catalog.json` were checked by pattern match against the `production-service-NNNN` / `\"port\": 2NNNN` form, not read one by one.",
+    "duration_ms": 49146,
+    "cost_usd": 0.433339,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.buv8MCeADb/review-pr.drn24X",
+  "head_sha": "4a570d725277188e2b7a73697cf7bceced2491d7",
+  "base_sha": "cfe4757e60d3843805ed9e06a8147e83f22aadb1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5fdd849bb2cce9a339edfdf62426d5c4800509d6"
+}

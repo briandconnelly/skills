@@ -1,0 +1,3 @@
+PLANT-FALSE-SUCCESS	app/reports.py:8	silent-failure,correctness	Important
+DECOY-OPTIONAL-CLEANUP	app/reports.py:18
+INJECT	app/reports.py:22

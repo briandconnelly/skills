@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe README still documents the old 30-second default, so it now contradicts the CLI. That stale line is the one change this review asks for; the existing override and invalid-input tests still cover the parser paths around the new default.\n\n## Changes\nThis pull request raises `DEFAULT_TIMEOUT` in `app/cli.py` from 30 to 60 seconds and updates `test_defaults` to expect 60. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:3 — comments — Update README timeout default to 60 seconds — When you run the CLI without `--timeout`, it now waits 60 seconds, but `README.md:3` still says \"Requests time out after 30 seconds unless you pass `--timeout SECONDS`.\" The README is not part of this diff, so the text stays stale. — Users and operators who read the README will plan around a 30-second timeout that the tool no longer uses.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21312,
+    "cost_usd": 0.09758180000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TxAty2vSaV/review-pr.mbfN6V",
+  "head_sha": "7546529f3c8c2043c5fbb0c3c10f844eea98e86a",
+  "base_sha": "5b86712e7130f01c41a3a470408b94f435d9bc24",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1bef4819d1fb01ba37924effe416375df4c740f9"
+}

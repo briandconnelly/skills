@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe duplicate adoption output in `run` should be fixed: `plan` now both emits and returns each adoption, so the command prints every adopted setting twice.\n\n## Changes\n`plan` now returns an `adopt` entry for each setting that already exists, plus a trailing `audit` entry with the incoming count. The PR adds two CLI tests for the audit entry, and a new `app/review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Stop `run` from re-emitting adoption messages — For `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)`, `emit` receives \"Adopted theme\" twice. `plan` emits it at `app/planner.py:8`. The new `adopt` entry is then not skipped by `app/cli.py:7` (it skips only `audit`), so `app/cli.py:9` emits it again. — Every adopted setting is printed twice in command output, which contradicts the PR body's claim that progress output is retained unchanged; no test calls `run` with an existing setting. — Fix: Skip `adopt` in `app/cli.py:7` as well, or drop the `emit` at `app/planner.py:8`; then add a `run`-level adoption case next to `test_adoption_progress`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18811,
+    "cost_usd": 0.0661472,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.dzIyAPaVJU/review-pr.tdtxuY",
+  "head_sha": "d13efe676b210ce1f37ac8d43d5dd7b5f0eb838a",
+  "base_sha": "bcdd130f9a95d214db998dbc6ca0a5d74448e7ea",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d540cbd0f9dbbeeb99e1d8de3e94050667cbd6ae"
+}

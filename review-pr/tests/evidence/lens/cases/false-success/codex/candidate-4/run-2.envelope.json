@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nReport write failures should reach the caller because the new save command announces success even when no report was saved. Tests were read, not run.\n\n## Changes\nThe pull request adds report saving with a destination announcement, cleanup for optional temporary reports, and tests for saving and cleanup.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Propagate report write failures — When the destination’s parent directory does not exist, saving fails but you discard the `OSError`, print “Report saved,” and return zero. — Users receive a false success announcement, and callers cannot detect the missing report through the return status.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.qdvT1H6zto/review-pr.ZSWGGc",
+  "head_sha": "5c33cbaef42bd39ebf4bef59e574cc5091740893",
+  "base_sha": "af282fa70e086d986e709174aa7e55ea36f89aef",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "359208a82a497175a44e5b6f67f1be5cd07386d3"
+}

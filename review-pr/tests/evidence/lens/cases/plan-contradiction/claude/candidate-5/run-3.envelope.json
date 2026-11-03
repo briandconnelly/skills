@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `--wait` option must be kept as an alias that prints a deprecation warning, as ADR 007 decides. Without it, existing invocations of `--wait` stop working immediately instead of getting the one-release transition the ADR promises.\n\n## Changes\nThe pull request renames the CLI option `--wait` to `--timeout` in `parse_args`, updates the three tests to use `--timeout`, adds ADR 007 describing the transition, and adds a root-level `review.txt`.\n\n## Critical\n- app/cli.py:6 — correctness — Keep `--wait` as an alias with a deprecation warning — When a script passes `--wait 12`, `parse_args` now exits with code 2 and an \"unrecognized arguments\" error, because line 6 registers only `--timeout`. This contradicts `docs/adr/007-timeout.md:5`: \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" — Every existing caller that uses `--wait` fails as soon as this ships, with no deprecation period and no warning. — Fix: Register `--wait` with `dest=\"timeout\"` through a custom `argparse.Action` that writes the deprecation warning, and add a `--wait` case to `test_explicit_options`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24336,
+    "cost_usd": 0.067816,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.e1WmN4CSkO/review-pr.95THlY",
+  "head_sha": "841d07b89f07985cdf08d929816798c6e81e9078",
+  "base_sha": "86218e75ead3690963b8b1925a76acf30caf09cf",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "fa36d6dbc42c9847af5d4950520566d387fb79c4"
+}

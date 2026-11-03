@@ -20,7 +20,7 @@ mkjob() {
   git -C "$job/repo" init -q
   echo '{"number":12}' > "$job/pr.json"
   echo 'diff data' > "$job/pr.diff"
-  echo '[]' > "$job/policy-manifest.json"
+  echo '{"version":2,"policy_files":[],"skills":[]}' > "$job/policy-manifest.json"
   jq -n --arg d "$job" '{dir:$d, runner:"claude", base_sha:"b", head_sha:"h", merge_base_sha:"m", head_repo:"o/r", policy_changes:[".claude/x"],
     pr_state:"OPEN", pr_is_draft:false, pr_merged_at:null, pr_author:"octocat", pr_author_is_bot:false,
     diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'

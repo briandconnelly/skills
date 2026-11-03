@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/data-doc-precision/codex/candidate-3	1	99965	76672	1619	NA	1	NA	9	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/data-doc-precision/codex/candidate-3	2	82644	75520	1553	NA	1	NA	9	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/data-doc-precision/codex/candidate-3	3	82041	64128	1513	NA	1	NA	9	0

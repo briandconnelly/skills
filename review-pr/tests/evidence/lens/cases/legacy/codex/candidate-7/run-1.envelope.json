@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore the bundled defaults before merge because their deletion breaks the existing defaults loader. Tests were read, not run.\n\n## Changes\nAdds millisecond timeout parsing, port validation, JSON configuration loading, and host normalization with tests. Also deletes the bundled defaults and adds reviewer documentation and a review fixture.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore the defaults file required by the loader — Calling `load_defaults()` now raises `FileNotFoundError` instead of returning `{\"timeout\": 30}`. The deleted file is still read unconditionally at `app/startup.py:6`. — Callers loading the bundled defaults fail before receiving their configuration.\n\n## Important\n- app/parse.py:22 — correctness — Accept TCP port 65535 — For `p=65535`, `is_valid_port` returns `False` although its documented range includes that port. The strict upper comparison excludes the final valid value. — Callers using this validator reject a valid endpoint at the upper boundary.\n- app/parse.py:30 — silent-failure — Expose configuration loading failures — For malformed JSON or an unreadable path, `load_config` returns `{}` without exposing the parsing or file-access exception. The broad catch makes these failures indistinguishable from a successfully loaded empty object. — Operators cannot diagnose broken configuration when parsing or file access fails.\n- app/parse.py:40 — tests — Test normalization of a host with a trailing dot — For `\"Example.COM.\"`, the new trailing-dot removal branch has no test. The only host-normalization test passes `\"Example.COM\"`, which bypasses that branch. — A regression leaving trailing dots intact would pass the existing host-normalization test.\n\n## Suggestions\n- app/parse.py:35 — comments — Align the empty-host documentation with its return value — For `normalize_host(\"\")`, the docstring promises “returns None when h is empty,” but the corresponding branch executes `return \"\"`. — Callers following the documented empty-host contract can check for `None` and miss the actual empty-string result.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.bPPY84UALP/review-pr.5RW0Eu",
+  "head_sha": "32362bb084b54cadf6826c15d9242bacfb6ae103",
+  "base_sha": "bb6f57cadaeda7fa07f003e9d892968023901363",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9c73859d7f5ebb5712f3ff1868b9c40ebe6d7353"
+}

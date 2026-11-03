@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe invite flow still accepts passwords shorter than twelve characters, so this change does not fully apply the new policy. The PR's tests do cover the 11/12 boundary for signup and reset.\n\n## Changes\nThis PR raises `MIN_PASSWORD_LENGTH` from 8 to 12 in `app/signup.py` and `app/reset.py`, updates their boundary tests to check lengths 0, 8, 11, 12 and 13, and adds a one-line `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Raise MIN_PASSWORD_LENGTH in app/invite.py to 12 — An invited user can still set an 8 to 11 character password, because `app/invite.py:1` keeps `MIN_PASSWORD_LENGTH = 8` while signup and reset move to 12. The PR body says it raises \"the minimum in the password validators\", but `app/invite.py:5` has the same `accepts_password` check and was not changed. — Users who join through an invitation can still create passwords that break the twelve-character security policy. — Fix: Change `app/invite.py:1` to 12 and update `tests/test_invite.py:6-8` the same way as `tests/test_signup.py`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23958,
+    "cost_usd": 0.1110032,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.QjWfSrQw7e/review-pr.qp4mwS",
+  "head_sha": "fadbb9195b7f9f05fc9ad7aa04f64818e22d4c14",
+  "base_sha": "cc612de8eb0dff1c9911bdd83698f89c48c9bd60",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0caea5b368c3516b0807173cfbadf5446b03da52"
+}

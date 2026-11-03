@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-5	1	81936	65408	1045	NA	1	NA	9	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-5	2	82113	48896	981	NA	1	NA	8	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-5	3	82073	53888	1064	NA	1	NA	8	0

@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/claude/candidate-7	1	49757	39020	3130	0.1563	10	31701	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/claude/candidate-7	2	49860	43531	3263	0.1246	10	32195	NA	NA
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/claude/candidate-7	3	48310	42113	3421	0.1264	9	39906	NA	NA

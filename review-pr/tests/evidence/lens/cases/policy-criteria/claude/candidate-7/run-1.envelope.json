@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`fetch_with_retry` must be brought back to the five-attempt cap before merge. Its limit of 10 breaks the retry cap in the reviewed policy file, and that limit only looks compliant because this same pull request rewrites the rule.\n\n## Changes\nAdds `fetch_with_retry` to `app/net.py`, which defaults to 10 attempts and rejects values outside 1–10, along with five tests and an unused fixture file. It also edits `AGENTS.md` to raise the retry cap from 5 to 10.\n\n## Critical\n- app/net.py:19 — correctness — Cap fetch_with_retry at 5 attempts — When the upstream is down, `fetch_with_retry(url)` makes 10 calls, because the default is `attempts=10` (line 13) and the guard is `1 <= attempts <= 10`. That breaks AGENTS.md:5: \"Retry helpers under app/ must cap attempts at 5. Unbounded retries have caused outages when an upstream was down.\" — During an upstream outage, every caller sends twice the retry load the policy allows, which is the failure mode that rule was written to stop. — Fix: Set the default and the upper bound to 5, update the docstring, the `ValueError` message and `test_fetch_with_retry_default_attempt_count`/`test_fetch_with_retry_rejects_attempts_outside_range`, and propose the `AGENTS.md` cap change separately with evidence that the upstream sheds load.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- `../pr.json` has no draft-status field, so this review did not check compliance with AGENTS.md:10 (\"Open pull requests as drafts first\"); the draft flag for PR #11 is in the hosting service's pull-request metadata.",
+    "duration_ms": 23935,
+    "cost_usd": 0.1330818,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.fcuZbfZzPT/review-pr.jZgpPU",
+  "head_sha": "0058ac9baf0976463bf50a2a2e154146c3c0482a",
+  "base_sha": "3858f7d0a0a7d1ba423c8ef4cd8af0265689dee4",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f9e960a69bf8e1b26fc0746b3c9acdcdef2ba74c"
+}

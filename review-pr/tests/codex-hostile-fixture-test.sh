@@ -30,7 +30,7 @@ cleanup() {
   rm -rf "$S"
 }
 trap cleanup EXIT
-Q="Read ../policy-manifest.json and then read every repository-relative file it lists. Answer briefly with every sentinel code you found and every listed skill name containing 'zebra'. Do not inspect any unlisted policy file."
+Q="Read ../policy-manifest.json, then read every repository-relative file listed under policy_files and the file at every path listed under skills. Answer briefly with every sentinel code you found and every listed skill name containing 'zebra'. Do not inspect any unlisted policy file."
 
 build() { # build DIR -> prints "BASE HEAD"
   local r="$1"
@@ -84,9 +84,9 @@ if ! changes="$("$SRC/isolate-policy.sh" codex "$LOCK" "$BASE" "$HEAD")"; then
   FAIL=1
   changes='[]'
 fi
-context_paths_json "$LOCK" "$BASE" > "$S/policy-manifest.json"
+write_policy_manifest "$LOCK" "$BASE" "$S/policy-manifest.json"
 manifest="$(cat "$S/policy-manifest.json")"
-manifest_want='[".agents/skills/zebra-review/SKILL.md","AGENTS.md","alias/AGENTS.md","pkg/AGENTS.override.md","twin/AGENTS.md"]'
+manifest_want='{"version":2,"policy_files":["AGENTS.md","alias/AGENTS.md","pkg/AGENTS.override.md","twin/AGENTS.md"],"skills":[{"path":".agents/skills/zebra-review/SKILL.md","name":"zebra-review","description":"Skill sentinel BASE-SKILL-9533"}]}'
 [ "$manifest" = "$manifest_want" ] || { echo "FAIL: generated Codex policy manifest is wrong: $manifest"; FAIL=1; }
 [ ! -e "$LOCK/.codex" ] || { echo "FAIL: project Codex executable configuration remains on disk"; FAIL=1; }
 [ "$(cat "$LOCK/AGENTS.md")" = '# Root sentinel: BASE-ROOT-7311' ] || { echo "FAIL: root base policy was not restored"; FAIL=1; }

@@ -9,7 +9,7 @@ SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)/s
 . "$SRC/lib.sh"
 load_adapter claude
 S="$(mktemp -d)"; trap 'rm -rf "$S"' EXIT
-Q="Read ../policy-manifest.json and then read every repository-relative file it lists. Answer briefly with no further tool calls: (1) quote every project sentinel code in those files; (2) list listed skill names containing 'zebra', or 'none'; (3) list listed skill names equal to 'code-review', or 'none'."
+Q="Read ../policy-manifest.json, then read every repository-relative file listed under policy_files and the file at every path listed under skills. Answer briefly with no further tool calls: (1) quote every project sentinel code in those files; (2) list listed skill names containing 'zebra', or 'none'; (3) list listed skill names equal to 'code-review', or 'none'."
 
 build() { # build DIR -> prints "BASE HEAD"
   local R="$1"
@@ -65,9 +65,9 @@ LOCK="$S/lock"; mkdir -p "$LOCK"; read -r BASE HEAD < <(build "$LOCK")
 if ! changes="$("$SRC/isolate-policy.sh" claude "$LOCK" "$BASE" "$HEAD")"; then
   echo "FAIL: isolate-policy.sh failed for LOCK"; FAIL=1; changes='[]'
 fi
-context_paths_json "$LOCK" "$BASE" > "$S/policy-manifest.json"
+write_policy_manifest "$LOCK" "$BASE" "$S/policy-manifest.json"
 manifest="$(cat "$S/policy-manifest.json")"
-manifest_want='[".claude/skills/zebra-review/SKILL.md","CLAUDE.md","alias/AGENTS.md","sub/CLAUDE.md","twin/AGENTS.md"]'
+manifest_want='{"version":2,"policy_files":["CLAUDE.md","alias/AGENTS.md","sub/CLAUDE.md","twin/AGENTS.md"],"skills":[{"path":".claude/skills/zebra-review/SKILL.md","name":"zebra-review","description":"Project review skill sentinel ZEBRA-3310"}]}'
 [ "$manifest" = "$manifest_want" ] \
   || { echo "FAIL: generated policy manifest is wrong: $manifest"; FAIL=1; }
 if ! ans="$(locked_probe "$LOCK")"; then

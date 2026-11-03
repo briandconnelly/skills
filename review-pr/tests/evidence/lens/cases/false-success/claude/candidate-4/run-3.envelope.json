@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`save_report` needs fixing before merge because it prints a success message and returns 0 even when the write fails, and the test added for that path cannot catch it.\n\n## Changes\nThis pull request adds `save_report`, which writes the rendered report to a path and prints where it went, and `cleanup_report`, which deletes a temporary report and ignores the case where the file is already gone. It also adds tests for both functions.\n\n## Critical\n- app/reports.py:8 — silent-failure — Propagate write errors instead of announcing success — If the destination's parent directory is missing or can't be written to, `path.write_text` raises `OSError`. `except OSError: pass` throws that error away, and line 10 still prints `Report saved to {path}` and returns 0. — Users and calling scripts are told the report was saved when no file exists, so the report is lost without any warning. — Fix: Remove the `try`/`except`, or log the error and return a non-zero status before the success message is printed.\n\n## Important\n- tests/test_reports.py:46 — tests — Assert the failure outcome for an unavailable destination — `test_save_with_unavailable_destination` calls `save_report` on `missing/report.txt` but checks neither the return value, nor the printed output, nor whether the file exists. It passes whether the function reports success or failure. — Nothing protects against regressions where a failed save reports success, and the test currently locks in the swallowed error at `app/reports.py:8`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 21507,
+    "cost_usd": 0.0589582,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.SYn0g2UrHU/review-pr.GbtVP0",
+  "head_sha": "a313bec0e0fd173ccfb14300a21e6c2220ca3f65",
+  "base_sha": "f7bc033fe27d5a2ca5b08bbac2b225812b5577b9",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "affb12c2b479463553ac94d2560fa3c73dc8df43"
+}

@@ -14,6 +14,8 @@ RUNNER="${REVIEW_PR_RUNNER:-claude}"
 load_adapter "$RUNNER"
 MAX_POLICY_FILES="${REVIEW_PR_MAX_POLICY_FILES:-40}"
 [[ "$MAX_POLICY_FILES" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_POLICY_FILES must be a non-negative integer, got '$MAX_POLICY_FILES'"
+MAX_SKILL_INDEX="${REVIEW_PR_MAX_SKILL_INDEX:-200}"
+[[ "$MAX_SKILL_INDEX" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_SKILL_INDEX must be a non-negative integer, got '$MAX_SKILL_INDEX'"
 
 for c in git jq gh cmp; do need_cmd "$c"; done
 
@@ -66,11 +68,7 @@ NOW_HEAD="$(gh pr view "$N" -R "$REPO" --json headRefOid -q .headRefOid 2>&1)" \
 
 CHANGES="$("$HERE/isolate-policy.sh" "$RUNNER" "$CLONE" "$BASE_SHA" "$HEAD_SHA")" \
   || die 1 "isolate-policy.sh failed (exit $?)"
-CONTEXT_PATHS="$(context_paths_json "$CLONE" "$BASE_SHA")"
-CONTEXT_COUNT="$(jq -r length <<<"$CONTEXT_PATHS")"
-[ "$CONTEXT_COUNT" -le "$MAX_POLICY_FILES" ] \
-  || die 1 "base policy manifest has $CONTEXT_COUNT files, exceeding REVIEW_PR_MAX_POLICY_FILES=$MAX_POLICY_FILES"
-printf '%s\n' "$CONTEXT_PATHS" > "$JOB/policy-manifest.json"
+write_policy_manifest "$CLONE" "$BASE_SHA" "$JOB/policy-manifest.json"
 
 # Status is as observed at checkout. Booleans are copied with has(), since jq's // would turn false into null.
 # The metadata comes from pr.json on disk, never from argv: a PR body can exceed a single argument's size limit.

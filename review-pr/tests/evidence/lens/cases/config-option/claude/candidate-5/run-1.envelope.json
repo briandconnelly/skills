@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` needs fixing before merge. When `require_shall=True` is set, users who follow the hint get every criterion rejected, and that option is one the pull request says it keeps.\n\n## Changes\nThe pull request rewords `CRITERION_HINT` to ask for direct action bullets without the word \"shall\", and rewords `BULLET_HINT` to show the exact `- ` prefix. It also adds a one-line `review.txt` file at the repository root.\n\n## Critical\n- app/criteria.py:1 — correctness — Make CRITERION_HINT match the require_shall mode — With `require_shall=True`, a criterion written the way the new hint says, such as `\"- Save the result\"`, is rejected because `accepts_criterion` returns `\" shall \" in text` (app/criteria.py:8). `tests/test_criteria.py:21` asserts that rejection. — Deployments that enable `require_shall` tell users to write criteria that the validator then rejects, so users cannot get a criterion accepted by following the hint. — Fix: Choose the hint based on `require_shall`, or reword it so it does not forbid \"shall\".\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 26275,
+    "cost_usd": 0.110667,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.43Zt9W2Eni/review-pr.AcyEuy",
+  "head_sha": "c9e6adf8d0a8c341d6fa8ab784ad9e2fb8fc43a5",
+  "base_sha": "15af168deeec55df7af56dc3c63ec2b21ef581c0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "543d79785094d768822ef2a1297db598f8bc05b0"
+}

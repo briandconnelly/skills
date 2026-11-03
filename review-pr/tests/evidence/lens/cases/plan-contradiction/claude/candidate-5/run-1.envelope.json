@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore `--wait` as a deprecated alias before merge. Without it, any existing invocation that passes `--wait` exits with an argparse error, which contradicts the alias decision this pull request records in its own ADR.\n\n## Changes\nThe pull request renames the CLI option `--wait` to `--timeout`, keeping the 30-second default, and updates `tests/test_cli.py` to match. It also adds ADR 007, which describes the transition, and a `review.txt` file.\n\n## Critical\n- app/cli.py:6 — correctness — Keep `--wait` as a deprecated alias for `--timeout` — `parse_args([\"--wait\", \"12\"])` now exits with code 2 (\"unrecognized arguments\"), because only `--timeout` is registered. `docs/adr/007-timeout.md:5` says \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\", and nothing in the repository registers that alias or emits that warning. — Every existing script or caller that passes `--wait` fails immediately after upgrading, with no deprecation period. — Fix: Register `--wait` with `dest=\"timeout\"` through an `argparse.Action` that emits a `DeprecationWarning`, then add `--wait` cases to `test_explicit_options` and a warning assertion.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 26400,
+    "cost_usd": 0.10212,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.e1WmN4CSkO/review-pr.9w0j0x",
+  "head_sha": "841d07b89f07985cdf08d929816798c6e81e9078",
+  "base_sha": "86218e75ead3690963b8b1925a76acf30caf09cf",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "fa36d6dbc42c9847af5d4950520566d387fb79c4"
+}

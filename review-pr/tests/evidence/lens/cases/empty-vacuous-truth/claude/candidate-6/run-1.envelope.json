@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.317",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the empty-criteria regression before merge: `requirement_proven([])` now reports a requirement with no criteria as proven, which removes the evidence guard that the previous `bool(criteria)` check provided.\n\n## Changes\nThe PR changes `requirement_proven` to compare a count of proven criteria against the criteria length. It also adds `reviewed_batch`, which rejects empty batches with `ValueError`, and adds tests for both functions in `tests/test_proof.py`.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:3 — correctness — Return False for empty criteria in requirement_proven — With `criteria=[]`, `proven == len(criteria)` evaluates `0 == 0` and returns True; the removed line `return bool(criteria) and all(...)` returned False, and no test covers the empty case. — Any requirement that has no criteria recorded is now reported as proven without evidence, so its proof status is wrong. — Fix: Restore the `bool(criteria)` guard (or raise as `reviewed_batch` does at app/proof.py:7-8), and extend `test_requirement_with_evidence` with an empty-list case.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 23564,
+    "cost_usd": 0.09332539999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.hKpTBzY0vm/review-pr.GFOIvc",
+  "head_sha": "38ec29598e90198b0b2c09259e48ca6315c25eb4",
+  "base_sha": "e995792538fcbd8525583a3b6c8f247cbd9f0845",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7f0d515f6466466fcd63a851dab620b143c932ef"
+}
