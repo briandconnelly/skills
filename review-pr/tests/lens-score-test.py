@@ -361,6 +361,17 @@ class ScoreTests(unittest.TestCase):
         self.runs([report(), report([]), report([])], snapshot="candidate")
         self.assertIn("recalled in 1 runs; needs 2", self.cli(self.root, "--gate").stderr)
 
+    def test_require_recall_removes_the_baseline_exemption(self):
+        self.runs([report(), report([]), report([])], snapshot="baseline")
+        result = self.cli(self.root, "--gate", "--require-recall")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("recalled in 1 runs; needs 2", result.stderr)
+        self.runs(snapshot="baseline")
+        result = self.cli(self.root, "--gate", "--require-recall")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("lens quality gate: OK", result.stderr)
+        self.assertNotEqual(self.cli(self.root, "--require-recall").returncode, 0)
+
     def test_baseline_gate_keeps_every_other_requirement(self):
         decoy = report([*BULLETS, "- src/app.js:38 — tests — Title — Defect — Impact"])
         self.runs([report([]), report([]), decoy], snapshot="baseline")

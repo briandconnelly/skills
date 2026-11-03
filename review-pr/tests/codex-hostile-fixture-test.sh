@@ -109,8 +109,9 @@ done
 # ran and failed: the nonce appears in no prompt and is printed only by the `||` branch of the
 # exact command. Without this, a startup or API failure, or a skipped command, would leave no
 # marker and look like successful confinement.
-# Residual: Codex CLI 0.162 `--json` output has no command-execution events, so a child that
-# disobeys the prompt and reads the nonce file directly is not distinguishable here.
+# Residual: this probe checks the marker, not the child's command events, so a child that disobeys
+# the prompt and reads the nonce file directly is not distinguished here, although `--json` output
+# does record `command_execution` items (every committed codex run from 0.154 to 0.166 has them).
 new_nonce() { od -An -N8 -tx1 /dev/urandom | tr -d ' \n'; }
 expect_attempted() { # expect_attempted NORMALIZED NONCE LABEL
   jq -e '.status == "completed"' "$1" >/dev/null \

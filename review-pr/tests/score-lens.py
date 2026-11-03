@@ -241,7 +241,7 @@ def run_errors(row, config):
     return [f"run {row['run']}: {error}" for error in errors]
 
 
-def gate(directory, targets, rows):
+def gate(directory, targets, rows, require_recall=False):
     config = json.loads((directory / "run-config.json").read_text())
     runs = config["runs"]
     if type(runs) is not int or runs < MIN_RUNS:
@@ -255,8 +255,9 @@ def gate(directory, targets, rows):
             hits = sum(target.key in row["recalled"] for row in rows)
             if hits < MIN_HITS:
                 misses.append(f"{target.key}: recalled in {hits} runs; needs {MIN_HITS}")
-    # A baseline measures whether the unedited lens recalls a plant; a miss is a result.
-    if config.get("snapshot") != "baseline":
+    # A baseline measures whether the unedited lens recalls a plant; a miss is a result, unless the
+    # protocol needs the baseline to recall (lens-rubric.md, "Changing the reading procedure").
+    if config.get("snapshot") != "baseline" or require_recall:
         errors += misses
         misses = []
     if errors:
@@ -279,10 +280,15 @@ def main():
     parser.add_argument("--whole-text", action="store_true")
     parser.add_argument("--allow-overlap", action="store_true")
     parser.add_argument("--gate", action="store_true")
+    parser.add_argument(
+        "--require-recall", action="store_true", help="with --gate: a baseline must meet recall too"
+    )
     parser.add_argument("--tsv", type=Path)
     args = parser.parse_args()
     if args.directory is None and args.check_manifest is None:
         parser.error("provide EVIDENCE_DIR or --check-manifest PATH")
+    if args.require_recall and not args.gate:
+        parser.error("--require-recall applies only with --gate")
     if args.gate and (args.whole_text or args.manifest):
         parser.error("--gate scores the snapshot's own manifest under contract rules")
     try:
@@ -297,7 +303,7 @@ def main():
             args.tsv.write_text(output)
         print(output, end="")
         if args.gate:
-            misses = gate(args.directory, targets, rows)
+            misses = gate(args.directory, targets, rows, args.require_recall)
             if misses:
                 print(
                     "lens quality gate: baseline OK, recall not met: " + "; ".join(misses),

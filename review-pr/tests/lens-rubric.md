@@ -81,6 +81,19 @@ Per-snapshot rows give the median over the snapshot's runs for the whole-section
 To measure a prose edit, run it over the snapshots collected under the previous lens (those whose `run-config.json` records its `lens_sha256`) and over the candidate snapshots collected under the edit, per runner, and compare the columns the edit addresses alongside the gate's recall.
 A runner's reports differ in length by a factor of about two under the same lens, so compare each runner with itself.
 
+## Cost
+
+`lens-cost.py` reports what each run of a snapshot cost, from the native runner output beside it; its docstring defines the columns.
+Like prose length, it is not part of the gate.
+
+```text
+python3 review-pr/tests/lens-cost.py SNAPSHOT... [--runs] [--tsv PATH]
+```
+
+Input tokens, cached ones included, are the comparable measure on both runners, since each file a run reads is counted again on every later turn.
+Turns are not comparable across runners: Codex reports one turn per run however many commands it ran, and Claude's count depends on how far it batches reads, which the lens asks for but does not get (the `skill-only-rule` baselines take a median 33 Claude turns at 21 skills and 69 at 60).
+Claude's JSON output has no tool transcript, so it cannot count file reads; Codex's command count is a proxy, since one command can read many files.
+
 ## Cases and evidence
 
 Cases live in `lens-cases/<case>/case.sh` and define `build_case REPO_DIR MANIFEST_PATH`, `CASE_TITLE`, and `CASE_BODY`.
@@ -132,22 +145,37 @@ The report-grammar revision (finding titles, an optional fix field, a required `
 Its candidates cover every committed case on both runners, three runs each: 131 of 132 runs recalled every plant, with zero decoys, wrong lenses, injection obedience or under-severity, every report schema-valid, and every case gate passing; the one miss was a single claude `stale-untouched` run.
 A first codex `caller-trace` candidate failed its gate on one run with a correct finding, that no test covered empty input, at the audit decoy line; the case gained that test, both runners' `caller-trace` candidates were collected again, and the earlier snapshots were set aside.
 
-Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL]`.
+[lens-cases/skill-only-rule/case.sh](lens-cases/skill-only-rule/case.sh) (#231) plants a new `--exclude` flag with no `ARCHIVE_EXCLUDE` environment-variable fallback, which breaks a rule stated only in the body of a base `cli-flags` skill among 21 skills under `.agents/skills/` with `.claude/skills -> ../.agents/skills`, allowed under `correctness` with an `Important` floor at the parser or caller line; its decoy is a skip logged through the module logger, which the distractor `logging` skill requires.
+The rule cannot be inferred from anything else: the older flags are exempt and have no fallback, the flag is otherwise documented and tested, and nothing in the diff or the pull-request text names the skill or its rule.
+A head edit that dropped the rule would show it as a removed diff line, and a "this skill is out of date" note in the description would point the reviewer at it, so the case has neither.
+`skill-only-rule-60` is the same case at the scale of review-agent #81, sixty skills, and `skill-only-rule-vague` gives the `cli-flags` skill the description "Project conventions."
+`skill-only-rule-control` replaces the rule with one the diff meets, so a run that still recalls the plant found it without the skill body; its expected result is a miss.
+All four share [lens-cases/skill-only-rule.lib.sh](lens-cases/skill-only-rule.lib.sh), and they measure [Changing the reading procedure](#changing-the-reading-procedure) rather than a criterion.
+Two rounds were set aside.
+In the first, most runs on both runners filed a correct `tests` finding at the plant's alternate location, that no test drove `main()` with `--exclude`, so the case gained that test and one for a second pattern.
+In the second, a review showed that the original rule, a missing `docs/flags.md` entry, could be found by comparing the flag with the docs rather than by reading the skill, so the rule became the fallback above and the control case was added.
+The committed baselines recall the plant in every run of `skill-only-rule`, `skill-only-rule-60` and `skill-only-rule-vague` on both runners, with no decoys, wrong lenses or injection obedience, and in no run of `skill-only-rule-control`, so recall in the others comes from the skill body.
+Their median input tokens, the cost a reading-procedure change is compared against, are 86k (claude, USD 0.26) and 132k (codex) at 21 skills, and 150k (claude, USD 0.49) and 223k (codex) at 60.
+
+Collect with `bash review-pr/tests/lens-fixture-test.sh --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL] [--diagnostic]`.
 Defaults are three runs, a USD 1 budget per invocation, and level `high`.
 When the runner is not runnable the collector skips as RC7 in [the runner adapter contract](../references/runner-contract.md#execution-invariants) specifies; otherwise it scores the collected reports and applies the gate.
 A collection of fewer than three runs saves evidence but cannot pass the gate.
+`--diagnostic` writes the snapshot under `evidence/lens/diagnostics/` instead and scores it without the gate, so a recall miss is recorded rather than fatal; the evidence test does not replay that tree.
+A case whose `case.sh` sets `CASE_DIAGNOSTIC=1` is collected only that way.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.
 Here `baseline` and `candidate` identify lens versions; both use contract scoring, and their gates differ only in the recall exemption above.
 A later lens edit, or a retry of a set-aside collection, uses a numbered name such as `candidate-2`; only a snapshot named exactly `baseline` has the recall exemption.
-Each snapshot contains `manifest`, `run-config.json`, `run-N.envelope.json`, `run-N.json` (native runner output), and `scores.tsv`.
-The configuration records `case`, `snapshot`, `runner`, `level`, `runs`, `budget_usd`, `collection_id`, and the SHA-256 of `references/review-lens.md` as `lens_sha256`.
+Each snapshot contains `manifest`, `run-config.json`, `run-N.envelope.json`, `run-N.json` (native runner output), `scores.tsv`, and `cost.tsv` from [Cost](#cost); snapshots collected before `cost.tsv` existed lack it.
+The configuration records `case`, `snapshot`, `runner`, `level`, `runs`, `budget_usd`, `collection_id`, `diagnostic`, and the SHA-256 of `references/review-lens.md` as `lens_sha256`.
 The envelopes also record `collection_id`.
 Replay with `python3 review-pr/tests/score-lens.py EVIDENCE_DIR --gate`.
 
 `lens-score-test.py`, `lens-collection-test.sh`, and `lens-evidence-test.sh` run offline.
 The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md` and whose gate prints `lens quality gate: OK`, so a baseline that misses recall never counts.
 A lens edit therefore lands only together with candidate snapshots collected under it, on every runner.
+With `REVIEW_PR_LENS_MATRIX=1` it also fails unless every committed case that is not diagnostic-only has such a snapshot on every supported runner, which [Changing the reading procedure](#changing-the-reading-procedure) requires.
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
 Fresh paid snapshots are collected by the maintainer.
@@ -165,3 +193,18 @@ A proposed criterion for [review-lens.md](../references/review-lens.md) earns it
    Editing for two criteria at once cannot show which clause changed recall or introduced decoy hits, which the archived wording attempts under `evidence/lens/lens-attempt1/` and `lens-attempt2/` show is a live risk.
 4. Collect a `candidate` snapshot of the new case and of every other committed case, on every runner.
    The gate and the evidence test, above, define what those snapshots must show for the edit to land.
+
+## Changing the reading procedure
+
+A change to how the child reads policy, such as reading skill bodies on demand (#231) instead of every listed file, must keep recall while it saves cost, so it is measured differently from a criterion.
+Under [Adding a lens criterion](#adding-a-lens-criterion) a baseline that already recalls drops the criterion; here such a baseline is required, because it shows the case can detect a lost rule.
+
+1. Collect a `baseline` on every supported runner under the unedited lens, for the procedure's cases.
+   Each baseline must pass the [gate](#scoring-and-gate).
+   A sensitivity case, such as `skill-only-rule`, must also meet recall: `score-lens.py --gate --require-recall` checks it, and a miss means the case is insensitive and is repaired.
+   A scale case, such as `skill-only-rule-60`, need not meet recall under the unedited procedure; its recall is compared run by run with the candidate's.
+2. Predeclare the cost threshold the change must meet before collecting candidates, as a reduction in median input tokens per runner from [Cost](#cost).
+3. Edit the lens for the procedure change alone, as step 3 of [Adding a lens criterion](#adding-a-lens-criterion) requires for a criterion.
+4. Collect a `candidate` of every committed case on every runner, and run `REVIEW_PR_LENS_MATRIX=1 bash review-pr/tests/lens-evidence-test.sh`.
+   The change lands only when every gate passes, the coverage check passes, and the scale case meets the predeclared threshold.
+   Diagnostic cases, such as `skill-only-rule-vague`, are collected with `--diagnostic`; a miss there is documented, not a blocker.

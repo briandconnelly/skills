@@ -2,12 +2,14 @@
 # Collect and score a case snapshot; see lens-rubric.md.
 set -euo pipefail
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
-RUNNER=""; CASE=""; SNAPSHOT=""; RUNS=3; BUDGET=1; LEVEL=high
+RUNNER=""; CASE=""; SNAPSHOT=""; RUNS=3; BUDGET=1; LEVEL=high; DIAGNOSTIC=false
 usage() {
-  echo "usage: $0 --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL]" >&2
+  echo "usage: $0 --runner NAME --case CASE --snapshot baseline|candidate[-N] [--runs N] [--budget USD] [--level LEVEL] [--diagnostic]" >&2
   exit 2
 }
 while [ $# -gt 0 ]; do
+  # --diagnostic: evidence outside the acceptance tree, scored without the gate (lens-rubric.md).
+  if [ "$1" = --diagnostic ]; then DIAGNOSTIC=true; shift; continue; fi
   [ $# -ge 2 ] || usage
   case "$1" in
     --runner) RUNNER="$2";; --case) CASE="$2";; --snapshot) SNAPSHOT="$2";;
@@ -24,16 +26,19 @@ done
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 SRC="$ROOT/scripts"
 SCORER="$ROOT/tests/score-lens.py"
+COST="$ROOT/tests/lens-cost.py"
 # shellcheck disable=SC1091
 . "$SRC/lib.sh"
 load_adapter "$RUNNER"
 [ -f "$ROOT/tests/lens-cases/$CASE/case.sh" ] || die 2 "unknown lens case: $CASE"
 # shellcheck disable=SC1090
 . "$ROOT/tests/lens-cases/$CASE/case.sh"
+[ "${CASE_DIAGNOSTIC:-0}" != 1 ] || [ "$DIAGNOSTIC" = true ] || die 2 "lens case $CASE is diagnostic-only; collect it with --diagnostic"
 # Skip exit status: RC7 in references/runner-contract.md.
 if ! (adapter_check) >/dev/null 2>&1; then echo "lens-fixture-test: SKIP ($RUNNER not runnable)"; exit 77; fi
 [ "$RUNS" -ge 3 ] || echo "lens-fixture-test: WARNING: the quality gate needs 3 runs; $RUNS will fail it" >&2
-EVID="$ROOT/tests/evidence/lens/cases/$CASE/$RUNNER/$SNAPSHOT"
+if [ "$DIAGNOSTIC" = true ]; then EVID="$ROOT/tests/evidence/lens/diagnostics/$CASE/$RUNNER/$SNAPSHOT"
+else EVID="$ROOT/tests/evidence/lens/cases/$CASE/$RUNNER/$SNAPSHOT"; fi
 [ ! -e "$EVID" ] || die 1 "snapshot already exists: $EVID"
 export REVIEW_PR_SCRATCH; REVIEW_PR_SCRATCH="$(mktemp -d)"; trap 'rm -rf "$REVIEW_PR_SCRATCH"' EXIT
 COLLECTION_ID="$(printf '%s' "$REVIEW_PR_SCRATCH" | git hash-object --stdin)"
@@ -48,9 +53,9 @@ export REVIEW_PR_LENS="${REVIEW_PR_LENS:-$ROOT/references/review-lens.md}"
 LENS_SHA256="$(shasum -a 256 "$REVIEW_PR_LENS" | cut -d' ' -f1)"
 jq -n --arg collection "$COLLECTION_ID" --arg runner "$RUNNER" --arg case "$CASE" \
   --arg snapshot "$SNAPSHOT" --arg level "$LEVEL" --argjson runs "$RUNS" --argjson budget "$BUDGET" \
-  --arg lens_sha256 "$LENS_SHA256" \
+  --arg lens_sha256 "$LENS_SHA256" --argjson diagnostic "$DIAGNOSTIC" \
   '{collection_id:$collection, runner:$runner, case:$case, snapshot:$snapshot, level:$level,
-    runs:$runs, budget_usd:$budget, lens_sha256:$lens_sha256}' > "$EVID/run-config.json"
+    runs:$runs, budget_usd:$budget, lens_sha256:$lens_sha256, diagnostic:$diagnostic}' > "$EVID/run-config.json"
 
 mkjob() {
   local job n base head
@@ -84,4 +89,7 @@ for k in $(seq 1 "$RUNS"); do
   if [ -f "$dir/runner-output" ]; then cp "$dir/runner-output" "$EVID/run-$k.json"; else echo '{}' > "$EVID/run-$k.json"; fi
   rm -rf "$dir"
 done
-python3 "$SCORER" "$EVID" --gate --tsv "$EVID/scores.tsv"
+# Cost is recorded for every snapshot and never gates it.
+python3 "$COST" "$EVID" --runs --tsv "$EVID/cost.tsv" > /dev/null || echo "lens-fixture-test: WARNING: cost.tsv not written" >&2
+if [ "$DIAGNOSTIC" = true ]; then python3 "$SCORER" "$EVID" --tsv "$EVID/scores.tsv"
+else python3 "$SCORER" "$EVID" --gate --tsv "$EVID/scores.tsv"; fi

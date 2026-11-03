@@ -22,6 +22,9 @@ The generic security and result requirements have their only normative definitio
 - CO8: The Codex shell remains available for read-only evidence inspection, and its filesystem reads are not technically confined to the checkout and private evidence directory.
 - CO9: An optional review level maps to `model_reasoning_effort`.
 - CO10: Codex CLI does not expose stable budget or turn-limit flags, so `REVIEW_PR_BUDGET` and `REVIEW_PR_MAX_TURNS` are accepted by the shared interface but are not enforced by this adapter.
+- CO13: Despite the skill-search switch, the child is given the names and descriptions of the checkout's `.agents/skills/` skills, the user-global skills under `$CODEX_HOME/skills/` (default `~/.codex/skills/`), and Codex's bundled system skills; plugin skills are excluded.
+  The checkout's skills are base content once isolation has run, but the user-global ones are the reviewer's own and outside the base commit.
+  Observed on codex-cli 0.166.0 with `bash review-pr/tests/native-skill-discovery-probe.sh codex`; whether skill bodies are also injected is untested.
 
 ## Output mapping
 

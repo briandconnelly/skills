@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new flag should honor the required environment default; CI-configured exclusions currently have no effect.\n\n## Changes\nThe pull request adds repeatable filename exclusions and documents the flag. It adds parser, filtering, and archive-content tests, which this review assessed by reading without running them.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Load --exclude defaults from ARCHIVE_EXCLUDE — When you set `ARCHIVE_EXCLUDE=*.log` without `--exclude`, `skip.log` remains included because the default is always `[]`. This violates .agents/skills/cli-flags/SKILL.md:11: “Every command-line flag added under `cli/` from now on must also take its default from an `ARCHIVE_<NAME>` environment variable”. — CI jobs that configure exclusions through the environment archive files they intended to omit.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1UFy5jGSHx/review-pr.2r0K2I",
+  "head_sha": "4d6e262a8c4d1ccf7edc8f3f1f6957655bfb80fa",
+  "base_sha": "f7a78e9bead914a5d3dc056abaa10403c6225d60",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6622599d485baa2b24c66b2b44418ba888b182c3"
+}

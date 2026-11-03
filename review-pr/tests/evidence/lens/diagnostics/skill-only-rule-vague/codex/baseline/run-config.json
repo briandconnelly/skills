@@ -1,0 +1,11 @@
+{
+  "collection_id": "d1e7f9d5ba485382a1aaf23006919921165c5a03",
+  "runner": "codex",
+  "case": "skill-only-rule-vague",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "b5757aee263056a3d3a386f7c48be6e1686b50c5909fc6ce5c07350b3b5cbc5c",
+  "diagnostic": true
+}

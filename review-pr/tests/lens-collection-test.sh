@@ -14,7 +14,7 @@ trap cleanup EXIT
 mkdir -p "$S/skill/tests" "$S/bin"
 cp -R "$ROOT/scripts" "$ROOT/references" "$S/skill/"
 cp -R "$ROOT/tests/lens-cases" "$S/skill/tests/"
-cp "$ROOT/tests/lens-fixture-test.sh" "$ROOT/tests/score-lens.py" "$S/skill/tests/"
+cp "$ROOT/tests/lens-fixture-test.sh" "$ROOT/tests/score-lens.py" "$ROOT/tests/lens-cost.py" "$S/skill/tests/"
 cat > "$S/bin/claude" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -150,17 +150,39 @@ git -C "$S/kp" show pr-3:AGENTS.md | grep -qF 'HEAD-POLICY-9' || { echo 'FAIL: f
 for case_dir in "$ROOT"/tests/lens-cases/*/; do
   case_name="$(basename "$case_dir")"
   [ "$case_name" != legacy ] || continue
-  CASE_EVID="$S/skill/tests/evidence/lens/cases/$case_name/claude/baseline"
+  set --; tree=cases
+  if grep -qx 'CASE_DIAGNOSTIC=1' "$case_dir/case.sh"; then set -- --diagnostic; tree=diagnostics; fi
+  CASE_EVID="$S/skill/tests/evidence/lens/$tree/$case_name/claude/baseline"
   OFFLINE_MANIFEST="$CASE_EVID/manifest"
-  bash "$COLLECTOR" --runner claude --case "$case_name" --snapshot baseline --runs 1 > "$S/$case_name.log" 2>&1 || true
+  bash "$COLLECTOR" --runner claude --case "$case_name" --snapshot baseline --runs 1 "$@" > "$S/$case_name.log" 2>&1 || true
   [ -s "$CASE_EVID/run-1.envelope.json" ] || { echo "FAIL: $case_name produced no envelope"; exit 1; }
-  grep -q 'needs at least 3 configured runs' "$S/$case_name.log" || { echo "FAIL: $case_name did not reach the gate (build or calibration failed)"; exit 1; }
+  if [ "$tree" = cases ]; then
+    grep -q 'needs at least 3 configured runs' "$S/$case_name.log" || { echo "FAIL: $case_name did not reach the gate (build or calibration failed)"; exit 1; }
+  fi
   [ "$(grep -c '^PLANT-' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry exactly one plant"; exit 1; }
   [ "$(grep -c '^DECOY-' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry exactly one decoy"; exit 1; }
   [ "$(grep -c '^INJECT' "$CASE_EVID/manifest")" = 1 ] || { echo "FAIL: $case_name must carry one injection probe"; exit 1; }
   awk -F '\t' 'NR == 2 {if ($2 != 1 || $3 != 0 || $4 != 0 || $5 != 0 || $6 != "true") exit 1}' "$CASE_EVID/scores.tsv" \
     || { echo "FAIL: $case_name offline run did not score recall 1 with a valid schema"; exit 1; }
 done
+# Every snapshot records cost beside its scores.
+[ -s "$S/skill/tests/evidence/lens/cases/policy-criteria/claude/baseline/cost.tsv" ] || { echo 'FAIL: collector wrote no cost.tsv'; exit 1; }
+# A diagnostic snapshot lands outside the acceptance tree and is scored without the gate, so a one-run
+# collection that would fail the gate still succeeds; the same collection without --diagnostic fails (above).
+DIAG_EVID="$S/skill/tests/evidence/lens/diagnostics/skill-only-rule-vague/claude/baseline"
+OFFLINE_MANIFEST="$DIAG_EVID/manifest"
+# The case loop above collected it with --diagnostic; a one-run gated collection would have failed.
+grep -q 'needs at least 3 configured runs' "$S/skill-only-rule-vague.log" && { echo 'FAIL: diagnostic collection was gated'; exit 1; }
+# A diagnostic-only case is refused without --diagnostic, so it cannot land in the acceptance tree.
+if bash "$COLLECTOR" --runner claude --case skill-only-rule-vague --snapshot candidate --runs 1 > "$S/diag-refused.log" 2>&1; then
+  echo 'FAIL: diagnostic-only case collected into the acceptance tree'; exit 1
+fi
+grep -qF 'diagnostic-only' "$S/diag-refused.log" || { echo 'FAIL: diagnostic-only refusal diagnostic missing'; exit 1; }
+for artifact in manifest run-config.json run-1.envelope.json run-1.json scores.tsv cost.tsv; do
+  [ -s "$DIAG_EVID/$artifact" ] || { echo "FAIL: diagnostic snapshot missing $artifact"; exit 1; }
+done
+jq -e '.diagnostic == true' "$DIAG_EVID/run-config.json" >/dev/null || { echo 'FAIL: diagnostic snapshot not marked'; exit 1; }
+[ ! -e "$S/skill/tests/evidence/lens/cases/skill-only-rule-vague" ] || { echo 'FAIL: diagnostic snapshot written into the acceptance tree'; exit 1; }
 jq -e '.policy_changes == ["AGENTS.md"]' "$S/skill/tests/evidence/lens/cases/policy-criteria/claude/baseline/run-1.envelope.json" >/dev/null \
   || { echo 'FAIL: policy-criteria head policy edit not reported'; exit 1; }
 printf '%s\n' 'lens-collection-test: OK'
