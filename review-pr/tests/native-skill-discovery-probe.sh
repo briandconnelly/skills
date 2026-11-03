@@ -31,11 +31,21 @@ done
 git -C "$R" add -A && git -C "$R" -c user.email=t@example.com -c user.name=t -c commit.gpgsign=false commit -qm probe
 Q="Do not call any tools and do not read any files. List the name and full description of every skill you were told about in your instructions or context, verbatim, one per line. If you were told about no skills, answer exactly NONE."
 
-completed() { # completed RAW -> success when the run produced a final answer without an error
+completed() { # completed RAW -> success when the process exited 0 and produced a final answer without an error
+  [ "$(cat "$1.status")" = 0 ] || return 1
   case "$RUNNER" in
     claude) jq -e '.type == "result" and (.is_error // false) == false and (.result | type) == "string"' "$1" > /dev/null 2>&1;;
     codex) jq -se '([.[] | select(.type == "error" or .type == "turn.failed")] | length) == 0 and
+                   ([.[] | select(.type == "turn.completed")] | length) > 0 and
                    ([.[] | select(.type == "item.completed" and .item.type == "agent_message")] | length) > 0' "$1" > /dev/null 2>&1;;
+  esac
+}
+# untouched RAW -> success when the run used no tool, so a nonce in its answer came from its context, not a file read.
+# Claude's JSON output has no tool transcript, but any tool call costs a second turn.
+untouched() {
+  case "$RUNNER" in
+    claude) jq -e '.num_turns == 1' "$1" > /dev/null 2>&1;;
+    codex) jq -se '([.[] | select(.type == "item.started" or .type == "item.completed") | select(.item.type != "agent_message" and .item.type != "reasoning")] | length) == 0' "$1" > /dev/null 2>&1;;
   esac
 }
 answer() { # answer RAW -> the child's final text
@@ -51,6 +61,10 @@ report() { # report ARM RAW
     printf '%s %s: INCONCLUSIVE, the run did not complete: %s\n' "$RUNNER" "$1" "$(tail -c 300 "$2.err" 2>/dev/null | tr '\n' ' ')"
     return 1
   fi
+  if ! untouched "$2"; then
+    printf '%s %s: INCONCLUSIVE, the run used a tool, so a nonce in its answer may come from reading the file\n' "$RUNNER" "$1"
+    return 1
+  fi
   text="$(answer "$2")"
   printf '%s %s: description=%s body=%s skills=%s\n' "$RUNNER" "$1" \
     "$(grep -qF "$DESC" <<<"$text" && echo seen || echo absent)" \
@@ -59,17 +73,20 @@ report() { # report ARM RAW
 }
 
 adapter_build_command "$Q" low 1 3 "$S"
-(cd "$R" && "${ADAPTER_COMMAND[@]}" < /dev/null > "$S/adapter.raw" 2> "$S/adapter.raw.err") || true
+rc=0; (cd "$R" && "${ADAPTER_COMMAND[@]}" < /dev/null > "$S/adapter.raw" 2> "$S/adapter.raw.err") || rc=$?
+echo "$rc" > "$S/adapter.raw.status"
 FAIL=0
 report adapter "$S/adapter.raw" || FAIL=1
 
 # Known positive: the same CLI and prompt without the adapter's skill and context restrictions, still read-only.
+rc=0
 case "$RUNNER" in
   claude) (cd "$R" && claude -p "$Q" --output-format json --no-session-persistence --max-turns 2 --max-budget-usd 1 \
-            < /dev/null > "$S/control.raw" 2> "$S/control.raw.err") || true;;
+            < /dev/null > "$S/control.raw" 2> "$S/control.raw.err") || rc=$?;;
   codex) (cd "$R" && codex exec --json --ephemeral --sandbox read-only --color never -c 'approval_policy="never"' "$Q" \
-            < /dev/null > "$S/control.raw" 2> "$S/control.raw.err") || true;;
+            < /dev/null > "$S/control.raw" 2> "$S/control.raw.err") || rc=$?;;
 esac
+echo "$rc" > "$S/control.raw.status"
 report control "$S/control.raw" || FAIL=1
 if [ "$FAIL" = 0 ] && ! answer "$S/control.raw" | grep -qF "$DESC"; then
   echo "$RUNNER: INCONCLUSIVE, the control did not surface the probe skill, so a negative adapter result is no evidence"
