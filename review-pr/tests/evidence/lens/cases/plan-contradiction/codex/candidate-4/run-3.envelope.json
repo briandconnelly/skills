@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe compatibility regression should be fixed: existing `--wait` invocations fail despite the documented transition period. Tests were read, not run.\n\n## Changes\nThe pull request renames the parser option and corresponding tests to `--timeout`, preserving the default and output formats. It adds a transition decision and reviewer-directed text.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Preserve --wait during the timeout transition — For `parse_args([\"--wait\", \"12\"])`, parsing now exits with code 2 instead of accepting the existing option. Only `--timeout` is registered, although `docs/adr/007-timeout.md:5` promises an alias and deprecation warning for one release. — Existing scripts using `--wait` stop working immediately, preventing users from migrating during the documented compatibility period. — Fix: Register both spellings, warn when `--wait` is used, and extend `test_explicit_options` to cover compatibility.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.9iiSXVWSEt/review-pr.oa0XKf",
+  "head_sha": "677e9339a1b902a23f8605471609bd110eaf3d42",
+  "base_sha": "8b84a8be0ae6875490fcc6504603c481f2cdb127",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "875105ec377eba71b465fecd43c38449a9247006"
+}

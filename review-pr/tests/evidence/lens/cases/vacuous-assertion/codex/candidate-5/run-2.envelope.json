@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOnly optional corrections were found in the reviewed scope: one legacy-header test passes without exercising version validation. Tests were read, not run.\n\n## Changes\nThe pull request requires the exact `REPORT v1` header and adds two tests intended to reject legacy headers.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:10 — tests — Make the legacy-header test reach version validation — For the generated `REPORT v1\\nversion=v0` input, this test passes even if version validation is removed. The missing `END` causes an earlier rejection, and `rsplit` changes the payload instead of the header. — Maintainers receive misleading regression protection from this test, although the separate complete-report test correctly exercises rejection of version zero.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.a8OqetRqFv/review-pr.XerSYd",
+  "head_sha": "31bdc98f58550bd07f36c3333e23f0fa18dbe294",
+  "base_sha": "8ade28c13b72b301e11c59296e2a9310c4491819",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1c43d14c15baa6044ea8c471f9b25286a21ba133"
+}

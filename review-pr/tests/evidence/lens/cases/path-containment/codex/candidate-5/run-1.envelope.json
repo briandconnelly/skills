@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe preview containment bypass must be fixed before merge because it allows reading files outside the selected home. Tests were read, not run.\n\n## Changes\nThe pull request adds a file preview capped at 200 characters, a settings-file path helper, and tests for both helpers.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before checking home containment — With home `/srv/home` and relative `../secret.txt`, `preview` reads `/srv/secret.txt` instead of raising `ValueError`. `is_relative_to` checks lexical containment without resolving traversal segments or symlinks. — Callers supplying traversal segments or an in-home symlink can disclose readable files outside the selected home. — Fix: Resolve both paths before checking containment and extend `test_preview` with traversal and symlink cases.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.CJKReieD8X/review-pr.eTA9Db",
+  "head_sha": "595e8ecf506a5117a3b88ac3c4fff940794c43c5",
+  "base_sha": "693f4aef8dce6a44fe6e7ba1468092dd60599fc8",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d1423c0cbd213020dd6c18d7d2ff53e981dbfa0c"
+}

@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/codex/candidate-6	1	61974	51456	779	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/codex/candidate-6	2	61949	56192	826	NA	1	NA	6	0
+/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/codex/candidate-6	3	61889	50944	944	NA	1	NA	7	0

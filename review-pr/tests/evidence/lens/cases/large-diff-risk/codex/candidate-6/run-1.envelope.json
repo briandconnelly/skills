@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe approval threshold should be fixed because it now blocks releases with exactly the required number of approvals. Existing tests omit this boundary; they were read, not run.\n\n## Changes\nThe pull request regenerates 1,500 deployment catalog entries, simplifies the health predicate, and changes the release approval comparison.\n\n## Critical\n(none)\n\n## Important\n- zzz-release/gate.py:5 — correctness — Restore the inclusive approval threshold — With `approvals=2` and `minimum=2`, `approved` now returns `False`. The new `>` comparison contradicts the module’s “at least the configured number of approvals” contract at `zzz-release/gate.py:1`. — Releases with exactly the configured minimum remain blocked until an unnecessary extra approval is obtained. — Fix: Restore `approvals >= minimum` and extend `test_approved_release` to cover equality.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.AyVYI6wA42/review-pr.8wRrj9",
+  "head_sha": "00f32c3478b3cb46005233547d3835541b0a3f88",
+  "base_sha": "80e32878cb1621378c66f4711e2c2ff4d6bedbdd",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "48481c104b21955973a15c3b7a92818dc78be43d"
+}
