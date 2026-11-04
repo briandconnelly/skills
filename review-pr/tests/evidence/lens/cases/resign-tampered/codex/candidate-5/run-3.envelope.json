@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe refresh helper should be fixed because it allows hand-edited tracked files to pass verification.\n\n## Changes\nThe pull request adds helpers to refresh fingerprints and register unlisted files, plus tests for manifest updates and preservation of existing digests.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Preserve existing digests during refresh — When a tracked file is edited and included in `names`, refreshing replaces its original digest and makes `verify` accept the edit. The assignment unconditionally overwrites existing entries; the refresh test exercises only unchanged tracked content. — Refreshing after adding files can erase evidence of hand edits, defeating the integrity protection described in the pull request.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.K6sZwiZtZ7/review-pr.gyaBBh",
+  "head_sha": "485753275c9575dd555e7f46a66492e27bf8ad7c",
+  "base_sha": "3716f1d59c209d106381c16d3fdd88e90fdc7db2",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b72d3a02e144ed3d93807b6c1a8b7cd30c99dbb7"
+}

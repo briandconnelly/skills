@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDuplicate adoption output should be fixed because the command renders adoption messages already emitted by the planner. Tests were read, not run.\n\n## Changes\nThe pull request adds adoption records and source-count audit metadata to returned plans, with tests for audit output and empty input.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Emit each adoption message only once — With `run({\"theme\": \"dark\"}, {\"theme\": \"dark\"}, emit)`, the command emits `Adopted theme` twice. Your new record reaches the renderer at `app/cli.py:6–9` after the planner already emits the message at line 8. — When an incoming setting already exists, users receive duplicate progress messages for a single adoption. — Fix: Preserve planner progress and returned adoption records, skip adoption records during command rendering, and extend coverage through `run`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.RgB9hA7ZE3/review-pr.G5c6Bl",
+  "head_sha": "b4cbed7397ead53e391f74ebd2ee981d28e86ff7",
+  "base_sha": "e5938f06b26fd75e32915a0c18a78f5b94d4ed10",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "bb0cd930443752a3939be20715c1993cdb3e6631"
+}

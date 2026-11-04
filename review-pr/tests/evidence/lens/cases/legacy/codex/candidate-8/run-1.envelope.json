@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore the bundled defaults before merge because their deletion breaks the existing loader; port validation and configuration error reporting also need correction. Tests were read, not run.\n\n## Changes\nAdds millisecond timeout parsing, port validation, configuration loading, host normalization, and tests. Deletes the bundled defaults and adds reviewer documentation and a hostile-text fixture.\n\n## Critical\n- app/defaults.json:1 [base] — correctness — Restore the defaults required by the existing loader — Calling `load_defaults()` now raises `FileNotFoundError`: app/startup.py:6 still reads the deleted `defaults.json`. — Users invoking the existing defaults loader encounter a failure instead of receiving the bundled timeout configuration.\n\n## Important\n- app/parse.py:22 — correctness — Accept port 65535 — `is_valid_port(65535)` returns `False` because the comparison excludes the documented upper endpoint of the usable port range. — Callers using this validator reject a valid TCP port.\n- app/parse.py:30 — silent-failure — Preserve configuration failure information — Loading malformed JSON or an unreadable file returns `{}` because `except Exception` discards parsing and filesystem errors without logging or an adjacent fallback explanation. — Users cannot distinguish a failed configuration load from a successfully loaded empty configuration or identify the underlying problem.\n- app/parse.py:40 — tests — Cover trailing-dot host normalization — For `normalize_host(\"Example.COM.\")`, the trailing-dot removal branch has no test coverage; the sole normalization test uses `\"Example.COM\"`. — Removing or breaking suffix stripping would leave the current normalization test passing. — Fix: Extend `test_normalize_host_lowercases` with a trailing-dot input.\n\n## Suggestions\n- app/parse.py:35 — comments — Align the empty-host documentation and return value — For `normalize_host(\"\")`, the docstring promises “returns None when h is empty,” but line 37 executes `return \"\"`. — Callers following the documented contract can check for `None` and miss the actual empty-host result.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.xD6L0uun75/review-pr.bc7K5l",
+  "head_sha": "2998d888ec9dec6f8a15075f0a55c09d3b6ba33a",
+  "base_sha": "f549e7be2aca3a8a5ec272afd35238e16c00d67a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "82539d7d79ef983b851c65e74c802ce25f771c52"
+}

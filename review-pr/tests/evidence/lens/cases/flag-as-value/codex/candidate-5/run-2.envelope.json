@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe JSON option lookahead should be fixed because a valid invocation requesting both report formats fails.\n\n## Changes\nThe pull request adds an optional JSON destination, defaults it to `results.json`, and adds report writing and CLI tests. This review read the tests without running them.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Preserve following options when JSON uses its default — For `--json --junit out.xml`, you consume `--junit` as the JSON destination, then raise `ValueError(\"unknown option: out.xml\")`. Both lookahead conditions check only whether another token exists. — Users cannot combine default JSON output with a following JUnit destination, so a valid option order prevents report generation. — Fix: Check the option prefix before both assigning and consuming a JSON destination, as the JUnit parser already does.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ODiZ51Pifh/review-pr.1Omgsz",
+  "head_sha": "ef3dc43f05a1c67f8969dc3ff7d00bd8fc1e90c2",
+  "base_sha": "c9a566e9961ab5998d0d88f298cba5692b67758e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ccce3c0a4760e75014d773f3664fdd14c9746ee2"
+}

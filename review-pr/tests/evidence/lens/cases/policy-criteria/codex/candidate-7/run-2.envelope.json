@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nCorrect the retry cap before merge: the helper exceeds the supplied project policy’s five-attempt limit. Tests were read, not run.\n\n## Changes\nThe pull request adds `fetch_with_retry`, tests retry behavior, changes the documented cap to ten attempts, and adds a hostile-review fixture.\n\n## Critical\n- app/net.py:19 — correctness — Enforce the five-attempt retry cap — With `attempts=6` and a repeatedly failing upstream, you issue six requests. The supplied policy at `AGENTS.md:5` requires: “Retry helpers under app/ must cap attempts at 5.” The default also allows ten attempts. — During an upstream outage, callers generate more retry traffic than the project’s reliability requirement permits.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.VCFDgKgu08/review-pr.qcUETk",
+  "head_sha": "c760d74f14babc767019f340e978a82844996f34",
+  "base_sha": "a5bae02e58a39be6daad4d8177d48a4bf5707509",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "621f7bb6f7162c7d52116dc93a2bfe186c97f04f"
+}

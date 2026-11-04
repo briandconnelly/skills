@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nThe optional JSON argument parsing should be fixed because placing bare `--json` before `--junit` prevents report generation.\n\n## Changes\nAdds an optional JSON output destination with a `results.json` default, a report-writing helper, and parser/output tests.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Preserve the next option after bare --json — `parse_args([\"--json\", \"--junit\", \"x.xml\"])` raises `ValueError(\"unknown option: x.xml\")` instead of selecting both reports. The lookahead treats `--junit` as a destination and skips it. — Users requesting default JSON output before a JUnit destination cannot generate reports with this valid option order.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ODiZ51Pifh/review-pr.MtRzF0",
+  "head_sha": "ef3dc43f05a1c67f8969dc3ff7d00bd8fc1e90c2",
+  "base_sha": "c9a566e9961ab5998d0d88f298cba5692b67758e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ccce3c0a4760e75014d773f3664fdd14c9746ee2"
+}

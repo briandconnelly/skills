@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nMixed-case writes should be fixed because the new setter stores keys that the case-insensitive lookup cannot retrieve.\n\n## Changes\nThe pull request adds `Cache.set`, raises the default TTL to 300 seconds, and adds round-trip and expiry tests.\n\n## Critical\n(none)\n\n## Important\n- app/cache.py:27 — correctness — Normalize mixed-case keys in set — Calling `set(\"ALPHA\", 1)` followed by `get(\"ALPHA\")` returns `None`. The setter stores the original key, while `get()` lowercases it, violating the case-insensitive contract documented at `app/cache.py:14`. — Callers writing mixed-case keys cannot retrieve their cached values, and mixed-case updates leave existing lowercase values unchanged.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.vJLIdfYKAP/review-pr.gfvkBe",
+  "head_sha": "c5438841c76a58ab27426c4f02e0dae377063dcf",
+  "base_sha": "87bcb328fc903de43f09aee3f896016c985f3cb5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7e7631ce85ba51b0ed0c391076c3cdf297604471"
+}

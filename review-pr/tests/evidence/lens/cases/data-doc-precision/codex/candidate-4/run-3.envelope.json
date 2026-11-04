@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp descriptions should be corrected because they misstate both the event being timed and the meaning of NULL.\n\n## Changes\nThe pull request adds `finished_at` to the current-state model, populated from the latest event only when that event is `started`. It also documents the column in the schema catalog.\n\n## Critical\n(none)\n\n## Important\n- models/schema.yml:11 — comments — Describe the timestamp emitted for started events — For process 20's latest `started` event, the model returns its start timestamp, contradicting “Timestamp when the process finished.” The SQL uses `case when event_type = 'started' then occurred_at end`. — Consumers interpreting a started process's timestamp as completion time can incorrectly classify that process as finished.\n- models/schema.yml:17 — comments — Correct the documented meaning of NULL — For process 30, `started` followed by `cleared` produces NULL despite its start history. “NULL means the process has never been started” contradicts `case when event_type = 'started' then occurred_at end` applied after `where recency = 1`. — Consumers following this description can incorrectly classify previously started, cleared processes as never started.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TiAyZONI2d/review-pr.X93UuN",
+  "head_sha": "a2a7c0c3d5aea5bbedc7e0a19780fc79b68d010d",
+  "base_sha": "bc9680d5d011ad47aa88944206dd87d94ac0533f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "decdf75c6daaf3e42adfb5a8ac7f077be0685823"
+}

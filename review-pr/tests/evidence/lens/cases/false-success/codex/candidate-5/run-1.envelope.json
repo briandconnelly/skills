@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe save failure handling should be fixed because an unsuccessful write produces a success message and status.\n\n## Changes\nThe pull request adds report saving and cleanup of optional temporary reports, with tests for successful saves, unavailable destinations, and cleanup behavior. This review read the tests without running them.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Report failed writes to unavailable destinations — When you save to a path whose parent directory does not exist, `write_text` raises `FileNotFoundError`, but the handler discards it, prints “Report saved,” and returns `0`. — Users and automation cannot detect the failed save or identify why the requested report was not created.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rqG6J9aWqG/review-pr.RwnlI2",
+  "head_sha": "2fcef9a0cdaaee01883e83cd29b91b1912a88073",
+  "base_sha": "efd8257ea45fc1e2ae91814da4108a9103748d1b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ce1378a4af1498ce32d482dc9a4f4a0fe948aa53"
+}
