@@ -366,6 +366,8 @@ skill_frontmatter_json() {
           while (blank-- > 1) desc = desc "\n"
           blank = 0; desc = desc line; next
         }
+        # A quoted scalar closed on its key line: a blank line after it is skipped, an indented line is not.
+        if (mode == "quoted" && line == "") next
         fail(3)
       }
       if (line ~ /^#/) { cur = ""; next }
