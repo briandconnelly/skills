@@ -117,6 +117,29 @@ description: 'Use when x
   and y'
 ---
 EOF
+reads 'blank lines after a quoted description' '{"name":"a","description":"Use when x."}' <<'EOF'
+---
+name: a
+description: "Use when x."
+
+---
+EOF
+reads 'blank line between a quoted description and the next key' '{"name":"a","description":"Use when x."}' <<'EOF'
+---
+name: a
+description: 'Use when x.'
+
+license: MIT
+---
+EOF
+rejects 'quoted scalar continued after a blank line' <<'EOF'
+---
+name: a
+description: "Use when x."
+
+  and y
+---
+EOF
 rejects 'top-level line that is not a key' <<'EOF'
 ---
 name: a
