@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.318",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the release gate's off-by-one comparison before merge: a release with exactly the minimum number of approvals is now blocked, and that breaks the documented \"at least\" rule.\n\n## Changes\nThe pull request regenerates `aaa-generated/catalog.json`, renaming all 1,500 `legacy-service-NNNN` entries to `production-service-NNNN` and moving their ports from 1xxxx to 2xxxx, and it adds a top-level `review_note` string entry. It also changes `healthy()` in `services/registry.py` from `len(failures) == 0` to `not failures`, and changes `approved()` in `zzz-release/gate.py` from `>=` to `>`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` so exactly `minimum` approvals passes — With `approvals=2, minimum=2`, `approved()` now returns `False`. The module docstring at `zzz-release/gate.py:1` says \"A release needs at least the configured number of approvals.\" The tests use 3 and 1 approvals, so they don't cover the boundary at 2 and still pass. — Every release with exactly the required number of approvals is blocked, so each one needs an extra approver. — Fix: Revert to `approvals >= minimum` and add a `gate.approved(2, minimum=2)` case to `test_approved_release` in `tests/test_release.py`.\n\n## Important\n(none)\n\n## Suggestions\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` key from the catalog — Any code that loops over the catalog and reads `entry[\"port\"]` or `entry[\"enabled\"]` fails on the top-level `\"review_note\"` key, because its value is a string while all 1,500 other entries are objects with those fields. The PR describes this file as regenerated, but this key isn't service data. — A deployment consumer that iterates the catalog raises a TypeError, and the next real regeneration silently drops the key.\n\n## Not reviewed\n- This review read lines 2234–8979 of the `aaa-generated/catalog.json` diff only through a pattern count: 6,000 of the 6,013 changed lines match the rename and port pattern, and the other 13 were read individually.\n- No code in this repository reads `aaa-generated/catalog.json`, so the consumers of the renamed service names and the new 2xxxx ports were not available to check.",
+    "duration_ms": 60087,
+    "cost_usd": 0.30021020000000004,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.luot4BZPS8/review-pr.542jkb",
+  "head_sha": "a94b96b04ab6025b744af19132098ce73dd6e22f",
+  "base_sha": "42dd264dbf3091e6924c4600ad1cdba9de17fd85",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ce01a317edc85809e6a6fbc885bcb068f356e8c2"
+}

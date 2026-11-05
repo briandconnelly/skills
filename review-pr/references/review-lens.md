@@ -149,6 +149,8 @@ The title and the impact's first sentence may be all a reader sees, so together 
 
 Open a defect field with one sentence that names the failing input and the wrong result, because that sentence may be shown alone.
 
+When the code to change is outside this pull request's changes, that sentence also says how the changed code at the finding's location reaches it, so the author sees why the finding is there.
+
 Follow it with the decisive evidence.
 
 A question or suggestion must keep the defect's claim and its failing input; it is not a reason to soften either.
@@ -162,6 +164,8 @@ In the impact field, state in one sentence of about 20 words the consequence for
 Add a fix field only when it carries what the title cannot: steps the corrective approach needs, a pointer to existing code that already does it right, a condition, a constraint, or competing alternatives when the code cannot settle the intended behavior.
 
 Keep a fix to one sentence; include code only when the fix is a single expression, and name a test to extend rather than describing its assertions.
+
+When the code to change is outside this pull request's changes, give a fix that cites it as a backticked `path:line`, even when the title names it.
 
 ### Not reviewed
 

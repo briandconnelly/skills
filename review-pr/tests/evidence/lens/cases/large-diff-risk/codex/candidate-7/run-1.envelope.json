@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore the inclusive approval threshold before merge because releases meeting exactly their configured minimum are incorrectly rejected.\n\n## Changes\nThe pull request regenerates the deployment catalog with production service names and ports, simplifies the health predicate, and changes the release approval comparison.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Accept approvals equal to the configured minimum — With two approvals and `minimum=2`, `approved` returns `False`, contradicting the module’s “at least” contract. Changing `>=` to `>` excludes equality. — Releases meeting exactly the required approval count remain blocked until an unnecessary extra approval is obtained. — Fix: Restore `>=` and extend `test_approved_release` to cover equality.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.iTWDhKahge/review-pr.GExj3t",
+  "head_sha": "47b5da51b4a609666303c3998c6715a9875471ef",
+  "base_sha": "37b82d3b78d1dd394886e5d11b0c7128f5e3e88f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f1b9e6e2e4a11856536f2e73e8a531f98b1e7b74"
+}
