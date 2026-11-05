@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.318",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe change to `requirement_proven` must be fixed before merge: it now treats a requirement with no criteria as proven, which breaks the pull request's stated \"no behavior change\" for its release-review caller.\n\n## Changes\nThis pull request replaces `typing.List`/`Dict` with built-in generics and `log.warn` with `log.warning` in 180 record handlers and `h091_requirements.py`. It also switches `by_name` to `operator.itemgetter`, rewrites the proof check in `requirement_proven` as a count comparison, and adds a one-line `review.txt`.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Return False again when criteria is empty — With `criteria=[]`, `sum(...)` is 0 and `len(criteria)` is 0, so `proven == len(criteria)` returns True. The removed line `bool(criteria) and all(item[\"proven\"] for item in criteria)` returned False for that input. The code also logs \"requirement has no criteria\" and then reports success. — A requirement with no criteria now passes release review as proven, which reverses the gate's decision. — Fix: Restore the guard with `bool(criteria) and proven == len(criteria)`, or return False inside the `if not criteria:` branch, and add the empty-list case to `tests/test_handlers.py:17` `test_requirement_proof`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- This review did not read the 178 changed files `app/handlers/h002_records.py` through `app/handlers/h179_records.py` line by line; instead, it searched every added and removed line in the pinned diff to confirm each one matches the `typing`-import, signature or `log.warning` substitution pattern.",
+    "duration_ms": 62314,
+    "cost_usd": 0.21540360000000003,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.l7ieUfpORk/review-pr.7Tva6Z",
+  "head_sha": "368ce6e797af2a8947ec2ffd1eda6e3177f6bb3f",
+  "base_sha": "6f0a59d1a643654534be08f6fc1fcf0088cd7c90",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "7194ea425517c4d88a306a236027e710990849b1"
+}

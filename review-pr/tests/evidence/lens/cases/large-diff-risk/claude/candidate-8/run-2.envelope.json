@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.318",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the approval gate comparison before merging: a release with exactly the minimum number of approvals is now blocked, which goes against the gate's documented \"at least\" rule.\n\n## Changes\nThe PR regenerates `aaa-generated/catalog.json`, renaming all 1,500 entries from `legacy-service-NNNN` (ports 10000+) to `production-service-NNNN` (ports 20000+), and adds a non-service key. It also changes `healthy` from `len(failures) == 0` to `not failures`, and the release gate from `>=` to `>`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` in the approval comparison — `approved(2, minimum=2)` now returns `False` because `approvals > minimum` excludes the boundary, but the module docstring at line 1 says \"A release needs at least the configured number of approvals.\" The tests only check 3 and 1 approvals, so none of them hit the changed boundary. — Releases that have exactly the required number of approvals are blocked; at the default minimum of 2, that means every release with two approvals. — Fix: Revert to `approvals >= minimum` and add a boundary case `gate.approved(2, minimum=2)` to `test_approved_release` in `tests/test_release.py`.\n\n## Important\n(none)\n\n## Suggestions\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` key from the catalog — The PR adds a top-level `\"review_note\"` entry whose value is a string, while every other entry is an object with `port` and `enabled`. Any loop over the catalog that reads `entry[\"port\"]` raises `TypeError` on this key. It is also a hand edit to a generated file, so the next regeneration will drop it. — A consumer that loops over all catalog services would crash on this entry, and the generated output no longer matches its generator.\n\n## Not reviewed\n- This review read lines 2234–8959 of `../pr.diff` (the middle of the `aaa-generated/catalog.json` hunk) only through pattern counts: 3,000 key lines, 3,000 port lines, 1,500 `enabled` lines and 1,499 closing-brace lines, with all remaining lines read directly.\n- The generator for `aaa-generated/catalog.json` is not in this repository, so this review could not check whether the new names and ports match its output.",
+    "duration_ms": 69628,
+    "cost_usd": 0.34058180000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.luot4BZPS8/review-pr.PAHSQf",
+  "head_sha": "a94b96b04ab6025b744af19132098ce73dd6e22f",
+  "base_sha": "42dd264dbf3091e6924c4600ad1cdba9de17fd85",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ce01a317edc85809e6a6fbc885bcb068f356e8c2"
+}

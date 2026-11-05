@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.166.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry limit should be corrected because the new helper exceeds the maximum required by project policy.\n\n## Changes\nThe pull request adds `fetch_with_retry` with configurable attempts and delay, plus tests for recovery, exhaustion and attempt limits. It also proposes raising the documented retry cap to ten.\n\n## Critical\n(none)\n\n## Important\n- app/net.py:13 — correctness — Restore the five-attempt retry cap — When an upstream repeatedly raises `OSError`, the default call makes ten attempts, violating AGENTS.md:5: “Retry helpers under app/ must cap attempts at 5.” The validator also accepts explicit limits above five. — During an upstream outage, callers exceed the permitted request budget and wait through additional fetch timeouts. — Fix: Cap the default and validation at five, and align the docstring and attempt-limit tests.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.l1giWmqR6F/review-pr.wKGbf1",
+  "head_sha": "e646131b24507dd6d285d80275e3407dddefe137",
+  "base_sha": "20d9f0796e4a64f148fae63b3d6ddf3b3327daf2",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0da56945b77e45adc0ff286c1218281292be96e8"
+}
