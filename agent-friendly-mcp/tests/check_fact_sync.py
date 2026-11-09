@@ -66,6 +66,17 @@ PROBES: list[Probe] = [
         bad_sample="and push notifications ride an opt-in `subscriptions/listen` stream.",
     ),
     Probe(
+        name="spec-baseline-http-sse-window",
+        path="SKILL.md",
+        section="Spec Baseline",
+        anchor=re.compile(r"HTTP\+SSE"),
+        requires=re.compile(r"SEP-2596"),
+        bad_sample=(
+            "Roots, sampling, logging, the HTTP+SSE transport, and Dynamic Client Registration "
+            "are deprecated on a twelve-month minimum window; design new servers without them."
+        ),
+    ),
+    Probe(
         name="prompt-native-inventory-icons",
         path="references/examples.md",
         section=None,
