@@ -812,6 +812,17 @@ The native `Tool` record for the deprecated tool, exactly as `tools/list` return
       "text": {"type": "string", "description": "Message body as Slack mrkdwn."}
     }
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["ts", "channel_id", "permalink"],
+    "properties": {
+      "ts": {"type": "string", "description": "Timestamp id of the posted message."},
+      "channel_id": {"type": "string"},
+      "permalink": {"type": "string", "format": "uri"}
+    }
+  },
   "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false},
   "_meta": {
     "com.slack-mcp/lifecycle": {
@@ -1121,11 +1132,30 @@ The block is the status tool's **`structuredContent` payload only**, without the
     "terminal": false,
     "poll_after_ms": 5000,
     "progress": 0.62,
+    "expires_at": "2026-05-12T18:14:32Z",
     "terminal_states": ["succeeded", "failed", "cancelled"]
   },
   "cancel": {"tool": "slack_cancel_export", "arguments": {"export_id": "exp_01J9EXPORT"}}
 }
 ```
+
+Once the export finishes, the same tool returns the terminal payload, with nothing left to poll or cancel:
+
+```json
+{
+  "status": {
+    "tool": "slack_get_export_status",
+    "export_id": "exp_01J9EXPORT",
+    "state": "succeeded",
+    "terminal": true,
+    "expires_at": "2026-05-12T18:14:32Z",
+    "result_uri": "slack://exports/exp_01J9EXPORT/archive.zip",
+    "terminal_states": ["succeeded", "failed", "cancelled"]
+  }
+}
+```
+
+`result_uri` appears only once `state` is `succeeded`.
 
 What to notice: task creation is server-directed — there is no per-tool task flag and no `task` field on the request; the gate is the extension declaration on each request (`clientCapabilities.extensions`) plus the server's `server/discover` advertisement, and a server that cannot proceed without tasking returns the missing-capability error (`-32021`) naming the extension.
 Native task fields use the extension's casing exactly: `taskId`, `status`, `statusMessage`, `createdAt`, `lastUpdatedAt`, `ttlMs`, `pollIntervalMs` — do not rename them to the snake_case used by domain fields; both durations are integer milliseconds (`86400000` is a 24-hour TTL), and `createdAt`/`lastUpdatedAt` are RFC3339 timestamps.
@@ -1148,6 +1178,41 @@ A read-only query tool whose result is delivered as a local CSV file rather than
     "required": ["sql"],
     "properties": {
       "sql": {"type": "string", "minLength": 1, "maxLength": 100000}
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["row_count", "result_artifact", "schema", "fingerprint"],
+    "properties": {
+      "row_count": {"type": "integer", "minimum": 0},
+      "result_artifact": {
+        "type": "object",
+        "required": ["path", "mime_type", "size_bytes", "ttl_hours", "expires_at"],
+        "properties": {
+          "path": {"type": "string", "description": "Absolute path to the CSV on the caller's machine."},
+          "mime_type": {"type": "string"},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "ttl_hours": {"type": "integer", "minimum": 1},
+          "expires_at": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      },
+      "schema": {
+        "type": "array",
+        "description": "Column names and warehouse types, in CSV column order.",
+        "items": {
+          "type": "object",
+          "required": ["name", "type"],
+          "properties": {
+            "name": {"type": "string"},
+            "type": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "fingerprint": {"type": "string"}
     },
     "additionalProperties": false
   },
@@ -1197,7 +1262,7 @@ A chart-rendering tool returns a small machine summary plus a linked image resou
   "content": [
     {
       "type": "text",
-      "text": "{\"chart_uri\":\"slack://reports/deploys/chart.png\",\"series_count\":3,\"point_count\":90}"
+      "text": "{\"chart_uri\":\"slack://reports/deploys/chart.png\",\"series_count\":3,\"point_count\":90,\"summary\":\"Deploy volume increased 12% over the prior 30 days; failure rate stayed below 2%.\"}"
     },
     {
       "type": "resource_link",
@@ -1224,6 +1289,6 @@ A chart-rendering tool returns a small machine summary plus a linked image resou
 ```
 
 What to notice: `structuredContent` carries the authoritative fields an agent should parse.
-The text block serializes the same core JSON for older clients.
+The text block serializes the same JSON for older clients.
 The PNG is linked as a resource instead of base64-inlined, so a capable client can fetch or show it only when needed.
 `audience` and `priority` help a client decide that the image is primarily for the user, but correctness does not depend on those annotations being surfaced.
