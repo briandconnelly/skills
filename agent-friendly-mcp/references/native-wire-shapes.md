@@ -169,7 +169,18 @@ One long-lived request opens a notification stream; the client opts into types v
 - Filter types: `toolsListChanged`, `promptsListChanged`, `resourcesListChanged` (booleans), `resourceSubscriptions` (array of resource URIs — this replaces `resources/subscribe`), and — via the tasks extension — `taskIds` (array of task ids for `notifications/tasks`; the server's acknowledgement reports the accepted subset).
 - Every notification on the stream carries `_meta.io.modelcontextprotocol/subscriptionId` equal to the listen request's JSON-RPC id, for demultiplexing.
 - Request-scoped notifications (`notifications/progress`, `notifications/message`) do **not** ride this stream; they stay on the originating request's response stream.
-- Cancel the stream with `notifications/cancelled` referencing the listen request id.
+- The server MUST send `notifications/subscriptions/acknowledged` as the first message for a subscription, carrying the `subscriptionId` in `_meta` and a `notifications` object holding the subset of the requested filter it agreed to honor; no other notification for that subscription may precede it.
+  Clients SHOULD compare the acknowledged filter with what they requested.
+
+  ```json
+  { "jsonrpc": "2.0", "method": "notifications/subscriptions/acknowledged", "params": {
+      "_meta": { "io.modelcontextprotocol/subscriptionId": 7 },
+      "notifications": { "toolsListChanged": true,
+        "resourceSubscriptions": ["file:///project/config.json"] } } }
+  ```
+
+- Ending the stream is transport-specific: over Streamable HTTP the client closes the SSE response stream, and over stdio it sends `notifications/cancelled` referencing the listen request id (`[7.cancellation]` owns request cancellation).
+- A server ending a subscription on its own initiative SHOULD answer the listen request with a `resultType: "complete"` result carrying the `subscriptionId` in `_meta` before closing; a stream that closes without that response is an unexpected disconnect, and after a stdio reconnect the client MUST re-send `subscriptions/listen`, because the server holds no subscription state.
 
 ## Streamable HTTP headers
 

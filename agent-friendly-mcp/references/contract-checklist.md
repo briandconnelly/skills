@@ -406,6 +406,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 - `[4.subscriptions]` **Support resource subscriptions for mutable resources.** If a resource can change during a long-lived agent session and stale reads matter, advertise `resources.subscribe` and serve the `resourceSubscriptions` filter of `subscriptions/listen` — the client names the URIs it watches on the listen request (`resources/subscribe`/`unsubscribe` no longer exist) — emitting `notifications/resources/updated` on that stream, tagged with `io.modelcontextprotocol/subscriptionId`.
   Use the `resourcesListChanged` filter type for catalog membership changes; use per-resource updates for body changes.
   Subscriptions are opt-in streams a client may never open, so also bound staleness for non-listening clients with an honest `ttlMs` on `resources/read` (see `[8.cacheable-results]`).
+  Serve the stream's native lifecycle — acknowledgement first, transport-specific close — as [native-wire-shapes.md](native-wire-shapes.md) lays it out.
 
 - `[4.failure-contract]` **Resources share the failure-recovery contract.** Missing-credential, not-found, gone, and rate-limit signals must be machine-readable (see §6).
 

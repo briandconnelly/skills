@@ -8,6 +8,7 @@ EXAMPLES = Path(__file__).resolve().parent.parent / "references" / "examples.md"
 # Known positives: an instrument that parsed nothing would pass every other test vacuously.
 MIN_JSON_BLOCKS = 38
 MIN_TOOL_DEFINITIONS = 5
+LISTEN_REQUEST_ID = 7  # ex§5b's subscriptions/listen JSON-RPC id
 
 
 def json_blocks(text: str) -> list[tuple[int, object]]:
@@ -66,9 +67,9 @@ def _json_equal(a: object, b: object) -> bool:
     return a == b
 
 
-def fallback_mismatches(blocks: list[tuple[int, object]]) -> list[int]:
-    """Opening-fence lines of blocks whose serialized text copy differs from structuredContent."""
-    offending: list[int] = []
+def fallback_comparisons(blocks: list[tuple[int, object]]) -> list[tuple[int, bool]]:
+    """(opening-fence line, equal?) for each serialized text copy compared to structuredContent."""
+    compared: list[tuple[int, bool]] = []
     for line, block in blocks:
         for node in _walk(block):
             if not (
@@ -86,9 +87,13 @@ def fallback_mismatches(blocks: list[tuple[int, object]]) -> list[int]:
                     continue
                 if not isinstance(parsed, (dict, list)):
                     continue  # a scalar is prose, not a serialized copy
-                if not _json_equal(parsed, node["structuredContent"]):
-                    offending.append(line)
-    return sorted(set(offending))
+                compared.append((line, _json_equal(parsed, node["structuredContent"])))
+    return compared
+
+
+def fallback_mismatches(blocks: list[tuple[int, object]]) -> list[int]:
+    """Opening-fence lines of blocks whose serialized text copy differs from structuredContent."""
+    return sorted({line for line, equal in fallback_comparisons(blocks) if not equal})
 
 
 def test_block_inventory_is_not_empty():
@@ -109,7 +114,9 @@ def test_every_tool_definition_publishes_an_output_schema():
 def test_serialized_text_fallback_equals_structured_content():
     # any dict holding both `structuredContent` and a `content` list: each text block that
     # parses as a JSON object or array must equal structuredContent ([3.content-types])
-    assert fallback_mismatches(json_blocks(EXAMPLES.read_text())) == []
+    blocks = json_blocks(EXAMPLES.read_text())
+    assert fallback_comparisons(blocks), "no text block was compared; the check is vacuous"
+    assert fallback_mismatches(blocks) == []
 
 
 def test_fallback_status_tool_mirrors_expiry_and_result_location():
@@ -123,3 +130,21 @@ def test_fallback_status_tool_mirrors_expiry_and_result_location():
     assert all("expires_at" in s for s in statuses)
     assert any(s.get("terminal") is True and "result_uri" in s for s in statuses)
     assert any(s.get("terminal") is False for s in statuses)
+
+
+def test_listen_example_acknowledges_before_notifying():
+    methods = [
+        (line, b["method"], b["params"])
+        for line, b in json_blocks(EXAMPLES.read_text())
+        if isinstance(b, dict) and "method" in b
+    ]
+    ack = [m for m in methods if m[1] == "notifications/subscriptions/acknowledged"]
+    upd = [m for m in methods if m[1] == "notifications/resources/updated"]
+    assert len(ack) == 1
+    assert upd
+    assert ack[0][0] < upd[0][0]
+    assert ack[0][2]["_meta"]["io.modelcontextprotocol/subscriptionId"] == LISTEN_REQUEST_ID
+    assert ack[0][2]["notifications"] == {
+        "resourcesListChanged": True,
+        "resourceSubscriptions": ["slack://workspace/T0123/flags"],
+    }
