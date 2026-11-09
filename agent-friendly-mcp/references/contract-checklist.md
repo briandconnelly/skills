@@ -561,7 +561,7 @@ Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific
   A separate `recoverable` boolean is redundant and was prone to contradicting an accompanying repair.
 
 Audit prompt: For each failure mode, does the agent receive enough structured signal to either retry, repair, or escalate — without parsing the message field?
-And does the same failure carry the identical envelope whether it surfaces as a tool-result or a JSON-RPC error?
+And does the same failure carry the same envelope on both carriers, differing only by the `[6.rename]` rename?
 
 ---
 

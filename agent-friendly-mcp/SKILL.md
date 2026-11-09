@@ -89,14 +89,14 @@ There are two routes into the standard, and every design or review declares whic
   Required for a new server, a new primitive, a change to the auth model or the error taxonomy, a change of protocol-revision target, and any audit that reports coverage across §1–§9.
 - **Focused route** — for a change scoped to a known surface, such as one tool's input schema or one error payload.
   1. Name the surface and the sections it touches.
-  2. Read `[1.spec-revision]` and the native-vs-convention rule below whatever the surface; they govern how every other rule is read.
+  2. Read `[1.spec-revision]` and the native-vs-convention rule (Native Fields vs Convention Extensions, above) whatever the surface; they govern how every other rule is read.
   3. Read the named sections in full — sections, not single bullets, so a rule is never read without its neighbours.
   4. Close over citations: for every rule you read, read the rule ids it cites, and repeat until nothing new is pulled in.
      Those citations are the dependency edges, and following them is what stops a focused read from applying a rule without the rules it depends on.
   5. Report the sections you did not read as `not-checked` with the reason, per [review-workflow.md](references/review-workflow.md) — a focused route is never reported as full coverage.
   Escalate to the full walk when step 4 pulls in more than two sections beyond those you named, or when the change turns out to add a primitive.
 
-The closure in step 4 converges rather than expanding to the whole standard: measured against the current checklist, a single-rule seed closes at 1–3 rules, and a whole-section seed at 19–27% of the 12,211 words of rule text.
+How far step 4 expands depends on the seed — a rule on the discovery or negotiation path pulls in several others — so the escalation rule above, not an expected size, is what bounds a focused read.
 What is *not* measured is the focused route's effect on review quality — no scenario in `tests/scenarios.md` yet compares the two routes.
 Until one does, prefer the full walk wherever its cost is acceptable, and treat the focused route as a documented reduction whose risk is unquantified.
 This index orients and routes — its one-line summaries aid navigation and never define or override a rule.
@@ -130,8 +130,8 @@ Prefer a rule id over a section reference when you mean one specific rule; `test
 
 ## Done Criteria
 
-Before declaring done, walk [contract-checklist.md](references/contract-checklist.md) against your output.
+Before declaring done, check your output against [contract-checklist.md](references/contract-checklist.md) by the route you declared in the Checklist Map.
 
-- **Design tasks**: every checklist section must have an answer in the schema set or be explicitly marked not-applicable with a one-line justification.
+- **Design tasks**: on the full walk, every checklist section has an answer in the schema set or is explicitly marked not-applicable with a one-line justification; on the focused route, that holds for the sections you read, and every section you did not read is reported `not-checked` with its reason.
 - **Review tasks**: every checklist section is either covered by a finding, marked `OK` with brief evidence, or noted `not-checked` with reason.
   Use the severity scale and report format defined in [review-workflow.md](references/review-workflow.md).

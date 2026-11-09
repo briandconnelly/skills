@@ -2,7 +2,7 @@
 
 Use this workflow when auditing an existing MCP server or advising how to make it more agent-friendly.
 Inputs are the server's tool, resource, and prompt schemas, its capability summary, and — ideally — at least one real agent transcript exercising the high-value tasks.
-Outputs are severity-tagged findings against [contract-checklist.md](contract-checklist.md), each anchored to a specific `§N`, plus a coverage table that accounts for every section in the checklist.
+Outputs are severity-tagged findings against [contract-checklist.md](contract-checklist.md), each anchored to a rule id, or to a `§N` where it is against a whole section, plus a coverage table that accounts for every section in the checklist.
 
 A review is grounded when its findings cite evidence from the schema, the response payloads, or a transcript — not from how the server "feels." Where evidence is unavailable, mark the relevant section `not-checked` with a reason rather than guessing.
 
@@ -45,6 +45,7 @@ Step 1's calibration for a missing capability summary is the worked model; apply
    - **`OK`** with a one-line evidence pointer (file/line, schema field, or transcript excerpt),
    - **`not-checked`** with a reason (e.g., "no transcript available," "auth model out of scope for this audit," "no resources defined — §4 N/A").
    A section may have multiple findings; a section with both findings and `OK` evidence on adjacent items is fine — note both.
+   An `OK` covers only what you examined: when it rests on some of a section's rules or some of the server's tools, say which in the Notes column (`OK — partial: [3.output-schema] checked on 2 of 9 tools`), so a row never vouches for rules or surfaces nobody read.
 3. **Run the transcript-style probes below.** Use a real agent transcript when available; otherwise simulate one from the schema by tracing what an agent would see at each step.
    The cold-start and first-repair probes must be answered with concrete evidence, plus at least three other probes where the server's surface makes them applicable; record an inapplicability reason for any probe skipped (e.g., "no long-running operations defined").
 4. **Synthesize findings into the report format below.** Order findings by severity (Critical → Nit), then by checklist section.
@@ -67,15 +68,16 @@ Each should be answerable from concrete evidence — schema text, response paylo
   Are descriptions narrow enough that the schema alone disambiguates?
   Look for tools whose descriptions you cannot tell apart at a glance. *(maps to §3; see `examples.md` §10 for the failure-mode shape)*
 - **First repair.** When the agent makes an invalid call, does the error response tell it specifically how to retry — which field, which allowed values, which tool to call instead?
-  Force one invalid call per error code documented for the tool and read the payload, not just the message. *(maps to §6; see `examples.md` §6 for the target payload shape)*
+  Exercise each error code documented for the tool and read the payload, not just the message: a forced invalid call where the Safety rule allows it, otherwise a captured response or an isolated fixture. *(maps to §6; see `examples.md` §6 for the target payload shape)*
+  List every code you could not exercise with its reason — needs a real credential, would start paid or mutating work, blocked by the host — rather than reporting the probe as complete.
   When `details.value` is absent, check the agent-visible surfaces for a disclosed omission policy before charging `[6.offending-value]` — a disclosed blanket omission is conformant, and "echo the value, redacted" is not a valid remediation where sensitivity is undeterminable (that pushes toward the secrets-leaked Critical above).
 - **Advertised vs. actual.** Inspect captured responses or isolated fixtures for at least one success and one forced error per tool; use live calls only where the Safety rule permits.
   Verify that every required and claimed-always-present field is populated, that conditional fields appear under their documented conditions, and that the error carrier matches the wire — `isError: true`, envelope location, envelope shape.
   Prefer schema-invalid requests known to fail before handler execution; do not probe mutating tools with guessed placeholder values.
   When a finding relies on host or client behavior — stringified arguments, truncated descriptions, hidden annotations, stale cached schemas — cite captured `tools/list` payloads as the client receives them and observed `tools/call` arguments at the server; never infer host quirks from folklore.
   Absence of an optional field is a finding only when the contract claims presence. *(maps to §1, §3, §6)*
-- **Discovery cost.** How many tokens does the agent spend learning the server's surface before its first useful call?
-  Count, do not estimate — and measure the serialized `tools/list` wire response, not tool count or source models.
+- **Discovery cost.** How much does the agent load learning the server's surface before its first useful call?
+  Measure, do not estimate: take the serialized `tools/list` wire response — not tool count or source models — in bytes, and state tokens only with the tokenizer named; without one, report bytes and say so.
   Credit `search_tools` / `describe_tool` only against clients that actually withhold native definitions; on a preloading client they add cost (§2).
   A bloated definition or an inflated catalog with no client-independent reduction is the finding.
   Common bloat mechanisms to check: generated output schemas dominating bytes, framework `$defs` inlining that duplicates shared envelopes per tool, echo field descriptions that restate the field name, and identical boilerplate blocks repeated across docstrings. *(maps to §2, §8; see `examples.md` §8 for one host-managed-disclosure shape)*
@@ -98,7 +100,7 @@ Each should be answerable from concrete evidence — schema text, response paylo
 Each finding has five labeled lines:
 
 - **Severity:** Critical | Major | Minor | Nit
-- **Section:** `§N` reference into `contract-checklist.md` (e.g., `§3`, `§6`); use multiple when a finding spans sections.
+- **Section:** the id of the rule the finding is against (e.g. `[3.descriptions]`); use a bare `§N` only when the finding is against a section as a whole, and list several ids when it spans rules.
 - **Summary:** one-line statement of the gap.
 - **Evidence:** file/line, schema excerpt, or transcript snippet — never "it feels wrong."
 - **Remediation:** concrete fix referencing real callable surfaces (tool names, parameter names, valid enum values), not generic advice.
@@ -106,7 +108,7 @@ Each finding has five labeled lines:
 Concrete example:
 
 > - **Severity:** Major
-> - **Section:** §3
+> - **Section:** `[3.descriptions]`
 > - **Summary:** `slack_post` and `slack_send_message` have overlapping descriptions; agents pick incorrectly on first call.
 > - **Evidence:** `tools/slack.py:42` and `tools/slack.py:118` — both descriptions begin "Send a message to a Slack channel." Eval transcript `runs/2026-04-29.jsonl` shows 7/12 first-call selections went to the wrong tool.
 > - **Remediation:** Collapse the two into a single `slack_send_message` (§3 granularity rule); if the second variant is truly distinct, rename to reflect the distinguishing axis (e.g., `slack_send_threaded_reply`) and rewrite both descriptions to lead with the disambiguating clause.
@@ -132,7 +134,7 @@ End the report with open questions or assumptions, and an optional remediation s
 
 ## Done Criteria
 
-- Every section §1 through §9 in [contract-checklist.md](contract-checklist.md) is accounted for in the coverage table — covered by at least one finding, marked `OK` with brief evidence, or marked `not-checked` with an explicit reason.
+- Every section §1 through §9 in [contract-checklist.md](contract-checklist.md) is accounted for in the coverage table — covered by at least one finding, marked `OK` with brief evidence, or marked `not-checked` with an explicit reason; a partial `OK` names what it covered.
 - The cold-start and first-repair probes were run with concrete evidence (real or simulated transcript), plus at least three other applicable probes; every skipped probe is recorded with its inapplicability reason.
 - Each finding carries all five labeled lines (severity, section, summary, evidence, remediation), and remediation references real callable surfaces.
 - When no Critical or Major findings are found, the report says so explicitly and names residual risks (e.g., "no live auth-failure transcript was available" or "fingerprint behavior on upgrade was not exercised").
