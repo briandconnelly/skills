@@ -97,7 +97,7 @@ There are two routes into the standard, and every design or review declares whic
   Escalate to the full walk when step 4 pulls in more than two sections beyond those you named, or when the change turns out to add a primitive.
 
 How far step 4 expands depends on the seed — a rule on the discovery or negotiation path pulls in several others — so the escalation rule above, not an expected size, is what bounds a focused read.
-What is *not* measured is the focused route's effect on review quality — no scenario in `tests/scenarios.md` yet compares the two routes.
+The focused route's effect on review quality is not measured — no scenario in `tests/scenarios.md` yet compares the two routes.
 Until one does, prefer the full walk wherever its cost is acceptable, and treat the focused route as a documented reduction whose risk is unquantified.
 This index orients and routes — its one-line summaries aid navigation and never define or override a rule.
 State-handle discipline and long-running-operation contracts are normative in §1/§8 and §7 respectively; consult them there rather than a second copy here.

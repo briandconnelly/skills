@@ -8,7 +8,6 @@ EXAMPLES = Path(__file__).resolve().parent.parent / "references" / "examples.md"
 # Known positives: an instrument that parsed nothing would pass every other test vacuously.
 MIN_JSON_BLOCKS = 38
 MIN_TOOL_DEFINITIONS = 5
-LISTEN_REQUEST_ID = 7  # ex§5b's subscriptions/listen JSON-RPC id
 
 
 def json_blocks(text: str) -> list[tuple[int, object]]:
@@ -133,18 +132,27 @@ def test_fallback_status_tool_mirrors_expiry_and_result_location():
 
 
 def test_listen_example_acknowledges_before_notifying():
-    methods = [
-        (line, b["method"], b["params"])
+    messages = [
+        (line, b)
         for line, b in json_blocks(EXAMPLES.read_text())
         if isinstance(b, dict) and "method" in b
     ]
-    ack = [m for m in methods if m[1] == "notifications/subscriptions/acknowledged"]
-    upd = [m for m in methods if m[1] == "notifications/resources/updated"]
+    listen = [b for _, b in messages if b["method"] == "subscriptions/listen"]
+    assert len(listen) == 1
+    listen_id = listen[0]["id"]
+    ack = [
+        (line, b)
+        for line, b in messages
+        if b["method"] == "notifications/subscriptions/acknowledged"
+    ]
+    upd = [(line, b) for line, b in messages if b["method"] == "notifications/resources/updated"]
     assert len(ack) == 1
     assert upd
     assert ack[0][0] < upd[0][0]
-    assert ack[0][2]["_meta"]["io.modelcontextprotocol/subscriptionId"] == LISTEN_REQUEST_ID
-    assert ack[0][2]["notifications"] == {
+    sub_id = "io.modelcontextprotocol/subscriptionId"
+    assert _json_equal(ack[0][1]["params"]["_meta"][sub_id], listen_id)
+    assert _json_equal(upd[0][1]["params"]["_meta"][sub_id], listen_id)
+    assert ack[0][1]["params"]["notifications"] == {
         "resourcesListChanged": True,
         "resourceSubscriptions": ["slack://workspace/T0123/flags"],
     }

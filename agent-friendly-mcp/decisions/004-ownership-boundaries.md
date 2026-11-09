@@ -12,7 +12,7 @@ Where do spec-revision facts, the native-vs-convention rule, and rule summaries 
 Keep current homes; narrow the claims to match them.
 
 - `contract-checklist.md` owns behavioral rules by stable id.
-- `SKILL.md` owns two named exceptions: the Spec Baseline revision-level facts (revision identity, status, tasks-extension caveat, deprecations) and the native-vs-convention rule with its native-field inventory (per decisions/001 impact matrix row 1).
+- `SKILL.md` owns two named exceptions: the Spec Baseline revision-level facts (revision identity, status, tasks-extension version, deprecations) and the native-vs-convention rule with its native-field inventory (per decisions/001 impact matrix row 1).
 - `native-wire-shapes.md` owns exact wire shapes and may restate protocol obligations, per its own line-5 carve-out.
 - `decisions/` records are dated historical evidence, never current authority.
 - Rule text and wire reference may restate the mechanics they govern; summaries (Checklist Map, workflow steps) cite rule ids wherever they compress a rule.

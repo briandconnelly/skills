@@ -453,7 +453,7 @@ Update notification on the listen stream, tagged with the listen request's id:
 
 What to notice: the update notification tells the agent to re-read a resource body it already cares about, and `io.modelcontextprotocol/subscriptionId` (the listen request's JSON-RPC id) says which subscription produced it.
 It is different from `notifications/resources/list_changed` (opted into via the `resourcesListChanged` filter type), which means the resource catalog membership or metadata changed.
-No notification for the subscription precedes the acknowledgement; [native-wire-shapes.md](native-wire-shapes.md) gives the transport-specific close and the graceful-closure response.
+[native-wire-shapes.md](native-wire-shapes.md) owns the acknowledgement's ordering, the transport-specific close, and the graceful-closure response.
 A server must advertise `resources.subscribe` before serving `resourceSubscriptions` filters; the stream is opt-in, so an honest `ttlMs` on `resources/read` plus `annotations.lastModified` remain the staleness bound for clients that never listen.
 
 ## 6. Actionable error payload
