@@ -212,4 +212,4 @@ A missing *baseline* is not a qualifying prerequisite when the host and harness 
 Step 8 is unaffected: a suite is fixtures plus assertions, and authoring one needs no host.
 
 Output: revised schemas, descriptions, and discovery surface, with eval-measured improvement against the prior baseline — or a `not-run` record naming the missing prerequisite.
-Checkpoint: §1–§9 — walk the full checklist; iteration is the moment to catch contradictions any earlier checkpoint missed.
+Checkpoint: §1–§9 on the full walk, or the sections the declared focused route read — `SKILL.md`'s Checklist Map decides which, and its Done Criteria own what completion requires.

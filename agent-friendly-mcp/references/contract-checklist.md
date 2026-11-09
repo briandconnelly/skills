@@ -406,6 +406,7 @@ Audit prompt: For each tool, can an agent decide to use it, call it correctly, a
 - `[4.subscriptions]` **Support resource subscriptions for mutable resources.** If a resource can change during a long-lived agent session and stale reads matter, advertise `resources.subscribe` and serve the `resourceSubscriptions` filter of `subscriptions/listen` — the client names the URIs it watches on the listen request (`resources/subscribe`/`unsubscribe` no longer exist) — emitting `notifications/resources/updated` on that stream, tagged with `io.modelcontextprotocol/subscriptionId`.
   Use the `resourcesListChanged` filter type for catalog membership changes; use per-resource updates for body changes.
   Subscriptions are opt-in streams a client may never open, so also bound staleness for non-listening clients with an honest `ttlMs` on `resources/read` (see `[8.cacheable-results]`).
+  Serve the stream's native lifecycle — acknowledgement first, transport-specific close — as [native-wire-shapes.md](native-wire-shapes.md) lays it out.
 
 - `[4.failure-contract]` **Resources share the failure-recovery contract.** Missing-credential, not-found, gone, and rate-limit signals must be machine-readable (see §6).
 
@@ -560,7 +561,7 @@ Do not invent surface-specific aliases (e.g. `repair_hints`) or surface-specific
   A separate `recoverable` boolean is redundant and was prone to contradicting an accompanying repair.
 
 Audit prompt: For each failure mode, does the agent receive enough structured signal to either retry, repair, or escalate — without parsing the message field?
-And does the same failure carry the identical envelope whether it surfaces as a tool-result or a JSON-RPC error?
+And does the same failure carry the same envelope on both carriers, differing only by the `[6.rename]` rename?
 
 ---
 
@@ -580,9 +581,9 @@ And does the same failure carry the identical envelope whether it surfaces as a 
 - `[7.cancellation]` **Support cancellation where work can continue after the call starts.** Request-bound cancellation is transport-specific: on Streamable HTTP the client closes the request's response stream (a disconnect MUST be treated as cancellation; no notification is sent), while on stdio the client sends `notifications/cancelled`.
   Tasks cancel only via `tasks/cancel` — `notifications/cancelled` MUST NOT be used for a task — and the ack is an empty result signalling received intent, not stopped work: cancellation is cooperative and eventually consistent, so the task MAY still finish in another terminal status, observed via `tasks/get`.
 
-- `[7.task-support]` **Gate tasks on the negotiated extension, at both ends of the exchange.** Tasks are the `io.modelcontextprotocol/tasks` extension (SEP-2663; see `SKILL.md` Spec Baseline for its status caveat): the client declares it in each request's `clientCapabilities.extensions`, and the server advertises it in its `server/discover` capabilities.
+- `[7.task-support]` **Gate tasks on the negotiated extension, at both ends of the exchange.** Tasks are the `io.modelcontextprotocol/tasks` extension (SEP-2663; see `SKILL.md` Spec Baseline for the extension version this skill follows): the client declares it in each request's `clientCapabilities.extensions`, and the server advertises it in its `server/discover` capabilities.
   Task creation is server-directed and per-request — there is no per-tool task flag and the client never signals task preference; a negotiated client MUST be prepared for either the standard result or a `CreateTaskResult` on any supported request.
-  A server MUST NOT return a task to a client whose request did not declare the extension, regardless of earlier requests; if it cannot serve such a request without tasking, it returns the missing-capability error (`MissingRequiredClientCapability`, `-32021` — the ext-tasks draft still prints the pre-renumbering `-32003`) naming the extension in `data.requiredCapabilities`.
+  A server MUST NOT return a task to a client whose request did not declare the extension, regardless of earlier requests; if it cannot serve such a request without tasking, it returns the missing-capability error (`MissingRequiredClientCapability`, `-32021`) naming the extension in `data.requiredCapabilities`.
   That error stays JSON-RPC even on `tools/call` because it concerns the call's admissibility, not the tool's semantics (§6 owns the carrier rule).
 
 - `[7.task-operations]` **Use native task operations for status and result retrieval.** Poll with `tasks/get` (respecting `pollIntervalMs`, which MAY change between polls), supply requested input with `tasks/update`, and cancel with `tasks/cancel`; `tasks/result` and `tasks/list` no longer exist — terminal payloads arrive inline on `tasks/get`.
