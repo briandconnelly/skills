@@ -32,7 +32,7 @@ git -C "$clone" merge-base "$base" "$head" >/dev/null || { echo "FAIL: merge-bas
 # The child diff is pinned, local, and generated without external diff helpers.
 [ -s "$(jq -r .diff_path <<<"$out")" ] || { echo "FAIL: pr.diff empty"; FAIL=1; }
 expected_diff="$REVIEW_PR_SCRATCH/expected.diff"
-git_wt -C "$clone" diff --no-ext-diff --no-textconv --binary "$base...$head" > "$expected_diff"
+pinned_diff "$clone" "$base" "$head" > "$expected_diff"
 cmp -s "$expected_diff" "$(jq -r .diff_path <<<"$out")" \
   || { echo "FAIL: pr.diff does not match pinned base/head byte-for-byte"; FAIL=1; }
 [ "$(jq -r .headRefOid "$(jq -r .meta_path <<<"$out")")" = "$head" ] || { echo "FAIL: pr.json head mismatch"; FAIL=1; }

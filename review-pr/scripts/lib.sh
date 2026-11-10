@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared helpers for review-pr scripts. Sourced, not executed.
-# Exit codes: 0 ok, 1 tool failure, 2 usage, 3 prerequisite (spec: Components).
+# Exit codes: 0 ok, 1 tool failure, 2 usage, 3 prerequisite.
 
 # An inherited repository-routing variable (set, for example, when invoked from a git hook) would
 # redirect every `git -C` below, and the child's git, into the caller's repository and index.
@@ -79,6 +79,11 @@ keep_requested() { [ "${REVIEW_PR_KEEP:-}" = 1 ]; }
 git_wt() {
   env -u GIT_CONFIG_PARAMETERS -u GIT_CONFIG_COUNT -u GIT_CONFIG \
     GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYSTEM=1 git "$@"
+}
+
+# pinned_diff CLONE BASE_SHA HEAD_SHA -> the pinned diff on stdout; returns git's status. Implements RC12.
+pinned_diff() {
+  git_wt -C "$1" --attr-source="$2" diff --no-ext-diff --no-textconv "$2...$3"
 }
 
 # tree_listing DIR TREEISH [--name-only] -> path of a new temporary file holding TREEISH's `ls-tree -r -z` output.

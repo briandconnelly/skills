@@ -48,6 +48,7 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
   It restores a qualifying link as its target's base content at the link path and reports PR changes under the target as policy changes.
   Policy paths are classified byte-wise (`LC_ALL=C`), so a name that is not valid UTF-8 is still matched as policy.
   The checkout must fail when a policy path it reports, in `policy-manifest.json` or `policy_changes`, is not valid UTF-8, because JSON cannot name that file faithfully.
+- RC12: The pinned diff must take Git attributes from the base commit, never from the pull-request head, and must omit binary patch bodies.
 
 ## Normalized result envelope
 
