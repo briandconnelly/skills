@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe rename leaves the agent guide's pre-push instruction pointing at the removed `make test` target, and you should fix it because the guide states that these commands are the only checks a change gets.\n\n## Changes\nThe pull request renames the Makefile's `test` target to `check` and updates the README's test instruction to match. It also adds a Layout section to `AGENTS.md` that lists each file and the Makefile targets.\n\n## Critical\n(none)\n\n## Important\n- Makefile:6 — comments — Update the `make test` instruction in AGENTS.md to `make check` — Running `make test`, as AGENTS.md:24 instructs, now fails with no rule for target `test`, because this line renames the target to `check`. The unchanged line still reads \"Run `make test` before you push; it runs the pytest suite\", while the added AGENTS.md:10 says the Makefile defines the `check` and `lint` targets. — Contributors and agents following the guide hit a make error at the pre-push test step, in a repository the guide says has no CI. — Fix: Change `AGENTS.md:24` to say `make check`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 44827,
+    "cost_usd": 0.39010040000000007,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Lm9z1AaqxL/review-pr.dvqV9W",
+  "head_sha": "0717e8d6a785dbe6b0f5cc03a2733e5e94a1e25c",
+  "base_sha": "36e5040c4a883d385f0f6acd86cacdabd5f67af7",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e6508f88054bada942b5cdcd51fb2d3bd8475cf7"
+}

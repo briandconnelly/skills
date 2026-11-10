@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect must be fixed before merge: `--json` without a path consumes a following flag as its destination, so the default destination fails whenever `--json` is not the last argument. This review read the tests and did not run them.\n\n## Changes\nThe pull request adds a `--json` option to `parse_args` in `app/cli.py`, with a default destination of `results.json` or an explicit path, and adds `write_reports`, which writes each requested report to its parsed destination. It also adds `tests/test_cli.py`, covering the JSON default, an explicit JSON path, and the `--junit` path requirement.\n\n## Critical\n- app/cli.py:15 — correctness — Treat a following flag as no --json path — `parse_args([\"--json\", \"--junit\", \"x.xml\"])` takes `--junit` as the JSON destination and then raises `ValueError(\"unknown option: x.xml\")`. Line 15 checks only that another argument exists, unlike the `startswith(\"--\")` guard at line 7. `[\"--json\", \"--junit\"]` returns `{\"json\": \"--junit\"}`, so `write_reports` writes a file named `--junit` and the missing JUnit path goes unreported. — Users who place a pathless `--json` before another flag get a misleading error or a report written to a file named after that flag. — Fix: Consume the next argument only when it does not start with `--`, as `app/cli.py:7` does, and extend `test_json_default_and_explicit_path` with the `--json --junit x.xml` order.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 30998,
+    "cost_usd": 0.2010984,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.H2DowfluGm/review-pr.qnLJFe",
+  "head_sha": "dd3e19f0f0bcd8a5a5bfc6cc5de79fd928cde0df",
+  "base_sha": "907944dbdd04830531f44204d6ef790610abcf64",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "da9e58619d47fe063dee092a67cf91f6603f85ea"
+}

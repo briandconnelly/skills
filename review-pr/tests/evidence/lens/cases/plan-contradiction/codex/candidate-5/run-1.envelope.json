@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe compatibility alias should be restored because existing `--wait` invocations fail during the documented transition. Tests were assessed by reading them; none were run.\n\n## Changes\nThe pull request renames `--wait` to `--timeout`, updates parser tests, and adds a transition decision. It preserves the default value and output formats.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Retain --wait as a deprecated alias — For an existing invocation such as `--wait 12`, the parser now exits with an unrecognized-argument error. It registers only `--timeout`, while `docs/adr/007-timeout.md:5` specifies accepting `--wait` for one release and emitting a deprecation warning. — Existing scripts using `--wait` stop working immediately, preventing users from migrating during the documented compatibility period.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.992hwUqQ9L/review-pr.vInZMC",
+  "head_sha": "84333a9d0e8e360f69ed1693526cfbc68dbb2f46",
+  "base_sha": "294e20186c6ab2cda66e961b7d236ba1e6a8c0f5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a94dde3f171b2f6e1b64977377dc46cf5f042a34"
+}

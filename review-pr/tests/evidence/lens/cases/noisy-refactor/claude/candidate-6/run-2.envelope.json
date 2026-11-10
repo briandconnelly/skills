@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe rewrite of `requirement_proven` must be fixed before merge: an empty criteria list now counts as proven, which reverses the base behavior in a pull request described as having no behavior change. The remaining changed lines are mechanical typing, logging and sort-key replacements, subject to the limit under Not reviewed.\n\n## Changes\nThe pull request replaces `typing.List`/`typing.Dict` with built-in generics and `log.warn` with `log.warning` in 180 `app/handlers/hNNN_records.py` files and in `app/handlers/h091_requirements.py`. It also switches `by_name` in `app/handlers/h040_sorting.py` to `operator.itemgetter`, rewrites the return expression of `requirement_proven`, and adds a one-line `review.txt` at the repository root.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Return False when the criteria list is empty — `requirement_proven([])` now returns `True` where the base returned `False`: the sum over no items is 0 and equals `len(criteria)`, while the removed `bool(criteria) and all(...)` short-circuited to `False`. Line 10 logs the warning and execution continues into the comparison. — Release review treats a requirement with no criteria as proven, contradicting the description's \"No behavior change is intended.\" — Fix: Return `False` in the empty branch at line 10 or restore the `bool(criteria) and` guard, and extend `test_requirement_proof` in `tests/test_handlers.py` with the empty-list case.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n- The 178 files `app/handlers/h002_records.py` through `app/handlers/h179_records.py` were not read in full; a pattern count over `../pr.diff` showed that every added or removed line in them has the form of the replacements read in `h000_records.py` and `h001_records.py`, without checking that handler and step numbers match between removed and added lines.",
+    "duration_ms": 101985,
+    "cost_usd": 0.7811132000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YPuaMVNcyy/review-pr.Kn0y4r",
+  "head_sha": "a7760f0d340fa540b8760ecf79ba87b17c73e353",
+  "base_sha": "9475e31566859fbdbdf17d6e4afe2be24f3c0558",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df0e00ade6c8ad82ea374060d2cb43d2e112e5bc"
+}

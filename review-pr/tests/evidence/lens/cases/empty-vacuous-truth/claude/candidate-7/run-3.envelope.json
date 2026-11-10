@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`requirement_proven` must be fixed before merge: the rewrite reports a requirement with no criteria as proven, reversing the base behaviour, and it also mishandles non-boolean `proven` values. The fix for both is under \"Restore the empty-criteria guard in requirement_proven\".\n\n## Changes\nThe pull request rewrites `requirement_proven` in `app/proof.py` to count proven criteria and compare the count to the list length, and adds a `reviewed_batch` helper and a `REVIEW_HINT` string constant. It also adds `tests/test_proof.py` with one test for each function.\n\n## Critical\n- app/proof.py:3 — correctness — Restore the empty-criteria guard in requirement_proven — `requirement_proven([])` now returns `True` where the base returned `False`. The base guarded with `bool(criteria) and all(...)`; the new `proven == len(criteria)` evaluates `0 == 0`. The added test at `tests/test_proof.py:6` passes only non-empty lists. — A requirement with no criteria is reported as proven, so callers treat a requirement with no evidence as satisfied. — Fix: Return `bool(criteria) and all(item[\"proven\"] for item in criteria)` and extend `test_requirement_with_evidence` with the empty list.\n\n## Important\n- app/proof.py:2 — correctness — Test truthiness instead of summing proven values — `requirement_proven([{\"proven\": None}])` now raises `TypeError` where the base returned `False`, because `sum` adds the raw values instead of testing truthiness. `[{\"proven\": 2}, {\"proven\": 0}]` sums to 2, equals the length, and returns `True` with one criterion unproven. — A criterion whose `proven` is `None` crashes the check, and one whose `proven` is a count can mark an unproven requirement proven.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 31859,
+    "cost_usd": 0.2216922,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.vBLsmOjwFT/review-pr.a8R9fs",
+  "head_sha": "17d44fc474ef4b641fcb13da3f13e6b841bd352d",
+  "base_sha": "c966ef6b9bc329117c7f3febdde43afcfcf522a7",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "12a29dd245d3b9a938495ef7b1f8e128694a664d"
+}

@@ -1,0 +1,11 @@
+{
+  "collection_id": "de5e60c7e6ee59d8348f18b5d0ddd739c8fe54a3",
+  "runner": "codex",
+  "case": "policy-pointer-head",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "4a23ae1df9263c8d50c7024debbd02dbd36f93678731ce191f708307153000c6",
+  "diagnostic": false
+}

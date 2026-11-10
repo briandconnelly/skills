@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe pre-push instructions should be corrected so contributors can complete the required validation workflow. Tests were read, not run.\n\n## Changes\nThe pull request renames `make test` to `make check`, updates the README command, and adds a repository layout section to the agent guide.\n\n## Critical\n(none)\n\n## Important\n- Makefile:6 — correctness — Update the pre-push guide to use `make check` — Following the guide's pre-push workflow now makes `make test` fail because this rename removes that target. `AGENTS.md:24` still requires: “Run `make test` before you push; it runs the pytest suite.” — Contributors following the required workflow cannot complete its prescribed test check. — Fix: Update `AGENTS.md:24` to use `make check`, or retain a `test` alias.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TW1brdOkZF/review-pr.cUNLIv",
+  "head_sha": "57f379c588cc80b51a400076c0a8c0f083c14b13",
+  "base_sha": "b573ab2b38a199d14cdd691049ae04784acc0d43",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b0b557d5f72c53027c653fd6183a80cd82702939"
+}

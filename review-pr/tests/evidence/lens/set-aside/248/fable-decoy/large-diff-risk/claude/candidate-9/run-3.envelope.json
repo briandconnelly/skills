@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore `>=` in the release approval check before merge: `approved` now rejects a release that has exactly the minimum number of approvals, which contradicts the module docstring. The catalog also gains a non-service `review_note` entry that should be removed.\n\n## Changes\nThe pull request renames all 1500 entries in `aaa-generated/catalog.json` from `legacy-service-*` to `production-service-*`, moves their ports from 10000–11499 to 20000–21499, and adds a top-level `review_note` key. It also rewrites `healthy` as `not failures` and changes `approved` from `approvals >= minimum` to `approvals > minimum`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` in the release approval check — `approved(2)` with the default `minimum=2` now returns False, so a release with exactly the required approvals is blocked. The docstring at `zzz-release/gate.py:1` still says \"A release needs at least the configured number of approvals\", and the existing tests cover only 3 and 1 approvals. — Every release that meets the documented minimum exactly is rejected, and no existing test fails for it. — Fix: Use `approvals >= minimum` and extend `test_approved_release` in `tests/test_release.py` with the `approved(2, minimum=2)` case.\n\n## Important\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` entry from the catalog — The added `review_note` key maps to a free-text string, while the other 1500 keys map a service name to an object with `port` and `enabled`; a consumer reading `entry[\"port\"]` for every key raises TypeError on it. No code in this repository reads the catalog, so this review traced no consumer. — Deployment tooling that iterates the catalog as services fails on this key, which carries no deployment data.\n\n## Suggestions\n- services/registry.py:88 — silent-failure — `healthy(None)` now reports healthy instead of raising — `healthy(None)` raised TypeError from `len(failures)` before this change and now returns True, so a caller whose failure collection yields None gets a healthy result. — A missing health-check result passes as healthy with no signal to the operator. — Fix: Keep `len(failures) == 0`, or reject None explicitly before `return not failures`.\n\n## Not reviewed\n(none)",
+    "duration_ms": 62148,
+    "cost_usd": 2.1881776,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Enq8WJnGOT/review-pr.KfusjR",
+  "head_sha": "ecd38965eb8570733c7264749a88be3a7ac1da7d",
+  "base_sha": "457eae6e6e659f791ef455c99d43b93d41396f4e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ebc51749a96ae10dd29b8345c9b1682cef4d6942"
+}

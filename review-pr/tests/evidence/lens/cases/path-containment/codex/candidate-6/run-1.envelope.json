@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe home-directory boundary must be fixed before merge because traversal and symlinks allow previews outside the selected directory. This review read the tests without running them.\n\n## Changes\nThe pull request adds a file-preview helper limited to 200 characters, a settings-file path helper, and tests for both.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before enforcing the home boundary — With `home=/srv/home` and `relative=../secret.txt`, the lexical containment check succeeds and the preview returns content from `/srv/secret.txt`. A symlink inside the home directory pointing outside also passes this check. — Callers can use traversal or symlinks to read previews of accessible files outside the selected home directory. — Fix: Resolve both the home and candidate paths before checking containment, and extend `test_preview` with traversal and symlink cases.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.adDm8iMYGp/review-pr.UTtyq0",
+  "head_sha": "49c4ab16dc8e65bac5414438fb973a7b40dd4ec8",
+  "base_sha": "c6842e3a33d9b1212627674f89f3bca419f6ae08",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "189ae613cced62ccfa00bd327601c6fd128e6d8f"
+}

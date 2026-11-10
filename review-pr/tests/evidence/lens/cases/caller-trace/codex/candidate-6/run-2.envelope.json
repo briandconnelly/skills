@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nDuplicate adoption output should be fixed because adopting one existing setting now produces two identical command messages.\n\n## Changes\nThe pull request adds adoption records and audit metadata to settings plans while retaining adoption progress output. It adds tests for audit records and empty plans.\n\n## Critical\n(none)\n\n## Important\n- app/planner.py:9 — correctness — Avoid duplicate output for adopted settings — With `current = incoming = {\"theme\": \"dark\"}`, the new adoption record reaches `app/cli.py:9`, so `run` emits `Adopted theme` twice. `plan` already emits that message at line 8, and the command skips only audit records. — Users adopting existing settings receive duplicate progress messages, making a single adoption appear twice in command output. — Fix: Update `app/cli.py:7` to skip already-emitted adoption records and extend `test_adoption_progress` to exercise `run`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YfuE25Cv5i/review-pr.If2x0o",
+  "head_sha": "19f83814ab592a89eac93324ee022b3bb4d2feca",
+  "base_sha": "c8c6f8a815d3c4fe791518b98ee6619afd93ee32",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e54a4cdacb719cad9fabe4c34b52269692576c77"
+}

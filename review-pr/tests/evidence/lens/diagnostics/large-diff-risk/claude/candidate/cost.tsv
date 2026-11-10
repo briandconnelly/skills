@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/diagnostics/large-diff-risk/claude/candidate	1	149346	107942	8906	1.0402	18	101759	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/diagnostics/large-diff-risk/claude/candidate	2	410477	284998	9066	2.4272	16	105834	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/diagnostics/large-diff-risk/claude/candidate	3	254021	202581	17027	1.5445	19	179309	NA	NA

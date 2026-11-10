@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nAdd coverage for unchanged-value adoption; the new tests leave its file-writing behavior unspecified.\n\n## Changes\nThe pull request adds an adoption mode that records existing keys and writes their incoming values. It also adds tests for adoption and replacement with differing values.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:13 — tests — Cover adoption when the value is unchanged — With `{\"theme\":\"dark\"}` already stored, adopting the same value records a change and rewrites the file. No existing or added test exercises this equality boundary; the adoption test uses differing values. — Regression coverage does not establish whether adopting an unchanged setting should preserve configuration bytes or deliberately rewrite them.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.I5JGhM0DSb/review-pr.sNLwap",
+  "head_sha": "e12d6163e80efca226793da2ad362429f25b69a2",
+  "base_sha": "dcb124dfbe091f6bb7aeb16366c44eaab9b307eb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "efec20aca06c57a40f93689c05bc12fb2882100c"
+}

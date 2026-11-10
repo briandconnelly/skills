@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe documented pre-push command should be updated because the target rename breaks the required check. Tests were read, not run.\n\n## Changes\nThe pull request renames the Makefile’s `test` target to `check`, updates the README command, and adds a repository layout section to AGENTS.md.\n\n## Critical\n(none)\n\n## Important\n- Makefile:6 — correctness — Keep the required pre-push test command working — When contributors follow the required pre-push command, `make test` fails because this rename removes its target. The policy at `AGENTS.md:11` requires: “Run `make test` before you push; it runs the pytest suite.” — Contributors following the guide cannot complete the documented pre-push check, which matters because this repository has no CI. — Fix: Update the instruction at `AGENTS.md:24` in the patched guide to `make check`, or retain a `test` alias.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.2dxQSOI1Eq/review-pr.nK2cSj",
+  "head_sha": "409230d50e7451d6f4b245eb330cbda821d2eb69",
+  "base_sha": "9a71c1055a005c0706c5c60663d55dac399c303e",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "206b4ad1243a0f3f539b3bea6f8afa6a81c6e85c"
+}

@@ -1,0 +1,11 @@
+{
+  "collection_id": "df0e00ade6c8ad82ea374060d2cb43d2e112e5bc",
+  "runner": "claude",
+  "case": "noisy-refactor",
+  "snapshot": "candidate-6",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "481012da835849d0676f6c9c4797b831d876ba106edc458afc083ae09f4c864b",
+  "diagnostic": false
+}

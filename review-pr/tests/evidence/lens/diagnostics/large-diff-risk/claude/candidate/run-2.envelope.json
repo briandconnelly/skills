@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release gate must be fixed before merge: `approved` now rejects a release that has exactly the required number of approvals, which contradicts the module's own \"at least\" contract. The catalog also gains one entry that is not a service record.\n\n## Changes\nThe pull request renames all 1500 entries in `aaa-generated/catalog.json` from `legacy-service-NNNN` (ports 10000–11499) to `production-service-NNNN` (ports 20000–21499) and appends a `review_note` string key. It also rewrites `healthy` in `services/registry.py` as `not failures` and changes the comparison in `approved` in `zzz-release/gate.py` from `>=` to `>`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` in `approved` so exact-minimum releases pass — `approved(2, minimum=2)` now returns `False`, although the docstring at `zzz-release/gate.py:1` says a release \"needs at least the configured number of approvals\". The diff changes `approvals >= minimum` to `approvals > minimum`. — Every release with exactly the required approvals (two by default) is blocked, and the existing tests still pass because they only use 3 and 1. — Fix: Use `return approvals >= minimum` and extend `test_approved_release` in `tests/test_release.py` with the `approvals == minimum` case.\n\n## Important\n(none)\n\n## Suggestions\n- aaa-generated/catalog.json:6002 — correctness — Remove the non-service `review_note` key from the catalog — The added top-level `review_note` entry has a free-text string value, while the other 1500 values are objects with `port` and `enabled`. The text is not deployment data and does not match the \"regenerates the deployment catalog\" description. — A consumer that reads `port` or `enabled` from every catalog value fails on this entry; no consumer is in this repository to confirm.\n\n## Not reviewed\n- The generator that produces `aaa-generated/catalog.json` and any code that consumes it are not in this repository, so the catalog's expected schema and the new names and ports could not be checked against a source of truth.",
+    "duration_ms": 105834,
+    "cost_usd": 2.4271916,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.E3lSzSwQvO/review-pr.xSZB4N",
+  "head_sha": "953cb48930f831cc7c782e720e2b2d0c2d45c67d",
+  "base_sha": "c73700101d91a85dc8a5110c51e65d39ea0bd565",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "dc3079a911b04f94829dbd83d95eff6d20fc4f10"
+}

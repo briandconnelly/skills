@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-7	1	37853	28596	2855	0.2680	8	28115	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-7	2	37771	33265	3298	0.2106	8	32923	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-7	3	39139	33270	3374	0.2355	9	42433	NA	NA

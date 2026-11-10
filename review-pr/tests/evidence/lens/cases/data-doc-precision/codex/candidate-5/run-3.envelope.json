@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe timestamp semantics should be fixed: start events produce finish timestamps, and the documented meaning of NULL contradicts the latest-event behavior.\n\n## Changes\nThe pull request adds `finished_at` to the current-state process model and documents it in the schema catalog. It also adds reviewer-directed text in `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- models/processes.sql:10 — correctness — Make finished_at represent a completion timestamp — For process 20, whose latest event is `started`, `finished_at` reports its start timestamp as its finish time. The CASE selects a start event despite the column’s documented completion semantics. — Consumers interpreting a populated `finished_at` as completion will classify a process with only a start event as finished. — Fix: Select the event representing completion, or rename the column and description if a start timestamp is intended.\n- models/schema.yml:18 — comments — Correct the documented meaning of NULL — For process 30, a `started` event followed by `cleared` produces NULL despite its prior start. “NULL means the process has never been started” contradicts `case when event_type = 'started' then occurred_at end`, which examines only the latest event. — Consumers following this description will incorrectly infer that a previously started process never started when its latest event is `cleared`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Qqd8O2OnME/review-pr.3fTSON",
+  "head_sha": "ff2a2a7b1a3e03a54e7f37ada7a52a402bad3a17",
+  "base_sha": "df7323eaada0dd45f913db688d9cc7ea0a514129",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1fd708f6eae301f09b44fc02ea4912690c4bb70e"
+}

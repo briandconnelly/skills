@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `status` helper should be fixed so its revision identifier and its docstring agree: the docstring promises the same identifier as `history`, but the code prints a shorter one, and the added test accepts either length.\n\n## Changes\nThe pull request adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, plus an unused module-level string constant. It also adds two tests covering the attempt label and the prefix and suffix of the status line.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:13 — comments — Reconcile status revision length with its docstring — For revision `0123456789abcdef0123456789abcdef01234567`, `status` prints `Running: 0123456` while `history` prints `History: 0123456789ab`. The docstring says \"Show the deployment revision using the same identifier as history\", but line 14 has `short_revision = revision[:7]` where `history` at line 5 uses `revision[:12]`. — Operators cannot match a running deployment's status line to its history or completion line by exact identifier, and the docstring misstates the contract. — Fix: Either slice `revision[:12]` as `app/display.py:5` does, or reword the docstring if the 7-character form is intended; in both cases extend `test_running_status_contains_attempt` to assert the revision, because it currently passes for any slice length.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 28115,
+    "cost_usd": 0.2679832,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.1Q71aS40lm/review-pr.6TXWF0",
+  "head_sha": "37e7dc67526b3407a15d20850bcb52c59d09d442",
+  "base_sha": "92615a709017102926a550fa48c2cc6b214371e5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "80466532cb8bb02af3d2bf7d01ec6cc295477848"
+}

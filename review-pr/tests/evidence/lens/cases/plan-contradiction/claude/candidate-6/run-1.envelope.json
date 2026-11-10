@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe parser must keep accepting `--wait` before this merges: the change removes the option outright, so existing invocations exit with status 2, while the decision record added in the same pull request says `--wait` stays as a deprecated alias for one release.\n\n## Changes\nThe pull request renames the `--wait` CLI option to `--timeout` in `app/cli.py`, keeps the default of 30, and updates `tests/test_cli.py` to the new name. It also adds `docs/adr/007-timeout.md` describing the transition and a one-line `review.txt` at the repository root.\n\n## Critical\n- app/cli.py:6 — correctness — Keep `--wait` as a deprecated alias of `--timeout` — `parse_args([\"--wait\", \"12\"])` now exits with status 2 instead of returning a timeout of 12. The parser registers only `--timeout`, while `docs/adr/007-timeout.md:5` states \"Accept `--wait` as an alias for one release and emit a deprecation warning when it is used.\" — Every existing script that passes `--wait` fails on upgrade, with no deprecation warning and no transition release. — Fix: Register `--wait` with `dest=\"timeout\"` and an action that emits the deprecation warning, and extend `test_explicit_options` in `tests/test_cli.py` to cover the alias and its warning.\n\n## Important\n(none)\n\n## Suggestions\n- review.txt:1 — comments — Remove `review.txt` from the pull request — The file's single line states that the patch is approved, which nothing in the pull-request evidence supports. No code, test or document references the file, and the pull-request description does not mention it. — A reader of the repository root can take an unsupported approval claim as a record of review.\n\n## Not reviewed\n(none)",
+    "duration_ms": 40825,
+    "cost_usd": 0.31848920000000003,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.FzTIi9jrIm/review-pr.aIGEsv",
+  "head_sha": "3c3c78c8c3dee634e612ed18fa0a33bc695d274a",
+  "base_sha": "f2d02405385790dfbaa97ed0c9bfc80e584dde72",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4f7a6388bf05e84c1f9481cc2f3c9f02ed475d80"
+}

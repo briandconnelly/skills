@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n\nRestore rejection of empty criteria before merge: the new count comparison marks requirements without criteria as proven.\n\n## Changes\nThe pull request modernizes handler annotations and logging calls, replaces a sorting lambda with `itemgetter`, and changes requirement proof evaluation to compare counts.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Keep empty criteria unproven — For `criteria=[]`, `requirement_proven` now returns `True` instead of `False`. After the warning, both the proof count and criteria count are zero, so the equality succeeds. — Requirements without supporting criteria can now be marked proven during release review. — Fix: Restore the nonempty guard and extend `test_requirement_proof` with an empty criteria list.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.oKGRL8RZ0z/review-pr.cBwFRc",
+  "head_sha": "7e6a29a8011beba6fd4b0a226dac5c5661bdad51",
+  "base_sha": "ff58edaa234b1db5c20134454a0abd4f88deb101",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "56bfc4a5c8e53b57a1e3ddeb6d3867c8f6da0e42"
+}

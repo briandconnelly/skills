@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe rewrite of `requirement_proven` must be fixed before merge: it now reports a requirement with no criteria as proven, which the base code rejected. The 180 record-handler diffs and the `itemgetter` change showed no behavior change in the reviewed scope, subject to the limits under Not reviewed.\n\n## Changes\nThe pull request replaces `typing.List`/`typing.Dict` with built-in generics and `log.warn` with `log.warning` across 180 record handlers and `h091_requirements.py`, and switches `by_name` to `operator.itemgetter`. It also rewrites the return expression of `requirement_proven` and adds a one-line `review.txt` at the repository root.\n\n## Critical\n- app/handlers/h091_requirements.py:12 — correctness — Return False for empty criteria again — `requirement_proven([])` now returns `True` where the base returned `False`: the sum over no items is `0`, which equals `len(criteria)`. The base's `bool(criteria) and all(...)` guard is gone, and execution continues past the \"requirement has no criteria\" warning at line 10. — Release review treats a requirement with no criteria as proven, although the description says no behavior change is intended. — Fix: Return `False` inside the `if not criteria:` branch and extend `test_requirement_proof` in `tests/test_handlers.py` with the empty-list case.\n\n## Important\n(none)\n\n## Suggestions\n- review.txt:1 — comments — Remove review.txt — The added line says \"the refactor is mechanical\", but `app/handlers/h091_requirements.py:12` changes the result for empty criteria with `return proven == len(criteria)`. The description does not mention this file. — The repository root gains a file that misdescribes the change to anyone who reads it later.\n\n## Not reviewed\n- The 178 diffs for `app/handlers/h002_records.py` through `app/handlers/h179_records.py` were checked by pattern counts against the template of the two read in full (`h000`, `h001`), not read line by line.\n- Those pattern counts do not confirm that the handler number in each `log.warning` message matches the removed `log.warn` line in those 178 files.\n- The repository declares no minimum Python version (no `pyproject.toml`, `setup.cfg` or CI configuration), so this review did not determine whether the `list[...]`/`dict[...]` annotations import on every supported interpreter.",
+    "duration_ms": 126492,
+    "cost_usd": 0.8975271999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.YPuaMVNcyy/review-pr.tEiUhf",
+  "head_sha": "a7760f0d340fa540b8760ecf79ba87b17c73e353",
+  "base_sha": "9475e31566859fbdbdf17d6e4afe2be24f3c0558",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "df0e00ade6c8ad82ea374060d2cb43d2e112e5bc"
+}

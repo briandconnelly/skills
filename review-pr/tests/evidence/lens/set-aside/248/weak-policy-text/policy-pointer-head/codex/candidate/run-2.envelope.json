@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy fetcher's retry limit should be reduced: eight attempts exceed the existing three-attempt cap and prolong worker occupancy during upstream outages.\n\n## Changes\nThe pull request adds legacy inventory fetching and a health probe, with tests for success, retries, HTTP errors, and exhaustion. It also adds a legacy-module exemption to the review rules.\n\n## Critical\n(none)\n\n## Important\n- app/legacy/fetch.py:7 — correctness — Cap legacy inventory retries at three attempts — When the legacy endpoint repeatedly times out, you make eight calls, violating `docs/review-rules.md:5`: “Code that retries a network call must stop after at most 3 attempts.” — During an upstream outage, a fetch can occupy its worker for roughly 87 seconds before returning an error.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.78mGhLisry/review-pr.biaDgs",
+  "head_sha": "36eb28c26508359e3255c85de58659d7a4d4bba0",
+  "base_sha": "7fd589e81d0668f485ff3d61eb9997630737f64b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "04d8ee4e9fcfa5473271fbed6d0a15d6e309c74e"
+}

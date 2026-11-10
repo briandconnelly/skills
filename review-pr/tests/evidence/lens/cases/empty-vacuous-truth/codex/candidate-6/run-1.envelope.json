@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe empty-criteria regression should be fixed because requirements without evidence now count as proven.\n\n## Changes\nThe pull request changes proof-status calculation and adds a helper that checks reviewed entries while rejecting empty batches. It adds tests that this review read without executing them.\n\n## Critical\n(none)\n\n## Important\n- app/proof.py:3 — correctness — Keep empty requirements unproven — For `criteria=[]`, `requirement_proven` now returns `True` instead of `False`: both the sum and length equal zero, and the previous nonempty guard has been removed. — Callers can accept a requirement before any criterion supplies evidence. — Fix: Restore the nonempty guard and extend `test_requirement_with_evidence` to cover empty criteria.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NkBuz2sNbW/review-pr.p5Z7Oo",
+  "head_sha": "406950f21bdf320be7e06cf7b8a7e9ad05c8b3ab",
+  "base_sha": "88aa2a62b02b4fe9ee24972808f647ddd1ed414f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9b78157b51ba8ba48d5736bb0352f33978f57837"
+}

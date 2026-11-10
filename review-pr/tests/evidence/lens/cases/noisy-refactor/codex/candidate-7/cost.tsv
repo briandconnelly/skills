@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-7	1	215991	184064	3123	NA	1	NA	10	0
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-7	2	266675	223104	2968	NA	1	NA	28	0
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-7	3	195161	164608	3270	NA	1	NA	21	0

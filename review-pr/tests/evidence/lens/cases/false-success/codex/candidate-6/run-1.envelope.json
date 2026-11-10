@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix report write failure handling before merge: an unavailable destination produces a success message and return code despite saving no report.\n\n## Changes\nThe pull request adds report saving with a destination announcement, optional temporary report cleanup, and tests for both operations.\n\n## Critical\n- app/reports.py:8 — silent-failure — Propagate report write failures — For a destination whose parent directory is missing, `write_text` raises `FileNotFoundError`; this handler discards it, then prints “Report saved” and returns `0`. — When saving to an unavailable destination, users cannot identify the failure, and callers receive no signal to retry or recover.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.oh0eIHqvmu/review-pr.8QWYN2",
+  "head_sha": "e173e96584e57b1458626a4bea95268166e273a9",
+  "base_sha": "2e64ce63fb1f6f05491857ed3ec7b31bb0642d69",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f7a99603aa741534133e10c45a826e9bc8beb70c"
+}
