@@ -167,7 +167,7 @@ def cited(report, loc):
 
 
 def cited_exactly(report, loc):
-    """Whether the report cites exactly this path and line anywhere, as a location or in prose."""
+    """Whether the report cites this path at exactly this line, alone or as the start of a range."""
     pattern = re.compile(
         r"(?<![^\s`\"'(\[<*_])" + re.escape(loc[0]) + r":" + str(loc[1]) + r"(?![0-9])( \[base\])?"
     )
@@ -323,14 +323,20 @@ def gate(directory, targets, rows, require_recall=False):
             if hits < MIN_HITS:
                 misses.append(f"{target.key}: recalled in {hits} runs; needs {MIN_HITS}")
     miscited = sum(bool(row["miscites"]) for row in rows)
+    miscites = []
     if miscited > MAX_MISCITED_RUNS:
-        misses.append(f"miscited in {miscited} runs; at most {MAX_MISCITED_RUNS} allowed")
+        miscites.append(f"miscited in {miscited} runs; at most {MAX_MISCITED_RUNS} allowed")
     # A baseline measures whether the unedited lens recalls a plant and cites it where it is; a miss
-    # is a result, unless the protocol needs the baseline to recall (lens-rubric.md, "Changing the
+    # is a result. --require-recall withdraws that for recall alone (lens-rubric.md, "Changing the
     # reading procedure").
-    if config.get("snapshot") != "baseline" or require_recall:
+    baseline = config.get("snapshot") == "baseline"
+    if not baseline or require_recall:
         errors += misses
         misses = []
+    if not baseline:
+        errors += miscites
+        miscites = []
+    misses += miscites
     if errors:
         raise ValueError("quality gate failed: " + "; ".join(errors))
     return misses

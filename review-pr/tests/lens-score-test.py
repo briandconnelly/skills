@@ -296,6 +296,18 @@ class ScoreTests(unittest.TestCase):
         result = self.cli(self.root, "--gate")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("baseline OK, recall not met: miscited in 3 runs", result.stderr)
+        result = self.cli(self.root, "--gate", "--require-recall")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_miscite_counts_a_range_only_when_it_starts_at_the_line(self):
+        targets = self.miscite_targets()
+        for cited, want in (
+            ("src/app.js:49-50", 1),
+            ("src/app.js:47-51", 0),
+            ("src/app.js:48-49", 0),
+        ):
+            text = report([f"- src/app.js:12 — correctness — Title — See {cited}. — Impact"])
+            self.assertEqual(SCORER.score(text, targets)["miscites"], want, cited)
 
     def test_wrong_lens_fails_even_when_other_runs_recall_plant(self):
         only_wrong = report([BULLETS[0].replace("correctness", "comments")])
