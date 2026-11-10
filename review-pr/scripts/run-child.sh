@@ -199,7 +199,8 @@ stop_watchdog
 # The watchdog can kill the child's process group before its redirection creates the output file (a zero-second
 # timeout races the fork), so a missing file is an empty result for normalize_native to report, not a fatal error.
 if [ -e "$NATIVE_TMP" ]; then mv -f "$NATIVE_TMP" "$NATIVE"; fi
-if [ -e "$DIR/runner.timeout" ]; then
+# The watchdog can mark a timeout just as the runner exits on its own; only a failed run is reported as one.
+if [ -e "$DIR/runner.timeout" ] && [ "$CHILD_EXIT" -ne 0 ]; then
   normalize_native || true
   printf 'review-pr: runner timed out after %ss (REVIEW_PR_TIMEOUT)\n' "$TIMEOUT" | tee -a "$STDERR" >&2
 else
@@ -207,5 +208,7 @@ else
 fi
 printf '%s\n' "$CHILD_EXIT" > "$DIR/runner.exit"
 FINISHED=1
-trap - INT TERM
+# Ignored, not reset: a signal while finish builds the envelope and removes the scratch directory would
+# otherwise end the script with neither done.
+trap '' INT TERM
 finish
