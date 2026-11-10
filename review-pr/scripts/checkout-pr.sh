@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # checkout-pr.sh OWNER/REPO N
-# Implements the checkout phase documented in SKILL.md and the policy boundary in references/runner-contract.md.
+# Implements RC4 and RC12 in references/runner-contract.md.
 set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
@@ -18,6 +18,9 @@ MAX_SKILL_INDEX="${REVIEW_PR_MAX_SKILL_INDEX:-200}"
 [[ "$MAX_SKILL_INDEX" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_SKILL_INDEX must be a non-negative integer, got '$MAX_SKILL_INDEX'"
 
 for c in git jq gh cmp; do need_cmd "$c"; done
+# pinned_diff needs --attr-source (RC12), which git 2.41 added.
+GIT_VERSION="$(git --version 2>/dev/null | awk '{print $3}')"
+semver_at_least "${GIT_VERSION:-0}" 2.41 || die 3 "git 2.41 or newer is required, found ${GIT_VERSION:-unknown}"
 
 # Only github.com is supported: qualify every gh call with the host so GH_HOST cannot redirect it.
 REPO="github.com/$SLUG"
@@ -59,23 +62,25 @@ g branch -q -f "pr-$N" "$HEAD_SHA" || die 1 "git branch pr-$N failed"
 g branch -q -f "pr-$N-base" "$BASE_SHA" || die 1 "git branch pr-$N-base failed"
 
 # The child reads this pinned diff as data and receives no capability to modify it.
-git_wt -C "$CLONE" diff --no-ext-diff --no-textconv --binary "$BASE_SHA...$HEAD_SHA" > "$JOB/pr.diff" \
+pinned_diff "$CLONE" "$BASE_SHA" "$HEAD_SHA" > "$JOB/pr.diff" \
   || die 1 "git diff failed for pinned base/head"
 printf '%s\n' "$META" > "$JOB/pr.json"
 NOW_HEAD="$(gh pr view "$N" -R "$REPO" --json headRefOid -q .headRefOid 2>&1)" \
   || die 1 "gh pr view failed: $NOW_HEAD"
 [ "$NOW_HEAD" = "$HEAD_SHA" ] || die 1 "PR head changed during checkout ($HEAD_SHA -> $NOW_HEAD); re-run"
 
-CHANGES="$("$HERE/isolate-policy.sh" "$RUNNER" "$CLONE" "$BASE_SHA" "$HEAD_SHA")" \
+# The policy-changes array is PR-sized, so it reaches jq as a file, never as an argument.
+"$HERE/isolate-policy.sh" "$RUNNER" "$CLONE" "$BASE_SHA" "$HEAD_SHA" > "$JOB/policy-changes.json" \
   || die 1 "isolate-policy.sh failed (exit $?)"
 write_policy_manifest "$CLONE" "$BASE_SHA" "$JOB/policy-manifest.json"
 
 # Status is as observed at checkout. Booleans are copied with has(), since jq's // would turn false into null.
 # The metadata comes from pr.json on disk, never from argv: a PR body can exceed a single argument's size limit.
 jq -n --arg dir "$JOB" --arg runner "$RUNNER" --arg base "$BASE_SHA" --arg head "$HEAD_SHA" --arg mb "$MERGE_BASE_SHA" --arg hr "$HEAD_REPO" \
-  --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --arg context "$JOB/policy-manifest.json" --argjson changes "$CHANGES" --slurpfile meta_doc "$JOB/pr.json" \
+  --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --arg context "$JOB/policy-manifest.json" \
+  --slurpfile changes_doc "$JOB/policy-changes.json" --slurpfile meta_doc "$JOB/pr.json" \
   '$meta_doc[0] as $pr |
-   {dir:$dir, runner:$runner, base_sha:$base, head_sha:$head, merge_base_sha:$mb, head_repo:$hr, policy_changes:$changes,
+   {dir:$dir, runner:$runner, base_sha:$base, head_sha:$head, merge_base_sha:$mb, head_repo:$hr, policy_changes:$changes_doc[0],
     pr_state:($pr.state // null), pr_is_draft:(if ($pr | has("isDraft")) then $pr.isDraft else null end), pr_merged_at:($pr.mergedAt // null),
     pr_author:($pr.author.login // null), pr_author_is_bot:(if (($pr.author | type) == "object" and ($pr.author | has("is_bot"))) then $pr.author.is_bot else null end),
     diff_path:$diff, meta_path:$meta, policy_manifest_path:$context}'
