@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # checkout-pr.sh OWNER/REPO N
-# Implements the checkout phase documented in SKILL.md and the policy boundary in references/runner-contract.md.
+# Implements RC4 and RC12 in references/runner-contract.md.
 set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091
@@ -18,6 +18,9 @@ MAX_SKILL_INDEX="${REVIEW_PR_MAX_SKILL_INDEX:-200}"
 [[ "$MAX_SKILL_INDEX" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_SKILL_INDEX must be a non-negative integer, got '$MAX_SKILL_INDEX'"
 
 for c in git jq gh cmp; do need_cmd "$c"; done
+# pinned_diff needs --attr-source (RC12), which git 2.40 added.
+GIT_VERSION="$(git --version 2>/dev/null | awk '{print $3}')"
+semver_at_least "${GIT_VERSION:-0}" 2.40 || die 3 "git 2.40 or newer is required, found ${GIT_VERSION:-unknown}"
 
 # Only github.com is supported: qualify every gh call with the host so GH_HOST cannot redirect it.
 REPO="github.com/$SLUG"
@@ -59,7 +62,7 @@ g branch -q -f "pr-$N" "$HEAD_SHA" || die 1 "git branch pr-$N failed"
 g branch -q -f "pr-$N-base" "$BASE_SHA" || die 1 "git branch pr-$N-base failed"
 
 # The child reads this pinned diff as data and receives no capability to modify it.
-git_wt -C "$CLONE" diff --no-ext-diff --no-textconv --binary "$BASE_SHA...$HEAD_SHA" > "$JOB/pr.diff" \
+pinned_diff "$CLONE" "$BASE_SHA" "$HEAD_SHA" > "$JOB/pr.diff" \
   || die 1 "git diff failed for pinned base/head"
 printf '%s\n' "$META" > "$JOB/pr.json"
 NOW_HEAD="$(gh pr view "$N" -R "$REPO" --json headRefOid -q .headRefOid 2>&1)" \

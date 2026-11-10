@@ -39,9 +39,30 @@ printf '%s\n' 'Base moved on.' > "$WORK/other.txt"
 git -C "$WORK" add other.txt
 git -C "$WORK" commit -qm base-advance
 BASE_SHA="$(git -C "$WORK" rev-parse HEAD)"
+# PR 13: the head's .gitattributes marks its own new file -diff, which must not hide that file's hunk (RC12),
+# while the base's -diff line for a generated file is still honoured.
+printf '%s\n' '* filter=evil' 'generated.txt -diff' > "$WORK/.gitattributes"
+printf '%s\n' 'generated v1' > "$WORK/generated.txt"
+git -C "$WORK" add .gitattributes generated.txt
+git -C "$WORK" commit -qm base-attributes
+BASE13_SHA="$(git -C "$WORK" rev-parse HEAD)"
+git -C "$WORK" checkout -qb feature13
+printf '%s\n' 'secret.py -diff' >> "$WORK/.gitattributes"
+printf '%s\n' 'PAYLOAD = "HIDDEN-PAYLOAD-7731"' > "$WORK/secret.py"
+printf '%s\n' 'generated v2' > "$WORK/generated.txt"
+git -C "$WORK" add .gitattributes secret.py generated.txt
+git -C "$WORK" commit -qm head13
+HEAD13_SHA="$(git -C "$WORK" rev-parse HEAD)"
+git -C "$WORK" checkout -q main
 git clone -q --bare "$WORK" "$ORIGIN"
 git --git-dir="$ORIGIN" symbolic-ref HEAD refs/heads/main
 git --git-dir="$ORIGIN" update-ref refs/pull/12/head "$HEAD_SHA"
+git --git-dir="$ORIGIN" update-ref refs/pull/13/head "$HEAD13_SHA"
+# The fake gh serves each pull request from $FAKE_PRS/N, which holds "BASE_SHA HEAD_SHA".
+FAKE_PRS="$S/prs"
+mkdir -p "$FAKE_PRS"
+printf '%s %s\n' "$BASE_SHA" "$HEAD_SHA" > "$FAKE_PRS/12"
+printf '%s %s\n' "$BASE13_SHA" "$HEAD13_SHA" > "$FAKE_PRS/13"
 
 cat > "$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -50,10 +71,13 @@ printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 if [ "$1 $2" = "auth status" ]; then exit 0; fi
 if [ "$1 $2" = "repo clone" ]; then dest="$4"; shift 4; [ "${1:-}" != -- ] || shift; exec git clone "$@" "file://$FAKE_ORIGIN" "$dest"; fi
 if [ "$1 $2" = "pr view" ]; then
-  for arg in "$@"; do [ "$arg" != -q ] || { printf '%s\n' "$FAKE_HEAD_SHA"; exit 0; }; done
-  jq -n --arg base "$FAKE_BASE_SHA" --arg head "$FAKE_HEAD_SHA" \
-    '{number:12,title:"Fixture PR",body:(if env.FAKE_PR_BODY_BYTES then ("x" * (env.FAKE_PR_BODY_BYTES | tonumber)) else "Fixture body" end),
-      baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/12"),
+  n="$3"
+  [ -f "$FAKE_PRS/$n" ] || exit 1
+  read -r base head < "$FAKE_PRS/$n"
+  for arg in "$@"; do [ "$arg" != -q ] || { printf '%s\n' "$head"; exit 0; }; done
+  jq -n --argjson n "$n" --arg base "$base" --arg head "$head" \
+    '{number:$n,title:"Fixture PR",body:(if env.FAKE_PR_BODY_BYTES then ("x" * (env.FAKE_PR_BODY_BYTES | tonumber)) else "Fixture body" end),
+      baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/\($n)"),
       state:(env.FAKE_PR_STATE // "OPEN"), isDraft:((env.FAKE_PR_DRAFT // "false") == "true"), mergedAt:(env.FAKE_PR_MERGED_AT // null),
       author:{login:(env.FAKE_PR_AUTHOR // "octocat"), is_bot:((env.FAKE_PR_AUTHOR_BOT // "false") == "true")}}'
   exit 0
@@ -90,7 +114,7 @@ for command in git jq bash sed awk grep tail pkill sleep; do
   path="$(command -v "$command")"
   [ -e "$FAKEBIN/$command" ] || ln -s "$path" "$FAKEBIN/$command"
 done
-export PATH="$FAKEBIN:/usr/bin:/bin" FAKE_ORIGIN="$ORIGIN" FAKE_BASE_SHA="$BASE_SHA" FAKE_HEAD_SHA="$HEAD_SHA"
+export PATH="$FAKEBIN:/usr/bin:/bin" FAKE_ORIGIN="$ORIGIN" FAKE_PRS
 export FAKE_GH_LOG="$S/gh.log"
 # A caller's GH_HOST must not redirect a github.com review to another host.
 export GH_HOST=ghe.example.invalid
@@ -187,6 +211,17 @@ out="$(FAKE_PR_BODY_BYTES=1500000 REVIEW_PR_SCRATCH="$S/bigbody/" "$SRC/review-p
   || { echo "FAIL: a large PR body aborted the checkout: $(tail -3 "$S/bigbody.stderr")"; FAIL=1; }
 jq -e '.exit == 0 and .pr_state == "OPEN" and .schema_valid == true' <<<"${out:-null}" >/dev/null \
   || { echo "FAIL: large PR body was not reviewed with status relayed: ${out:-<no output>}"; FAIL=1; }
+
+# RC12: the pinned diff takes attributes from the base commit, never the head, and carries no binary patch bodies.
+out="$(REVIEW_PR_KEEP=1 REVIEW_PR_SCRATCH="$S/attrs/" "$SRC/review-pr.sh" owner/repo 13)" \
+  || { echo "FAIL: PR 13 review failed: ${out:-<no output>}"; FAIL=1; }
+diff13="$(jq -r .dir <<<"${out:-null}")/pr.diff"
+[ -s "$diff13" ] || { echo "FAIL: PR 13 kept no pr.diff"; FAIL=1; }
+grep -qF 'HIDDEN-PAYLOAD-7731' "$diff13" 2>/dev/null \
+  || { echo "FAIL: a head .gitattributes -diff line hid an added file's hunk from pr.diff"; FAIL=1; }
+grep -qxF 'Binary files a/generated.txt and b/generated.txt differ' "$diff13" 2>/dev/null \
+  || { echo "FAIL: the base .gitattributes -diff line for generated.txt was not honoured"; FAIL=1; }
+if grep -qxF 'GIT binary patch' "$diff13" 2>/dev/null; then echo "FAIL: pr.diff carries a binary patch body"; FAIL=1; fi
 
 [ "$FAIL" = 0 ] && echo "review-pr-test: OK"
 exit "$FAIL"

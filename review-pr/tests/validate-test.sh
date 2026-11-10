@@ -31,6 +31,13 @@ FAKEBIN="$S/bin"; mkdir -p "$FAKEBIN"
 for c in git jq bash dirname grep; do ln -s "$(command -v "$c")" "$FAKEBIN/$c"; done
 expect_exit 3 'missing required command: gh' env PATH="$FAKEBIN" "$SRC/checkout-pr.sh" 'owner/repo' 12
 
+# The pinned diff needs git 2.40 (RC12); an older git fails before network access.
+OLDGIT="$S/oldgit"; mkdir -p "$OLDGIT"
+for c in jq bash cmp; do ln -s "$(command -v "$c")" "$OLDGIT/$c"; done
+printf '#!/usr/bin/env bash\necho "git version 2.39.5"\n' > "$OLDGIT/git"; chmod +x "$OLDGIT/git"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$OLDGIT/gh"; chmod +x "$OLDGIT/gh"
+expect_exit 3 'git 2.40 or newer is required, found 2.39.5' env PATH="$OLDGIT:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
+
 # Unsupported adapters fail before network access.
 expect_exit 3 'unsupported review runner: missing' env REVIEW_PR_RUNNER=missing PATH="$FAKEBIN:/usr/bin:/bin" "$SRC/checkout-pr.sh" 'owner/repo' 12
 
