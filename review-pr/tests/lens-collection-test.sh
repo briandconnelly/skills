@@ -185,4 +185,35 @@ jq -e '.diagnostic == true' "$DIAG_EVID/run-config.json" >/dev/null || { echo 'F
 [ ! -e "$S/skill/tests/evidence/lens/cases/skill-only-rule-vague" ] || { echo 'FAIL: diagnostic snapshot written into the acceptance tree'; exit 1; }
 jq -e '.policy_changes == ["AGENTS.md"]' "$S/skill/tests/evidence/lens/cases/policy-criteria/claude/baseline/run-1.envelope.json" >/dev/null \
   || { echo 'FAIL: policy-criteria head policy edit not reported'; exit 1; }
+
+# The evidence replay reports current-lens coverage on every run, and fails on it only when asked.
+# Two cases on every supported runner, with one cell left without a snapshot.
+REPLAY="$S/replay"
+mkdir -p "$REPLAY/tests/lens-cases/alpha" "$REPLAY/tests/lens-cases/beta" "$REPLAY/tests/evidence/lens"
+cp -R "$ROOT/scripts" "$ROOT/references" "$REPLAY/"
+cp "$ROOT/tests/lens-evidence-test.sh" "$ROOT/tests/score-lens.py" "$REPLAY/tests/"
+for arm in claude codex baseline; do cp -R "$ROOT/tests/evidence/lens/$arm" "$REPLAY/tests/evidence/lens/"; done
+: > "$REPLAY/tests/lens-cases/alpha/case.sh"; : > "$REPLAY/tests/lens-cases/beta/case.sh"
+cells=0; last_runner=""
+while IFS= read -r runner; do
+  [ -n "$runner" ] || continue
+  for case_name in alpha beta; do
+    cells=$((cells+1))
+    mkdir -p "$REPLAY/tests/evidence/lens/cases/$case_name/$runner"
+    cp -R "$CANDIDATE" "$REPLAY/tests/evidence/lens/cases/$case_name/$runner/candidate"
+  done
+  last_runner="$runner"
+done < "$ROOT/scripts/adapters/supported"
+rm -rf "$REPLAY/tests/evidence/lens/cases/beta/$last_runner"
+rc=0; bash "$REPLAY/tests/lens-evidence-test.sh" > "$S/replay.log" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "FAIL: evidence replay with a missing cell exited $rc without REVIEW_PR_LENS_MATRIX"; exit 1; }
+grep -Fxq "lens-evidence-test: WARNING: 1 of $cells case-by-runner cells lack current-lens evidence" "$S/replay.log" \
+  || { echo 'FAIL: evidence replay did not report the missing cell'; exit 1; }
+rc=0; REVIEW_PR_LENS_MATRIX=1 bash "$REPLAY/tests/lens-evidence-test.sh" > "$S/replay-matrix.log" 2>&1 || rc=$?
+[ "$rc" = 1 ] || { echo "FAIL: REVIEW_PR_LENS_MATRIX=1 replay with a missing cell exited $rc, want 1"; exit 1; }
+grep -Fq "MISSING: beta/$last_runner" "$S/replay-matrix.log" || { echo 'FAIL: matrix replay did not name the missing cell'; exit 1; }
+mkdir -p "$REPLAY/tests/evidence/lens/cases/beta/$last_runner"
+cp -R "$CANDIDATE" "$REPLAY/tests/evidence/lens/cases/beta/$last_runner/candidate"
+bash "$REPLAY/tests/lens-evidence-test.sh" > "$S/replay-full.log" 2>&1
+grep -q 'WARNING: .* cells lack' "$S/replay-full.log" && { echo 'FAIL: full coverage still warned'; exit 1; }
 printf '%s\n' 'lens-collection-test: OK'
