@@ -311,6 +311,19 @@ class ScoreTests(unittest.TestCase):
         for whole_text in (False, True):
             self.assertEqual(SCORER.score(text, targets, whole_text)["recall"], 1)
 
+    def test_location_may_contain_the_separator(self):
+        # The location ends at the first " — <lens> — ", so a path may contain " — ".
+        self.manifest.write_text(
+            "PLANT-DASH\ta — b.py:1\tcorrectness\nDECOY-DASH\tdir — x/a — b.py:30 [base]\n"
+        )
+        targets = SCORER.read_manifest(self.manifest)
+        bullet = "- a — b.py:1 — correctness — Title — Defect — Impact"
+        self.assertEqual(SCORER.score(report([bullet]), targets)["recalled"], {"PLANT-DASH"})
+        decoy = "- dir — x/a — b.py:30 [base] — tests — Title — Defect — Impact"
+        self.assertEqual(SCORER.score(report([decoy]), targets)["decoys"], 1)
+        wrong = SCORER.score(report([bullet.replace("correctness", "comments")]), targets)
+        self.assertEqual((wrong["recall"], wrong["wrong_lens"]), (0, 1))
+
     def test_duplicates_and_nonsense_still_score_mechanically(self):
         text = report(["- src/app.js:12 — correctness — Bananas — Moon"] * 2)
         self.assertEqual(SCORER.score(text, self.targets)["recall"], 1)

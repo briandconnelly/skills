@@ -41,6 +41,8 @@ Calibration rejects malformed entries and any two scored locations in the same f
 ## Scoring and gate
 
 Contract scoring considers only `- ` bullets under `## Critical`, `## Important`, and `## Suggestions`, using each bullet's leading location and second-field lens.
+A bullet's location is the text between the leading `- ` and the first ` — <lens> — `, where `<lens>` is one of the four lens names, so a path may contain ` — `; the remaining fields split on ` — `, and a bullet with no such separator splits at every ` — `.
+[validate-result.sh](../scripts/validate-result.sh), `score-lens.py` and `prose-length.py` all parse bullets by this rule.
 A plant is recalled when that location is within two lines of an accepted location in the same file with the same `[base]` marker, its lens is allowed, and its section meets or exceeds the plant's floor.
 A `PR body` location matches only a `PR body` location, with no line window, and never a file location; two `PR body` targets always overlap in calibration.
 Each plant contributes at most one recall per run.
@@ -75,7 +77,7 @@ It is not part of the gate: a shorter report that drops a plant still fails `--g
 python3 review-pr/tests/prose-length.py SNAPSHOT... [--runs] [--json]
 ```
 
-Each report is split at the contract's six headings and each finding bullet at its ` — ` separators, so the columns are whitespace-delimited word counts of the model's own text: `summary` (the Summary prose after the `Lenses checked:` and any `Mode:` line), `changes`, `not_reviewed` (`(none)` counts as zero), `findings` (bullets parsed), the mean `title`, `defect`, `impact` and `fix` words per finding, `fixes` (findings with a fix field), and `total` (the whole report).
+Each report is split at the contract's six headings and each finding bullet into fields as [Scoring and gate](#scoring-and-gate) states, so the columns are whitespace-delimited word counts of the model's own text: `summary` (the Summary prose after the `Lenses checked:` and any `Mode:` line), `changes`, `not_reviewed` (`(none)` counts as zero), `findings` (bullets parsed), the mean `title`, `defect`, `impact` and `fix` words per finding, `fixes` (findings with a fix field), and `total` (the whole report).
 A bullet of the pre-title grammar is measured with an empty title.
 Per-snapshot rows give the median over the snapshot's runs for the whole-section columns and the mean over every finding for the per-finding columns; `--runs` gives one row per run instead.
 

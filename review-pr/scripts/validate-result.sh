@@ -15,6 +15,7 @@ fi
 awk -v coverage="$COVERAGE" '
 BEGIN {
   want[1]="Summary"; want[2]="Changes"; want[3]="Critical"; want[4]="Important"; want[5]="Suggestions"; want[6]="Not reviewed"
+  lens[1]="correctness"; lens[2]="silent-failure"; lens[3]="tests"; lens[4]="comments"
   n=0; cur=""; nerr=0; du=0; seen_text_before=0
 }
 function err(m) { errs[++nerr]=m }
@@ -61,8 +62,20 @@ END {
   print (du ? "true" : "false")
   for (i=1;i<=nerr;i++) print errs[i]
 }
+# The location ends at the first " — <lens> — ", so a path may contain " — "; the remaining fields
+# split on " — ". A bullet with no such separator splits at every " — ".
+function finding_fields(line, fields,   best, name, i, p, rest, n, j, tmp) {
+  best=0
+  for (i=1;i<=4;i++) { p=index(line, " — " lens[i] " — "); if (p && (!best || p<best)) { best=p; name=lens[i] } }
+  if (!best) return split(line, fields, " — ")
+  fields[1]=substr(line, 1, best-1); fields[2]=name
+  rest=substr(line, best+length(" — " name " — "))
+  n=split(rest, tmp, " — ")
+  for (j=1;j<=n;j++) fields[j+2]=tmp[j]
+  return n+2
+}
 function valid_finding(line,   fields, count, j, impact_idx, last) {
-  count=split(line, fields, " — ")
+  count=finding_fields(line, fields)
   if (count<5 || fields[1] !~ /^- (.+:[1-9][0-9]*( \[base\])?|PR body)$/ || fields[2] !~ /^(correctness|silent-failure|tests|comments)$/) return 0
   for (j=3;j<=count;j++) if (fields[j] ~ /^[[:space:]]*$/) return 0
   # "Fix:" may start only the last field; elsewhere it means a misplaced " — ".

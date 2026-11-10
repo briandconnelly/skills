@@ -22,6 +22,9 @@ LEGACY_LENSES = {
 LENSES = set(LEGACY_LENSES.values())
 LOCATION = re.compile(r"([^:\t\r\n,]+):([1-9][0-9]*)( \[base\])?")
 CITATION = re.compile(r"[^\s`\"'<>:,;()\[\]]+:[1-9][0-9]*(?:-[1-9][0-9]*)?")
+SEP = " — "
+# A finding's location ends at the first " — <lens> — ", so a path may contain the separator.
+LENS_FIELD = re.compile(SEP + "(" + "|".join(sorted(LENSES)) + ")" + SEP)
 WINDOW = 2
 PR_BODY = "PR body"
 MIN_HITS = 2
@@ -100,13 +103,21 @@ def read_manifest(path, allow_overlap=False):
     return targets
 
 
+def finding_fields(body):
+    """Split a finding bullet's text (after "- ") into fields; the rule is in lens-rubric.md."""
+    match = LENS_FIELD.search(body)
+    if match is None:
+        return body.split(SEP)
+    return [body[: match.start()], match[1], *body[match.end() :].split(SEP)]
+
+
 def findings(report):
     section = ""
     for line in report.splitlines():
         if line.startswith("## "):
             section = line[3:]
         elif section in FINDING_SECTIONS and line.startswith("- "):
-            fields = line[2:].split(" — ")
+            fields = finding_fields(line[2:])
             if len(fields) >= 2:  # noqa: PLR2004
                 try:
                     loc = location(fields[0])
