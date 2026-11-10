@@ -1,0 +1,30 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.3.1",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nGuard the empty-batch path before merge because an empty upload now raises instead of returning zero.\n\n## Changes\nThe pull request adds a batch uploader that sums record sizes and retries failed chunks.\n\n## Critical\n(none)\n\n## Important\n- src/a b.py:12 — correctness — Handle an empty batch — `max(sizes)` raises `ValueError` when `sizes` is empty, and `upload([])` reaches it. — An empty upload crashes the worker instead of returning 0. — Fix: Return 0 when `sizes` is empty.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 312000,
+    "cost_usd": 1.42,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": false,
+  "dir": "/tmp/review-pr.Qx81Tz",
+  "head_sha": "9f3c2a1b7e6d5c4b3a291807f6e5d4c3b2a19087",
+  "base_sha": "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+  "merge_base_sha": "0e1d2c3b4a59687766554433221100ffeeddccbb",
+  "policy_changes": [],
+  "pr_state": "OPEN",
+  "pr_is_draft": false,
+  "pr_merged_at": null,
+  "pr_author": "mona",
+  "pr_author_is_bot": false,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false
+}

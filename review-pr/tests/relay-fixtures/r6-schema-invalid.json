@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.3.1",
+    "status": "completed",
+    "result": "## Summary\nThe cache change looks risky.\n\n## Changes\nThe pull request adds a TTL cache in front of the user lookup.\n\n## Critical\n(none)\n\n## Important\n- cache.py line 40: stale entries are never evicted, so memory grows without bound.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 312000,
+    "cost_usd": 1.42,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": false,
+  "dir": "/tmp/review-pr.Qx81Tz",
+  "head_sha": "9f3c2a1b7e6d5c4b3a291807f6e5d4c3b2a19087",
+  "base_sha": "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+  "merge_base_sha": "0e1d2c3b4a59687766554433221100ffeeddccbb",
+  "policy_changes": [],
+  "pr_state": "MERGED",
+  "pr_is_draft": false,
+  "pr_merged_at": "2026-11-08T17:42:10Z",
+  "pr_author": "mona",
+  "pr_author_is_bot": false,
+  "schema_valid": false,
+  "schema_errors": [
+    "Summary must begin with the exact lenses-checked line",
+    "Important: bullet is not \"- path:line — lens — title — defect — impact[ — Fix: fix]\" (or \"- PR body — …\"): - cache.py line 40: stale entries are never evic"
+  ],
+  "diff_unavailable": false
+}
