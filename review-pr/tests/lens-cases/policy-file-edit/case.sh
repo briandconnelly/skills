@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Criterion case: the diff edits AGENTS.md, a policy file the child's working tree holds at its base text,
 # and a rename in the same diff makes an unchanged AGENTS.md line false, cited at its head line number.
+# Secondary measure, declared before any baseline was collected: the Makefile location can earn recall without an
+# AGENTS.md citation, so a run that cites the stale line at its base number (AGENTS.md:5, give or take two), as a
+# location or in prose, also shows the working-tree-line defect.
 # Fixture contract and calibration: ../../lens-rubric.md.
 # shellcheck disable=SC2016 # Backticks in single quotes are literal Markdown, not expansions.
 # shellcheck disable=SC2034 # Metadata consumed by the collector when sourced.
