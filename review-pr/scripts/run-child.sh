@@ -89,12 +89,37 @@ on_exit() {
 }
 trap on_exit EXIT
 
+# reap_group PGID: end every process left in the runner's group, including descendants that outlive the
+# leader or ignore TERM. Returns at once when the group is already empty, so a clean run is not delayed.
+reap_group() {
+  local pgid="$1" waited=0
+  kill -0 -- "-$pgid" 2>/dev/null || return 0
+  kill -TERM -- "-$pgid" 2>/dev/null || true
+  while [ "$waited" -lt 5 ] && kill -0 -- "-$pgid" 2>/dev/null; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  kill -KILL -- "-$pgid" 2>/dev/null || true
+  # A killed orphan stays signalable until init reaps it; wait briefly so the group is gone on return.
+  waited=0
+  while [ "$waited" -lt 20 ] && kill -0 -- "-$pgid" 2>/dev/null; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+}
+
+stop_watchdog() {
+  [ -n "${WATCHDOG:-}" ] || return 0
+  kill "$WATCHDOG" 2>/dev/null || true
+  pkill -P "$WATCHDOG" 2>/dev/null || true
+}
+
 on_signal() {
   trap - INT TERM
-  kill "${WATCHDOG:-}" 2>/dev/null || true
   if [ -n "${CHILD_PID:-}" ]; then
-    kill -TERM -- "-$CHILD_PID" 2>/dev/null || true
+    reap_group "$CHILD_PID"
   fi
+  stop_watchdog
   CHILD_EXIT=130
   mv -f "$NATIVE_TMP" "$NATIVE" 2>/dev/null || true
   normalize_native || true
@@ -137,6 +162,8 @@ set +m
     elapsed=$((elapsed + 1))
   done
   if kill -0 "$CHILD_PID" 2>/dev/null; then
+    # Marked before the signal, so the parent can tell a timeout from a runner that failed on its own.
+    : > "$DIR/runner.timeout"
     kill -TERM -- "-$CHILD_PID" 2>/dev/null
     grace=0
     while kill -0 "$CHILD_PID" 2>/dev/null && [ "$grace" -lt 30 ]; do
@@ -150,13 +177,20 @@ WATCHDOG=$!
 
 CHILD_EXIT=0
 wait "$CHILD_PID" || CHILD_EXIT=$?
+# The leader's exit does not end its group: reap what it left behind before the watchdog, which would
+# otherwise have sent the final KILL, is stopped.
+reap_group "$CHILD_PID"
 # A zero-second timeout can let the watchdog exit before this cleanup signal.
-kill "$WATCHDOG" 2>/dev/null || true
-pkill -P "$WATCHDOG" 2>/dev/null || true
+stop_watchdog
 # The watchdog can kill the child's process group before its redirection creates the output file (a zero-second
 # timeout races the fork), so a missing file is an empty result for normalize_native to report, not a fatal error.
 if [ -e "$NATIVE_TMP" ]; then mv -f "$NATIVE_TMP" "$NATIVE"; fi
-normalize_native || printf 'review-pr: runner output did not match the normalized adapter contract\n' | tee -a "$STDERR" >&2
+if [ -e "$DIR/runner.timeout" ]; then
+  normalize_native || true
+  printf 'review-pr: runner timed out after %ss (REVIEW_PR_TIMEOUT)\n' "$TIMEOUT" | tee -a "$STDERR" >&2
+else
+  normalize_native || printf 'review-pr: runner output did not match the normalized adapter contract\n' | tee -a "$STDERR" >&2
+fi
 printf '%s\n' "$CHILD_EXIT" > "$DIR/runner.exit"
 FINISHED=1
 trap - INT TERM

@@ -34,6 +34,10 @@ printf '%s\n' "$@" > "$FAKE_ARGV"
 pwd -P > "$FAKE_CWD"
 [ -t 0 ] && echo "stdin is a tty" >&2
 if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCHILD"; wait; exit 0; fi
+# A descendant that ignores TERM, as a runner's tool subprocess can.
+if [ -n "${FAKE_TERM_IGNORER:-}" ]; then ( trap '' TERM; exec sleep 60 ) & echo $! > "$FAKE_GRANDCHILD"; sleep 20; exit 0; fi
+# A background process left behind by a runner that otherwise exits cleanly.
+if [ -n "${FAKE_LINGER:-}" ]; then sleep 60 & echo $! > "$FAKE_GRANDCHILD"; fi
 echo "diag line" >&2
 [ -n "${FAKE_EMPTY:-}" ] && exit 0
 # The state a watchdog kill leaves when it wins the race with the child's output redirection.
@@ -126,6 +130,22 @@ elapsed=$(( $(date +%s) - start ))
 [ "$(jq -r .exit <<<"$out")" -gt 128 ] || { echo "FAIL: watchdog exit is not signal-derived"; FAIL=1; }
 gc="$(cat "$FAKE_GRANDCHILD")"
 if kill -0 "$gc" 2>/dev/null; then echo "FAIL: grandchild $gc survived"; FAIL=1; kill "$gc" 2>/dev/null || true; fi
+# timeout is named: the relay reads stderr_tail, so the timeout and its setting must appear there.
+jq -r .stderr_tail <<<"$out" | grep -qF 'runner timed out after 2s (REVIEW_PR_TIMEOUT)' \
+  || { echo "FAIL: timeout is named: stderr_tail does not name the timeout: $out"; FAIL=1; }
+if jq -r .stderr_tail <<<"$out" | grep -qF 'did not match the normalized adapter contract'; then
+  echo "FAIL: timeout is named: a timeout is reported as a contract mismatch: $out"; FAIL=1
+fi
+
+# TERM-ignoring descendant is reaped: a timeout ends with KILL to the whole group, not only TERM to its leader.
+J="$(mkjob)"
+rm -f "$FAKE_GRANDCHILD"
+out="$(printf '%s' "$J" | FAKE_TERM_IGNORER=1 REVIEW_PR_TIMEOUT=2 "$SRC/run-child.sh" 2>/dev/null)" || true
+gc="$(cat "$FAKE_GRANDCHILD" 2>/dev/null || true)"
+[ -n "$gc" ] || { echo "FAIL: TERM-ignoring descendant is reaped: the fake runner never started it"; FAIL=1; }
+if [ -n "$gc" ] && kill -0 "$gc" 2>/dev/null; then
+  echo "FAIL: TERM-ignoring descendant is reaped: $gc outlived run-child.sh"; FAIL=1; kill -KILL "$gc" 2>/dev/null || true
+fi
 
 # A child killed before its output file exists still yields an error envelope and cleanup, not a set -e abort.
 J="$(mkjob)"
@@ -193,6 +213,19 @@ VALID_RESULT='## Summary\nLenses checked: correctness, silent-failure, tests, co
 J="$(mkjob)"
 out="$(printf '%s' "$J" | FAKE_RESULT="$VALID_RESULT" "$SRC/run-child.sh")"
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: valid review failed schema validation: $out"; FAIL=1; }
+# clean exit is not delayed: a runner that exits 0 and leaves a background process has it reaped promptly.
+J="$(mkjob)"
+rm -f "$FAKE_GRANDCHILD"
+start="$(date +%s)"
+out="$(printf '%s' "$J" | FAKE_LINGER=1 FAKE_RESULT="$VALID_RESULT" "$SRC/run-child.sh")"
+elapsed=$(( $(date +%s) - start ))
+gc="$(cat "$FAKE_GRANDCHILD" 2>/dev/null || true)"
+[ -n "$gc" ] || { echo "FAIL: clean exit is not delayed: the fake runner left nothing behind"; FAIL=1; }
+if [ -n "$gc" ] && kill -0 "$gc" 2>/dev/null; then
+  echo "FAIL: clean exit is not delayed: background process $gc outlived run-child.sh"; FAIL=1; kill -KILL "$gc" 2>/dev/null || true
+fi
+jq -e '.exit == 0 and .schema_valid == true' <<<"$out" >/dev/null || { echo "FAIL: clean exit is not delayed: not a clean run: $out"; FAIL=1; }
+[ "$elapsed" -lt 10 ] || { echo "FAIL: clean exit is not delayed: took ${elapsed}s"; FAIL=1; }
 # A malformed heading with JSON-sensitive characters must still produce the
 # public envelope and complete scratch cleanup.
 J="$(mkjob)"
