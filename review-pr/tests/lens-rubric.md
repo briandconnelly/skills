@@ -185,7 +185,7 @@ Replay with `python3 review-pr/tests/score-lens.py EVIDENCE_DIR --gate`.
 `lens-score-test.py`, `lens-collection-test.sh`, and `lens-evidence-test.sh` run offline.
 The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md` and whose gate prints `lens quality gate: OK`, so a baseline that misses recall never counts.
 A lens edit therefore lands only together with candidate snapshots collected under it, on every runner.
-On every run it counts the case-by-runner cells, each committed case that is not diagnostic-only on each supported runner, that lack such a snapshot, and prints `lens-evidence-test: WARNING: <missing> of <cells> case-by-runner cells lack current-lens evidence` when any do.
+On every run it counts the case-by-runner cells, each committed case other than `legacy` that is not diagnostic-only on each supported runner, that lack such a snapshot, and prints `lens-evidence-test: WARNING: <missing> of <cells> case-by-runner cells lack current-lens evidence` when any do.
 With `REVIEW_PR_LENS_MATRIX=1` it also names each such cell and fails, which [Changing the reading procedure](#changing-the-reading-procedure) requires.
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
