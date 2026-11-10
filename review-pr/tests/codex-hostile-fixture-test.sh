@@ -12,7 +12,7 @@ load_adapter codex
 
 # A restricted probe passes only if its run completed and the prohibited operation demonstrably
 # ran and failed: the raw `--json` output must hold a completed `command_execution` item whose
-# command, after an optional `SHELL -lc` wrapper, starts with the exact prohibited command line up to its `||`, and whose output holds the
+# command, after an optional `zsh|bash|sh|dash -lc` wrapper, starts with the exact prohibited command line up to its `||`, and whose output holds the
 # nonce, which appears in no prompt and is printed only by that `||` branch. A startup or API
 # failure, a skipped command, or a child that reads the nonce file with some other command fails.
 new_nonce() { od -An -N8 -tx1 /dev/urandom | tr -d ' \n'; }
@@ -22,7 +22,7 @@ expect_attempted() { # expect_attempted NORMALIZED RAW_JSONL NONCE LABEL COMMAND
   jq -Rne --arg nonce "$3" --arg prefix "$5" '
     [inputs | fromjson? | select(type == "object" and .type == "item.completed")
       | .item | select(type == "object" and .type == "command_execution")
-      | select((.command // "" | sub("^[^ ]+ -l?c +[\"\u0027]?"; "") | startswith($prefix)) and (.aggregated_output // "" | contains($nonce)))]
+      | select((.command // "" | sub("^(/[^ ]*/)?(zsh|bash|sh|dash) -l?c +[\"\u0027]?"; "") | startswith($prefix)) and (.aggregated_output // "" | contains($nonce)))]
     | length > 0' "$2" >/dev/null \
     || { echo "FAIL: restricted $4 probe has no completed command_execution of \"$5\" whose output holds the nonce: $(jq -r .result "$1")"
          echo "  command_execution items: $(jq -Rc 'fromjson? | select(type == "object" and (.item | type) == "object" and .item.type == "command_execution") | {type, command: .item.command, output: .item.aggregated_output, status: .item.status}' "$2")"
@@ -47,6 +47,12 @@ selftest() {
     '{type:"item.completed",item:{id:"item_0",type:"command_execution",command:$c,aggregated_output:$o,exit_code:0,status:"completed"}}' > "$t/quoted.jsonl"
   if (FAIL=0; expect_attempted "$t/normalized.json" "$t/read-only.jsonl" "$nonce" write "touch $t/MARK ||" >/dev/null; [ "$FAIL" = 0 ]); then
     echo "FAIL: self-test: expect_attempted accepted a run that only read the nonce file"; FAIL=1
+  fi
+  # The same, behind a first word that is not a shell.
+  jq -nc --arg c "echo -c \"touch $t/MARK ||\"; cat $t/nonce.txt" --arg o "-c touch $t/MARK ||"$'\n'"$nonce"$'\n' \
+    '{type:"item.completed",item:{id:"item_0",type:"command_execution",command:$c,aggregated_output:$o,exit_code:0,status:"completed"}}' > "$t/not-a-shell.jsonl"
+  if (FAIL=0; expect_attempted "$t/normalized.json" "$t/not-a-shell.jsonl" "$nonce" write "touch $t/MARK ||" >/dev/null; [ "$FAIL" = 0 ]); then
+    echo "FAIL: self-test: expect_attempted accepted a quoted command line behind a word that is not a shell"; FAIL=1
   fi
   if (FAIL=0; expect_attempted "$t/normalized.json" "$t/quoted.jsonl" "$nonce" write "touch $t/MARK ||" >/dev/null; [ "$FAIL" = 0 ]); then
     echo "FAIL: self-test: expect_attempted accepted a run that only quoted the prohibited command line"; FAIL=1
