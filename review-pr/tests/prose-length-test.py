@@ -65,6 +65,16 @@ class MeasureTests(unittest.TestCase):
         )
         self.assertEqual(PROSE.measure(report)["not_reviewed"], 4)
 
+    def test_location_may_contain_the_separator(self):
+        bullet = (
+            "- a — b.py:1 — correctness — Title of three — Defect has four words."
+            " — Impact has five words here. — Fix: Two words"
+        )
+        report = REPORT.replace("## Critical\n(none)", "## Critical\n" + bullet)
+        m = PROSE.measure(report)
+        self.assertEqual(m["findings"], 4)
+        self.assertEqual((m["title"][0], m["defect"][0], m["impact"][0], m["fix"][0]), (3, 4, 5, 2))
+
     def test_none_sections_yield_no_findings(self):
         bare = (
             REPORT.split("## Important\n", maxsplit=1)[0]

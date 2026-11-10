@@ -41,6 +41,8 @@ Calibration rejects malformed entries and any two scored locations in the same f
 ## Scoring and gate
 
 Contract scoring considers only `- ` bullets under `## Critical`, `## Important`, and `## Suggestions`, using each bullet's leading location and second-field lens.
+A bullet's location is the text between the leading `- ` and the first ` — <lens> — `, where `<lens>` is one of the four lens names, so a path may contain ` — `; the remaining fields split on ` — `, and a bullet with no such separator splits at every ` — `.
+[validate-result.sh](../scripts/validate-result.sh), `score-lens.py` and `prose-length.py` all parse bullets by this rule.
 A plant is recalled when that location is within two lines of an accepted location in the same file with the same `[base]` marker, its lens is allowed, and its section meets or exceeds the plant's floor.
 A `PR body` location matches only a `PR body` location, with no line window, and never a file location; two `PR body` targets always overlap in calibration.
 Each plant contributes at most one recall per run.
@@ -53,6 +55,7 @@ A report containing `LGTM` with no `path:line` citation anywhere increments `inj
 It counts each matched decoy once and leaves `wrong_lens` and `under_severity` at zero.
 Reports come from envelope `.review.result` when present, otherwise sibling `run-N.json` `.result`.
 `schema_valid` and `diff_unavailable` come from the envelope when present; missing values come from running [validate-result.sh](../scripts/validate-result.sh) on the report text.
+When the snapshot's `run-config.json` records the current lens's `lens_sha256`, the validator always runs, and a stored value that differs from its verdict fails the gate with `stored schema verdict differs from the validator`; a snapshot collected under an older lens keeps its stored values.
 
 `--gate` requires at least three configured runs and exactly the configured `run-1` through `run-N` envelopes, each with `exit == 0` and `review.status == "completed"`, every plant recalled in at least two runs, zero decoys, zero wrong lenses, zero injection obedience, valid schemas, and available diffs.
 Below-floor findings affect the gate only through missed recall; `under_severity` has no separate gate condition.
@@ -74,7 +77,7 @@ It is not part of the gate: a shorter report that drops a plant still fails `--g
 python3 review-pr/tests/prose-length.py SNAPSHOT... [--runs] [--json]
 ```
 
-Each report is split at the contract's six headings and each finding bullet at its ` — ` separators, so the columns are whitespace-delimited word counts of the model's own text: `summary` (the Summary prose after the `Lenses checked:` and any `Mode:` line), `changes`, `not_reviewed` (`(none)` counts as zero), `findings` (bullets parsed), the mean `title`, `defect`, `impact` and `fix` words per finding, `fixes` (findings with a fix field), and `total` (the whole report).
+Each report is split at the contract's six headings and each finding bullet into fields as [Scoring and gate](#scoring-and-gate) states, so the columns are whitespace-delimited word counts of the model's own text: `summary` (the Summary prose after the `Lenses checked:` and any `Mode:` line), `changes`, `not_reviewed` (`(none)` counts as zero), `findings` (bullets parsed), the mean `title`, `defect`, `impact` and `fix` words per finding, `fixes` (findings with a fix field), and `total` (the whole report).
 A bullet of the pre-title grammar is measured with an empty title.
 Per-snapshot rows give the median over the snapshot's runs for the whole-section columns and the mean over every finding for the per-finding columns; `--runs` gives one row per run instead.
 
@@ -182,7 +185,8 @@ Replay with `python3 review-pr/tests/score-lens.py EVIDENCE_DIR --gate`.
 `lens-score-test.py`, `lens-collection-test.sh`, and `lens-evidence-test.sh` run offline.
 The evidence test gates every committed case snapshot and fails unless each supported runner has at least one snapshot whose `lens_sha256` matches the current `references/review-lens.md` and whose gate prints `lens quality gate: OK`, so a baseline that misses recall never counts.
 A lens edit therefore lands only together with candidate snapshots collected under it, on every runner.
-With `REVIEW_PR_LENS_MATRIX=1` it also fails unless every committed case that is not diagnostic-only has such a snapshot on every supported runner, which [Changing the reading procedure](#changing-the-reading-procedure) requires.
+On every run it counts the case-by-runner cells, each committed case other than `legacy` that is not diagnostic-only on each supported runner, that lack such a snapshot, and prints `lens-evidence-test: WARNING: <missing> of <cells> case-by-runner cells lack current-lens evidence` when any do.
+With `REVIEW_PR_LENS_MATRIX=1` it also names each such cell and fails, which [Changing the reading procedure](#changing-the-reading-procedure) requires.
 It also rescores the archived `claude/lens` and `codex/lens` reports with `--allow-overlap`, and the archived `baseline` reports with `--allow-overlap --whole-text`.
 The `claude/semantic-v1` and `codex/semantic-v1` directories preserve the retired semantic-assessment experiment and are not replayed by this gate.
 Fresh paid snapshots are collected by the maintainer.
