@@ -5,6 +5,7 @@
 # ruff: noqa: PT009, PT027
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -18,6 +19,9 @@ HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("score_lens", HERE / "score-lens.py")
 SCORER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SCORER)
+CURRENT_LENS_SHA256 = hashlib.sha256(
+    (HERE.parent / "references/review-lens.md").read_bytes()
+).hexdigest()
 MANIFEST = (
     "PLANT-JS\tsrc/app.js:12,src/other-file.js:20\tcorrectness,tests\n"
     "PLANT-DELETION\tconfig/defaults.json:1 [base]\tcorrectness\n"
@@ -67,12 +71,14 @@ class ScoreTests(unittest.TestCase):
             check=False,
         )
 
-    def runs(self, texts=None, snapshot=None):
+    def runs(self, texts=None, snapshot=None, lens_sha256=None):
         if texts is None:
             texts = [report()] * 3
         config = {"runs": len(texts), "collection_id": "unit-collection", "runner": "unit-runner"}
         if snapshot is not None:
             config["snapshot"] = snapshot
+        if lens_sha256 is not None:
+            config["lens_sha256"] = lens_sha256
         (self.root / "run-config.json").write_text(json.dumps(config))
         for index, text in enumerate(texts, 1):
             (self.root / f"run-{index}.envelope.json").write_text(json.dumps(envelope(text)))
@@ -508,6 +514,27 @@ class ScoreTests(unittest.TestCase):
         row = SCORER.evaluate(self.root, self.targets)[0]
         self.assertIs(row["schema_valid"], True)
         self.assertIs(row["diff_unavailable"], False)
+
+    def test_current_lens_report_is_revalidated(self):
+        # A snapshot collected under the current lens is checked against the current validator,
+        # so a stored verdict cannot hide a report the validator now rejects.
+        narrated = "Here is my review.\n" + report()
+        self.runs([report(), report(), narrated], lens_sha256=CURRENT_LENS_SHA256)
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("run 3: stored schema verdict differs from the validator", result.stderr)
+        self.runs(lens_sha256=CURRENT_LENS_SHA256)
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("lens quality gate: OK", result.stderr)
+
+    def test_historical_snapshot_keeps_stored_verdict(self):
+        # A snapshot collected under an older lens was valid under that lens's grammar.
+        narrated = "Here is my review.\n" + report()
+        self.runs([report(), report(), narrated], lens_sha256="0" * 64)
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("lens quality gate: OK", result.stderr)
 
     def test_report_fallback_and_envelope_precedence(self):
         self.runs()
