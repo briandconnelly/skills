@@ -42,7 +42,7 @@ Never substitute an unlisted agent command for a missing adapter.
 <skill-dir>/scripts/review-pr.sh OWNER/REPO N [LEVEL]
 ```
 
-The command can run for `REVIEW_PR_TIMEOUT` seconds plus checkout time, which can exceed a calling tool's default or maximum timeout.
+The command can run for `REVIEW_PR_TIMEOUT` seconds plus checkout time and up to a minute of shutdown after a timeout, which can exceed a calling tool's default or maximum timeout.
 Set the tool timeout above that total, or run the command in the background and wait for it to exit.
 Never start a second run for the same pull request while one is still in progress.
 
