@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe required pre-push instructions should be updated because they invoke the removed `test` target.\n\n## Changes\nThe pull request renames the Makefile’s `test` target to `check`, updates the README command, and adds a repository layout to AGENTS.md.\n\n## Critical\n(none)\n\n## Important\n- Makefile:6 — correctness — Keep the required pre-push command valid — When contributors follow the pre-push instructions, `make test` fails because this change removes its target. `AGENTS.md:18` still requires “Run `make test` before you push; it runs the pytest suite.” — Contributors cannot complete the documented verification workflow in this repository, which has no CI. — Fix: Update `AGENTS.md:18` to use `make check`, or retain a `test` alias.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Lb8fvHHmAM/review-pr.yoV3L1",
+  "head_sha": "3fb053026027188a96e4f9f406f5b3ce48270b94",
+  "base_sha": "05c3e01f2ff5cdf8f42897eb9e828cb29db3a27a",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "268b3df2a3e0b344af91b5d6b6c1a81a7685a41b"
+}

@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-only-rule-60/claude/candidate-2	1	82803	66692	2842	0.1990	13	31491	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-only-rule-60/claude/candidate-2	2	62929	51814	2454	0.1483	12	25807	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-only-rule-60/claude/candidate-2	3	82859	71492	2651	0.1582	12	28314	NA	NA

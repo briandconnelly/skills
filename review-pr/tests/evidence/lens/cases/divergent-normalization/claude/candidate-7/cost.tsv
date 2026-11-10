@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/divergent-normalization/claude/candidate-7	1	32210	24581	1539	0.0967	6	18252	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/divergent-normalization/claude/candidate-7	2	32419	29252	1612	0.0634	6	18086	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/divergent-normalization/claude/candidate-7	3	31856	29246	1377	0.0542	6	14732	NA	NA

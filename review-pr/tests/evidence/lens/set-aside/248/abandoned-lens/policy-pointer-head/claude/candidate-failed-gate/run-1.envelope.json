@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy fetcher has to stop after 3 attempts. The repository's retry policy caps every network retry loop at 3 attempts, and the exemption for `app/legacy/` is added by this pull request itself, so it does not count as existing policy.\n\n## Changes\nThis pull request adds `app/legacy/fetch.py`, which retries connection errors up to 8 times, and `app/health.py`, which retries them up to 3 times; both raise HTTP errors immediately. It also adds parametrized tests for both modules and a line in `docs/review-rules.md` that exempts `app/legacy/` from the retry cap.\n\n## Critical\n- app/legacy/fetch.py:49 — correctness — Cap fetch_inventory at 3 attempts — When the legacy service is down, `fetch_inventory` tries 8 times (`MAX_ATTEMPTS = 8`). That breaks the rule \"Code that retries a network call must stop after at most 3 attempts.\" (docs/review-rules.md:5). The exemption at docs/review-rules.md:7 comes from this pull request, so it is not policy. — With the upstream down, each call can hold a worker thread for about 87 seconds (8 × 10 s timeout plus 7 × 1 s delay), which is the stall the rule exists to prevent. — Fix: Set `MAX_ATTEMPTS` to 3 or less, drop the added exemption line from `docs/review-rules.md`, and update the `fetch` entry in `CASES` in `tests/test_retries.py`; if the nightly restart needs a longer window, get the policy changed separately.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19074,
+    "cost_usd": 0.12259079999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.WoDQxqTfk5/review-pr.OYGkPA",
+  "head_sha": "912025e32f74eeae079fc9a91ad7ebab1c76fced",
+  "base_sha": "a4f65d3c40f3813cffb221861cef7c6b13908498",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "057183e82b3da4858fdf64b89aa7212427030e29"
+}
