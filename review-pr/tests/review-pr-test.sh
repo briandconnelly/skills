@@ -54,15 +54,27 @@ git -C "$WORK" add .gitattributes secret.py generated.txt
 git -C "$WORK" commit -qm head13
 HEAD13_SHA="$(git -C "$WORK" rev-parse HEAD)"
 git -C "$WORK" checkout -q main
+# PR 14: 12,000 policy files with 100-character names, a policy_changes array past one argument's limit.
+# Built through a private index so the files never need to exist in the work tree.
+NOTE_BLOB="$(printf '%s\n' note | git -C "$WORK" hash-object -w --stdin)"
+GIT_INDEX_FILE="$S/index14" git -C "$WORK" read-tree "$BASE13_SHA"
+awk -v blob="$NOTE_BLOB" 'BEGIN {
+  pad = sprintf("%92s", ""); gsub(/ /, "n", pad)
+  for (i = 1; i <= 12000; i++) printf "100644 %s\t.claude/notes/%s%05d.md\n", blob, pad, i
+}' | GIT_INDEX_FILE="$S/index14" git -C "$WORK" update-index --add --index-info
+HEAD14_SHA="$(git -C "$WORK" commit-tree "$(GIT_INDEX_FILE="$S/index14" git -C "$WORK" write-tree)" -p "$BASE13_SHA" -m head14)"
+git -C "$WORK" update-ref refs/heads/feature14 "$HEAD14_SHA"
 git clone -q --bare "$WORK" "$ORIGIN"
 git --git-dir="$ORIGIN" symbolic-ref HEAD refs/heads/main
 git --git-dir="$ORIGIN" update-ref refs/pull/12/head "$HEAD_SHA"
 git --git-dir="$ORIGIN" update-ref refs/pull/13/head "$HEAD13_SHA"
+git --git-dir="$ORIGIN" update-ref refs/pull/14/head "$HEAD14_SHA"
 # The fake gh serves each pull request from $FAKE_PRS/N, which holds "BASE_SHA HEAD_SHA".
 FAKE_PRS="$S/prs"
 mkdir -p "$FAKE_PRS"
 printf '%s %s\n' "$BASE_SHA" "$HEAD_SHA" > "$FAKE_PRS/12"
 printf '%s %s\n' "$BASE13_SHA" "$HEAD13_SHA" > "$FAKE_PRS/13"
+printf '%s %s\n' "$BASE13_SHA" "$HEAD14_SHA" > "$FAKE_PRS/14"
 
 cat > "$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -222,6 +234,12 @@ grep -qF 'HIDDEN-PAYLOAD-7731' "$diff13" 2>/dev/null \
 grep -qxF 'Binary files a/generated.txt and b/generated.txt differ' "$diff13" 2>/dev/null \
   || { echo "FAIL: the base .gitattributes -diff line for generated.txt was not honoured"; FAIL=1; }
 if grep -qxF 'GIT binary patch' "$diff13" 2>/dev/null; then echo "FAIL: pr.diff carries a binary patch body"; FAIL=1; fi
+
+# many policy changes: the policy_changes array reaches the envelope through files, never argv.
+out="$(REVIEW_PR_SCRATCH="$S/many/" "$SRC/review-pr.sh" owner/repo 14 2>"$S/many.stderr")" \
+  || { echo "FAIL: many policy changes aborted the review: $(tail -c 300 "$S/many.stderr")"; FAIL=1; }
+jq -e '.policy_changes | length == 12000' <<<"${out:-null}" >/dev/null 2>&1 \
+  || { echo "FAIL: many policy changes: policy_changes does not list 12000 paths: $(tail -c 300 "$S/many.stderr")"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "review-pr-test: OK"
 exit "$FAIL"

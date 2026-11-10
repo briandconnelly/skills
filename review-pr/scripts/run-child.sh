@@ -42,30 +42,42 @@ normalize_native() {
   validate_normalized_result "$NORMALIZED"
 }
 
+# The envelope is assembled from files, never argv: the review, the stderr tail and the checkout's
+# policy_changes can each exceed a single argument's size limit.
 finish() {
-  local kept=false review_json=null stderr_tail="" validation
+  local kept=false validation review_file="$DIR/envelope-review.json"
   validation='{"schema_valid":false,"schema_errors":["no result"],"diff_unavailable":false}'
+  printf 'null\n' > "$review_file"
   if validate_normalized_result "$NORMALIZED"; then
-    review_json="$(jq -c . "$NORMALIZED")"
+    review_file="$NORMALIZED"
     if ! validation="$(jq -r .result "$NORMALIZED" | "$HERE/validate-result.sh")" \
       || ! validation="$(jq -ces 'select(length == 1 and (.[0] | type == "object" and (.schema_valid | type == "boolean") and (.schema_errors | type == "array") and (.diff_unavailable | type == "boolean"))) | .[0]' <<<"$validation" 2>/dev/null)"; then
       validation='{"schema_valid":false,"schema_errors":["result validator failed"],"diff_unavailable":false}'
     fi
   fi
-  [ ! -f "$STDERR" ] || stderr_tail="$(tail -n 30 "$STDERR")"
+  printf '%s\n' "$validation" > "$DIR/envelope-validation.json"
+  printf '%s\n' "$IN" > "$DIR/envelope-checkout.json"
+  : > "$DIR/envelope-stderr-tail"
+  # tail -c can split a multibyte character, and jq --rawfile reads each invalid byte as a three-byte U+FFFD,
+  # so the jq program below drops a leading U+FFFD run and trims again until the tail fits in 16384 bytes.
+  [ ! -f "$STDERR" ] || tail -n 30 "$STDERR" | tail -c 16384 > "$DIR/envelope-stderr-tail"
   [ -z "$KEEP" ] || kept=true
 
   local output
   output="$(jq -n \
     --arg runner "$RUNNER" \
-    --arg stderr_tail "$stderr_tail" \
-    --argjson review "$review_json" \
+    --rawfile stderr_raw "$DIR/envelope-stderr-tail" \
+    --slurpfile review_doc "$review_file" \
     --argjson ex "${CHILD_EXIT:-1}" \
     --argjson kept "$kept" \
     --arg dir "$DIR" \
-    --argjson input "$IN" \
-    --argjson validation "$validation" \
-    '{runner:$runner, review:$review, stderr_tail:$stderr_tail, exit:$ex, kept:$kept, dir:$dir,
+    --slurpfile input_doc "$DIR/envelope-checkout.json" \
+    --slurpfile validation_doc "$DIR/envelope-validation.json" \
+    '($stderr_raw | sub("^�+"; "") | sub("\n+$"; "")
+       | until(utf8bytelength <= 16384; .[((length / 8) | floor | if . < 1 then 1 else . end):])) as $stderr_tail |
+     $review_doc[0] as $review |
+     $input_doc[0] as $input | $validation_doc[0] as $validation |
+     {runner:$runner, review:$review, stderr_tail:$stderr_tail, exit:$ex, kept:$kept, dir:$dir,
       head_sha:$input.head_sha, base_sha:$input.base_sha, merge_base_sha:($input.merge_base_sha // null),
       policy_changes:($input.policy_changes // []),
       pr_state:($input.pr_state // null), pr_is_draft:(if ($input | has("pr_is_draft")) then $input.pr_is_draft else null end),

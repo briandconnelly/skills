@@ -38,6 +38,12 @@ if [ -n "${FAKE_SLEEP:-}" ]; then sleep "$FAKE_SLEEP" & echo $! > "$FAKE_GRANDCH
 if [ -n "${FAKE_TERM_IGNORER:-}" ]; then ( trap '' TERM; exec sleep 60 ) & echo $! > "$FAKE_GRANDCHILD"; sleep 20; exit 0; fi
 # A background process left behind by a runner that otherwise exits cleanly.
 if [ -n "${FAKE_LINGER:-}" ]; then sleep 60 & echo $! > "$FAKE_GRANDCHILD"; fi
+# Output larger than one argument's limit (128 KiB on Linux, 1 MiB in all on macOS).
+if [ -n "${FAKE_BIG_STDERR:-}" ]; then head -c 3000000 /dev/zero | tr '\0' x >&2; printf '\n' >&2; exit 1; fi
+if [ -n "${FAKE_BIG_RESULT:-}" ]; then
+  head -c 2000000 /dev/zero | tr '\0' x | jq -Rs '{type:"result",is_error:false,result:.,total_cost_usd:0,duration_ms:1,permission_denials:[]}'
+  exit 0
+fi
 echo "diag line" >&2
 [ -n "${FAKE_EMPTY:-}" ] && exit 0
 # The state a watchdog kill leaves when it wins the race with the child's output redirection.
@@ -162,6 +168,20 @@ dir="$(jq -r .dir <<<"$J")"
 out="$(printf '%s' "$J" | REVIEW_PR_TIMEOUT=0 "$SRC/run-child.sh")"
 jq -e . >/dev/null 2>&1 <<<"$out" || { echo "FAIL: TIMEOUT=0 produced invalid JSON: $out"; FAIL=1; }
 [ ! -e "$dir" ] || { echo "FAIL: TIMEOUT=0 leaked the job"; FAIL=1; }
+
+# long stderr line: the envelope is built from files, so runner output never rides an argument.
+J="$(mkjob)"
+dir="$(jq -r .dir <<<"$J")"
+out="$(printf '%s' "$J" | FAKE_BIG_STDERR=1 "$SRC/run-child.sh" 2>"$REVIEW_PR_SCRATCH/big-stderr.stderr")" || true
+jq -e '.exit == 1 and (.stderr_tail | utf8bytelength <= 16384)' <<<"${out:-null}" >/dev/null 2>&1 \
+  || { echo "FAIL: long stderr line gave no bounded envelope: $(tail -c 300 "$REVIEW_PR_SCRATCH/big-stderr.stderr")"; FAIL=1; }
+[ ! -e "$dir" ] || { echo "FAIL: long stderr line leaked the job"; FAIL=1; }
+
+# large review: a review past one argument's limit arrives intact.
+J="$(mkjob)"
+out="$(printf '%s' "$J" | FAKE_BIG_RESULT=1 "$SRC/run-child.sh" 2>"$REVIEW_PR_SCRATCH/big-result.stderr")" || true
+jq -e '.review.result | length == 2000000' <<<"${out:-null}" >/dev/null 2>&1 \
+  || { echo "FAIL: large review did not arrive intact: $(tail -c 300 "$REVIEW_PR_SCRATCH/big-result.stderr")"; FAIL=1; }
 
 # Cleanup refuses an unmarked directory.
 bad="$(mktemp -d "$REVIEW_PR_SCRATCH/review-pr.XXXXXX")"
