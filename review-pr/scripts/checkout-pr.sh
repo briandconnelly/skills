@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # checkout-pr.sh OWNER/REPO N
-# Implements RC4 and RC12 in references/runner-contract.md.
+# Implements RC4, RC12 and RC13 in references/runner-contract.md.
 set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 # shellcheck disable=SC1091

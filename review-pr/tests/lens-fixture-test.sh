@@ -71,12 +71,12 @@ mkjob() {
   jq -n --argjson n "$n" --arg title "$CASE_TITLE" --arg body "$CASE_BODY" \
     '{number:$n, title:$title, body:$body}' > "$job/pr.json"
   pinned_diff "$job/repo" "$base" "$head" > "$job/pr.diff" || die 1 "git diff failed for the fixture"
-  # Prepare policy the way checkout-pr.sh does: base policy restored, head edits reported, manifest listed.
-  local changes
-  changes="$("$SRC/isolate-policy.sh" "$RUNNER" "$job/repo" "$base" "$head")" || die 1 "isolate-policy.sh failed for the fixture"
+  # Prepare policy the way checkout-pr.sh does: base policy restored, head edits written to
+  # policy-changes.json (RC13) and read by jq from that file, manifest listed.
+  "$SRC/isolate-policy.sh" "$RUNNER" "$job/repo" "$base" "$head" > "$job/policy-changes.json" || die 1 "isolate-policy.sh failed for the fixture"
   write_policy_manifest "$job/repo" "$base" "$job/policy-manifest.json"
-  jq -n --arg d "$job" --arg b "$base" --arg h "$head" --arg runner "$RUNNER" --argjson changes "$changes" \
-    '{dir:$d, runner:$runner, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:$changes, diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
+  jq -n --arg d "$job" --arg b "$base" --arg h "$head" --arg runner "$RUNNER" --slurpfile changes_doc "$job/policy-changes.json" \
+    '{dir:$d, runner:$runner, base_sha:$b, head_sha:$h, head_repo:"fixture/fixture", policy_changes:$changes_doc[0], diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }
 
 for k in $(seq 1 "$RUNS"); do

@@ -236,10 +236,15 @@ grep -qxF 'Binary files a/generated.txt and b/generated.txt differ' "$diff13" 2>
 if grep -qxF 'GIT binary patch' "$diff13" 2>/dev/null; then echo "FAIL: pr.diff carries a binary patch body"; FAIL=1; fi
 
 # many policy changes: the policy_changes array reaches the envelope through files, never argv.
-out="$(REVIEW_PR_SCRATCH="$S/many/" "$SRC/review-pr.sh" owner/repo 14 2>"$S/many.stderr")" \
+out="$(REVIEW_PR_KEEP=1 REVIEW_PR_SCRATCH="$S/many/" "$SRC/review-pr.sh" owner/repo 14 2>"$S/many.stderr")" \
   || { echo "FAIL: many policy changes aborted the review: $(tail -c 300 "$S/many.stderr")"; FAIL=1; }
 jq -e '.policy_changes | length == 12000' <<<"${out:-null}" >/dev/null 2>&1 \
   || { echo "FAIL: many policy changes: policy_changes does not list 12000 paths: $(tail -c 300 "$S/many.stderr")"; FAIL=1; }
+# RC13: the job holds policy-changes.json beside pr.diff, equal to the envelope's policy_changes.
+printf '%s' "${out:-null}" > "$S/many.envelope.json"
+jq -e --slurpfile env "$S/many.envelope.json" '. == $env[0].policy_changes and length == 12000' \
+  "$(jq -r .dir "$S/many.envelope.json")/policy-changes.json" >/dev/null 2>&1 \
+  || { echo "FAIL: the kept job's policy-changes.json does not equal the envelope's policy_changes"; FAIL=1; }
 
 [ "$FAIL" = 0 ] && echo "review-pr-test: OK"
 exit "$FAIL"
