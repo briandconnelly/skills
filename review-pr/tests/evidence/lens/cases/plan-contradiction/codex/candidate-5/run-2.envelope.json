@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `--wait` compatibility regression should be fixed because existing invocations now fail despite the documented transition. Tests were read, not run.\n\n## Changes\nThe pull request renames the CLI option to `--timeout`, updates parser tests, and documents a transition retaining `--wait` temporarily. The default and output choices remain unchanged.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:6 — correctness — Preserve --wait during the documented transition — Calling `parse_args([\"--wait\", \"12\"])` now raises `SystemExit(2)` instead of returning parsed arguments. You register only `--timeout`, although `docs/adr/007-timeout.md:5` promises a one-release alias and deprecation warning. — Existing scripts using `--wait` stop during a release documented as supporting that option. — Fix: Accept both names into `args.timeout` and emit the documented warning when `--wait` is used.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Ucq0zn4lte/review-pr.0lZXZG",
+  "head_sha": "3a7d0916452f7227bb53f493be123aae4465d3b3",
+  "base_sha": "df94e3cd815d740073c885944e65af3dd78020e4",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f84de9614a1c0dfa5a08b177c7ebae63d532195c"
+}

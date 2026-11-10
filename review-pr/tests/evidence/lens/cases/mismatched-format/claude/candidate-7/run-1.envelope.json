@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`status()` cuts revisions to 7 characters, while the docstring says it uses the same identifier as `history()`, which uses 12. Fix this so the running status matches the history and completion output.\n\n## Changes\nThis PR adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, which produce a \"Running: <revision> (attempt N)\" line. It also adds tests for both functions.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Shorten status revisions to 12 characters like history — For `REVISION = \"0123456789abcdef…\"`, `status()` prints `Running: 0123456`, but `history()` and `completed()` print `0123456789ab` because `revision[:7]` differs from their `revision[:12]`. This contradicts the docstring \"using the same identifier as history.\" — Operators cannot match a running deployment's identifier to its history or completion line by exact text. — Fix: Use `revision[:12]` or a shared helper with `history`/`completed`, and extend `test_running_status_contains_attempt` to assert the full string, because its `startswith`/`endswith` checks cannot detect the length.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19759,
+    "cost_usd": 0.097719,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7XHiqX8WmB/review-pr.rW83YR",
+  "head_sha": "e52605cdc3da22f6af7a1b3890d3347305d4ef51",
+  "base_sha": "18dae508dee0d3d8e91dea981b97accb36bcfb3f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "330e0543f116a2e81f4935d94a491fe47ef80af2"
+}

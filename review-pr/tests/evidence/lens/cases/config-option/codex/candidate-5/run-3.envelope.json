@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe criterion hint should account for `require_shall=True`, because its new instruction produces criteria that this supported mode rejects.\n\n## Changes\nThe pull request rewrites the criterion-writing guidance and gives the literal dash-space prefix. It preserves the validator and existing tests and adds a reviewer note.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Qualify the hint for the require_shall option — With `require_shall=True`, `- Save the result` follows your new “without the word shall” instruction but fails validation. The validator still requires `\" shall \"` at line 8, and the existing tests explicitly preserve this behavior. — Authors following the hint in this mode receive rejected criteria and must contradict the guidance to satisfy validation.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7JejbCTXSd/review-pr.UkmcFk",
+  "head_sha": "5bb8ede03d621caad8450b448bc505667bde4ae2",
+  "base_sha": "5c263ad69856bc896e7f8bf29db4c99de76475eb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6f34cf87939212f5e34fac6986536cd1eba80d4a"
+}

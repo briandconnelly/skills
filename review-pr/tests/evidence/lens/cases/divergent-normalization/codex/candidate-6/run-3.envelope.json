@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFailure-report selection should be fixed because dot-prefixed paths are silently omitted from matching requests.\n\n## Changes\nThe pull request adds selection from failure reports, refactors cached selection without changing its behavior, and adds selector tests. This review read the tests without running them.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize failure paths before matching requests — For `report={\"failed\": [\"./tests/test_x.py\"]}` and `requested={\"tests/test_x.py\"}`, this returns `[]` instead of `[\"./tests/test_x.py\"]`. Unlike `select_explicit`, the new selector compares unnormalized paths. — When reports use `./` prefixes, users lose matching failed tests from the selected rerun set. — Fix: Compare `normalize(path)` with `requested` while returning the original `path`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.9elwJHkHI6/review-pr.DqteVq",
+  "head_sha": "1ee6dd5ddbde197cd0e2368ac1fa46722c8c11fc",
+  "base_sha": "93619125a4eab0f2dc34ac070decc49db38786a4",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "5dcbb49dbf3cdb02a944361d8a14bc82a73a54b6"
+}

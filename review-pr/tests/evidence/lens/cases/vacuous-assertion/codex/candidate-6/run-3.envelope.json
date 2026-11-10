@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy-header test should be corrected because it passes without exercising header validation. Tests were read, not run.\n\n## Changes\nThe pull request requires the exact `REPORT v1` header and adds two rejection tests.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:10 — tests — Use a complete v0 report in the legacy-header test — For `REPORT v1\\nversion=v0`, the assertion passes because the missing `END` triggers rejection at `app/report.py:3`. Your replacement changes the body’s version while leaving the header at v1. — This test cannot detect broken legacy-header validation; only the separate complete-report test exercises that rejection.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yRGfS4nmck/review-pr.LSdUyr",
+  "head_sha": "fe39f0d0ff01e3ca1565a31b4c5b1b5f61618eb0",
+  "base_sha": "6024e614bee2067f95efdfe1b48429f56e09325f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a3806847f9340d67ca061d1de24d0e080d763f5a"
+}

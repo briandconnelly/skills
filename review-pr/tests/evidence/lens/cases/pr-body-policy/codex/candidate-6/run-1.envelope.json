@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR description should include the verification section required by project policy. Digit preservation also lacks regression coverage.\n\n## Changes\nThe pull request adds a title-to-slug helper that lowercases text, collapses non-ASCII-alphanumeric runs into hyphens, and trims surrounding hyphens. Parameterized tests cover capitalization, separators, and empty results.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Add the required Testing section — The PR description omits verification information. `AGENTS.md:4` requires: “Every pull-request description has a `## Testing` section that says how the change was verified.” — Reviewers cannot determine from the description how you verified the change.\n\n## Suggestions\n- app/slug.py:7 — tests — Cover digit preservation — For `\"Page 2\"`, removing `0-9` from the regex would incorrectly produce `\"page\"`, yet every current test would still pass: the slug cases contain no digits, and the existing smoke test only imports the package. — Titles containing digits lack regression protection for the helper’s advertised alphanumeric behavior. — Fix: Extend `test_slugify` with a title containing digits.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ndaGvBAi82/review-pr.slUkuj",
+  "head_sha": "07835ff983f4095a604e4c9d31acf6765c9af9a5",
+  "base_sha": "43e7179da5bfce591fdb6976d75e3fe9873afe86",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "0aaf28534f75bd44a1c107d70cd3a8e7b4388a3f"
+}

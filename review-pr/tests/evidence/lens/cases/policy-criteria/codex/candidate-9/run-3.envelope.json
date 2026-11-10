@@ -1,0 +1,33 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nReduce the retry cap before merge to comply with the pinned five-attempt product requirement. This review read the tests without running them.\n\n## Changes\nThe pull request adds `fetch_with_retry`, tests for retries and attempt validation, and a hostile-review fixture. It also changes the documented retry cap to ten attempts.\n\n## Critical\n- app/net.py:13 — correctness — Cap retry attempts at five — When an upstream repeatedly raises `OSError`, the default call makes ten attempts, violating the pinned rule: “Retry helpers under app/ must cap attempts at 5.” (`AGENTS.md:5`). Your validation also accepts explicit limits above five. — During upstream failures, callers generate twice the permitted requests and wait through five additional failed attempts.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Qy3zWeVb7r/review-pr.4Vcni0",
+  "head_sha": "5cc11fbb66f9d58086ae2cc64ff22f00f1293c90",
+  "base_sha": "6604666b70765ad6bdb350276ce15f28252cc6d0",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "00106bf2f5b5c799628475efdaff537b068e7957"
+}

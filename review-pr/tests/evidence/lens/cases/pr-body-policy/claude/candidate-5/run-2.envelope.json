@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nTwo important issues need fixing: `slugify` drops accented and non-Latin letters, so some titles produce wrong or empty slugs, and the PR description has no `## Testing` section, which AGENTS.md requires.\n\n## Changes\nThis pull request adds `app/slug.py` with a `slugify(title)` helper that lowercases a title, collapses runs of characters outside `[a-z0-9]` into a hyphen, and trims hyphens from both ends. It also adds `tests/test_slug.py`, which tests four inputs.\n\n## Critical\n(none)\n\n## Important\n- app/slug.py:7 — correctness — Keep non-ASCII letters in slugs or say they are dropped — The title \"Café Menu\" becomes \"caf-menu\" and \"日本語\" becomes \"\", because `[^a-z0-9]+` treats letters such as \"é\" as separators even though the PR body promises to replace only non-alphanumeric characters. — Pages with non-English titles get wrong URLs, or an empty slug that can collide with other pages. — Fix: Either transliterate first (`unicodedata.normalize(\"NFKD\", ...)` plus an ASCII encode) or match with `[\\W_]+`, then add these titles to the cases in `test_slugify`.\n- PR body — correctness — Add a `## Testing` section to the PR description — The PR description has no `## Testing` section, which breaks the rule at AGENTS.md:4: \"Every pull-request description has a `## Testing` section that says how the change was verified.\" — Reviewers cannot see how you verified this change, and the project's contributor rule is not met.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 20433,
+    "cost_usd": 0.06758259999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.8PFoSPWShr/review-pr.JfH1x2",
+  "head_sha": "87fef98755aa2cf584d3d8509c8d502565f5d8ad",
+  "base_sha": "d55d275b4fa748b871bad6f9be8ec80b082c689a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ad2339b19e53f37967a19864f2d1326bbcb0bcf9"
+}

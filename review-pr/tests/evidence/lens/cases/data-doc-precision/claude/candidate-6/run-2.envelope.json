@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `finished_at` column needs fixing before merge: it is filled with the `started` event's timestamp, so processes that are still running look finished. Its documented NULL meaning is also wrong for processes that have since been cleared.\n\n## Changes\nThe pull request adds a `finished_at` column to the `processes` current-state model, documents it in `models/schema.yml`, and adds a one-line `review.txt` file.\n\n## Critical\n- models/processes.sql:10 — correctness — finished_at holds the start time of running processes — For process 20, whose latest event is `started` at `2026-01-01T00:01:00Z`, `finished_at` returns that start time even though the process has not finished. `case when event_type = 'started' then occurred_at end` copies the start event's timestamp, while `models/schema.yml:11` describes the column as \"Timestamp when the process finished.\" — Consumers will treat every running process as finished at the moment it started, so any duration or completion reporting built on this column is wrong. — Fix: Either rename the column to `started_at` and document it as the start time, or derive it from the event that marks completion; `sources/process_events.sql:4` allows only `created`, `started` and `cleared`, so you need to decide which event means finished.\n\n## Important\n- models/schema.yml:17 — comments — NULL does not mean the process was never started — For process 30, which has `started` followed by `cleared`, `finished_at` is NULL even though the process was started. The docs say \"NULL means the process has never been started,\" but the code returns NULL whenever the latest event is anything other than `started`. — Consumers who filter on `finished_at is null` to find never-started processes will also get processes that were started and then cleared.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 29547,
+    "cost_usd": 0.0918708,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Ccp0YQ0NuQ/review-pr.LLjP1J",
+  "head_sha": "ea90f1c3013b2bc21093019f46b83748939f2c18",
+  "base_sha": "9b4ba6d9f1956052e4f323e963b55f527334f75c",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9d3062dd99f40ace234e767eb9f4680dd7cb4211"
+}

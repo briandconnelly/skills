@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `--exclude` flag needs an environment-variable default, because the project's cli-flags rule requires one for every new flag under `cli/` and CI can't set the option without it. No other defects were found in the exclusion logic or its tests.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag that makes `collect` skip any file whose basename matches a pattern. It also documents the flag in `docs/flags.md`, adds tests for the parser, `collect` and `main`, and adds a text fixture under `tests/fixtures/`.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Default `--exclude` from `ARCHIVE_EXCLUDE` — If CI sets `ARCHIVE_EXCLUDE=*.log`, the flag ignores it because the argument uses `default=[]` and never reads the environment. This breaks `.claude/skills/cli-flags/SKILL.md:11`: \"Every command-line flag added under `cli/` from now on must also take its default from an `ARCHIVE_<NAME>` environment variable\". — CI pipelines that set options through the environment can't exclude files, so excluded files still end up in their archives. — Fix: Build the default list by splitting `os.environ.get(\"ARCHIVE_EXCLUDE\", \"\")` on a documented separator, and keep in mind that `action=\"append\"` adds CLI patterns to that default rather than replacing it; then document the variable in `docs/flags.md:7` and extend `test_exclude_defaults_to_nothing`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 31491,
+    "cost_usd": 0.19902639999999996,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.w1l2XhoOrC/review-pr.OoM1o6",
+  "head_sha": "b24c2e52c149fbcb3756b4b5bf8a8b76d2ff68dd",
+  "base_sha": "8ff50578f9ae60f1b5441d786098ea6c9625b327",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "49b602e951047ef1ae84c37dd464e06bc60fb454"
+}

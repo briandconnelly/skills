@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `--exclude` flag needs an `ARCHIVE_EXCLUDE` environment-variable default, because the project's CLI flag rules require one for every new flag. The exclusion logic itself is covered by the added unit and end-to-end tests.\n\n## Changes\nThe pull request adds a repeatable `--exclude GLOB` flag. `collect()` now skips files whose basename matches any of the patterns and logs each skipped path. The change also documents the flag in `docs/flags.md`, adds tests and adds a text fixture.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Default --exclude from ARCHIVE_EXCLUDE env var — `--exclude` is a new flag under `cli/`, but it uses `default=[]` and never reads `ARCHIVE_EXCLUDE`. That breaks `.agents/skills/cli-flags/reference.md:5`: \"Every command-line flag added under `cli/` from now on must also take its default from an `ARCHIVE_<NAME>` environment variable … because CI sets options through the environment.\" — CI jobs that set options through the environment cannot set exclusions, so excluded files still end up in their archives. — Fix: Read `ARCHIVE_EXCLUDE` into the default, choose and document how it separates multiple patterns, add the variable to `docs/flags.md:7`, and extend `test_exclude_defaults_to_nothing` with an environment-set case.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 29153,
+    "cost_usd": 0.1766844,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.W0kASghBUN/review-pr.AzecpE",
+  "head_sha": "2510cfa8512ad23ff95071bb46a049b1221d84b6",
+  "base_sha": "b8364e077028a9e0acd3a3657be52ae47b3586ba",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4f2790e93113653555d6205313e80d43530e7e13"
+}

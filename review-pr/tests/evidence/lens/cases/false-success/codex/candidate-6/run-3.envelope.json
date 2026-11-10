@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFailed saves should be reported because the command currently announces success even when it creates no report.\n\n## Changes\nThe pull request adds report saving with a destination announcement and cleanup that tolerates already absent temporary files.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Report write failures before announcing success — When the destination’s parent directory is missing, `save_report` discards `FileNotFoundError`, prints a success message, and returns `0` without creating a file. The handler also swallows other `OSError` failures. — Callers cannot detect failed saves, so report delivery can fail without triggering recovery. — Fix: Propagate the error or report failure with a nonzero result, and announce success only after writing succeeds.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Wu65mR1D4N/review-pr.0Ux8GR",
+  "head_sha": "1dcd1a27d84010d9134ec8282352799be665298f",
+  "base_sha": "752782bcb37bf71f0af2f801745bf92317ff1081",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c8f4ae392b5e300a2c4c20e1088768710e8cab43"
+}

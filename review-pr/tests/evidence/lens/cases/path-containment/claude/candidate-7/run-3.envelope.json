@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the containment check in `preview` before merge: it compares paths textually and never resolves them, so a `..` path such as `../secret.txt` passes and the function reads files outside the home directory.\n\n## Changes\nThe pull request adds `preview`, which returns the first 200 characters of a file under a home directory, and `settings_file`, which returns `<home>/settings.toml`. It adds tests for both and adds a one-line text file, `tests/review-note.txt`.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve paths before the home containment check — `preview(home, \"../secret.txt\")` passes the check and reads `home/../secret.txt`, because `Path.is_relative_to` compares path parts textually without collapsing `..` or following symlinks. A symlink inside home that points elsewhere also passes. The only negative test, at `tests/test_paths.py:20`, uses an absolute path outside home and does not exercise `..` or symlinks. — Any caller that passes user-supplied relative paths lets users read arbitrary files that the process can access. — Fix: Compare `(Path(home) / relative).resolve()` against `Path(home).resolve()`, and add `..` and symlink cases to `test_preview`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19399,
+    "cost_usd": 0.0644748,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.XqmG3CCsOo/review-pr.a0ivPO",
+  "head_sha": "f4bb0b48088e9c979531c5e8858753d2bc4879a7",
+  "base_sha": "4497e4582218b85653315745982a7e0227284451",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "1ee18ab4e105e4d5970b80a6287880a60528ff86"
+}

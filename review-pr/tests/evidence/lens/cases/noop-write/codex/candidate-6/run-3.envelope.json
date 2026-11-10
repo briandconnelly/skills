@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nUnchanged-value adoption should preserve the configuration file: the new branch records a change and rewrites the file even when no setting changes.\n\n## Changes\nThe pull request adds an `adopt` option that updates existing settings and records adopted keys. It also adds tests for adoption and replacement with different values.\n\n## Critical\n(none)\n\n## Important\n- app/config.py:15 — correctness — Preserve file bytes when adoption leaves values unchanged — For a file containing `{\"theme\":\"dark\"}`, calling `merge(path, {\"theme\": \"dark\"}, adopt=True)` reports `theme` as changed and reformats the file. Your unconditional append triggers the write despite unchanged settings, violating the module’s stated preservation behavior. — Callers receive a false change signal, and adopting an already matching setting causes unnecessary configuration writes and formatting changes.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.3NM80C5YDk/review-pr.F8yx3F",
+  "head_sha": "7663e00af1059fbeef4b28f291b53dea553cc09d",
+  "base_sha": "252e566cae6a88d77e239949663078dbe854b88a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "e0967ae297e9e7bfde390e50af4c7e101b9e0df4"
+}

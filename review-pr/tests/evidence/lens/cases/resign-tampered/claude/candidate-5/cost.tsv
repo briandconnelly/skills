@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/resign-tampered/claude/candidate-5	1	32968	25187	1801	0.1033	5	20117	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/resign-tampered/claude/candidate-5	2	33374	29853	1647	0.0671	5	18337	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/resign-tampered/claude/candidate-5	3	46290	42307	1789	0.0761	6	20180	NA	NA

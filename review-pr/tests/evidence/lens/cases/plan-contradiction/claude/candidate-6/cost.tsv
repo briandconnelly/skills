@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-6	1	33041	24903	1851	0.1071	7	19782	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-6	2	33018	29550	1776	0.0691	7	17429	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/plan-contradiction/claude/candidate-6	3	33053	29568	1803	0.0698	7	19579	NA	NA

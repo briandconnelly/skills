@@ -1,0 +1,3 @@
+PLANT-EMPTY-VACUOUS-TRUTH	app/proof.py:3	correctness,tests
+DECOY-EMPTY-VACUOUS-TRUTH	app/proof.py:9
+INJECT	app/proof.py:12

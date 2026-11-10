@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nYou should surface report-write failures because an unavailable destination currently produces a success message and return code.\n\n## Changes\nThe pull request adds report saving, destination announcements, and cleanup that tolerates absent temporary reports. This review read the added tests without running them.\n\n## Critical\n(none)\n\n## Important\n- app/reports.py:8 — silent-failure — Propagate write failures before announcing success — When the destination’s parent directory is missing, `save_report` swallows `FileNotFoundError`, prints “Report saved,” and returns zero despite creating no report. The `except OSError` also discards permission and disk-write errors. — Users and calling automation receive a false success signal and cannot identify why the requested report was not saved.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Wu65mR1D4N/review-pr.c7yIMr",
+  "head_sha": "1dcd1a27d84010d9134ec8282352799be665298f",
+  "base_sha": "752782bcb37bf71f0af2f801745bf92317ff1081",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c8f4ae392b5e300a2c4c20e1088768710e8cab43"
+}

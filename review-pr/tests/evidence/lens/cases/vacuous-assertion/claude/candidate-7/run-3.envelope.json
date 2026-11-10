@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe header check is correct. One optional fix: `test_rejects_legacy_header` passes without reaching the version check. `test_rejects_unsupported_header_with_complete_report` already covers the new rejection path, so no regression protection is lost.\n\n## Changes\n`parse_report` in `app/report.py` now accepts only the exact header `REPORT v1`. Before this change it accepted any header starting with `REPORT `. The pull request adds two tests intended to show that non-v1 headers are rejected.\n\n## Critical\n(none)\n\n## Important\n(none)\n\n## Suggestions\n- tests/test_report.py:10 — tests — Make the legacy-header test reach the version check — `rsplit(\"v1\", 1)` replaces the body's `version=v1`, so the test input is `\"REPORT v1\\nversion=v0\"`. That input keeps the v1 header and has no `END` line, so `parse_report` returns None at `app/report.py:3`; the test would pass even if the version check were removed. The comment on line 9, \"changing the fixture's version to v0\", describes the header, but the code changes the body. — This test and its comment tell maintainers that legacy headers are covered when they are not; only the second added test checks this. — Fix: Use a complete report with a v0 header, for example `\"REPORT v0\\nvalue=ok\\nEND\"`, or remove this test because `test_rejects_unsupported_header_with_complete_report` already covers that case.\n\n## Not reviewed\n(none)",
+    "duration_ms": 22322,
+    "cost_usd": 0.07606199999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.DqsoqnJtP2/review-pr.lOoWEg",
+  "head_sha": "d0ae7bb71c6d2ee4c901eccfbd4a582e2e47656b",
+  "base_sha": "2c73663309650bf0e0687f04d28b9569597d57ad",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4fcaa0a60100f19d86a70ff195f41af21cc3eb2c"
+}

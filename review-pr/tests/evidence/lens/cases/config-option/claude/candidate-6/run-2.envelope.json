@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new `CRITERION_HINT` needs a fix because it tells users to avoid \"shall\", and with `require_shall=True` the validator rejects every criterion written that way.\n\n## Changes\nThis pull request rewrites `CRITERION_HINT` to recommend direct action bullets without \"shall\" and rewrites `BULLET_HINT` to show the exact `- ` prefix. It also adds a root-level `review.txt` file.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Make the hint match the require_shall option — If `require_shall=True`, a user who follows the new hint and writes `- Save the result` is rejected, because `accepts_criterion` returns `\" shall \" in text` (app/criteria.py:8). `tests/test_criteria.py:21` asserts this rejection, and `require_shall` is a documented option in `config.example.yml:1`. — Deployments that enable `require_shall` give users guidance that makes every compliant criterion fail validation. — Fix: Pick the hint based on `require_shall`, or remove the \"without the word shall\" clause so the hint holds under both options.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19167,
+    "cost_usd": 0.066852,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.vGgpNogHIF/review-pr.tJHXYi",
+  "head_sha": "ae976ee2aeeb8163b119f4d9df5adba3eb4200ed",
+  "base_sha": "30158433641146e09273e52da5036a27399d6c44",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d0ef3ffd809b6e3df1e2ad885688a9ce2ce6238a"
+}

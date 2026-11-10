@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`refresh_fingerprints` should be fixed: it overwrites the fingerprints of files that are already tracked. If a tracked file was edited by hand and is passed to `refresh_fingerprints`, verification no longer detects the edit, which breaks the integrity guarantee the description promises.\n\n## Changes\nThe pull request adds `refresh_fingerprints` and `register_new_files` to `app/integrity.py` so that new files can be added to the JSON fingerprint manifest. It also adds `tests/test_integrity.py`, which covers both helpers.\n\n## Critical\n(none)\n\n## Important\n- app/integrity.py:17 — correctness — Keep existing fingerprints in refresh_fingerprints — If you call `refresh_fingerprints(root, manifest, [\"tracked.txt\", \"new.txt\"])` after `tracked.txt` was edited by hand, line 17 replaces the stored digest with the edited file's digest, so `verify` then returns True. The test at `tests/test_integrity.py:6` passes only an unedited tracked file, so it cannot detect this. — An integrity check that should fail on tampered tracked files passes after any refresh that names them, so the tampering goes unnoticed. — Fix: Skip names already in `entries`, as `register_new_files` does at `app/integrity.py:24`, and extend `test_refresh_registers_new_files_and_keeps_unchanged_entries` with an edited tracked file.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18337,
+    "cost_usd": 0.06705459999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ZAkPy3PtWn/review-pr.PvFHyH",
+  "head_sha": "a32dc67d285e94e272131b237ef2e6c1c01c1463",
+  "base_sha": "e6513c8c458f4c5f4c3caa14947eed679273807e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6a5f44eaf58a8b36f12d1e78913b4a4a847651a9"
+}

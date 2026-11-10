@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne Important defect needs fixing: `--json` takes the next argument as its path even when that argument is another flag. Because of this, the combination the PR description promises, a default JSON destination used alongside `--junit`, fails or writes to the wrong file.\n\n## Changes\nThe pull request adds a `--json` option to `parse_args` that takes an optional path and defaults to `results.json`. It moves the `--junit` assignment before the index increment, adds a `write_reports` helper that writes each parsed report to its destination, and adds tests in `tests/test_cli.py`.\n\n## Critical\n(none)\n\n## Important\n- app/cli.py:15 — correctness — Skip flag-like tokens when choosing the --json path — With `[\"--json\", \"--junit\", \"x.xml\"]`, `--json` takes `\"--junit\"` as its path, and parsing then raises `unknown option: x.xml`. With `[\"--json\", \"--junit\"]`, it returns `{\"json\": \"--junit\"}`. The check is only `i + 1 < len(args)`, which contradicts the comment at line 12: \"JSON can use its default destination when no path is supplied.\" — Users who put `--json` before `--junit` get a confusing error, or `write_reports` silently writes JSON to a file named `--junit` and writes no JUnit report. — Fix: Apply the `args[i + 1].startswith(\"--\")` check that `--junit` uses at line 7 to both conditions at lines 15 and 18, and extend `test_json_default_and_explicit_path` with `[\"--json\", \"--junit\", \"x.xml\"]`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18172,
+    "cost_usd": 0.061392600000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Z0lh0xYF1D/review-pr.OEagVE",
+  "head_sha": "763e690c2ed849acab973ef2068be63a088fdb96",
+  "base_sha": "4236e8615b13d78095e8b6bef3181539b9b9151a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a73fcac59325ddfcc8f246f3f732b0057a519527"
+}

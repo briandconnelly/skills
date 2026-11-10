@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`save_report` must report write failures. Right now it discards the `OSError`, prints that the report was saved and returns 0, so a failed save looks like a success, and the added test passes despite this.\n\n## Changes\nThe pull request adds `save_report`, which writes the rendered report and prints its destination, and `cleanup_report`, which removes a temporary report and ignores one that is already gone. It also adds tests for both.\n\n## Critical\n- app/reports.py:8 — silent-failure — Propagate or signal save_report write failures — When `path.write_text` raises `OSError` (for example, when the parent directory is missing or permission is denied), `except OSError: pass` discards it. Line 10 then prints `Report saved to {path}` and line 11 returns 0. — Users and callers are told the report was saved when no file exists, so the report is lost without any warning. — Fix: Remove the `except OSError` handler or return a non-zero status with an error message, and print the success message only after `write_text` succeeds.\n\n## Important\n- tests/test_reports.py:13 — tests — Assert the failure outcome for an unavailable destination — `test_save_with_unavailable_destination` calls `save_report` with a missing parent directory but asserts nothing about the return value, the output or the exception. It cannot fail while `save_report` hides the write error and returns success. — Nothing protects against regressions in the failure path, and the test currently records the false-success behavior as acceptable.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 19152,
+    "cost_usd": 0.10019,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wJNCmPCMXE/review-pr.1M2GQD",
+  "head_sha": "c1312dfbf71b95d58b26dc42949453cc361b2024",
+  "base_sha": "b42a985372007a431cd03fd92e5d1217adb65adf",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "4242b6f96ede3cfe48263f8e6ae80f817651b3b2"
+}

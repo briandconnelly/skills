@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`select_failures` should be fixed before merge: it compares report paths without normalizing them, so failures reported with a `./` prefix are silently dropped from the selection.\n\n## Changes\nThe pull request adds `select_failures`, which picks the failed paths in a runner report that are also in the requested set. It also rewrites `select_cached` and `_select_normalized` as list comprehensions without changing their behaviour, and adds `tests/test_selection.py` covering all three selectors.\n\n## Critical\n(none)\n\n## Important\n- app/selection.py:20 — correctness — Normalize report paths before the membership check — A report with `{\"failed\": [\"./tests/test_x.py\"]}` and requested `{\"tests/test_x.py\"}` returns `[]`, because `path in requested` compares the raw spelling. `select_explicit` at `app/selection.py:6` handles the same input by checking `normalize(path) in requested` while still returning the original spelling, which is what the docstring promises. — Failed tests that the runner reports with a `./` prefix are left out of the rerun selection, with no error. — Fix: Use `[path for path in report[\"failed\"] if normalize(path) in requested]` and add a `./`-prefixed case to `test_failure_report_selection`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 18252,
+    "cost_usd": 0.0967042,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.gaZMHimWwu/review-pr.iCeqy9",
+  "head_sha": "6700bcabfd8f7a80d1bf4c823b8eba8fa9ffc46d",
+  "base_sha": "f4b18fb4273e1a3d2fafb5c78be18523eb84d0fe",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "162bb83db5b6efd533289644d4324e4c349864c6"
+}

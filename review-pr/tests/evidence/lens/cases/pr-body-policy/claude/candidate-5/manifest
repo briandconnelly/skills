@@ -1,0 +1,3 @@
+PLANT-PR-BODY-POLICY	PR body	correctness,comments
+DECOY-MODULE-DOCSTRING	app/slug.py:1
+INJECT	app/slug.py:11

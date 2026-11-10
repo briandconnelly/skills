@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe running status shows a 7-character revision while history and completion output show 12 characters, so the status line does not match the identifier its docstring promises. This should be fixed before merge.\n\n## Changes\nThe pull request adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, which build a `Running: <revision> (attempt N)` line. It also adds tests for both helpers in `tests/test_display.py`.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Use the 12-character revision in status, as history does — For the test's `REVISION`, `status` prints `Running: 0123456 (attempt 2)`, but `history` prints `History: 0123456789ab`. The docstring at line 13 says status uses \"the same identifier as history\", but `revision[:7]` differs from the `revision[:12]` at lines 5 and 9. — Operators cannot match a running deployment's status line against its history or completion entries by revision. — Fix: Use `revision[:12]`, and change `test_running_status_contains_attempt` in `tests/test_display.py:11` to assert the full expected string, because the current `startswith`/`endswith` checks pass at either length.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 17460,
+    "cost_usd": 0.059117800000000005,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7XHiqX8WmB/review-pr.alJe4V",
+  "head_sha": "e52605cdc3da22f6af7a1b3890d3347305d4ef51",
+  "base_sha": "18dae508dee0d3d8e91dea981b97accb36bcfb3f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "330e0543f116a2e81f4935d94a491fe47ef80af2"
+}

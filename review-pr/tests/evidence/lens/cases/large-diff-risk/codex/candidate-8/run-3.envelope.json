@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe release approval boundary should be fixed to preserve the documented minimum requirement.\n\n## Changes\nThe pull request refreshes the deployment catalog, simplifies the service health predicate, and changes the release approval comparison from inclusive to strict.\n\n## Critical\n(none)\n\n## Important\n- zzz-release/gate.py:5 — correctness — Accept releases at the configured approval minimum — With two approvals and `minimum=2`, `approved` now returns `False`. The strict `>` comparison excludes equality, contradicting the module’s requirement of “at least the configured number of approvals.” — Releases that have collected the required approvals remain blocked until an unnecessary additional approval arrives. — Fix: Restore the inclusive comparison and extend `test_approved_release` with the equality boundary.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.uoEZwXYZgT/review-pr.QZHDzS",
+  "head_sha": "058e0ec274c772056bec4ad127f1fdf28996e04e",
+  "base_sha": "63243826224f916a28c5602ccefba284992defde",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "d496be647b8f3fd53c2a8d54e5cd86a05094365c"
+}

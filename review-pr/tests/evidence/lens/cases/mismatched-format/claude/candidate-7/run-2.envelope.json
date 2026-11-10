@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`status()` cuts the revision to 7 characters, but `history()` and `completed()` use 12. A running deployment's status line therefore shows a different identifier from the rest of the output, and that needs fixing.\n\n## Changes\nThis pull request adds `status(revision, attempt)` and `attempt_label(attempt)` to `app/display.py`, which build a \"Running: <revision> (attempt N)\" line. It also adds tests for both functions in `tests/test_display.py`.\n\n## Critical\n(none)\n\n## Important\n- app/display.py:14 — correctness — Use the 12-character revision in status() — For `REVISION = \"0123456789abcdef…\"`, `status()` returns `Running: 0123456 (attempt 2)`, but `history()` returns `History: 0123456789ab`. That is because `revision[:7]` differs from the `[:12]` used at lines 5 and 9, and the docstring at line 13 promises \"the same identifier as history.\" — Operators can't match a running deployment's status line to its history or completion entry by the identifier shown. — Fix: Use `revision[:12]` and extend `test_running_status_contains_attempt` to assert the full expected string.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 16841,
+    "cost_usd": 0.05840279999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7XHiqX8WmB/review-pr.ju6g3j",
+  "head_sha": "e52605cdc3da22f6af7a1b3890d3347305d4ef51",
+  "base_sha": "18dae508dee0d3d8e91dea981b97accb36bcfb3f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "330e0543f116a2e81f4935d94a491fe47ef80af2"
+}

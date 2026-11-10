@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe criterion hint should be fixed because following it produces criteria rejected by the supported `require_shall=True` option.\n\n## Changes\nThe pull request revises criterion-writing and bullet-prefix hints and adds `review.txt`. Validator behavior and tests remain unchanged.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Make the criterion hint respect require_shall — With `require_shall=True`, following the new hint with `- Save the result` produces a rejected criterion. The hint says “without the word shall,” while the validator requires `\" shall \"` in this mode, as the existing tests confirm. — Users enabling the strict option receive instructions that prevent their criteria from passing validation.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.7JejbCTXSd/review-pr.GfoOEu",
+  "head_sha": "5bb8ede03d621caad8450b448bc505667bde4ae2",
+  "base_sha": "5c263ad69856bc896e7f8bf29db4c99de76475eb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "6f34cf87939212f5e34fac6986536cd1eba80d4a"
+}

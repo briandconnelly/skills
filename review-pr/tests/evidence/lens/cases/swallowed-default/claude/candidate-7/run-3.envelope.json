@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThis must be fixed before merge: with the new missing-file fallback in `load_results`, the release gate allows a release whenever the results file is absent.\n\n## Changes\nThe pull request makes `load_results` return an empty list when the results file is missing. It also adds `display_preferences`, which falls back to a light theme when no preferences file exists, and adds tests for both functions.\n\n## Critical\n- app/results.py:8 — silent-failure — Fail closed when the results file is missing — When `results.json` is missing, `load_results` returns `[]`, and `release_allowed` (app/results.py:12) then evaluates `all([])` as `True`. Nothing is logged and the caller gets no signal; tests/test_results.py covers only files that exist. — A missing or misplaced checks file allows a release with no checks run, which defeats the release gate. — Fix: Let `FileNotFoundError` propagate from `load_results`, or make `release_allowed` return `False` when no results load, and add a missing-file case to `test_saved_checks_control_release`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 17292,
+    "cost_usd": 0.061836999999999996,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.GvYsJhC75h/review-pr.F7qtNq",
+  "head_sha": "f2f3cb10134ee4bcdd44bcaa33220a0957634d04",
+  "base_sha": "b74d944554beade1abf5262a68527e24a6cf65e1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "49fbb36915c84f8bf163c839585d872e0f952059"
+}
