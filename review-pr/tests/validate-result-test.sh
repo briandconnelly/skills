@@ -253,6 +253,10 @@ check blank-impact false false <<<"${VALID/Legal port 65535 cannot be configured
 check zero-line false false <<<"${VALID/parse port.py:12/parse port.py:0}"
 check deleted-file true false <<<"${VALID/parse port.py:12/parse port.py:12 [base]}"
 check invalid-side false false <<<"${VALID/parse port.py:12/parse port.py:12 [head]}"
+# A path may contain the field separator: the location ends at the first " — <lens> — ".
+check separator-in-path true false <<<"${VALID/app\/parse port.py:12/a — b.py:1}"
+check separator-in-dir-and-base-path true false <<<"${VALID/app\/parse port.py:12/dir — x\/a — b.py:3 [base]}"
+check separator-in-path-no-lens false false <<<"${VALID/app\/parse port.py:12 — correctness/a — b.py:1 — style}"
 
 FIX_BULLET='- app/parse port.py:12 — correctness — Port 65535 rejected — is_valid_port uses < 65535 — Legal port 65535 cannot be configured'
 BUG="$FIX_BULLET"

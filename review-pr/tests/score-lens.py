@@ -2,7 +2,9 @@
 """Score manifest targets mechanically; the gate is defined in lens-rubric.md."""
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -20,6 +22,9 @@ LEGACY_LENSES = {
 LENSES = set(LEGACY_LENSES.values())
 LOCATION = re.compile(r"([^:\t\r\n,]+):([1-9][0-9]*)( \[base\])?")
 CITATION = re.compile(r"[^\s`\"'<>:,;()\[\]]+:[1-9][0-9]*(?:-[1-9][0-9]*)?")
+SEP = " — "
+# A finding's location ends at the first " — <lens> — ", so a path may contain the separator.
+LENS_FIELD = re.compile(SEP + "(" + "|".join(sorted(LENSES)) + ")" + SEP)
 WINDOW = 2
 PR_BODY = "PR body"
 MIN_HITS = 2
@@ -35,6 +40,8 @@ COLUMNS = [
     "under_severity",
 ]
 VALIDATOR = Path(__file__).resolve().parents[1] / "scripts/validate-result.sh"
+LENS = Path(__file__).resolve().parents[1] / "references/review-lens.md"
+VERDICT_FIELDS = ("schema_valid", "diff_unavailable")
 
 
 class Target(NamedTuple):
@@ -96,13 +103,21 @@ def read_manifest(path, allow_overlap=False):
     return targets
 
 
+def finding_fields(body):
+    """Split a finding bullet's text (after "- ") into fields; the rule is in lens-rubric.md."""
+    match = LENS_FIELD.search(body)
+    if match is None:
+        return body.split(SEP)
+    return [body[: match.start()], match[1], *body[match.end() :].split(SEP)]
+
+
 def findings(report):
     section = ""
     for line in report.splitlines():
         if line.startswith("## "):
             section = line[3:]
         elif section in FINDING_SECTIONS and line.startswith("- "):
-            fields = line[2:].split(" — ")
+            fields = finding_fields(line[2:])
             if len(fields) >= 2:  # noqa: PLR2004
                 try:
                     loc = location(fields[0])
@@ -191,8 +206,28 @@ def native_report(path, completed):
         return None
 
 
+def validate(report, env=None):
+    result = subprocess.run(
+        ["bash", str(VALIDATOR)], input=report, text=True, capture_output=True, check=True, env=env
+    )
+    return json.loads(result.stdout)
+
+
+def current_lens(directory):
+    """Whether the snapshot's run-config.json records the SHA-256 of the current lens."""
+    config = directory / "run-config.json"
+    if not config.exists():
+        return False
+    recorded = json.loads(config.read_text()).get("lens_sha256")
+    return recorded == hashlib.sha256(LENS.read_bytes()).hexdigest()
+
+
 def evaluate(directory, targets, whole_text=False):
     rows = []
+    # A report collected under the current lens is checked against the current validator; an
+    # older snapshot keeps the verdict of the grammar it was collected under.
+    revalidate = current_lens(directory)
+    current_env = {key: value for key, value in os.environ.items() if key != "REVIEW_PR_LENS"}
     for path in sorted(directory.glob("run-*.envelope.json")):
         envelope = json.loads(path.read_text())
         review = envelope.get("review") or {}
@@ -205,11 +240,15 @@ def evaluate(directory, targets, whole_text=False):
         if not isinstance(report, str):
             raise ValueError(f"{path.name}: report must be text")
         validation = envelope.copy()
-        if "schema_valid" not in envelope or "diff_unavailable" not in envelope:
-            result = subprocess.run(
-                ["bash", str(VALIDATOR)], input=report, text=True, capture_output=True, check=True
+        verdict_differs = False
+        if revalidate:
+            fresh = validate(report, current_env)
+            verdict_differs = any(
+                field in envelope and envelope[field] != fresh[field] for field in VERDICT_FIELDS
             )
-            validation = {**json.loads(result.stdout), **envelope}
+            validation = {**fresh, **envelope}
+        elif any(field not in envelope for field in VERDICT_FIELDS):
+            validation = {**validate(report), **envelope}
         rows.append(
             {
                 **score(report, targets, whole_text),
@@ -217,6 +256,7 @@ def evaluate(directory, targets, whole_text=False):
                 "schema_valid": validation["schema_valid"],
                 "diff_unavailable": validation["diff_unavailable"],
                 "envelope": envelope,
+                "verdict_differs": verdict_differs,
             }
         )
     if not rows:
@@ -238,6 +278,8 @@ def run_errors(row, config):
             errors.append(f"{field}={row[field]}")
     if row["schema_valid"] is not True or row["diff_unavailable"] is not False:
         errors.append("schema invalid or diff unavailable")
+    if row["verdict_differs"]:
+        errors.append("stored schema verdict differs from the validator")
     return [f"run {row['run']}: {error}" for error in errors]
 
 

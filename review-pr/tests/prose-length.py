@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 
 SEP = " — "
+LENSES = ("correctness", "silent-failure", "tests", "comments")
+# A finding's location ends at the first " — <lens> — ", so a path may contain the separator.
+LENS_FIELD = re.compile(SEP + "(" + "|".join(LENSES) + ")" + SEP)
 SECTIONS = ("Summary", "Changes", "Critical", "Important", "Suggestions", "Not reviewed")
 CONTRACT_LINES = ("Lenses checked:", "Mode:")
 # A bullet needs four fields (location, lens, defect, impact); a fifth marks the title grammar.
@@ -32,12 +35,20 @@ def sections(report):
     return {k: "\n".join(v).strip() for k, v in out.items()}
 
 
+def finding_fields(body):
+    """Split a finding bullet's text (after "- ") into fields; the rule is in lens-rubric.md."""
+    match = LENS_FIELD.search(body)
+    if match is None:
+        return body.split(SEP)
+    return [body[: match.start()], match[1], *body[match.end() :].split(SEP)]
+
+
 def findings(section_text, titled):
     """Finding bullets; `titled` says whether the report's grammar carries a title field."""
     for line in section_text.splitlines():
         if not line.startswith("- ") or line.strip() == "(none)":
             continue
-        fields = line[2:].split(SEP)
+        fields = finding_fields(line[2:])
         if len(fields) < MIN_FIELDS:
             continue
         fix = None

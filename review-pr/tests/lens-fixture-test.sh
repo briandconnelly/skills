@@ -70,7 +70,7 @@ mkjob() {
   git -C "$job/repo" checkout -q --detach "$head"
   jq -n --argjson n "$n" --arg title "$CASE_TITLE" --arg body "$CASE_BODY" \
     '{number:$n, title:$title, body:$body}' > "$job/pr.json"
-  git -C "$job/repo" diff --no-ext-diff --no-textconv --binary "pr-$n-base...pr-$n" > "$job/pr.diff"
+  pinned_diff "$job/repo" "$base" "$head" > "$job/pr.diff" || die 1 "git diff failed for the fixture"
   # Prepare policy the way checkout-pr.sh does: base policy restored, head edits reported, manifest listed.
   local changes
   changes="$("$SRC/isolate-policy.sh" "$RUNNER" "$job/repo" "$base" "$head")" || die 1 "isolate-policy.sh failed for the fixture"
