@@ -153,6 +153,24 @@ if [ -n "$gc" ] && kill -0 "$gc" 2>/dev/null; then
   echo "FAIL: TERM-ignoring descendant is reaped: $gc outlived run-child.sh"; FAIL=1; kill -KILL "$gc" 2>/dev/null || true
 fi
 
+# A second signal during the reap must not end the script before the group is killed and the envelope emitted.
+J="$(mkjob)"
+rm -f "$FAKE_GRANDCHILD"
+printf '%s' "$J" | FAKE_TERM_IGNORER=1 REVIEW_PR_TIMEOUT=60 "$SRC/run-child.sh" > "$REVIEW_PR_SCRATCH/twice.out" 2>/dev/null &
+rc_pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$FAKE_GRANDCHILD" ] && break; sleep 1; done
+kill -TERM "$rc_pid" 2>/dev/null || true
+sleep 2
+kill -TERM "$rc_pid" 2>/dev/null || true
+wait "$rc_pid" 2>/dev/null || true
+gc="$(cat "$FAKE_GRANDCHILD" 2>/dev/null || true)"
+[ -n "$gc" ] || { echo "FAIL: second signal: the fake runner never started its descendant"; FAIL=1; }
+if [ -n "$gc" ] && kill -0 "$gc" 2>/dev/null; then
+  echo "FAIL: second signal: descendant $gc outlived run-child.sh"; FAIL=1; kill -KILL "$gc" 2>/dev/null || true
+fi
+jq -e '.exit == 130' "$REVIEW_PR_SCRATCH/twice.out" >/dev/null 2>&1 \
+  || { echo "FAIL: second signal: no interrupted envelope: $(cat "$REVIEW_PR_SCRATCH/twice.out")"; FAIL=1; }
+
 # A child killed before its output file exists still yields an error envelope and cleanup, not a set -e abort.
 J="$(mkjob)"
 dir="$(jq -r .dir <<<"$J")"

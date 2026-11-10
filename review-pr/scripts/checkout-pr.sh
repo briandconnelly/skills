@@ -18,9 +18,9 @@ MAX_SKILL_INDEX="${REVIEW_PR_MAX_SKILL_INDEX:-200}"
 [[ "$MAX_SKILL_INDEX" =~ ^[0-9]+$ ]] || die 2 "REVIEW_PR_MAX_SKILL_INDEX must be a non-negative integer, got '$MAX_SKILL_INDEX'"
 
 for c in git jq gh cmp; do need_cmd "$c"; done
-# pinned_diff needs --attr-source (RC12), which git 2.40 added.
+# pinned_diff needs --attr-source (RC12), which git 2.41 added.
 GIT_VERSION="$(git --version 2>/dev/null | awk '{print $3}')"
-semver_at_least "${GIT_VERSION:-0}" 2.40 || die 3 "git 2.40 or newer is required, found ${GIT_VERSION:-unknown}"
+semver_at_least "${GIT_VERSION:-0}" 2.41 || die 3 "git 2.41 or newer is required, found ${GIT_VERSION:-unknown}"
 
 # Only github.com is supported: qualify every gh call with the host so GH_HOST cannot redirect it.
 REPO="github.com/$SLUG"

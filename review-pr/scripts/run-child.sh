@@ -127,7 +127,9 @@ stop_watchdog() {
 }
 
 on_signal() {
-  trap - INT TERM
+  # Ignored, not reset: a second signal during the reap below must not end this script before it has
+  # killed the group and emitted the envelope.
+  trap '' INT TERM
   if [ -n "${CHILD_PID:-}" ]; then
     reap_group "$CHILD_PID"
   fi
