@@ -169,7 +169,11 @@ def cited(report, loc):
 def cited_exactly(report, loc):
     """Whether the report cites this path at exactly this line, alone or as the start of a range."""
     pattern = re.compile(
-        r"(?<![^\s`\"'(\[<*_])" + re.escape(loc[0]) + r":" + str(loc[1]) + r"(?![0-9])( \[base\])?"
+        r"(?<![^\s`\"'(\[<*_])"
+        + re.escape(loc[0])
+        + r":"
+        + str(loc[1])
+        + r"(?![0-9])(?:-[1-9][0-9]*)?( \[base\])?"
     )
     return any(bool(match[1]) == loc[2] for match in pattern.finditer(report))
 

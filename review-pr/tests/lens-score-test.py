@@ -299,6 +299,19 @@ class ScoreTests(unittest.TestCase):
         result = self.cli(self.root, "--gate", "--require-recall")
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_miscite_reads_the_base_marker_after_a_range(self):
+        head = self.miscite_targets()
+        self.manifest.write_text(MANIFEST + "MISCITE-JS\tsrc/app.js:49 [base]\n")
+        base = SCORER.read_manifest(self.manifest)
+        for cited, on_head, on_base in (
+            ("src/app.js:49-50 [base]", 0, 1),
+            ("src/app.js:49-50", 1, 0),
+            ("src/app.js:49 [base]", 0, 1),
+        ):
+            text = report([f"- src/app.js:12 — correctness — Title — See {cited}. — Impact"])
+            self.assertEqual(SCORER.score(text, head)["miscites"], on_head, cited)
+            self.assertEqual(SCORER.score(text, base)["miscites"], on_base, cited)
+
     def test_miscite_counts_a_range_only_when_it_starts_at_the_line(self):
         targets = self.miscite_targets()
         for cited, want in (
