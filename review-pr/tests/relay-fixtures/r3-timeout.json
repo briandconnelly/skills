@@ -14,6 +14,8 @@
   "pr_merged_at": null,
   "pr_author": "mona",
   "pr_author_is_bot": false,
+  "pr_base_ref": "main",
+  "pr_base_is_default": true,
   "schema_valid": false,
   "schema_errors": [
     "no result"

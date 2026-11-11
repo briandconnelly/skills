@@ -22,10 +22,10 @@ mkjob() {
   echo 'diff data' > "$job/pr.diff"
   echo '{"version":2,"policy_files":[],"skills":[]}' > "$job/policy-manifest.json"
   jq -n --arg d "$job" '{dir:$d, runner:"claude", base_sha:"b", head_sha:"h", merge_base_sha:"m", head_repo:"o/r", policy_changes:[".claude/x"],
-    pr_state:"OPEN", pr_is_draft:false, pr_merged_at:null, pr_author:"octocat", pr_author_is_bot:false,
+    pr_state:"OPEN", pr_is_draft:false, pr_merged_at:null, pr_author:"octocat", pr_author_is_bot:false, pr_base_ref:"main", pr_base_is_default:true,
     diff_path:($d+"/pr.diff"), meta_path:($d+"/pr.json"), policy_manifest_path:($d+"/policy-manifest.json")}'
 }
-STATUS_FIELDS='.pr_state == "OPEN" and .pr_is_draft == false and .pr_merged_at == null and .pr_author == "octocat" and .pr_author_is_bot == false and .merge_base_sha == "m"'
+STATUS_FIELDS='.pr_state == "OPEN" and .pr_is_draft == false and .pr_merged_at == null and .pr_author == "octocat" and .pr_author_is_bot == false and .merge_base_sha == "m" and .pr_base_ref == "main" and .pr_base_is_default == true'
 
 cat > "$FAKEBIN/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -121,9 +121,9 @@ jq -e "$STATUS_FIELDS" <<<"$out" >/dev/null || { echo "FAIL: status fields lost 
 [ ! -e "$dir" ] || { echo "FAIL: failed runner job was not removed"; FAIL=1; }
 
 # A checkout object without status fields yields nulls, not a missing or failed envelope.
-J="$(mkjob | jq -c 'del(.pr_state, .pr_is_draft, .pr_merged_at, .pr_author, .pr_author_is_bot, .merge_base_sha)')"
+J="$(mkjob | jq -c 'del(.pr_state, .pr_is_draft, .pr_merged_at, .pr_author, .pr_author_is_bot, .merge_base_sha, .pr_base_ref, .pr_base_is_default)')"
 out="$(printf '%s' "$J" | "$SRC/run-child.sh")"
-jq -e '.exit == 0 and has("pr_state") and .pr_state == null and .pr_is_draft == null and .pr_merged_at == null and .pr_author == null and .pr_author_is_bot == null and .merge_base_sha == null' <<<"$out" >/dev/null \
+jq -e '.exit == 0 and has("pr_state") and .pr_state == null and .pr_is_draft == null and .pr_merged_at == null and .pr_author == null and .pr_author_is_bot == null and .merge_base_sha == null and .pr_base_ref == null and .pr_base_is_default == null' <<<"$out" >/dev/null \
   || { echo "FAIL: absent status fields are not relayed as null: $out"; FAIL=1; }
 
 # The watchdog terminates the runner process group.

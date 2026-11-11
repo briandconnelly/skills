@@ -64,17 +64,31 @@ awk -v blob="$NOTE_BLOB" 'BEGIN {
 }' | GIT_INDEX_FILE="$S/index14" git -C "$WORK" update-index --add --index-info
 HEAD14_SHA="$(git -C "$WORK" commit-tree "$(GIT_INDEX_FILE="$S/index14" git -C "$WORK" write-tree)" -p "$BASE13_SHA" -m head14)"
 git -C "$WORK" update-ref refs/heads/feature14 "$HEAD14_SHA"
+# PR 15: a stacked pull request, whose base is another pull request's branch rather than the default branch.
+# The parent branch changes policy; the child changes one file and no policy.
+git -C "$WORK" checkout -qb parent
+printf '%s\n' 'Parent-only fixture policy.' >> "$WORK/AGENTS.md"
+git -C "$WORK" commit -qam parent
+PARENT_SHA="$(git -C "$WORK" rev-parse HEAD)"
+git -C "$WORK" checkout -qb child
+printf '%s\n' child > "$WORK/child.txt"
+git -C "$WORK" add child.txt
+git -C "$WORK" commit -qm child
+CHILD_SHA="$(git -C "$WORK" rev-parse HEAD)"
+git -C "$WORK" checkout -q main
 git clone -q --bare "$WORK" "$ORIGIN"
 git --git-dir="$ORIGIN" symbolic-ref HEAD refs/heads/main
 git --git-dir="$ORIGIN" update-ref refs/pull/12/head "$HEAD_SHA"
 git --git-dir="$ORIGIN" update-ref refs/pull/13/head "$HEAD13_SHA"
 git --git-dir="$ORIGIN" update-ref refs/pull/14/head "$HEAD14_SHA"
-# The fake gh serves each pull request from $FAKE_PRS/N, which holds "BASE_SHA HEAD_SHA".
+git --git-dir="$ORIGIN" update-ref refs/pull/15/head "$CHILD_SHA"
+# The fake gh serves each pull request from $FAKE_PRS/N, which holds "BASE_SHA HEAD_SHA [BASE_REF]"; BASE_REF defaults to main.
 FAKE_PRS="$S/prs"
 mkdir -p "$FAKE_PRS"
 printf '%s %s\n' "$BASE_SHA" "$HEAD_SHA" > "$FAKE_PRS/12"
 printf '%s %s\n' "$BASE13_SHA" "$HEAD13_SHA" > "$FAKE_PRS/13"
 printf '%s %s\n' "$BASE13_SHA" "$HEAD14_SHA" > "$FAKE_PRS/14"
+printf '%s %s %s\n' "$PARENT_SHA" "$CHILD_SHA" parent > "$FAKE_PRS/15"
 
 cat > "$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -85,11 +99,13 @@ if [ "$1 $2" = "repo clone" ]; then dest="$4"; shift 4; [ "${1:-}" != -- ] || sh
 if [ "$1 $2" = "pr view" ]; then
   n="$3"
   [ -f "$FAKE_PRS/$n" ] || exit 1
-  read -r base head < "$FAKE_PRS/$n"
+  read -r base head ref < "$FAKE_PRS/$n"
+  [ -z "${FAKE_PR_NO_BASE_REF:-}" ] || ref=""
+  [ -n "${FAKE_PR_NO_BASE_REF:-}" ] || ref="${ref:-main}"
   for arg in "$@"; do [ "$arg" != -q ] || { printf '%s\n' "$head"; exit 0; }; done
-  jq -n --argjson n "$n" --arg base "$base" --arg head "$head" \
+  jq -n --argjson n "$n" --arg base "$base" --arg head "$head" --arg ref "$ref" \
     '{number:$n,title:"Fixture PR",body:(if env.FAKE_PR_BODY_BYTES then ("x" * (env.FAKE_PR_BODY_BYTES | tonumber)) else "Fixture body" end),
-      baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/\($n)"),
+      baseRefName:(if $ref == "" then null else $ref end),baseRefOid:$base,headRefOid:$head,headRepository:{nameWithOwner:"owner/repo"},headRefName:"feature",isCrossRepository:false,url:(env.FAKE_PR_URL // "https://github.com/owner/repo/pull/\($n)"),
       state:(env.FAKE_PR_STATE // "OPEN"), isDraft:((env.FAKE_PR_DRAFT // "false") == "true"), mergedAt:(env.FAKE_PR_MERGED_AT // null),
       author:{login:(env.FAKE_PR_AUTHOR // "octocat"), is_bot:((env.FAKE_PR_AUTHOR_BOT // "false") == "true")}}'
   exit 0
@@ -137,12 +153,15 @@ err="$("$SRC/review-pr.sh" owner/repo 2>&1 >/dev/null)" || rc=$?
 grep -qF 'usage: review-pr.sh' <<<"$err" || { echo "FAIL: wrapper usage diagnostic missing"; FAIL=1; }
 
 out="$(TMPDIR="$S/temp/" "$SRC/review-pr.sh" owner/repo 12)"
-jq -e 'keys == ["base_sha","diff_unavailable","dir","exit","head_sha","kept","merge_base_sha","policy_changes","pr_author","pr_author_is_bot","pr_is_draft","pr_merged_at","pr_state","review","runner","schema_errors","schema_valid","stderr_tail"]' <<<"$out" >/dev/null \
+jq -e 'keys == ["base_sha","diff_unavailable","dir","exit","head_sha","kept","merge_base_sha","policy_changes","pr_author","pr_author_is_bot","pr_base_is_default","pr_base_ref","pr_is_draft","pr_merged_at","pr_state","review","runner","schema_errors","schema_valid","stderr_tail"]' <<<"$out" >/dev/null \
   || { echo "FAIL: wrapper envelope fields changed: $out"; FAIL=1; }
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: wrapper result is not schema-valid: $out"; FAIL=1; }
 # Pull-request status as observed at checkout rides the envelope for the relay.
 jq -e '.pr_state == "OPEN" and .pr_is_draft == false and .pr_merged_at == null and .pr_author == "octocat" and .pr_author_is_bot == false' <<<"$out" >/dev/null \
   || { echo "FAIL: wrapper did not relay pull-request status: $out"; FAIL=1; }
+# The base branch's name, and whether it is the default branch, ride the envelope for the relay.
+jq -e '.pr_base_ref == "main" and .pr_base_is_default == true' <<<"$out" >/dev/null \
+  || { echo "FAIL: wrapper did not relay the default base branch: $out"; FAIL=1; }
 # [base] citations resolve at the merge base, which is not the base-branch tip once it moves on.
 [ "$(jq -r .merge_base_sha <<<"$out")" = "$MERGE_BASE_SHA" ] || { echo "FAIL: merge_base_sha != merge base: $out"; FAIL=1; }
 [ "$(jq -r .base_sha <<<"$out")" = "$BASE_SHA" ] || { echo "FAIL: base_sha != base-branch tip: $out"; FAIL=1; }
@@ -215,6 +234,25 @@ out="$(FAKE_PR_STATE=MERGED FAKE_PR_MERGED_AT=2026-10-01T12:00:00Z REVIEW_PR_SCR
 jq -e '.exit == 0 and .pr_state == "MERGED" and .pr_merged_at == "2026-10-01T12:00:00Z" and .pr_is_draft == false' <<<"$out" >/dev/null \
   || { echo "FAIL: merged PR status not relayed: $out"; FAIL=1; }
 [ "$(jq -r .schema_valid <<<"$out")" = true ] || { echo "FAIL: merged PR was not reviewed: $out"; FAIL=1; }
+
+# A stacked pull request is reported as targeting a branch that is not the default one. Its policy comes from that
+# branch (RC4), so the parent's policy edit governs the review without appearing in policy_changes or pr.diff.
+out="$(REVIEW_PR_KEEP=1 REVIEW_PR_SCRATCH="$S/stacked/" "$SRC/review-pr.sh" owner/repo 15)" \
+  || { echo "FAIL: stacked PR review failed: ${out:-<no output>}"; FAIL=1; }
+jq -e --arg base "$PARENT_SHA" '.exit == 0 and .pr_base_ref == "parent" and .pr_base_is_default == false
+  and .base_sha == $base and .merge_base_sha == $base and .policy_changes == []' <<<"${out:-null}" >/dev/null \
+  || { echo "FAIL: stacked PR base was not relayed: ${out:-<no output>}"; FAIL=1; }
+dir15="$(jq -r .dir <<<"${out:-null}")"
+grep -qxF 'Parent-only fixture policy.' "$dir15/repo/AGENTS.md" 2>/dev/null \
+  || { echo "FAIL: stacked PR fixture no longer restores the parent branch's policy; the disclosure check is insensitive"; FAIL=1; }
+if [ "$(grep -c '^diff --git' "$dir15/pr.diff" 2>/dev/null)" != 1 ] || ! grep -qF 'b/child.txt' "$dir15/pr.diff"; then
+  echo "FAIL: stacked PR diff is not the child's change alone"; FAIL=1
+fi
+jq -e '.baseRefName == "parent"' "$dir15/pr.json" >/dev/null 2>&1 || { echo "FAIL: pr.json lacks the base branch name"; FAIL=1; }
+# An absent base branch name is reported as unknown, never as the default branch.
+out="$(FAKE_PR_NO_BASE_REF=1 REVIEW_PR_SCRATCH="$S/noref/" "$SRC/review-pr.sh" owner/repo 12)"
+jq -e '.exit == 0 and .pr_base_ref == null and .pr_base_is_default == null' <<<"$out" >/dev/null \
+  || { echo "FAIL: missing base branch name was not relayed as unknown: $out"; FAIL=1; }
 
 # PR metadata must never ride a process argument: GitHub allows 65,536 body characters, which can exceed
 # Linux's 128 KiB single-argument limit once JSON-escaped. This probe is sized past macOS's 1 MiB ARG_MAX

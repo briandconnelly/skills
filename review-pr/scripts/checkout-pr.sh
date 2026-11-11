@@ -26,7 +26,7 @@ semver_at_least "${GIT_VERSION:-0}" 2.41 || die 3 "git 2.41 or newer is required
 REPO="github.com/$SLUG"
 gh auth status --hostname github.com >/dev/null 2>&1 || die 3 "gh is not authenticated to github.com (run: gh auth login)"
 
-META="$(gh pr view "$N" -R "$REPO" --json number,title,body,baseRefOid,headRefOid,headRepository,headRefName,isCrossRepository,url,state,isDraft,mergedAt,author 2>&1)" \
+META="$(gh pr view "$N" -R "$REPO" --json number,title,body,baseRefName,baseRefOid,headRefOid,headRepository,headRefName,isCrossRepository,url,state,isDraft,mergedAt,author 2>&1)" \
   || die 1 "gh pr view failed: $META"
 BASE_SHA="$(jq -r .baseRefOid <<<"$META")"
 HEAD_SHA="$(jq -r .headRefOid <<<"$META")"
@@ -48,6 +48,10 @@ trap 'rc=$?; if [ $rc -ne 0 ]; then cleanup_on_fail; fi; exit $rc' EXIT
 # git_wt checkout below may populate the working tree (and run any .gitattributes filters).
 gh repo clone "$REPO" "$CLONE" -- --depth 50 --quiet --no-checkout >&2 || die 1 "gh repo clone failed for $SLUG"
 g() { git -C "$CLONE" "$@"; }
+# The clone's origin/HEAD names the default branch; empty when the remote does not advertise one, which the
+# checkout reports as an unknown (null) pr_base_is_default rather than guessing.
+DEFAULT_REF="$(g symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+DEFAULT_REF="${DEFAULT_REF#origin/}"
 g fetch --quiet --depth 50 origin "refs/pull/$N/head" || die 1 "git fetch refs/pull/$N/head failed"
 g cat-file -e "$HEAD_SHA^{commit}" 2>/dev/null || die 1 "pinned head $HEAD_SHA is not the current refs/pull/$N/head (PR moved?)"
 # The head commit is untrusted: git_wt keeps its .gitattributes from selecting caller-configured filters.
@@ -76,11 +80,13 @@ write_policy_manifest "$CLONE" "$BASE_SHA" "$JOB/policy-manifest.json"
 
 # Status is as observed at checkout. Booleans are copied with has(), since jq's // would turn false into null.
 # The metadata comes from pr.json on disk, never from argv: a PR body can exceed a single argument's size limit.
-jq -n --arg dir "$JOB" --arg runner "$RUNNER" --arg base "$BASE_SHA" --arg head "$HEAD_SHA" --arg mb "$MERGE_BASE_SHA" --arg hr "$HEAD_REPO" \
+jq -n --arg dir "$JOB" --arg runner "$RUNNER" --arg base "$BASE_SHA" --arg head "$HEAD_SHA" --arg mb "$MERGE_BASE_SHA" --arg hr "$HEAD_REPO" --arg default_ref "$DEFAULT_REF" \
   --arg diff "$JOB/pr.diff" --arg meta "$JOB/pr.json" --arg context "$JOB/policy-manifest.json" \
   --slurpfile changes_doc "$JOB/policy-changes.json" --slurpfile meta_doc "$JOB/pr.json" \
   '$meta_doc[0] as $pr |
    {dir:$dir, runner:$runner, base_sha:$base, head_sha:$head, merge_base_sha:$mb, head_repo:$hr, policy_changes:$changes_doc[0],
     pr_state:($pr.state // null), pr_is_draft:(if ($pr | has("isDraft")) then $pr.isDraft else null end), pr_merged_at:($pr.mergedAt // null),
     pr_author:($pr.author.login // null), pr_author_is_bot:(if (($pr.author | type) == "object" and ($pr.author | has("is_bot"))) then $pr.author.is_bot else null end),
+    pr_base_ref:(($pr.baseRefName // "") | if . == "" then null else . end),
+    pr_base_is_default:(if (($pr.baseRefName // "") == "" or $default_ref == "") then null else $pr.baseRefName == $default_ref end),
     diff_path:$diff, meta_path:$meta, policy_manifest_path:$context}'

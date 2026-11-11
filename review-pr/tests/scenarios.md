@@ -28,6 +28,8 @@ One finding at `src/a b.py:12`, no policy changes, exit 0.
 - R1.1: The text `src/a b.py:12` and the text `Handle an empty batch` both appear inside one fenced code block (a block opened and closed by lines of three or more backticks or tildes).
 - R1.2: The output contains a line, outside any fenced block, that names the runner `claude`, the cost `1.42`, and exit `0`.
 - R1.3: The output contains a URL beginning `https://github.com/octo/widgets/blob/9f3c2a1b7e6d5c4b3a291807f6e5d4c3b2a19087/`.
+- R1.4: The output contains a line, outside any fenced block, stating that the reviewed diff starts at merge base `0e1d2c3b4a59687766554433221100ffeeddccbb`.
+- R1.5: The output does not state that the PR targets a branch other than the default branch.
 
 ## R2: runner error with partial text
 
@@ -78,6 +80,15 @@ The review completed, `schema_valid` is false with two `schema_errors`, and `pr_
 - R6.2: The output contains the text `Summary must begin with the exact lenses-checked line` and the text `Important: bullet is not`.
 - R6.3: The output states that the PR was merged and contains `2026-11-08T17:42:10Z`.
 - R6.4: The text `stale entries are never evicted` appears inside a fenced code block.
+
+## R7: stacked pull request
+
+Fixture: `relay-fixtures/r7-stacked.json`.
+R1's envelope with `pr_base_ref` set to `feature/parent-cache`, `pr_base_is_default` false, and `merge_base_sha` equal to `base_sha`.
+
+- R7.1: The output contains a line, outside any fenced block, stating that the PR targets `feature/parent-cache` and that this is not the default branch.
+- R7.2: The output does not state that the reviewed diff starts at a merge base other than the base tip.
+- R7.3: The text `src/a b.py:12` appears inside a fenced code block.
 
 ## Results
 
@@ -155,3 +166,24 @@ An earlier rewrite (which differed only in the `policy_changes` sentence) was al
 
 Every assertion passes 3/3.
 Two assertions are weaker than they look and are left for a later tightening: R1.3 passes on the permalink template line rather than a concrete link, and R3.1 passes only because the quoted `stderr_tail` names the timeout.
+
+
+### Base-branch status lines
+
+Run on 2026-11-11 against `SKILL.md` blob `00a7d74`, which adds `pr_base_ref` and `pr_base_is_default` and the two status lines that report a base other than the default branch and a merge base other than the base tip.
+R1 and R7 only, three fresh Opus arms each, with the same arm prompt.
+This run departs from the method above in one respect: no scorer subagent was used, and each assertion was scored by matching the saved outputs against fixed strings, then read by hand.
+R2 to R6 were not re-run; their fixtures now carry `pr_base_ref` `main` and `pr_base_is_default` true and keep a `merge_base_sha` that differs from `base_sha`, so each would gain the merge-base line, which none of their assertions mention.
+
+| Assertion | Passes | Decisive span (one run) |
+| --- | --- | --- |
+| R1.1 | 3/3 | `- src/a b.py:12 — correctness — Handle an empty batch — …` inside the result fence |
+| R1.2 | 3/3 | `runner claude 2.3.1 · cost $1.42 · 5.2 min · exit 0 · scratch removed` |
+| R1.3 | 3/3 | the permalink template line, as before |
+| R1.4 | 3/3 | `The reviewed diff starts at merge base 0e1d2c3b…ccbb, not at the base tip; …` |
+| R1.5 | 3/3 | no `This PR targets` line in any run |
+| R7.1 | 3/3 | `This PR targets feature/parent-cache, not the default branch; …` |
+| R7.2 | 3/3 | no `merge base` line in any run; the permalink line names `1a2b3c4d…3c4d` for `[base]` |
+| R7.3 | 3/3 | the same finding bullet inside the result fence |
+
+There is no baseline arm: before this change the envelope had no base-branch fields, so the stacked line could not be produced.

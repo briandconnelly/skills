@@ -68,6 +68,12 @@ jq -e '(.pr_state | IN("OPEN","CLOSED","MERGED")) and (.pr_is_draft | type == "b
   and (.pr_author_is_bot | type == "boolean") and (.pr_merged_at == null or (.pr_merged_at | type == "string"))
   and ((.pr_state == "MERGED") == (.pr_merged_at != null))' <<<"$out" >/dev/null \
   || { echo "FAIL: pull-request status fields malformed: $out"; FAIL=1; }
+# The base branch as GitHub names it, and whether the clone's default branch is that branch.
+want_base="$(gh pr view "$N" -R "github.com/$SLUG" --json baseRefName -q .baseRefName)"
+want_default="$(gh repo view "github.com/$SLUG" --json defaultBranchRef -q .defaultBranchRef.name)"
+jq -e --arg b "$want_base" --argjson d "$([ "$want_base" = "$want_default" ] && echo true || echo false)" \
+  '.pr_base_ref == $b and .pr_base_is_default == $d' <<<"$out" >/dev/null \
+  || { echo "FAIL: pr_base_ref/pr_base_is_default do not match GitHub ($want_base, default $want_default): $out"; FAIL=1; }
 # The merge base the pinned diff and [base] citations refer to.
 [ "$(jq -r .merge_base_sha <<<"$out")" = "$(git -C "$clone" merge-base "$base" "$head")" ] \
   || { echo "FAIL: merge_base_sha != git merge-base: $(jq -r .merge_base_sha <<<"$out")"; FAIL=1; }
