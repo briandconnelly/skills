@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nRestore support for existing `--wait` invocations before merge; the parser rejects them despite the documented compatibility period.\n\n## Changes\nThe pull request renames the CLI option to `--timeout`, updates its tests, and adds a transition decision. The default and output-format choices remain unchanged.\n\n## Critical\n- app/cli.py:6 — correctness — Preserve the documented `--wait` alias — An existing invocation such as `--wait 12` now exits with an argument-parsing error because only `--timeout` is registered. The new decision in `docs/adr/007-timeout.md:5` promises an alias with a deprecation warning for one release. — Existing scripts using `--wait` stop working during the compatibility period documented by this pull request. — Fix: Accept both spellings, emit the documented warning for `--wait`, and extend `test_explicit_options` to cover compatibility.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.992hwUqQ9L/review-pr.ixsF0j",
+  "head_sha": "84333a9d0e8e360f69ed1693526cfbc68dbb2f46",
+  "base_sha": "294e20186c6ab2cda66e961b7d236ba1e6a8c0f5",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "a94dde3f171b2f6e1b64977377dc46cf5f042a34"
+}

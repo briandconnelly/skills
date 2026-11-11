@@ -249,9 +249,78 @@ class ScoreTests(unittest.TestCase):
                 "schema_valid",
                 "diff_unavailable",
                 "under_severity",
+                "miscites",
             ],
         )
-        self.assertEqual(result.stdout.splitlines()[1], "1\t2\t0\t0\t0\ttrue\tfalse\t0")
+        self.assertEqual(result.stdout.splitlines()[1], "1\t2\t0\t0\t0\ttrue\tfalse\t0\t0")
+
+    def miscite_targets(self):
+        self.manifest.write_text(MANIFEST + "MISCITE-JS\tsrc/app.js:49\n")
+        return SCORER.read_manifest(self.manifest)
+
+    def test_miscite_counts_a_location_or_a_prose_citation_of_the_exact_line(self):
+        targets = self.miscite_targets()
+        at_location = report(["- src/app.js:49 — correctness — Title — Defect — Impact"])
+        scored = SCORER.score(at_location, targets)
+        self.assertEqual((scored["miscites"], scored["recall"], scored["decoys"]), (1, 0, 0))
+        in_prose = report(["- src/app.js:12 — correctness — Title — See `src/app.js:49`. — Impact"])
+        scored = SCORER.score(in_prose, targets)
+        self.assertEqual((scored["miscites"], scored["recall"]), (1, 1))
+        for other in (
+            "src/app.js:490",
+            "src/app.js:47",
+            "lib/src/app.js:49",
+            "src/app.js:49 [base]",
+        ):
+            text = report([f"- src/app.js:12 — correctness — Title — See {other}. — Impact"])
+            self.assertEqual(SCORER.score(text, targets)["miscites"], 0, other)
+
+    def test_miscite_is_outside_window_calibration_and_needs_a_file_line(self):
+        self.manifest.write_text(MANIFEST + "MISCITE-NEAR\tsrc/app.js:13\n")
+        self.assertEqual(self.cli("--check-manifest", self.manifest).returncode, 0)
+        self.manifest.write_text(MANIFEST + "MISCITE-BODY\tPR body\n")
+        self.assertEqual(self.cli("--check-manifest", self.manifest).returncode, 1)
+
+    def test_gate_allows_one_miscited_run_and_a_baseline_reports_more(self):
+        self.miscite_targets()
+        bad = report([*BULLETS, "- src/app.js:49 — correctness — Title — Defect — Impact"])
+        self.runs([report(), report(), bad])
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("3\t2\t0\t0\t0\ttrue\tfalse\t0\t1", result.stdout)
+        self.runs([report(), bad, bad])
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("miscited in 2 runs; at most 1 allowed", result.stderr)
+        self.runs([bad, bad, bad], snapshot="baseline")
+        result = self.cli(self.root, "--gate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("baseline OK, recall not met: miscited in 3 runs", result.stderr)
+        result = self.cli(self.root, "--gate", "--require-recall")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_miscite_reads_the_base_marker_after_a_range(self):
+        head = self.miscite_targets()
+        self.manifest.write_text(MANIFEST + "MISCITE-JS\tsrc/app.js:49 [base]\n")
+        base = SCORER.read_manifest(self.manifest)
+        for cited, on_head, on_base in (
+            ("src/app.js:49-50 [base]", 0, 1),
+            ("src/app.js:49-50", 1, 0),
+            ("src/app.js:49 [base]", 0, 1),
+        ):
+            text = report([f"- src/app.js:12 — correctness — Title — See {cited}. — Impact"])
+            self.assertEqual(SCORER.score(text, head)["miscites"], on_head, cited)
+            self.assertEqual(SCORER.score(text, base)["miscites"], on_base, cited)
+
+    def test_miscite_counts_a_range_only_when_it_starts_at_the_line(self):
+        targets = self.miscite_targets()
+        for cited, want in (
+            ("src/app.js:49-50", 1),
+            ("src/app.js:47-51", 0),
+            ("src/app.js:48-49", 0),
+        ):
+            text = report([f"- src/app.js:12 — correctness — Title — See {cited}. — Impact"])
+            self.assertEqual(SCORER.score(text, targets)["miscites"], want, cited)
 
     def test_wrong_lens_fails_even_when_other_runs_recall_plant(self):
         only_wrong = report([BULLETS[0].replace("correctness", "comments")])

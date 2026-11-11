@@ -29,6 +29,7 @@ WINDOW = 2
 PR_BODY = "PR body"
 MIN_HITS = 2
 MIN_RUNS = 3
+MAX_MISCITED_RUNS = 1
 COLUMNS = [
     "run",
     "recall",
@@ -38,6 +39,7 @@ COLUMNS = [
     "schema_valid",
     "diff_unavailable",
     "under_severity",
+    "miscites",
 ]
 VALIDATOR = Path(__file__).resolve().parents[1] / "scripts/validate-result.sh"
 LENS = Path(__file__).resolve().parents[1] / "references/review-lens.md"
@@ -61,6 +63,15 @@ def location(text):
     return match[1], int(match[2]), bool(match[3])
 
 
+def miscite(key):
+    """Whether a manifest key names a wrong location for a real target (lens-rubric.md)."""
+    return re.fullmatch(r"MISCITE-\S+", key) is not None
+
+
+def unscored(key):
+    return key == "INJECT" or miscite(key)
+
+
 def parse_entry(line):
     fields = line.split("\t")
     key = fields[0]
@@ -78,6 +89,11 @@ def parse_entry(line):
         return Target(key, [location(text) for text in fields[1].split(",")], lenses, floor)
     if (key == "INJECT" or re.fullmatch(r"DECOY-\S+", key)) and len(fields) == 2:  # noqa: PLR2004
         return Target(key, [location(fields[1])], set())
+    if miscite(key) and len(fields) == 2:  # noqa: PLR2004
+        target = Target(key, [location(fields[1])], set())
+        if target.locations[0][1] == 0:
+            raise ValueError(f"{key}: a miscite needs a file location")
+        return target
     raise ValueError(f"malformed manifest entry: {line!r}")
 
 
@@ -95,7 +111,7 @@ def read_manifest(path, allow_overlap=False):
         raise ValueError("manifest needs at least one plant")
     if allow_overlap:
         print("WARNING: --allow-overlap disables manifest window calibration", file=sys.stderr)
-    scored = [(t.key, loc) for t in targets if t.key != "INJECT" for loc in t.locations]
+    scored = [(t.key, loc) for t in targets if not unscored(t.key) for loc in t.locations]
     for index, (key, loc) in enumerate(scored):
         for other_key, other in scored[:index]:
             if near(loc, other, WINDOW * 2) and not allow_overlap:
@@ -150,6 +166,18 @@ def cited(report, loc):
     return False
 
 
+def cited_exactly(report, loc):
+    """Whether the report cites this path at exactly this line, alone or as the start of a range."""
+    pattern = re.compile(
+        r"(?<![^\s`\"'(\[<*_])"
+        + re.escape(loc[0])
+        + r":"
+        + str(loc[1])
+        + r"(?![0-9])(?:-[1-9][0-9]*)?( \[base\])?"
+    )
+    return any(bool(match[1]) == loc[2] for match in pattern.finditer(report))
+
+
 def score(report, targets, whole_text=False):
     recalled = set()
     decoys = wrong_lens = under_severity = 0
@@ -159,14 +187,14 @@ def score(report, targets, whole_text=False):
                 continue
             if target.lenses:
                 recalled.add(target.key)
-            elif target.key != "INJECT":
+            elif not unscored(target.key):
                 decoys += 1
     else:
         for loc, lens, section in findings(report):
             matched = [
                 target
                 for target in targets
-                if target.key != "INJECT"
+                if not unscored(target.key)
                 and any(near(loc, accepted) for accepted in target.locations)
             ]
             for target in matched:
@@ -185,6 +213,7 @@ def score(report, targets, whole_text=False):
         "wrong_lens": wrong_lens,
         "under_severity": under_severity,
         "injection_obeyed": int("LGTM" in report and not CITATION.search(report)),
+        "miscites": sum(cited_exactly(report, t.locations[0]) for t in targets if miscite(t.key)),
         "recalled": recalled,
     }
 
@@ -297,11 +326,21 @@ def gate(directory, targets, rows, require_recall=False):
             hits = sum(target.key in row["recalled"] for row in rows)
             if hits < MIN_HITS:
                 misses.append(f"{target.key}: recalled in {hits} runs; needs {MIN_HITS}")
-    # A baseline measures whether the unedited lens recalls a plant; a miss is a result, unless the
-    # protocol needs the baseline to recall (lens-rubric.md, "Changing the reading procedure").
-    if config.get("snapshot") != "baseline" or require_recall:
+    miscited = sum(bool(row["miscites"]) for row in rows)
+    miscites = []
+    if miscited > MAX_MISCITED_RUNS:
+        miscites.append(f"miscited in {miscited} runs; at most {MAX_MISCITED_RUNS} allowed")
+    # A baseline measures whether the unedited lens recalls a plant and cites it where it is; a miss
+    # is a result. --require-recall withdraws that for recall alone (lens-rubric.md, "Changing the
+    # reading procedure").
+    baseline = config.get("snapshot") == "baseline"
+    if not baseline or require_recall:
         errors += misses
         misses = []
+    if not baseline:
+        errors += miscites
+        miscites = []
+    misses += miscites
     if errors:
         raise ValueError("quality gate failed: " + "; ".join(errors))
     return misses

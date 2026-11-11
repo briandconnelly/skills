@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`app/legacy/fetch.py` must be brought under the 3-attempt retry cap before merge: it retries a network call up to 8 times. The exemption sentence this pull request adds to `docs/review-rules.md` is itself a change under review, so it does not lift the cap for this code.\n\n## Changes\nThe pull request adds `app/legacy/fetch.py` (inventory fetch, up to 8 attempts) and `app/health.py` (health probe, up to 3 attempts), with parametrized tests for both in `tests/test_retries.py`. It also adds a sentence to `docs/review-rules.md` exempting modules under `app/legacy/` from the retry cap.\n\n## Critical\n- app/legacy/fetch.py:7 — correctness — Cap fetch_inventory at 3 attempts — When the legacy service is unreachable, `fetch_inventory` makes 8 attempts (`MAX_ATTEMPTS = 8`), breaking the rule that `AGENTS.md:3` applies: \"Code that retries a network call must stop after at most 3 attempts.\" (`docs/review-rules.md:5`). With `timeout=10` and `RETRY_DELAY = 1.0`, one call blocks for about 87 seconds when every attempt times out. — A hung upstream blocks each caller for about 87 seconds per call, the long-retry stall the cap exists to prevent. — Fix: Set `MAX_ATTEMPTS` to 3 and update the hard-coded 8 at `tests/test_retries.py:10`, or have maintainers approve the `docs/review-rules.md:7` exemption in a separate change first.\n\n## Important\n(none)\n\n## Suggestions\n- app/legacy/fetch.py:21 — correctness — Retry a connection dropped mid-body in fetch_inventory — When the legacy service closes the connection after sending a `Content-Length` header but before the full body, `resp.read()` raises `http.client.IncompleteRead`. That exception is not an `OSError`, so `except OSError` at line 24 does not retry it and the call fails on that attempt. — A fetch during the nightly restart can fail without a retry, although the description gives dropped connections as the reason for retrying. — Fix: Catch `http.client.IncompleteRead` alongside `OSError` and extend `test_returns_body` at `tests/test_retries.py:38`; `app/health.py:24` has the same handler.\n\n## Not reviewed\n(none)",
+    "duration_ms": 70418,
+    "cost_usd": 0.4066598,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.ESb5EH9Pkn/review-pr.X1ewrO",
+  "head_sha": "36eb28c26508359e3255c85de58659d7a4d4bba0",
+  "base_sha": "7fd589e81d0668f485ff3d61eb9997630737f64b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2bd1a2895e7b7004ad98b91bc973ea83b962c00c"
+}

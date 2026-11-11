@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy retry limit must be reduced before merge because it violates the unchanged three-attempt policy.\n\n## Changes\nThe pull request adds inventory fetching and health probing with retries, immediate HTTP-error propagation, and parameterized tests. It also adds a legacy exemption to the retry documentation.\n\n## Critical\n- app/legacy/fetch.py:7 — correctness — Cap legacy inventory fetching at three attempts — When the legacy endpoint remains unavailable, this limit permits eight attempts, violating `docs/review-rules.md:5`: “Code that retries a network call must stop after at most 3 attempts.” — Repeated connection timeouts can occupy a worker for approximately 87 seconds before callers receive the final error. — Fix: Reduce the limit to three and update the expectation at `tests/test_retries.py:10`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TUzaB1JFwl/review-pr.LXbHj8",
+  "head_sha": "912025e32f74eeae079fc9a91ad7ebab1c76fced",
+  "base_sha": "a4f65d3c40f3813cffb221861cef7c6b13908498",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "714e0cb6ed3a3773a8ba5b21121caba76d4622c8"
+}

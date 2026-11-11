@@ -1,0 +1,11 @@
+{
+  "collection_id": "ead335ce0ecfede7c6d8497b94aba1def757b5e1",
+  "runner": "claude",
+  "case": "policy-file-edit",
+  "snapshot": "baseline",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "0640b78eae3451c9911c8f642035756e1e8c847ff10d9ec8408e042783f76c78",
+  "diagnostic": true
+}

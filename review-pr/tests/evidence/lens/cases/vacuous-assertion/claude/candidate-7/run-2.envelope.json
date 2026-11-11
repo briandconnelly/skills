@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`test_rejects_legacy_header` should be fixed: its input never has a legacy header and is rejected for its missing `END` line, so it passes with or without the new version check. The exact-match check in `parse_report` is itself exercised by the complete `REPORT v0` test at `tests/test_report.py:15`.\n\n## Changes\n`parse_report` now accepts only a first line exactly equal to `REPORT v1`, where it previously accepted any line starting with `REPORT `. The pull request adds two rejection tests to `tests/test_report.py`.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — Make test_rejects_legacy_header reach the version check — The input built here is `REPORT v1\\nversion=v0`, which `parse_report` rejects at `app/report.py:3` for its missing `END` line, not for its header. `rsplit(\"v1\", 1)` replaces the `v1` in the body line, so the header stays `REPORT v1`, although the comment on line 9 says the fixture's version changes to v0. The test also passes against the base `startswith(\"REPORT \")` check. — The test passes whether or not the version check exists, so it gives no regression protection for the behavior it names. — Fix: Remove the test, since the test at `tests/test_report.py:15` already covers a complete `REPORT v0` report, or give it a complete report with a legacy header that the line-15 test does not use.\n\n## Suggestions\n- app/report.py:5 — tests — Add a test for a header that extends `REPORT v1` — `REPORT v10\\nvalue=ok\\nEND` now returns None, but no test passes a header that begins with `REPORT v1` and continues. The two added rejection tests use a `REPORT v0` header or an incomplete report. — A later change to `startswith(\"REPORT v1\")` would accept `REPORT v10` and `REPORT v1 extra` reports with every test still passing.\n\n## Not reviewed\n(none)",
+    "duration_ms": 36441,
+    "cost_usd": 0.2140958,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TtokubEHvJ/review-pr.qSMYQx",
+  "head_sha": "1bc8ba7f0ccf65c96b64dec55d4a54a4d031445b",
+  "base_sha": "3e3de2c2398fff045f7d818c0c9b383bb88a017b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "caedd2eb025a00b276b188adc41d4cabca1354d1"
+}

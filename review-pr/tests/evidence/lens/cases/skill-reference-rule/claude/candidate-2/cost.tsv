@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/candidate-2	1	99004	77457	4368	0.5349	18	42728	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/candidate-2	2	70916	56449	4610	0.4271	16	44242	NA	NA
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/skill-reference-rule/claude/candidate-2	3	68496	56452	4187	0.3714	16	40064	NA	NA

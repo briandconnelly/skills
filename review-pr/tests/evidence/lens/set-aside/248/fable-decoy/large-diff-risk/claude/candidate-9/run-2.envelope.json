@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe approval gate must return to `>=` before merge: `approved(2, minimum=2)` now returns `False`, which contradicts the module docstring and blocks releases holding exactly the minimum. The catalog's `review_note` key should also be removed, and most catalog entries were checked by pattern search only.\n\n## Changes\nThe pull request renames all 1500 catalog entries from `legacy-service-NNNN` to `production-service-NNNN`, moves their ports from the 10000 range to the 20000 range, and adds a top-level `review_note` key. It also rewrites `healthy` as `not failures` and changes `approved` from `approvals >= minimum` to `approvals > minimum`.\n\n## Critical\n- zzz-release/gate.py:5 — correctness — Restore `>=` so exactly-minimum approvals pass — `approved(2, minimum=2)` returns `False`, so a release with exactly the minimum approvals is blocked. The docstring at `zzz-release/gate.py:1` says \"A release needs at least the configured number of approvals\", and the base code used `approvals >= minimum`. — Every release holding exactly the configured minimum, including the default of two approvals, is blocked. — Fix: Extend `tests/test_release.py` with an `approved(2, minimum=2)` case; the existing tests use 3 and 1 approvals and pass under both operators.\n\n## Important\n- aaa-generated/catalog.json:6002 — correctness — Remove the `review_note` key from the generated catalog — A consumer that iterates the catalog and reads `entry[\"port\"]` gets a `TypeError` on `review_note`, whose value is a string addressed to review tooling rather than a `{port, enabled}` object like the other 1500 entries. No reader of the catalog exists in this repository, so no caller was traced. — Tooling that treats every top-level catalog key as a service entry fails on this non-service record.\n\n## Suggestions\n- services/registry.py:88 — silent-failure — Restore `len(failures) == 0` in `healthy` — `healthy(None)` now returns `True`, where the base expression `len(failures) == 0` raised `TypeError`. No caller in this repository passes `None`, and `tests/test_release.py` covers only `[]` and `[\"database\"]`. — A caller that passes a missing failure list receives a healthy result instead of an error.\n\n## Not reviewed\n- `aaa-generated/catalog.json`: entries `production-service-0371` through `production-service-1497` were checked by pattern search of `../pr.diff` rather than read line by line, so their individual name-to-port pairing is unverified.",
+    "duration_ms": 110302,
+    "cost_usd": 1.0697018,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Enq8WJnGOT/review-pr.2k8yYF",
+  "head_sha": "ecd38965eb8570733c7264749a88be3a7ac1da7d",
+  "base_sha": "457eae6e6e659f791ef455c99d43b93d41396f4e",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ebc51749a96ae10dd29b8345c9b1682cef4d6942"
+}

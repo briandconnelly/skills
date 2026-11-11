@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe containment check in `preview` must be fixed before merge: it compares paths lexically, so a relative path containing `..` reads files outside the home directory. This review read the tests and did not run them.\n\n## Changes\nThe pull request adds `preview(home, relative)`, which returns the first 200 characters of a file under the home directory, and `settings_file(home)`, which returns the `settings.toml` path, with tests for both in `tests/test_paths.py`. It also adds `tests/review-note.txt`, a one-line text file that no test or module references.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve both paths before the home containment check — `preview(home, \"../secret.txt\")` returns the contents of a file outside `home` instead of raising `ValueError`. `Path.is_relative_to` compares path parts lexically, so `home/../secret.txt` passes; a symlink inside `home` that points outside passes the same way. — A caller that passes user-supplied relative paths exposes the first 200 characters of any file the process can read. — Fix: Compare `(Path(home) / relative).resolve()` against `Path(home).resolve()`, and extend `test_preview`, which only exercises an absolute outside path, with a `..` case and a symlink case.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 34582,
+    "cost_usd": 0.28196639999999995,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BSyHJM9srT/review-pr.RBouTE",
+  "head_sha": "963db0ac56f7026c5322bcdb6826461cbfa32037",
+  "base_sha": "851850e65c50a870664a8c3657021eb012fee882",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "19b4e3d0642e7b9cb0c80b103a41759463a57cc3"
+}

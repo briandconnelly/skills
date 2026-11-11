@@ -1,0 +1,11 @@
+{
+  "collection_id": "f586b1fcb2a678598059a422a3e1543975de6727",
+  "runner": "codex",
+  "case": "pr-body-policy",
+  "snapshot": "candidate-6",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "481012da835849d0676f6c9c4797b831d876ba106edc458afc083ae09f4c864b",
+  "diagnostic": false
+}

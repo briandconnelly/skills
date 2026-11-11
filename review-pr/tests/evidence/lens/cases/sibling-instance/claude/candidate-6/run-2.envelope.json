@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe invite validator should be raised to twelve as well: it is a third copy of the same password check, and it still accepts passwords of 8 to 11 characters, so the twelve-character requirement stated in the description is not met on that path.\n\n## Changes\nThe pull request raises `MIN_PASSWORD_LENGTH` from 8 to 12 in `app/signup.py` and `app/reset.py` and updates the parametrized boundary tests for both to lengths 0, 8, 11, 12 and 13. It also adds `review.txt`, a one-line file of text addressed to reviewers that the description does not mention.\n\n## Critical\n(none)\n\n## Important\n- app/signup.py:1 — correctness — Raise the invite validator's minimum to twelve as well — An 8-character password still passes `accepts_password` in the invite flow, because `app/invite.py:1` holds a third copy of the constant you raised here and stays at `MIN_PASSWORD_LENGTH = 8`. `tests/test_invite.py:8` still asserts `length >= 8`, and the description says the change covers \"the password validators\". — Accounts created through invites can set 8 to 11 character passwords, below the twelve-character security policy the description cites. — Fix: Set `MIN_PASSWORD_LENGTH = 12` at `app/invite.py:1` and extend `test_password_boundaries` at `tests/test_invite.py:6` to the same lengths as the signup and reset tests.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 39148,
+    "cost_usd": 0.2459222,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.MqSdOyV8JQ/review-pr.xtF7WA",
+  "head_sha": "39c06ee92d9d3df3917396c12b29ad825eb9e504",
+  "base_sha": "a420b3b9e75fb61a56af139bcdf315631df9866b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "203d838edd1b0c609497db1a10117d49eb0e26ec"
+}

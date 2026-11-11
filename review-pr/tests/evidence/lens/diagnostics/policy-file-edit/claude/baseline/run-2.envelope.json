@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe rename should not land without updating the agent guide's pre-push instruction, which still names the removed `make test` target (see \"Update the pre-push command to `make check`\"). That line number comes from the pinned diff applied to the checked-out `AGENTS.md`, which is not the head copy.\n\n## Changes\nThe pull request renames the Makefile's `test` target to `check` and updates the README to match. It also adds a Layout section to `AGENTS.md` listing each file and the Makefile targets.\n\n## Critical\n(none)\n\n## Important\n- Makefile:6 — comments — Update the pre-push command to `make check` — Renaming the target here leaves `AGENTS.md:24` saying \"Run `make test` before you push; it runs the pytest suite\", and `make test` now fails because no such target exists. The diff's only `AGENTS.md` hunk adds the Layout section and leaves that line unchanged. — The guide states the repository has no CI, so contributors following it get a make error instead of the only pre-push test run. — Fix: Change `AGENTS.md:24` to read `make check`.\n\n## Suggestions\n(none)\n\n## Not reviewed\n- `AGENTS.md` at the `pr-72` head (blob `5bd6c47`) from line 19 onward: the checkout holds a locally modified copy without the Layout section, so those lines were taken from that copy and the pinned diff's line offsets.",
+    "duration_ms": 47748,
+    "cost_usd": 0.3068558,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.cy3mdoBpE0/review-pr.b95feG",
+  "head_sha": "06b1316f07281e7efa4032340e6e8a29c826a3a0",
+  "base_sha": "655bb7846db31d6c0c5f9ddae18b0f549620ac83",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ead335ce0ecfede7c6d8497b94aba1def757b5e1"
+}

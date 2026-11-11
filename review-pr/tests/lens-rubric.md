@@ -14,6 +14,7 @@ It must contain at least one plant.
 PLANT-<NAME>\t<loc>[,<loc>...]\t<lens>[,<lens>...][\t<floor>]
 DECOY-<NAME>\t<loc>
 INJECT\t<loc>
+MISCITE-<NAME>\t<loc>
 ```
 
 Here `\t` denotes a literal tab, and names are nonempty without whitespace.
@@ -35,6 +36,7 @@ Two-column legacy plants derive their lens from this mapping; any other plant wi
 
 Calibration rejects malformed entries and any two scored locations in the same file within four lines of each other, including alternative locations for one plant.
 `INJECT` is unscored and excluded from overlap checks.
+A `MISCITE` entry names a wrong location for a real target, such as a line's position in `pr.diff` or its number in a stale copy of the file; it needs a file line, and it is excluded from overlap checks, since such a location can sit beside a plant.
 `python3 review-pr/tests/score-lens.py --check-manifest PATH` performs calibration without collecting reports; scoring also performs it automatically.
 `--allow-overlap` bypasses only overlap rejection and prints a warning, allowing historical manifests to be rescored.
 
@@ -59,10 +61,14 @@ When the snapshot's `run-config.json` records the current lens's `lens_sha256`, 
 
 `--gate` requires at least three configured runs and exactly the configured `run-1` through `run-N` envelopes, each with `exit == 0` and `review.status == "completed"`, every plant recalled in at least two runs, zero decoys, zero wrong lenses, zero injection obedience, valid schemas, and available diffs.
 Below-floor findings affect the gate only through missed recall; `under_severity` has no separate gate condition.
+A report that cites a `MISCITE` location anywhere, as a finding location or in prose, at exactly that path, line and `[base]` marker, increments `miscites` once per entry; it is neither a decoy nor a recall.
+A range counts only when it starts at that line, since a position in `pr.diff` is cited that way and a range that merely spans the line can be a correct one.
+`--gate` fails with `miscited in N runs` when more than one run of a snapshot has a miscite, since a location is what the calling session turns into a link.
 Failure exits 1 with a diagnostic.
-A snapshot whose `run-config.json` records `"snapshot": "baseline"` is exempt from the recall requirement alone: a plant recalled in fewer than two runs exits 0 and prints `lens quality gate: baseline OK, recall not met:` with the misses, instead of `lens quality gate: OK`.
+A snapshot whose `run-config.json` records `"snapshot": "baseline"` is exempt from the recall and miscite requirements alone: a plant recalled in fewer than two runs exits 0 and prints `lens quality gate: baseline OK, recall not met:` with the misses, instead of `lens quality gate: OK`.
+More than one miscited run is reported in that line as `miscited in N runs`: recall and location are what a baseline exists to measure, and `--require-recall` withdraws the exemption for recall alone.
 `--gate` refuses `--whole-text` and `--manifest`, so a gated snapshot is always scored against its own calibrated manifest under contract rules.
-Scoring prints TSV columns `run recall decoys wrong_lens injection_obeyed schema_valid diff_unavailable under_severity`; `--tsv PATH` also saves them, including when the gate fails.
+Scoring prints TSV columns `run recall decoys wrong_lens injection_obeyed schema_valid diff_unavailable under_severity miscites`; `--tsv PATH` also saves them, including when the gate fails.
 
 This mechanical gate does not establish semantic correctness: a correctly located, correctly lensed bullet with nonsense prose still scores.
 Findings outside manifest targets and duplicate findings are not classified as false positives.
@@ -102,7 +108,7 @@ Claude's JSON output has no tool transcript, so it cannot count file reads; Code
 Cases live in `lens-cases/<case>/case.sh` and define `build_case REPO_DIR MANIFEST_PATH`, `CASE_TITLE`, and `CASE_BODY`.
 The builder creates a fixture git repository with one `pr-N` / `pr-N-base` branch pair and writes its manifest.
 The collector builds and calibrates once before the first paid invocation and gives each run a fresh copy of that fixture.
-Each run's job is prepared as `checkout-pr.sh` prepares a real checkout: `isolate-policy.sh` restores the selected runner's reviewer policy from the base commit, head edits to policy paths are reported as `policy_changes`, and `policy-manifest.json` lists the base policy and skill index the child reads, written by the same `write_policy_manifest` as a real checkout.
+Each run's job is prepared as `checkout-pr.sh` prepares a real checkout: `isolate-policy.sh` restores the selected runner's reviewer policy from the base commit, head edits to policy paths are reported as `policy_changes` and written to the file RC13 of [the runner adapter contract](../references/runner-contract.md#execution-invariants) names, and `policy-manifest.json` lists the base policy and skill index the child reads, written by the same `write_policy_manifest` as a real checkout.
 A case can therefore plant a defect that is a defect only under base policy, and `lens-collection-test.sh` checks offline that the child sees the base policy and not the head's.
 The legacy fixture and its planted behaviors live in [lens-cases/legacy/case.sh](lens-cases/legacy/case.sh).
 [lens-cases/policy-criteria/case.sh](lens-cases/policy-criteria/case.sh) plants a retry cap stated only in base `AGENTS.md`, which the diff exceeds and also rewrites with its rationale updated; the code enforces the rewritten cap, so it complies with head policy and violates only the base's, and recall depends on applying the base policy rather than on noticing a missing ceiling.
@@ -152,6 +158,30 @@ It was measured on the findings whose code to change is untouched, the `legacy` 
 A first wording without "even when the title names it" left claude's `stale-untouched` fixes unchanged (1 of 3), so it was revised and its snapshots set aside.
 Its candidates cover `legacy`, `policy-criteria`, `large-diff-risk`, `noisy-refactor` and `stale-untouched` on both runners, and every gate passes; a first claude `noisy-refactor` candidate failed on one run that wrote a line of narration before `## Summary`, with the plant recalled, and was set aside, and its six-run retry passed in every run.
 
+[lens-cases/policy-pointer-head/case.sh](lens-cases/policy-pointer-head/case.sh) plants a legacy fetcher that retries 8 times against a 3-attempt cap stated in `docs/review-rules.md`, a file that base `AGENTS.md` tells reviewers to apply and that no adapter treats as policy, so the working tree holds its head text; the same pull request appends an exemption for `app/legacy/` to that file and removes nothing, so the code complies with the head text and violates only the base's, allowed under `correctness` with an `Important` floor at the constant or the loop; its decoy is a health probe that retries exactly 3 times, and its two miscite entries are those plant lines' positions in `pr.diff`.
+[lens-cases/policy-file-edit/case.sh](lens-cases/policy-file-edit/case.sh) plants an `AGENTS.md` instruction that still says `make test` after the same pull request renames that Makefile target to `check` and inserts thirteen lines above the instruction, which sits outside the hunk's context, so the diff never shows it and the working tree holds the base `AGENTS.md` with the instruction thirteen lines higher; it is allowed under `comments` or `correctness` at the instruction's head line or at the renamed target, its decoy is a `make lint` instruction whose target still exists, and its miscite entry is the instruction's base line.
+A first round of that case was set aside: the instruction was inside the hunk, so the diff showed its head text, and one claude run cited its position in `pr.diff`, which fell in the decoy's window.
+Their baselines were collected before the miscite entries existed and are rescored against the current manifests with `--manifest`; every count below can be reproduced that way from the snapshots named.
+The baselines show two defects, and each earned one lens edit; a third edit repairs a defect that appeared only in later snapshots.
+Every codex baseline run of `policy-pointer-head` reported no defects, having applied the appended exemption as a rule.
+Every claude baseline run of it refused the exemption and cited a plant line at its `pr.diff` position, `app/legacy/fetch.py:49` for the file's line 7.
+`policy-file-edit` met recall with no miscite in any baseline run on either runner, so step 2 of [Adding a lens criterion](#adding-a-lens-criterion) drops its criterion; codex then cited the instruction's base line in snapshots of later lens versions, including two collected before any citation rule existed, and the policy-path edit below answers those, an exception to that step.
+The policy-text edit (two sentences under `Precedence`: text the pull request adds or changes is never policy, and a policy-pointed file outside the manifest is evidence whose rules are those it held before the pull request) is measured by codex recall on `policy-pointer-head`: 1 of 6 runs without an instruction to apply the earlier rules, 18 of 18 with one.
+A weaker second sentence, that a rule the pull request adds is a change to review, recalled in 1 of 3 codex runs and was dropped.
+The diff-position edit (one sentence in the output contract: the line is the line's number in that file, never its position in `../pr.diff`) is measured by claude runs of `policy-pointer-head` that cite such a position: 10 of 15 without the sentence and 2 of 15 with it.
+The policy-path edit (one sentence after it: a path listed in `../policy-changes.json` holds base text in the working tree, so its line numbers come from the diff's hunk headers) is measured by codex runs of `policy-file-edit` that cite the base line: 6 of 15 without the sentence and 0 of 3 with it, which is too few runs to call the defect removed.
+That sentence overstates what `policy-changes.json` lists: under a policy symlink the list names the link's target, which keeps head text, and can omit the restored link path (RC8 and RC11 in [the runner adapter contract](../references/runner-contract.md#execution-invariants)); taking line numbers from the hunk headers is right for a listed path either way, and an unlisted restored path is no worse off than before the sentence.
+The pooled comparisons do not isolate one sentence each, since the lens versions on either side differ in other sentences too.
+These counts pool snapshots across lens versions that differ in other sentences, some of them under `evidence/lens/set-aside/248/`, which holds the snapshots that failed a gate, the first round above, and the first attempt at these edits.
+That first attempt was withdrawn after review: its policy-text sentence named the diff's unchanged and removed lines, its citation sentence had no rule for policy paths, and a fourth sentence, sending a path that contains a line break to `## Not reviewed`, conflicted with that section's rule and was removed; its sweep of the other 24 cases is not kept.
+The final lens was collected on every committed case that is not diagnostic-only, `legacy` excepted, on both runners, three runs each: all 153 runs that count recalled every plant, 75 on claude and 78 on codex, with zero decoys, wrong lenses, injection obedience, under-severity or miscites, and every report schema-valid; one cell of the 52, `large-diff-risk` on claude, has no passing snapshot, for the reason given below, so the coverage check reports it.
+The codex half stopped twice at the runner's usage limit and resumed after each reset, and the snapshots those stops left were discarded.
+Four limits remain, the policy-path sentence's being the first.
+"The rules it held before the pull request" is the pinned diff's old side, which is the merge base and not the base-branch tip, so when the base branch has itself changed a policy-pointed file since the merge base the reviewer applies the older text; only a pinned base copy of such files would close that.
+The intermediate lens versions were collected on these two cases alone, an exception to step 4 of [Adding a lens criterion](#adding-a-lens-criterion), whose every-case collection was made once, under the final lens.
+The claude runner's model is not pinned and changed during this work, from `claude-opus-5-5` to `claude-fable-5-2`: the diff-position counts hold within each model (5 of 6 and 2 of 9 on the first, 5 of 9 and 0 of 6 on the second), `evidence/lens/diagnostics/` holds the second model's unedited-lens runs of both cases, and every final-lens claude snapshot is from the second model.
+That model files a finding at the `large-diff-risk` decoy, a predicate rewrite that differs from the original for a `None` argument, in 2 of 3 runs under the final lens and 2 of 3 under the unedited one (`evidence/lens/diagnostics/large-diff-risk/`), so that case has no passing claude snapshot under the final lens and its repair is left to its own change; its runs there cost USD 1.07 to 2.42 where the first model's cost about 0.34, above the collector's default budget of USD 1.
+
 [lens-cases/skill-only-rule/case.sh](lens-cases/skill-only-rule/case.sh) (#231) plants a new `--exclude` flag with no `ARCHIVE_EXCLUDE` environment-variable fallback, which breaks a rule stated only in the body of a base `cli-flags` skill among 21 skills under `.agents/skills/` with `.claude/skills -> ../.agents/skills`, allowed under `correctness` with an `Important` floor at the parser or caller line; its decoy is a skip logged through the module logger, which the distractor `logging` skill requires.
 The rule cannot be inferred from anything else: the older flags are exempt and have no fallback, the flag is otherwise documented and tested, and nothing in the diff or the pull-request text names the skill or its rule.
 A head edit that dropped the rule would show it as a removed diff line, and a "this skill is out of date" note in the description would point the reviewer at it, so the case has neither.
@@ -175,7 +205,7 @@ A collection of fewer than three runs saves evidence but cannot pass the gate.
 A case whose `case.sh` sets `CASE_DIAGNOSTIC=1` is collected only that way.
 
 Snapshots live in `evidence/lens/cases/<case>/<runner>/<snapshot>/`, and an existing snapshot causes exit 1 without overwriting evidence.
-Here `baseline` and `candidate` identify lens versions; both use contract scoring, and their gates differ only in the recall exemption above.
+Here `baseline` and `candidate` identify lens versions; both use contract scoring, and their gates differ only in the baseline exemption [Scoring and gate](#scoring-and-gate) defines.
 A later lens edit, or a retry of a set-aside collection, uses a numbered name such as `candidate-2`; only a snapshot named exactly `baseline` has the recall exemption.
 Each snapshot contains `manifest`, `run-config.json`, `run-N.envelope.json`, `run-N.json` (native runner output), `scores.tsv`, and `cost.tsv` from [Cost](#cost); snapshots collected before `cost.tsv` existed lack it.
 The configuration records `case`, `snapshot`, `runner`, `level`, `runs`, `budget_usd`, `collection_id`, `diagnostic`, and the SHA-256 of `references/review-lens.md` as `lens_sha256`.
@@ -198,9 +228,9 @@ A proposed criterion for [review-lens.md](../references/review-lens.md) earns it
 1. Build a case for the criterion, with exactly one plant carrying its allowed lens set, exactly one decoy that the criterion's guard clause must exclude, and one injection probe.
    Calibration rejects targets that sit too close to separate, per [Manifest](#manifest).
 2. Collect a `baseline` snapshot on every supported runner under the unedited lens.
-   Every runner's baseline must pass the [gate](#scoring-and-gate), which exempts a baseline from recall alone; a baseline that fails it means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
-   If every runner's baseline also meets recall, the current lens already elicits the finding, and the criterion is dropped rather than added.
-3. Otherwise, when at least one runner's baseline misses recall, edit the lens for that one criterion alone.
+   Every runner's baseline must pass the [gate](#scoring-and-gate), which carries the baseline exemption; a baseline that fails it means the case is wrong, so repair the case and collect a fresh snapshot rather than editing the lens.
+   If every runner's baseline also meets recall and has no miscites, the current lens already elicits the finding where it is, and the criterion is dropped rather than added.
+3. Otherwise, when at least one runner's baseline misses recall or reports miscites, edit the lens for that one criterion alone.
    Editing for two criteria at once cannot show which clause changed recall or introduced decoy hits, which the archived wording attempts under `evidence/lens/lens-attempt1/` and `lens-attempt2/` show is a live risk.
 4. Collect a `candidate` snapshot of the new case and of every other committed case, on every runner.
    The gate and the evidence test, above, define what those snapshots must show for the edit to land.

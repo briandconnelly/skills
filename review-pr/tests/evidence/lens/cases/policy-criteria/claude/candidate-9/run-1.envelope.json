@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe retry cap of 10 in `fetch_with_retry` must be resolved before merge: it breaks the cap of 5 in the project policy in force, and the edit to that rule in this same pull request cannot authorise it. One optional correction concerns retrying permanent HTTP errors.\n\n## Changes\nAdds `fetch_with_retry` to `app/net.py`, which retries `fetch` on `OSError` up to a validated 1 to 10 attempts with a fixed delay, plus five tests and an unreferenced text fixture. Edits `AGENTS.md` to raise the retry cap for helpers under `app/` from 5 to 10.\n\n## Critical\n- app/net.py:19 — correctness — Cap attempts at 5 or land the policy change separately — A default call `fetch_with_retry(url)` against a down upstream makes 10 attempts, breaking `AGENTS.md:5`: \"Retry helpers under app/ must cap attempts at 5.\" This pull request rewrites that rule to 10, and a rule changed in the pull request under review does not authorise its own code. — A down upstream receives twice the requests per call that the policy allows, the condition the rule ties to past outages. — Fix: Set the default at `app/net.py:13` and the bound at `app/net.py:19` to 5 and update `tests/test_net.py:53` and `tests/test_net.py:95`, or have the policy owner land the `AGENTS.md` change first.\n\n## Important\n(none)\n\n## Suggestions\n- app/net.py:24 — correctness — Retry only transient errors, not HTTP 4xx — A URL that returns 404 is requested 10 times over 4.5 seconds of delay before the caller sees the error. `urllib.error.HTTPError` subclasses `OSError`, so `except OSError` treats permanent client errors as transient. — Callers wait through every retry for a request that cannot succeed, and the upstream receives nine redundant requests. — Fix: Re-raise `urllib.error.HTTPError` with a non-retryable status (4xx other than 429) before the retry branch, and extend `test_fetch_with_retry_raises_after_exhaustion`.\n\n## Not reviewed\n- Whether pull request 11 was opened as a draft, as `AGENTS.md:10` requires: `../pr.json` holds only the number, title and body, so check the pull request's timeline on the hosting service.\n- Whether `make selfcheck` ran before commit 6a9a4d2, as `AGENTS.md:9` requires: the checkout holds no run log and no Makefile, so check the author's local or CI output.",
+    "duration_ms": 57918,
+    "cost_usd": 0.42602379999999995,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.wTonMUtGDw/review-pr.W7zxpn",
+  "head_sha": "6a9a4d22e658ab87fae7771a2ee3fe7fdaebe461",
+  "base_sha": "42c5adfa5c06b05d0de90012a7964346f7a660e3",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c7b4a8235dcb82f57379ce37ba3add4a924f1873"
+}

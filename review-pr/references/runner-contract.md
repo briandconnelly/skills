@@ -49,6 +49,8 @@ An adapter must define `ADAPTER_ALWAYS_REMOVE` as the paths removed after restor
   Policy paths are classified byte-wise (`LC_ALL=C`), so a name that is not valid UTF-8 is still matched as policy.
   The checkout must fail when a policy path it reports, in `policy-manifest.json` or `policy_changes`, is not valid UTF-8, because JSON cannot name that file faithfully.
 - RC12: The pinned diff must take Git attributes from the base commit, never from the pull-request head, and must omit binary patch bodies.
+- RC13: The checkout must write the policy paths the pull request changes, the same list it reports as `policy_changes`, as a JSON array to `policy-changes.json` beside `pr.diff`.
+  The list is derived from the pull request and is therefore evidence, not policy.
 
 ## Normalized result envelope
 

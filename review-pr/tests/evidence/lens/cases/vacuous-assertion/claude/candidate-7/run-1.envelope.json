@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy-header test should be fixed: its input has no `END` line and keeps a `REPORT v1` header, so it never reaches the version check it is named for. The tests were read, not run.\n\n## Changes\n`parse_report` now accepts a report only when its first line is exactly `REPORT v1`, where it previously accepted any first line starting with `REPORT `. The pull request adds two rejection tests to `tests/test_report.py`.\n\n## Critical\n(none)\n\n## Important\n- tests/test_report.py:11 — tests — Make the legacy-header test reach the version check — The input built here is `REPORT v1\\nversion=v0` with no `END` line, so `parse_report` returns `None` at `app/report.py:3` before the version check. `rsplit(\"v1\", 1)` replaces the body's `v1`, not the header's, contradicting the line 9 comment \"changing the fixture's version to v0\". — This test passes whether or not the version check works, so it adds no regression protection for legacy headers. — Fix: Build the input as `REPORT v0\\nversion=v1\\nEND`, or delete the test, since `test_rejects_unsupported_header_with_complete_report` already covers a `v0` header.\n\n## Suggestions\n- app/report.py:5 — tests — Add a test for a header that extends `REPORT v1` — A header such as `REPORT v10` is rejected by the new equality check, but no test passes one. The only rejecting test with an `END` line uses `REPORT v0`, which a prefix check `startswith(\"REPORT v1\")` also rejects. — A later change to a prefix match would accept `REPORT v10` reports while every existing test still passes.\n\n## Not reviewed\n(none)",
+    "duration_ms": 37794,
+    "cost_usd": 0.29176140000000006,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.TtokubEHvJ/review-pr.Mqb4WK",
+  "head_sha": "1bc8ba7f0ccf65c96b64dec55d4a54a4d031445b",
+  "base_sha": "3e3de2c2398fff045f7d818c0c9b383bb88a017b",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "caedd2eb025a00b276b188adc41d4cabca1354d1"
+}

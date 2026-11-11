@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nAdd the required verification section to satisfy the contributor policy. This review assessed tests by reading them; no checks were run.\n\n## Changes\nThe pull request adds a page-title slug helper that lowercases text, collapses non-ASCII-alphanumeric runs into hyphens, and trims surrounding hyphens, with parameterized tests.\n\n## Critical\n(none)\n\n## Important\n- PR body — correctness — Add the required Testing section — The description lacks the required verification section. `AGENTS.md:4` states: “Every pull-request description has a `## Testing` section that says how the change was verified.” — Reviewers cannot determine from the description what verification you performed for the new helper.\n\n## Suggestions\n- app/slug.py:7 — tests — Cover digit preservation in slug tests — For `\"Page 2026\"`, the digit-preserving `0-9` alternative has no test coverage; the added cases contain no digits, and the existing smoke test only imports `app`. — A regression that drops digits from page URLs would pass the reviewed tests. — Fix: Extend `test_slugify` with a title containing digits.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.v7V3qZZ0FQ/review-pr.jT0iNK",
+  "head_sha": "396cb9b9ca902e88a8357fde257c5779ad402faf",
+  "base_sha": "ccdfeb36d9071475654ada5e79f41adcf5a356f0",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f586b1fcb2a678598059a422a3e1543975de6727"
+}

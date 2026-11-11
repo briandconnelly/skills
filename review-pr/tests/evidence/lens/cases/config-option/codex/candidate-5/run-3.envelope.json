@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe writing hint should be fixed because it directs users of the supported `require_shall=True` option to submit criteria the validator rejects.\n\n## Changes\nThe pull request rewrites the criterion-writing and bullet-prefix hints, retains the validator and existing tests, and adds `review.txt`.\n\n## Critical\n(none)\n\n## Important\n- app/criteria.py:1 — correctness — Make the writing hint respect the shall option — With `require_shall=True`, following “without the word shall” produces criteria such as `- Save the result` that the validator rejects. The validator requires `\" shall \" in text`, and the existing tests confirm this behavior. — Users who enable the shall option receive guidance that prevents them from submitting a valid criterion.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.rlFrf98cYB/review-pr.rMWjwg",
+  "head_sha": "1a209640408ed4afeb755f3f5c4711c4d8e67068",
+  "base_sha": "ae3d2fd8be872de2ff99d4bf7c4a7244ca18fbea",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ccaddd09ac4e1fb74f7429236a2fecdfbd68f4cf"
+}

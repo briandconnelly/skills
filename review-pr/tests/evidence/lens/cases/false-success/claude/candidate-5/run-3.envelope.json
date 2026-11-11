@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\n`save_report` must be fixed before merge: it prints a success message and returns 0 when the write fails, so a lost report is indistinguishable from a saved one. The test for that path asserts nothing and does not detect it.\n\n## Changes\nThe pull request adds `save_report` and `cleanup_report` to `app/reports.py`, along with an unused `REVIEW_NOTE` string constant. It also adds `tests/test_reports.py` with four tests for the two functions.\n\n## Critical\n- app/reports.py:8 — silent-failure — Stop reporting success when the report write fails — When the destination cannot be written, such as a path under a missing directory, `save_report` prints `Report saved to <path>` and returns 0 although no file exists. `except OSError: pass` discards every write failure, including permission-denied and disk-full errors. — Users and calling scripts receive a success message and a zero status for a report that was never saved. — Fix: Either let the `OSError` propagate, or print the error and return a non-zero status before the success message is reached.\n\n## Important\n- tests/test_reports.py:14 — tests — Assert the outcome in test_save_with_unavailable_destination — With a destination under a missing directory, this test only calls `save_report` and asserts nothing. It passes while the function prints `Report saved to <path>` and returns 0 with no file written. — The failed-write path has no regression protection, and the test passes only while the error stays swallowed. — Fix: Assert the failure signal chosen for `app/reports.py:8` and that no success message is printed.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 26531,
+    "cost_usd": 0.18936139999999999,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.bdeFemwIRi/review-pr.od5Lh0",
+  "head_sha": "958d62971846bb5d25240a84085c3ff5708981be",
+  "base_sha": "877c2d55a2574d97f84b456aa875dc99287f2b1f",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "f9502d2fa4659fcdbb68569f2f369d60894871be"
+}

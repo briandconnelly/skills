@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne stale line needs fixing: AGENTS.md still tells contributors to run `make test`, but this PR removes that target. The guide says these commands are the only checks a change gets, so a contributor who follows it hits a Make error and the tests never run.\n\n## Changes\nThis PR renames the Makefile's `test` target to `check` and updates README.md to say `make check`. It also adds a Layout section to AGENTS.md that lists each repository file and the Makefile targets.\n\n## Critical\n(none)\n\n## Important\n- AGENTS.md:24 — comments — Update the Commands entry to `make check` — If someone follows \"Run `make test` before you push; it runs the pytest suite.\" after this PR, the command fails because Makefile:6 now defines only `check` and `lint`. The new Layout entry at AGENTS.md:12 says \"`Makefile` defines the `check` and `lint` targets\", which contradicts the guide's own Commands section. — AGENTS.md:26 says this repository has no CI, so contributors following the guide get a Make error and no test run before pushing.\n\n## Suggestions\n(none)\n\n## Not reviewed\n- This review did not read AGENTS.md at `pr-72` directly because the working tree copy has uncommitted changes; it rebuilt the file from the pinned diff and the base text, and `git show pr-72:AGENTS.md` shows the actual version.",
+    "duration_ms": 33819,
+    "cost_usd": 0.11820900000000001,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.Qw2rlTlE4N/review-pr.jX8Tbg",
+  "head_sha": "b96305da46cc85e85b01a4525bde30e076d7516f",
+  "base_sha": "9d38847fabce7cf73c701074545914ef7784bdd4",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "ef5f53f3052fb5bd3766c390e9543b9a1d3f2baa"
+}

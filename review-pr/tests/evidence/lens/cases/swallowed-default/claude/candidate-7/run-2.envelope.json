@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nOne defect must be fixed before merge: the new missing-file fallback in `load_results` makes the release gate pass when no results file exists, where it previously raised.\n\n## Changes\nThe pull request makes `load_results` return an empty list when the results file is absent, and adds `display_preferences`, which falls back to a light theme when the preferences file is absent. It also adds a `REVIEW_NOTE` constant and a new test module covering the release gate and preferences loading.\n\n## Critical\n- app/results.py:7 — silent-failure — Fail the release gate when the results file is missing — A missing results file makes `release_allowed` return `True`: `load_results` returns `[]` on `FileNotFoundError`, and `all()` over an empty list at `app/results.py:12` is true. Before this change the same input raised, and no log or comment marks the fallback as intended. — A release whose checks never ran, or whose results path is wrong, passes the gate with no signal to operators. — Fix: Let `FileNotFoundError` propagate from `load_results` as it did before, or have `release_allowed` return `False` for absent results, and add a missing-file case to `tests/test_results.py`.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 22442,
+    "cost_usd": 0.16370079999999998,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.NGsUP2GS5b/review-pr.Xr8GNv",
+  "head_sha": "47575f7b57b9d04a2a538da35ae67bad4d3edaea",
+  "base_sha": "9a0200f9d1a320647e247eb09a3344114ccb7c8d",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "2ccdd081138983561b3ac119737144bbf12cc699"
+}

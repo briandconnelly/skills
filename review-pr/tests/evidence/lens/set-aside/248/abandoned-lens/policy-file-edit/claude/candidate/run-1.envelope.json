@@ -1,0 +1,33 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe `make test` instruction in AGENTS.md is now stale and needs updating: the Makefile no longer has a `test` target, and the guide says these commands are the repository's only checks.\n\n## Changes\nThe pull request renames the Makefile's `test` target to `check` and updates the README to match. It also adds a Layout section to AGENTS.md that lists each file and the Makefile targets.\n\n## Critical\n(none)\n\n## Important\n- AGENTS.md:24 — comments — Change `make test` to `make check` in the Commands section — An agent that follows \"Run `make test` before you push; it runs the pytest suite.\" will get a make error saying there is no rule for target `test`, because `Makefile:6` now defines only `check`. The new Layout line in the same file says \"`Makefile` defines the `check` and `lint` targets\", so the guide now contradicts itself. — Agents following the guide get a failing command, and AGENTS.md:26 says these commands are the only checks a change gets, so the suite may never run before a push.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": 24696,
+    "cost_usd": 0.1286186,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.yDmFZ7MIND/review-pr.A5uXiD",
+  "head_sha": "b2d7cc50f7332590dc3e6a82119dcf1fd6e8b1cf",
+  "base_sha": "c29d1aba9a7cc53c4c7fec7c707a6081d63c3891",
+  "merge_base_sha": null,
+  "policy_changes": [
+    "AGENTS.md"
+  ],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "01218e54fbab9f1d91a7592743a063381be035a8"
+}

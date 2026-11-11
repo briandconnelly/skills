@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe missing environment default for `--exclude` should be fixed so CI exclusions follow project policy. Tests were read, not run.\n\n## Changes\nThe pull request adds repeatable filename exclusions, logs skipped files, documents the flag, and adds parser and archive tests.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Read the --exclude default from ARCHIVE_EXCLUDE — With `ARCHIVE_EXCLUDE=*.log` and no `--exclude` argument, your parser returns `[]` and archives matching logs. `.agents/skills/cli-flags/SKILL.md:11` requires every new flag to “take its default from an `ARCHIVE_<NAME>` environment variable”. — CI jobs that supply exclusions through environment variables include files operators configured them to skip.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.o0Gt8tFxMs/review-pr.WgPOVB",
+  "head_sha": "cd58fae582e9740aeb82a58f96571ba3993334f3",
+  "base_sha": "94bc16060fab44a1a8941248373df195dc63f37a",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "9996aa240fa6c0aae9be01439cc94ecd85769fbd"
+}

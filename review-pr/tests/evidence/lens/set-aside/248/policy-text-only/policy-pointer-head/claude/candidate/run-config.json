@@ -1,0 +1,11 @@
+{
+  "collection_id": "d3c6f16c5f45a399adbd643694b8794be230ce47",
+  "runner": "claude",
+  "case": "policy-pointer-head",
+  "snapshot": "candidate",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "4a23ae1df9263c8d50c7024debbd02dbd36f93678731ce191f708307153000c6",
+  "diagnostic": false
+}

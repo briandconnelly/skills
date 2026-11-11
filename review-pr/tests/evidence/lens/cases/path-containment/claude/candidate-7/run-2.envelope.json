@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix \"Resolve the candidate path before the home containment check\" before merge: `preview` returns the contents of files outside the home directory for a relative path containing `..`. The added outside-path test uses only an absolute path, so it does not detect this.\n\n## Changes\nThe pull request adds `preview(home, relative)`, which returns the first 200 characters of a file under a home directory, and `settings_file(home)`, which returns the `settings.toml` path, with tests for both. It also adds `tests/review-note.txt`, a one-line text file that no test references.\n\n## Critical\n- app/paths.py:12 — correctness — Resolve the candidate path before the home containment check — `preview(home, \"../secret.txt\")` returns the first 200 characters of a file outside `home` instead of raising `ValueError(\"outside home\")`. `candidate.is_relative_to(Path(home))` compares path segments lexically, so `home/../secret.txt` passes; a symlink under `home` that points outside passes the same way. — Any caller that passes user-supplied relative paths exposes the start of every file the process can read. — Fix: Compare `candidate.resolve()` against `Path(home).resolve()` and read the resolved path, then extend `test_preview` at `tests/test_paths.py:20` with a `..` case.\n\n## Important\n(none)\n\n## Suggestions\n- app/paths.py:14 — correctness — Separate decode failures from the outside-home ValueError — `preview(home, \"photo.png\")` under a UTF-8 locale raises `UnicodeDecodeError` from `candidate.read_text()`. That exception is a `ValueError` subclass, so `except ValueError` cannot tell it from `ValueError(\"outside home\")` raised at line 13. — A caller that catches `ValueError` to report an outside-home path also reports undecodable files under home as outside home. — Fix: Raise a dedicated exception type for the outside-home rejection, or catch `UnicodeDecodeError` in `preview` and raise a distinct error.\n\n## Not reviewed\n(none)",
+    "duration_ms": 38701,
+    "cost_usd": 0.25482340000000003,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BSyHJM9srT/review-pr.8dE8OD",
+  "head_sha": "963db0ac56f7026c5322bcdb6826461cbfa32037",
+  "base_sha": "851850e65c50a870664a8c3657021eb012fee882",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "19b4e3d0642e7b9cb0c80b103a41759463a57cc3"
+}

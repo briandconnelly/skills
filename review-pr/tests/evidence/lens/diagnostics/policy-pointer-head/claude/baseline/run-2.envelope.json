@@ -1,0 +1,31 @@
+{
+  "runner": "claude",
+  "review": {
+    "engine": "claude",
+    "engine_version": "2.1.322",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe legacy fetcher should be fixed: it retries 8 times against the project's 3-attempt cap, and the only exemption it relies on is one this pull request adds to the rules itself. One optional correction covers a mid-body connection drop that the retry loop does not retry.\n\n## Changes\nAdds `app/legacy/fetch.py` (inventory fetch, up to 8 attempts) and `app/health.py` (health probe, up to 3 attempts), with parametrized tests for both in `tests/test_retries.py`. Adds a line to `docs/review-rules.md` exempting modules under `app/legacy/` from the retry cap.\n\n## Critical\n(none)\n\n## Important\n- app/legacy/fetch.py:49 — correctness — Cap legacy fetch retries at 3 or get the exemption approved first — When the legacy service hangs, `fetch_inventory` makes 8 attempts of up to 10 s each plus 7 s of delays, about 87 s per call. `docs/review-rules.md:5` says \"Code that retries a network call must stop after at most 3 attempts.\"; the exemption at `docs/review-rules.md:7` is added by this pull request itself. — A worker thread stays blocked for up to about 87 seconds per call while the legacy service is down, the outage the rule cites. — Fix: Set `MAX_ATTEMPTS` to 3, or land the exemption at `docs/review-rules.md:7` as a separately approved policy change before this code relies on it.\n\n## Suggestions\n- app/legacy/fetch.py:66 — correctness — Retry `http.client.IncompleteRead` from a dropped body read — When the legacy service closes the connection partway through a response body sent with a Content-Length or chunked encoding, `resp.read()` at line 63 raises `http.client.IncompleteRead`. That is an `HTTPException`, not an `OSError`, so `fetch_inventory` raises on the first attempt without retrying. — A connection dropped mid-body during the nightly restart fails the fetch immediately, the case the retry loop exists for. — Fix: Catch `http.client.IncompleteRead` alongside `OSError` and extend `tests/test_retries.py` with a `read()` that raises it.\n\n## Not reviewed\n(none)",
+    "duration_ms": 52108,
+    "cost_usd": 0.31346779999999996,
+    "subtype": "success",
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.StD6vJuDzW/review-pr.yP9d04",
+  "head_sha": "2ee3531f889e5cdcbe8a4d6965a02b82fce028f1",
+  "base_sha": "3ee9f864bc33b02869ada849a35dac71ed057512",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "3c47aeb3a4c40f814ee0f2a6fa78abad06dc99d8"
+}
