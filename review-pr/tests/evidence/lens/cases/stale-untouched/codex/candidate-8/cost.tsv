@@ -1,0 +1,4 @@
+snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-8	1	79179	68352	947	NA	1	NA	8	0
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-8	2	78600	67584	827	NA	1	NA	6	0
+/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/stale-untouched/codex/candidate-8	3	78811	67968	1064	NA	1	NA	7	0

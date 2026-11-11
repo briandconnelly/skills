@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nFix the missing-results behavior before merge because it allows the release gate to pass without saved checks. Tests were read, not run.\n\n## Changes\nThe pull request adds missing-file fallbacks for saved results and optional display preferences, plus tests for saved checks and preference loading.\n\n## Critical\n- app/results.py:8 — correctness — Reject releases when the results file is missing — When the results file is absent, `release_allowed(path)` now returns `True`: the fallback returns `[]`, and `all([])` succeeds instead of propagating the missing-file error. — A release with missing results can pass the gate without evidence that any required check succeeded.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.mN3r2fKN6N/review-pr.2KXeqc",
+  "head_sha": "4792b26d181a9a4732b73f936dc73777b1c05803",
+  "base_sha": "091ad23b63924e88c5c04a63ab9fc7a817a7c5bb",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "14f7f5850d588dd330818a22f1b03d95c9df315e"
+}

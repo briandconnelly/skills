@@ -1,0 +1,11 @@
+{
+  "collection_id": "b39bec56e03746a0b8be3009dc99ac3fd532c900",
+  "runner": "codex",
+  "case": "skill-only-rule",
+  "snapshot": "candidate-3",
+  "level": "high",
+  "runs": 3,
+  "budget_usd": 1,
+  "lens_sha256": "481012da835849d0676f6c9c4797b831d876ba106edc458afc083ae09f4c864b",
+  "diagnostic": false
+}

@@ -1,0 +1,31 @@
+{
+  "runner": "codex",
+  "review": {
+    "engine": "codex",
+    "engine_version": "0.167.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe new flag should honor `ARCHIVE_EXCLUDE`; its hardcoded default ignores exclusions configured by CI and violates project policy.\n\n## Changes\nAdds repeatable `--exclude GLOB` filename filtering, skip logging, documentation, and tests. This review read the tests without running them.\n\n## Critical\n(none)\n\n## Important\n- cli/main.py:17 — correctness — Honor ARCHIVE_EXCLUDE when --exclude is omitted — With `ARCHIVE_EXCLUDE=*.log` and no `--exclude`, you still archive `.log` files because the default is always `[]`. This violates `.agents/skills/cli-flags/SKILL.md:11`: “must also take its default from an `ARCHIVE_<NAME>` environment variable”. — CI jobs that configure exclusions through the environment include files they explicitly intended to leave out of their archives.\n\n## Suggestions\n(none)\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": null,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "Reading additional input from stdin...",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/4_/s6fbcjyn4b13xdxkd3lv0kw00000gn/T/tmp.BtUSwtEGzo/review-pr.Mc3umE",
+  "head_sha": "738a9ee19b97485a0babb67319d8f83852ce3f19",
+  "base_sha": "7f6d74c4dd210b1b0604dc10d3265a7051c07282",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "b39bec56e03746a0b8be3009dc99ac3fd532c900"
+}
