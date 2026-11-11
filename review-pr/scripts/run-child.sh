@@ -83,6 +83,8 @@ finish() {
       pr_state:($input.pr_state // null), pr_is_draft:(if ($input | has("pr_is_draft")) then $input.pr_is_draft else null end),
       pr_merged_at:($input.pr_merged_at // null), pr_author:($input.pr_author // null),
       pr_author_is_bot:(if ($input | has("pr_author_is_bot")) then $input.pr_author_is_bot else null end),
+      pr_base_ref:($input.pr_base_ref // null),
+      pr_base_is_default:(if ($input | has("pr_base_is_default")) then $input.pr_base_is_default else null end),
       schema_valid:$validation.schema_valid, schema_errors:$validation.schema_errors,
       diff_unavailable:$validation.diff_unavailable}')"
 

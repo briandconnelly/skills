@@ -24,6 +24,8 @@
   "pr_merged_at": "2026-11-08T17:42:10Z",
   "pr_author": "mona",
   "pr_author_is_bot": false,
+  "pr_base_ref": "main",
+  "pr_base_is_default": true,
   "schema_valid": false,
   "schema_errors": [
     "Summary must begin with the exact lenses-checked line",
