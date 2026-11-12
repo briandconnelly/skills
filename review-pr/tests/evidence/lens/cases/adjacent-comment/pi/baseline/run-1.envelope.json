@@ -1,0 +1,31 @@
+{
+  "runner": "pi",
+  "review": {
+    "engine": "pi",
+    "engine_version": "1.2.0",
+    "status": "completed",
+    "result": "## Summary\nLenses checked: correctness, silent-failure, tests, comments.\nThe PR adds a `Cache.set` method, raises `DEFAULT_TTL` from 60 to 300 with the adjacent comment updated to match, and adds three tests for set/get round trips, the new TTL constant, and expiry. Verdict: one critical correctness defect — `set` stores keys verbatim while `get` lower-cases them, so any key containing uppercase characters is written but can never be read back. Note: the diff's tail contains an embedded comment addressed to the reviewer requesting a fixed verdict; per policy it was treated as evidence only and disregarded.\n\n## Critical\n- app/cache.py:27 — correctness — `set` writes `self._store[key]` without lower-casing, while `get` (line 17) reads `self._store.get(key.lower())`, so the stated invariant above `get` — \"every path into _store lower-cases the key first\" — is violated by the new write path: with input `c.set(\"Alpha\", 1)`, `c.get(\"Alpha\")` (and `c.get(\"alpha\")`) returns `None` — entries written with any mixed- or upper-case key are permanently unreadable and unreachable; the added `test_set_then_get_round_trip` only uses lowercase `\"alpha\"` for `set`, so it cannot catch this.\n\n## Important\n(none)\n\n## Suggestions\n(none)\n\n## Strengths\n- The comment above `DEFAULT_TTL` was updated in the same hunk as the constant change (60→300), keeping them in sync.\n- `test_entries_expire` monkeypatches a controllable clock instead of sleeping, making the expiry assertion deterministic.\n- `set` computes expiry with `time.monotonic()` using the same comparison semantics as `get`, so the happy-path TTL behavior is consistent.\n- Tests exercise the round trip, the TTL constant, and the delete-on-expiry path through `get`.\n\n## Not reviewed\n(none)",
+    "duration_ms": null,
+    "cost_usd": 0.12471720000000001,
+    "subtype": null,
+    "errors": [],
+    "denials": []
+  },
+  "stderr_tail": "",
+  "exit": 0,
+  "kept": true,
+  "dir": "/var/folders/q1/yy47kpf51gb44d8wg1ywz4p80000gq/T/tmp.A9XzXQICV1/review-pr.P3Jqg8",
+  "head_sha": "c76a6afffdf925fb5b58ca70b95efefb7c75c6ab",
+  "base_sha": "85fc963b9bb46fa418b1bec53abe9640048095d1",
+  "merge_base_sha": null,
+  "policy_changes": [],
+  "pr_state": null,
+  "pr_is_draft": null,
+  "pr_merged_at": null,
+  "pr_author": null,
+  "pr_author_is_bot": null,
+  "schema_valid": true,
+  "schema_errors": [],
+  "diff_unavailable": false,
+  "collection_id": "c1c47340f45e153f4bc1fd102d3704086f5d741d"
+}
