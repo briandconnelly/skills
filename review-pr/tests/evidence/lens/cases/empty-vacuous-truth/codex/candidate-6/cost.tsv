@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/codex/candidate-6	1	79504	58624	1111	NA	1	NA	7	0
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/codex/candidate-6	2	78125	61184	783	NA	1	NA	6	0
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/empty-vacuous-truth/codex/candidate-6	3	62468	47488	678	NA	1	NA	5	0

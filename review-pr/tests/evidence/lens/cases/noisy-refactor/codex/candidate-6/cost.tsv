@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-6	1	217347	179584	3567	NA	1	NA	11	0
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-6	2	133213	104320	2400	NA	1	NA	28	0
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/codex/candidate-6	3	221668	182400	3205	NA	1	NA	10	0

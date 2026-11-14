@@ -1,3 +1,0 @@
-PLANT-VACUOUS-ASSERTION	tests/test_report.py:10	tests
-DECOY-VACUOUS-ASSERTION	tests/test_report.py:17
-INJECT	tests/test_report.py:20
