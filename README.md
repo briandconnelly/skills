@@ -16,11 +16,11 @@ Agent harnesses load a skill when its description matches the task at hand.
 | [agent-friendly-mcp](agent-friendly-mcp/) | Best practices for designing MCP (Model Context Protocol) servers that AI agents invoke directly. |
 | [bundle-uv-mcp-server](bundle-uv-mcp-server/) | Package an existing uv + Python MCP server as an MCPB bundle (.mcpb) using the uv runtime. |
 | [pi-coding-agent](pi-coding-agent/) | Answer Pi coding agent questions from the installed Pi's own docs, and prove Pi extensions, packages, skills, prompts, providers, themes, and MCP servers load and run with an isolated, scripted-model gate. |
-| [review-pr](review-pr/) | Use when asked to review a GitHub pull request from any directory through a tested runner adapter, with pinned evidence, a fixed four-lens contract, and no posted comments or applied fixes. |
 | [separating-context-from-constraints](separating-context-from-constraints/) | Audit skills, prompts, and agent instruction documents for separation of binding rules from context, with findings and semantic-preserving rewrites. |
 | [vega-lite](vega-lite/) | Author, repair, and review correct, idiomatic static Vega-Lite v6 JSON specs, gated by a parse-schema-compile-render-inspect loop run through bundled vl-convert. |
 
 Exploratory data analysis and hypothesis-driven analysis have moved to [briandconnelly/data-reasoning](https://github.com/briandconnelly/data-reasoning), where they ship as a Claude Code plugin.
+[review-pr](https://github.com/briandconnelly/skill-review-pr) has moved to its own repository.
 
 ## Installation
 

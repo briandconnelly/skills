@@ -1,7 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	1	172196	150290	5732	0.2542	23	63772	NA	NA
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	2	169844	152408	4888	0.2154	19	62314	NA	NA
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	3	195758	178487	4854	0.2191	23	54602	NA	NA
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	4	157012	138646	4654	0.2126	18	54025	NA	NA
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	5	139571	121833	5740	0.2278	22	62384	NA	NA
-/Users/bdc/projects/skills-fix-elsewhere/review-pr/tests/evidence/lens/cases/noisy-refactor/claude/candidate-7	6	145396	128606	5007	0.2098	21	58887	NA	NA

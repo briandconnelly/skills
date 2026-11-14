@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/caller-trace/codex/candidate-4	1	100603	87680	941	NA	1	NA	6	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/caller-trace/codex/candidate-4	2	98681	86016	1146	NA	1	NA	9	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/caller-trace/codex/candidate-4	3	84574	65792	1134	NA	1	NA	8	0

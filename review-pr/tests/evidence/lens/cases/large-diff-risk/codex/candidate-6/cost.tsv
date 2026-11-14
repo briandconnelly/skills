@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/large-diff-risk/codex/candidate-6	1	129853	96512	2319	NA	1	NA	9	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/large-diff-risk/codex/candidate-6	2	1440467	1284224	3405	NA	1	NA	21	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/large-diff-risk/codex/candidate-6	3	640043	535168	2633	NA	1	NA	16	0

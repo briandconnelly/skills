@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/claude/candidate-6	1	30928	23744	1344	0.0891	6	15397	NA	NA
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/claude/candidate-6	2	30964	28184	1364	0.0551	6	14951	NA	NA
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/swallowed-default/claude/candidate-6	3	31006	28184	1397	0.0561	6	19084	NA	NA

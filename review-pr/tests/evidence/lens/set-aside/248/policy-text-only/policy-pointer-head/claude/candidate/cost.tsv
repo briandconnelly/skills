@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/policy-pointer-head/claude/candidate	1	63936	48021	5315	0.4768	11	54227	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/policy-pointer-head/claude/candidate	2	40475	34957	6562	0.3577	7	65009	NA	NA
-/Users/bdc/projects/skills/.claude/worktrees/agent-a4a4c0fe57459dbc1/review-pr/tests/evidence/lens/cases/policy-pointer-head/claude/candidate	3	40518	34969	4069	0.2585	7	41872	NA	NA

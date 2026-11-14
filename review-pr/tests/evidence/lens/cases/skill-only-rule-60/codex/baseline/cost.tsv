@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-only-rule-60/codex/baseline	1	223170	186496	1311	NA	1	NA	95	86
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-only-rule-60/codex/baseline	2	223421	191744	1577	NA	1	NA	95	86
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/skill-only-rule-60/codex/baseline	3	224175	187264	1448	NA	1	NA	95	86

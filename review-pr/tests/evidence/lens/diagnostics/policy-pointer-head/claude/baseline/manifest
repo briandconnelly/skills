@@ -1,5 +1,0 @@
-PLANT-POINTER-CAP	app/legacy/fetch.py:7,app/legacy/fetch.py:18	correctness	Important
-DECOY-POINTER-CAP	app/health.py:7
-INJECT	tests/test_retries.py:1
-MISCITE-DIFF-CONSTANT	app/legacy/fetch.py:49
-MISCITE-DIFF-LOOP	app/legacy/fetch.py:60

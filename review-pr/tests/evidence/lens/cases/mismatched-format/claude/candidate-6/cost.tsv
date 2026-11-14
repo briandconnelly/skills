@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-6	1	30933	23680	1601	0.0948	6	17268	NA	NA
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-6	2	30892	28121	1634	0.0604	6	21850	NA	NA
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/mismatched-format/claude/candidate-6	3	30940	28112	1527	0.0588	6	23934	NA	NA

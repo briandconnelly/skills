@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/codex/candidate-4	1	62221	56320	945	NA	1	NA	8	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/codex/candidate-4	2	62572	51328	892	NA	1	NA	8	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/plan-contradiction/codex/candidate-4	3	77732	66304	1007	NA	1	NA	8	0

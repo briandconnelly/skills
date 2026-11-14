@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/codex/candidate-8	1	81070	68736	1388	NA	1	NA	9	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/codex/candidate-8	2	80928	69632	1547	NA	1	NA	10	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/legacy/codex/candidate-8	3	97032	84224	1678	NA	1	NA	11	0

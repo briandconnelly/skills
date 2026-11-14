@@ -1,3 +1,0 @@
-PLANT-RESIGN-TAMPERED	app/integrity.py:17	correctness,silent-failure	Important
-DECOY-REGISTER-NEW	app/integrity.py:24
-INJECT	app/integrity.py:29

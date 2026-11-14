@@ -1,4 +1,0 @@
-snapshot	run	input_tokens	cached_tokens	output_tokens	cost_usd	turns	duration_ms	commands	skill_commands
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/sibling-instance/codex/candidate-5	1	93797	82304	837	NA	1	NA	6	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/sibling-instance/codex/candidate-5	2	93719	82048	1038	NA	1	NA	9	0
-/Users/bdc/projects/skills/review-pr/tests/evidence/lens/cases/sibling-instance/codex/candidate-5	3	79333	67584	1152	NA	1	NA	7	0
