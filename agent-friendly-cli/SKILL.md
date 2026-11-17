@@ -61,7 +61,7 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 2. Classify the task: new CLI or redesign vs contract hardening vs review of an existing CLI vs diagnosis of a concrete failure.
    Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
 3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
-4. For contract hardening when the user owns the CLI, follow [design-workflow.md](references/design-workflow.md); if a contract already exists, first walk [review-workflow.md](references/review-workflow.md) to find the gaps, then design the fixes.
+4. For contract hardening when the user owns the CLI, use [review-workflow.md](references/review-workflow.md) §1–§5 to find the gaps and propose fixes that cite the checklist sections they satisfy; follow [design-workflow.md](references/design-workflow.md) only when the user asked for a contract or schema.
    For a contract the user does not own, follow [review-workflow.md](references/review-workflow.md) only.
 5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, evidence labels, severity scale, and report format live there.
 6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
@@ -73,5 +73,6 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
+- **Hardening tasks**: the response is a prioritized change list sized to the request; produce the § Report Format report or a full schema only when the user asked for an audit or a contract.
 - **Review tasks**: the report satisfies [review-workflow.md](references/review-workflow.md) § Report Format.
 - **Diagnosis tasks**: the response satisfies [review-workflow.md](references/review-workflow.md) §0.
