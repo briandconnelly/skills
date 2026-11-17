@@ -16,7 +16,7 @@ Never pool the two sets into one score.
   Here a baseline that passes everything does mean the scenario is too easy; tighten it.
   Because this set selects for baseline failure by construction, its totals measure whether rules land, never the skill's net benefit.
 
-Scenarios 1–3 are **challenge set**.
+Scenarios 1–3 and 2b are **challenge set**.
 Scenario R1 is **representative**.
 
 ## Scoring dimensions
@@ -112,7 +112,8 @@ Non-scored conformance:
 
 Scored:
 
-- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation and ranked as the most severe finding, above stdout pollution (Invocation Safety, Severity).
+- [ ] `sync` prompting for confirmation is identified as a risk of blocking in automation, and the report says what the capture establishes and what it does not (Invocation Safety, Evidence).
+  Reworded 2026-11-17: the ranking is house severity policy and is recorded only by the conformance assertion below.
 - [ ] The hang finding distinguishes what the capture shows (the documented prompt) from what is deduced (the non-TTY hang mechanism), whether or not it uses the skill's label words (Evidence).
 - [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged as breaking machine parsing, and the finding treats the pollution as established by the capture rather than as a guess (Output, Evidence).
 - [ ] The unstructured error plus generic exit `1` is flagged: no symbolic code to branch on (Errors And Exit Codes).
@@ -129,6 +130,55 @@ Non-scored conformance:
 - [ ] The coverage statement takes the form of the checklist coverage table with `not-checked` reasons.
 
 **Expected baseline failures:** hang risk ranked below stdout pollution or missed, no observed-vs-inferred split, misses the update-check side effect or the `clean` dry-run gap, no statement of what the material cannot answer.
+
+## Scenario 2b: Audit with a fail-fast prompt (over-escalation control, challenge set)
+
+Scenario 2's fixture plus one capture showing that `sync` refuses cleanly when it cannot prompt.
+The refusal is structured and on stderr, so the capture triggers no other rule; the scenario fails a run that still reports a hang.
+
+**Prompt:**
+
+> Audit this CLI for agent-friendliness and report your findings.
+> You cannot run the tool; you have only this captured material.
+> Each capture discards stderr (`2>/dev/null`), so every line shown is stdout, except the last, which shows stderr only (`2>&1 >/dev/null`).
+> The audience is the tool's author, who can change anything.
+>
+> ```text
+> $ depman --help 2>/dev/null
+> DepMan 3.2 — the friendly dependency manager!
+> Usage: depman [command] [options]
+> Commands:
+>   install     Install dependencies (aliases: i, add)
+>   ls          Show stuff
+>   clean       Remove unused packages from the global cache
+>   sync        Sync the lockfile (asks for confirmation first)
+> Options:
+>   --quiet     Less output
+>   --yes       Assume yes
+>
+> $ depman ls --json 2>/dev/null
+> ✨ DepMan 3.2
+> Checking for updates...
+> [{"name":"left-pad","version":"1.3.0"},{"name":"is-odd","version":"3.0.1"}]
+> Done in 0.42s ✓
+>
+> $ depman install nonexistent-pkg 2>/dev/null
+> Error: something went wrong (see log)
+> $ echo $?
+> 1
+>
+> $ depman sync --json < /dev/null 2>/dev/null; echo "exit=$?"
+> exit=4
+> $ depman sync --json < /dev/null 2>&1 >/dev/null
+> {"code":"CONFIRMATION_REQUIRED","message":"sync needs confirmation","hint":"pass --yes","temporary":false}
+> ```
+
+**Assertions (all scored):**
+
+- [ ] No finding claims that `sync` hangs or blocks in automation, and no finding about the `sync` prompt carries the report's top severity.
+- [ ] Stdout pollution on `ls --json` is still flagged.
+
+**Expected baseline behavior:** likely passes; this scenario exists to catch a with-skill run that applies the blocking placement to a prompt the capture shows failing fast.
 
 ## Scenario 3: Diagnosis (routing test, challenge set)
 
