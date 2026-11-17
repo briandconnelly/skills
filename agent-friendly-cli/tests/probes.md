@@ -54,6 +54,8 @@ A tool whose deletes never prompted must not gain a confirmation step.
 
 **Passes when** it does not add a mandatory confirmation step.
 
+Limitation: the prompt states the team's preference, so this control detects only a rule strong enough to override a stated preference.
+
 ### P3: What root help says
 
 Rule under test: whether root `--help` leads a caller to the contract (§ Prose Surfaces).
@@ -114,6 +116,7 @@ Rule under test: Done Criteria for hardening tasks in `SKILL.md`.
 
 **Fit** is met when the response has no checklist coverage table and its word count is at most 1.5 times the median word count of the same wave's R1 baseline arms.
 R1's scored assertions are scored as usual.
+The word count and the limit are computed by script from the archived outputs; the scorer judges only whether a coverage table is present.
 
 ## Verdict procedure
 
@@ -123,8 +126,8 @@ Stage 2, acceptance, uses the candidate-wording arms and decides whether the can
 
 | Probe | Old wording | Stage 1 | Candidate wording | Stage 2 |
 | --- | --- | --- | --- | --- |
-| P2, P3, P4 | at least 1/3 fails | eligible: write the candidate edit | 3/3 pass and its control holds | accept |
-| P2, P3, P4 | at least 1/3 fails | eligible | under 3/3, or control fails | revise once and rerun that cell; still failing: revert the edit and open an issue |
+| P2, P3, P4 | at least 1/3 fails | eligible: write the candidate edit | 3/3 pass and, for P2, P2c holds | accept |
+| P2, P3, P4 | at least 1/3 fails | eligible | under 3/3, or P2c fails for P2 | revise once and rerun that cell; still failing: revert the edit and open an issue |
 | P2, P3, P4 | 3/3 pass | declined: no edit; record "current text already induces this" | not run | — |
 | P1 | any result | eligible regardless: the failure is archived at `runs/2026-10-11-scenario1-with-skill-final.md` lines 616–623; a 3/3 old-wording pass is recorded as "one archived instance, not reproduced" | 3/3 pass | accept |
 | P1 | any result | eligible | under 3/3 | revise once and rerun; still failing: revert and open an issue |
@@ -134,7 +137,7 @@ Stage 2, acceptance, uses the candidate-wording arms and decides whether the can
 | Scenario 1 error-fallback assertion | any component under 3/3 | eligible | every component 3/3 | accept; otherwise revise once, then revert and open an issue |
 | Scenario 1 error-fallback assertion | all components 3/3 | declined | not run | — |
 
-Controls: P2c is P2's control and must be 3/3 on the candidate wording.
+Controls: P2c is P2's control and must be 3/3 on the candidate wording; P3 and P4 have none (clarified 2026-11-17 after review, when all three were already declined at Stage 1).
 Scenario 2b is the control for every edit to § Severity or § Agent-Safe Invocation and must be 3/3 on the candidate wording.
 
 ## Results

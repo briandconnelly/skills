@@ -27,9 +27,9 @@ def test_clean_document_has_no_problems(tmp_path):
 
 
 def test_json_trailing_comma_is_reported_with_its_line(tmp_path):
-    problems = _problems(tmp_path, 'intro\n```json\n{"a": 1,}\n```\n')
+    problems = _problems(tmp_path, 'intro\n```json\n{\n  "a": 1,\n}\n```\n')
     assert len(problems) == 1
-    assert problems[0].startswith(f"{tmp_path / 'doc.md'}:2: ")
+    assert problems[0].startswith(f"{tmp_path / 'doc.md'}:5: ")
 
 
 def test_bad_ndjson_line_is_reported(tmp_path):
@@ -51,12 +51,12 @@ def test_link_inside_a_fence_is_not_checked(tmp_path):
 def test_indented_and_blockquoted_fences_are_parsed(tmp_path):
     text = '  ```json\n  {"a": 1,}\n  ```\n> ```json\n> {"b": 2,}\n> ```\n'
     lines = [problem.split(":")[1] for problem in _problems(tmp_path, text)]
-    assert lines == ["1", "4"]
+    assert lines == ["2", "5"]
 
 
 def test_tilde_fences_are_parsed_and_shield_links(tmp_path):
     problems = _problems(tmp_path, '~~~json\n{"a": 1,}\n~~~\n~~~text\n[gone](nope.md)\n~~~\n')
-    assert [problem.split(":")[1] for problem in problems] == ["1"]
+    assert [problem.split(":")[1] for problem in problems] == ["2"]
 
 
 def test_fence_closes_only_on_its_own_character(tmp_path):
@@ -66,7 +66,7 @@ def test_fence_closes_only_on_its_own_character(tmp_path):
 
 def test_nonstandard_json_constants_are_rejected(tmp_path):
     text = '```json\n{"v": NaN}\n```\n```ndjson\n{"v": Infinity}\n```\n'
-    assert [problem.split(":")[1] for problem in _problems(tmp_path, text)] == ["1", "5"]
+    assert [problem.split(":")[1] for problem in _problems(tmp_path, text)] == ["2", "5"]
 
 
 def test_unclosed_fence_is_reported(tmp_path):

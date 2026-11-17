@@ -37,8 +37,12 @@ def _check_fence(path: Path, lang: str, start: int, body: list[str]) -> list[str
     if lang == "json":
         try:
             _loads("\n".join(body))
+        except json.JSONDecodeError as exc:
+            return [f"{path}:{start + exc.lineno}: json fence does not parse: {exc.msg}"]
         except ValueError as exc:
-            return [f"{path}:{start}: json fence does not parse: {exc}"]
+            name = str(exc).rsplit(" ", 1)[-1]
+            offset = next((n for n, text in enumerate(body, start=1) if name in text), 1)
+            return [f"{path}:{start + offset}: json fence does not parse: {exc}"]
     elif lang == "ndjson":
         problems = []
         for offset, text in enumerate(body, start=1):
