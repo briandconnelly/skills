@@ -47,18 +47,30 @@ Every run records its set, any **regression** (an assertion the baseline satisfi
 > It must support: list notes, get a note, search notes, create a note, delete a note, and export all notes to a file.
 > Produce: the command surface, the machine-readable schema, example success payloads, and example error payloads for at least two failure modes.
 
-**Assertions (with-skill run must satisfy; all scored):**
+**Assertions (with-skill run must satisfy):**
+
+Scored.
+Equivalent names and field spellings pass every scored assertion below.
 
 - [ ] A canonical machine profile is declared in the schema, and every flag it names is declared as a flag (Machine Schema).
 - [ ] The schema declares numeric exit codes plus symbolic error codes, with a per-command error catalog for at least the mutating command (Errors And Exit Codes).
 - [ ] stdout is success payload only; structured failures go to stderr with declared framing (Output).
 - [ ] `delete` requires an explicit trigger and supports `--dry-run` whose output includes `dry_run: true` (Mutations And Long-Running Work).
 - [ ] List/search output declares pagination with `has_more` and a navigation token (Output).
-- [ ] Export is the only `--output <file>` command and returns path, byte size, and content hash (Output).
+- [ ] Export returns a structured pointer to the written file with its size and an integrity hash (Output).
 - [ ] Duration flags declare units in the name or a `unit` field (Machine Schema).
-- [ ] Each command declares one output class; any flag that switches the class declares the switch (Output).
 - [ ] Ambient state (config, credentials, cache) is declared with inspection and isolation affordances (Ambient State).
-- [ ] Every canonical example that uses `--` places all options before it and only operands after it (Shell Safety). Added 2026-10-11 after a with-skill run shipped `-- "query" --machine`; every scenario 1 row except `runs/2026-10-11-scenario1-with-skill-final.md` (10/10) was scored on the nine assertions above.
+- [ ] Every canonical example that uses `--` places all options before it and only operands after it (Shell Safety).
+  Added 2026-10-11 after a with-skill run shipped `-- "query" --machine`; every scenario 1 row dated before 2026-11-17 except `runs/2026-10-11-scenario1-with-skill-final.md` (10/10) was scored without it.
+- [ ] The contract says what an unanticipated failure emits (a declared symbolic code), each networked command's error list includes a non-timeout transport failure, and the contract says how a caller treats an error code it does not list (Errors And Exit Codes).
+  Added 2026-11-17; scored per component, and it passes only if all three do.
+- [ ] Any flag that takes several values declares how they are passed (repeated flag or delimiter) (Machine Schema).
+  Added 2026-11-17.
+
+Non-scored conformance:
+
+- [ ] Export is the only `--output <file>` command.
+- [ ] Each command declares one output class from the skill's set; any flag that switches the class declares the switch.
 
 **Expected baseline failures:** no machine profile or schema fingerprint, prose-only errors, no exit-code map, no stdin/ambient-state declarations, dry-run absent or unmarked, pagination undeclared.
 
@@ -176,7 +188,8 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 
 **Assertions (all scored):**
 
-- [ ] Proposes a non-interactive, machine-readable output mode and says what each command's output looks like in it (Output).
+- [ ] Proposes a non-interactive, machine-readable output mode and, for each of `list`, `show`, `create`, and `delete`, names the fields or shape of its output, not only an output class (Output).
+  Reworded 2026-11-17 to state the threshold the 2026-10-11 scoring correction applied; this resets R1's history, so rows dated before 2026-11-17 are not comparable on this assertion.
 - [ ] Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes).
 - [ ] Removes every interactive prompt from the agent path: `create` takes values non-interactively, `delete` has an explicit non-prompting trigger plus a preview or dry-run, and `login` has a non-browser bootstrap (Agent-Safe Invocation, Mutations).
 - [ ] Names the ambient state (`~/.envctl` cache, login credentials) and proposes how an agent inspects or disables it (Ambient State).
@@ -187,6 +200,7 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 ## Results
 
 Rows dated before 2026-10-11 were scored against the earlier scenario 2 fixture (no stream attribution) and the earlier assertion lists; rows from 2026-10-11 on use the sets and scored/conformance split above.
+Rows from 2026-11-17 on use the 2026-11-17 assertion lists: scenario 1 is split into eleven scored and two conformance assertions, scenario 2's first scored assertion no longer includes the ranking, R1's first assertion states its threshold, and every cell is three arms reported as x/3 per assertion.
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
