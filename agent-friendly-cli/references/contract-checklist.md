@@ -10,7 +10,7 @@ Use this as the detailed standard for both design and review tasks.
 - Use stable domain nouns from APIs, docs, database objects, and error payloads.
 - Use aliases only for migration; declare aliases in schema and avoid them in canonical examples.
 - Use full words unless an abbreviation is dominant in the domain.
-- Reuse verbs consistently where semantics match; the conventional set is `list`, `get`, `find`, `create`, `update`, `delete`, `validate`.
+- Reuse verbs consistently where semantics match; `list`, `get`, `find`, `create`, `update`, `delete`, `validate` are common choices, not a required set, and a verb the user or the domain already uses wins.
 - Avoid flags whose meanings change across commands.
 - Pick one primary selector pattern per resource type: name, ID, path, query, or stdin.
 - Use the conventional flag names where they fit: `--format`, `--limit`, `--filter`, `--timeout-ms`, `--output`.
@@ -23,7 +23,7 @@ It should include:
 
 - command tree and canonical invocation path
 - aliases, deprecations, and replacements
-- arguments, flags, types, defaults, enums, cardinality, and examples
+- arguments, flags, types, defaults, enums, cardinality, multi-value syntax (repeated flag or delimiter), and examples
 - global flags, including every flag named in the machine profile
 - units for duration and size flags, declared in the flag name (`--timeout-ms`) or a `unit` field; undeclared units are a contract gap
 - canonical machine profile; prefer a single flag that implies the rest, and define what each flag adds when the profile names several
@@ -42,6 +42,7 @@ It should include:
 - schema version and stable fingerprint
 
 Expose a compact fingerprint endpoint so agents can cache the schema cheaply.
+Expose one command's contract on its own (`tool schema <command>` or equivalent); a single-command tool is exempt.
 The fingerprint should be stable across version-only releases unless the schema contract changed; if version is part of the fingerprint input, declare that explicitly.
 Pair the fingerprint with `fingerprint_scope` — e.g. `schema-contract` when the fingerprint covers the full command contract — so agents know what changing the fingerprint invalidates.
 
@@ -76,9 +77,8 @@ Agents typically build shell command lines, so the contract must survive hostile
 
 ## Agent-Safe Invocation
 
-- Define one canonical machine profile.
 - Keep isolation controls such as `--isolated` or `--no-config` distinct from the canonical machine profile unless the CLI can still complete normal authenticated reads without ambient state.
-- Machine mode is non-interactive.
+- Machine mode is non-interactive, emits structured output only, and suppresses everything the non-TTY suppression rule in this section lists, on every stream regardless of terminal status.
 - Non-TTY mode is evaluated per stream: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
 - Non-TTY mode conservatively suppresses color, progress, spinners, pagers, browser launch, and prompts.
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
@@ -96,6 +96,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 - Exceptions to stderr failure payloads must be declared in the schema and disambiguated by exit code; for non-streaming classes the default contract remains empty stdout on failure in machine mode.
 - Streaming success output still goes to stdout as NDJSON; stderr may emit periodic structured progress objects when the schema declares them.
 - A `stream` or NDJSON `bulk-result` command that fails after emitting records keeps the emitted records valid, writes the structured error to stderr per the declared framing, and exits nonzero; the schema declares whether a terminal record marks normal completion (`completion_record`), so consumers can tell a completed stream from a dead process.
+- A closed stdout (the reader exited, as with `| head`) ends a read command quietly; a mutating command declares whether it stops or finishes.
 - Default output is the requested payload, not banners or summaries.
 - JSON is shallow, stable, deterministic, and compact.
 - In success payloads, a `message` field must not duplicate structured data that is already present elsewhere in the payload.
@@ -128,7 +129,7 @@ Suggested numeric exit-code meanings (skill convention; codes `0`, `1`, `2` foll
 - `7`: timeout
 - `8`: conflict
 - `9`: transient, not otherwise classified
-- `10`-`125`: domain-specific, declared in schema
+- `10`-`125`: domain-specific, declared in schema; skip `124` and `125`, which `timeout(1)` uses for its own outcomes
 
 Avoid `126` and `127` (shell launch failures) and `128+n` (signal exits); shells already assign those meanings.
 
@@ -141,7 +142,6 @@ Structured errors:
 - Recommended fields: `hint`, `retry_after_ms`, `reconcile_first`, `details`, `field`, `resource_id`, `conflict_with`, `request_id`, `docs_url`, `path`.
 - `reconcile_first: true` mirrors the catalog field in the payload.
 - In JSON mode, `code` is symbolic and stable across platforms.
-- Numeric codes are only the shell-branching fallback.
 - `field` must name a published flag or argument, never an internal identifier.
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
 - Retryability is explicit: `temporary` is present on every structured error, `false` included.
@@ -157,6 +157,7 @@ Partial failure:
 - Multi-item commands exit nonzero by default if any item fails, with the aggregate symbolic code and exit code declared in the per-command error catalog.
 - `--allow-partial` may permit exit `0`, but output must include `partial: true` and failed item errors.
 - Bulk operations should report per-item results in NDJSON when result size can grow.
+- Declare whether a multi-item command stops at the first failure or continues.
 
 ## Ambient State
 
@@ -166,6 +167,7 @@ Document:
 - which config files are read
 - which environment variables are read
 - which caches are used
+- whether the current working directory selects context, and the flag that overrides it
 - precedence rules, preferably flags > env vars > config files > local caches
 - how to disable ambient state
 - how to inspect resolved state
@@ -202,7 +204,7 @@ If state cannot be disabled, expose that fact in schema and machine output.
 - Declare which mutations are safe to retry automatically and which require reconciliation first.
 - Declare signal semantics for mutating and long-running commands: what an interrupt (SIGINT/SIGTERM) leaves behind, whether local writes are atomic, and whether remote work continues after the process dies.
 - Local state writes (config, cache, lockfiles) must be safe under concurrent invocations: atomic replacement, locking, or documented last-writer-wins.
-- Long-running operations need job IDs, machine-readable status, polling, `wait --timeout`, and a cancel operation.
+- Asynchronous operations that outlive the CLI process need job IDs, machine-readable status, polling, `wait --timeout-ms`, and a cancel operation; a foreground command that merely runs long declares its deadline, progress framing, and interrupt behavior.
 
 ## Side Effects And Telemetry
 

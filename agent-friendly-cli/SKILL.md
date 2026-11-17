@@ -37,7 +37,7 @@ Where a workflow or example appears to disagree with the checklist on a contract
 Definitions only; the rules that govern each term live in [contract-checklist.md](references/contract-checklist.md).
 
 - **Machine profile**: the canonical flag bundle, declared in the schema, that puts the CLI in machine mode (e.g., a single `--machine` flag that implies the rest).
-- **Machine mode**: the runtime state the machine profile produces — no prompts, no color, no progress, no pager, no browser, structured output only.
+- **Machine mode**: the runtime state the machine profile produces.
 - **Isolation profile**: an optional flag bundle that disables ambient config, credentials, caches, and other implicit state (e.g., `--isolated` or `--no-config`).
   Distinct from the machine profile.
 - **Non-TTY mode**: runtime behavior derived from each stream's terminal status rather than from an explicit flag.

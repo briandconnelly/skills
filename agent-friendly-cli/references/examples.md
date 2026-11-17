@@ -6,6 +6,7 @@ Use these as concrete shapes to mimic; cross-reference [contract-checklist.md](c
 ## 1. Schema example
 A minimal schema output for `widgetctl schema` is below, covering the `widget get` and `widget delete` commands.
 Later sections also use `count`, `list`, `watch`, `update`, and `export`; their schema entries are omitted for brevity but follow the same per-command shape.
+The `whoami` and `config show --resolved` inspection commands are omitted the same way.
 The machine profile is a single flag: `--machine` implies `--json` and `--no-progress`, so callers add one flag while the implied flags stay individually declared.
 Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a closed enum, a trailing `?` marks an optional field, fields are required unless so marked or removed by a declared projection, and a string-valued shape describes a record sequence; JSON Schema is the zero-explanation alternative.
 ```json
@@ -54,8 +55,8 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
         {"name": "id", "type": "string", "cardinality": "one", "examples": ["wgt_123"]}
       ],
       "flags": [
-        {"name": "--select", "type": "enum", "enum": ["id", "name", "status"], "cardinality": "many", "default": ["id", "name", "status"]},
-        {"name": "--timeout", "type": "integer", "unit": "ms", "default": 3000}
+        {"name": "--select", "type": "enum", "enum": ["id", "name", "status"], "cardinality": "many", "multi_value_syntax": "repeat", "default": ["id", "name", "status"]},
+        {"name": "--timeout-ms", "type": "integer", "unit": "ms", "default": 3000}
       ],
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "active|inactive|deleted"}, "projection": {"flag": "--select", "rule": "only selected fields are present; unselected fields are absent, not null"}, "size_mode": "small"},
@@ -92,10 +93,10 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
         {"name": "--if-exists", "type": "boolean", "default": false},
         {"name": "--from-file", "type": "path", "default": null, "switches_output_class": "bulk-result"},
         {"name": "--allow-partial", "type": "boolean", "default": false, "requires": "--from-file"},
-        {"name": "--timeout", "type": "integer", "unit": "ms", "default": 5000}
+        {"name": "--timeout-ms", "type": "integer", "unit": "ms", "default": 5000}
       ],
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
-      "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "deleted"}, "size_mode": "small"},
+      "output": {"class": "record", "format": "json", "shape": {"id": "string", "name?": "string", "status": "deleted|absent"}, "shape_description": "name is omitted and status is absent when --if-exists suppressed WIDGET_NOT_FOUND", "size_mode": "small"},
       "alternate_outputs": {
         "--from-file": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
         "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "streaming": false, "size_mode": "small"},
@@ -106,6 +107,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "timeout_defaults_ms": 5000,
       "retry_defaults": {"retries": 0},
       "reconciliation": "on timeout or interrupt the outcome is unknown; delete is repeat-safe with --if-exists, so the declared recovery is to re-run with --if-exists; widgetctl widget get reads the primary store, and WIDGET_NOT_FOUND from it shows the widget is absent now, not which attempt removed it",
+      "signal_semantics": {"interrupt": "the remote delete may still commit", "local_writes": "none", "remote_continues": true},
       "async": false,
       "streaming": false,
       "pagination": false,
@@ -129,8 +131,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
 
 ## 2. Schema fingerprint example
 The stable cache-key payload for `widgetctl schema --fingerprint` is below.
-An additive change (a new optional flag or output field) bumps the minor version and changes the fingerprint; a breaking change (removal, rename, type or exit-code change) bumps the major version and changes the fingerprint.
-A fingerprint change means re-fetch the schema; a major bump means existing call sites may break.
+Adding an optional flag to this tool would move it to `1.1` and to a new fingerprint; the rules for which changes move which value are in [contract-checklist.md](contract-checklist.md) § Machine Schema.
 ```json
 {
   "schema_version": "1.0",
@@ -194,6 +195,14 @@ Dry-run success payload for `widgetctl widget delete wgt_123 --dry-run --machine
 }
 ```
 
+Already-absent success payload for `widgetctl widget delete wgt_999 --if-exists --machine`, exit `0`.
+```json
+{
+  "id": "wgt_999",
+  "status": "absent"
+}
+```
+
 Artifact success payload for `widgetctl widget export --output out.json --machine`.
 ```json
 {
@@ -205,8 +214,8 @@ Artifact success payload for `widgetctl widget export --output out.json --machin
 
 ## 4. Structured error payloads
 Per the declared `stderr_framing` of `single-error-object`, in machine mode each error object below is the only stderr content for its failure; human mode may surround it with additional diagnostics.
-Validation error for exit `2` from `widgetctl widget update wgt_123 --status bogus`, with JSON on stderr and empty stdout in machine mode.
-`field` names the published `--status` flag, never an internal identifier, and the allowed values are machine-usable in `details` rather than only in `hint` prose.
+Validation error for exit `2` from `widgetctl widget update wgt_123 --status bogus --machine`, with JSON on stderr and empty stdout in machine mode.
+`field` is the published `--status` flag, and `details.allowed_values` carries the repair data.
 ```json
 {
   "code": "VALIDATION_ERROR",
