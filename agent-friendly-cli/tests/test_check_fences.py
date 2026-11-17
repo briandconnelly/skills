@@ -29,7 +29,7 @@ def test_clean_document_has_no_problems(tmp_path):
 def test_json_trailing_comma_is_reported_with_its_line(tmp_path):
     problems = _problems(tmp_path, 'intro\n```json\n{\n  "a": 1,\n}\n```\n')
     assert len(problems) == 1
-    assert problems[0].startswith(f"{tmp_path / 'doc.md'}:5: ")
+    assert problems[0].startswith(f"{tmp_path / 'doc.md'}:4: ")
 
 
 def test_bad_ndjson_line_is_reported(tmp_path):
