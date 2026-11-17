@@ -50,3 +50,17 @@ Open an issue if any of these holds:
 
 | Date | Tree | Catalog sha256 | Prompt | Fired | Notes |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 1 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 2 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 3 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 4 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 5 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should fire 6 | 3/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 1 | 3/3 | Body-only exclusion; every arm chose `agent-friendly-mcp` and `agent-friendly-cli` together. Meets the preregistered issue condition (a body-only exclusion firing in 3/3). |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 2 | 0/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 3 | 0/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 4 | 0/3 |  |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 5 | 0/3 | Body-only exclusion; did not fire. |
+| 2026-11-17 | `b6958e0` | `78424ced0e80…` | should not fire 6 | 0/3 |  |
+
+Full answers and the complete catalog hash: `runs/2026-11-17-pre-edit-triggers.md`.
