@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 _PREFIX = re.compile(r"^[ \t>]*")
-_FENCE = re.compile(r"^(`{3,})\s*([A-Za-z0-9_-]*)\s*$")
+_FENCE = re.compile(r"^(`{3,}|~{3,})\s*([A-Za-z0-9_-]*)\s*$")
 _LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 _EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|#)", re.IGNORECASE)
 
@@ -24,21 +24,30 @@ def _strip(line: str) -> str:
     return _PREFIX.sub("", line.rstrip("\n"))
 
 
+def _reject_constant(name: str) -> None:
+    raise ValueError(f"nonstandard constant {name}")
+
+
+def _loads(text: str) -> None:
+    """Parse strict JSON: NaN and Infinity are not JSON."""
+    json.loads(text, parse_constant=_reject_constant)
+
+
 def _check_fence(path: Path, lang: str, start: int, body: list[str]) -> list[str]:
     if lang == "json":
         try:
-            json.loads("\n".join(body))
-        except json.JSONDecodeError as exc:
-            return [f"{path}:{start}: json fence does not parse: {exc.msg}"]
+            _loads("\n".join(body))
+        except ValueError as exc:
+            return [f"{path}:{start}: json fence does not parse: {exc}"]
     elif lang == "ndjson":
         problems = []
         for offset, text in enumerate(body, start=1):
             if not text.strip():
                 continue
             try:
-                json.loads(text)
-            except json.JSONDecodeError as exc:
-                problems.append(f"{path}:{start + offset}: ndjson line does not parse: {exc.msg}")
+                _loads(text)
+            except ValueError as exc:
+                problems.append(f"{path}:{start + offset}: ndjson line does not parse: {exc}")
         return problems
     return []
 
@@ -62,7 +71,12 @@ def check_file(path: Path) -> list[str]:
                 relative = target.split("#", 1)[0]
                 if relative and not (path.parent / relative).exists():
                     problems.append(f"{path}:{number}: link target does not exist: {target}")
-        elif match and not match.group(2) and len(match.group(1)) >= len(fence[0]):
+        elif (
+            match
+            and not match.group(2)
+            and match.group(1)[0] == fence[0][0]
+            and len(match.group(1)) >= len(fence[0])
+        ):
             problems.extend(_check_fence(path, fence[1], fence[2], body))
             fence = None
         else:

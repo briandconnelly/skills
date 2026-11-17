@@ -54,6 +54,21 @@ def test_indented_and_blockquoted_fences_are_parsed(tmp_path):
     assert lines == ["1", "4"]
 
 
+def test_tilde_fences_are_parsed_and_shield_links(tmp_path):
+    problems = _problems(tmp_path, '~~~json\n{"a": 1,}\n~~~\n~~~text\n[gone](nope.md)\n~~~\n')
+    assert [problem.split(":")[1] for problem in problems] == ["1"]
+
+
+def test_fence_closes_only_on_its_own_character(tmp_path):
+    text = "~~~~text\n```json\n{bad}\n```\n[gone](nope.md)\n~~~~\n"
+    assert _problems(tmp_path, text) == []
+
+
+def test_nonstandard_json_constants_are_rejected(tmp_path):
+    text = '```json\n{"v": NaN}\n```\n```ndjson\n{"v": Infinity}\n```\n'
+    assert [problem.split(":")[1] for problem in _problems(tmp_path, text)] == ["1", "5"]
+
+
 def test_unclosed_fence_is_reported(tmp_path):
     problems = _problems(tmp_path, '```json\n{"a": 1}\n')
     assert len(problems) == 1
