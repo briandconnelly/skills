@@ -33,9 +33,11 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "delete": "widgetctl widget delete <id>"
     }
   },
-  "exit_codes": {"0": "success", "1": "generic", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, not otherwise classified", "10": "partial failure (domain-specific)"},
-  "symbolic_error_codes": ["VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
-  "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
+  "exit_codes": {"0": "success", "1": "generic (INTERNAL)", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, not otherwise classified", "10": "partial failure (domain-specific)"},
+  "symbolic_error_codes": ["INTERNAL", "VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
+  "fallback_error_code": "INTERNAL",
+  "unknown_code_policy": "non-retryable",
+  "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "reconcile_first?": "boolean", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
   "auth": "required",
   "environment": ["WIDGETCTL_TOKEN"],
   "config": {"reads": true, "disable_with": "--no-config"},
@@ -67,11 +69,13 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "INTERNAL", "exit": 1},
         {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3},
         {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
-        {"code": "TIMEOUT", "exit": 7, "retryable": true}
+        {"code": "TIMEOUT", "exit": 7, "retryable": true},
+        {"code": "TRANSIENT", "exit": 9, "retryable": true}
       ]
     },
     {
@@ -101,19 +105,21 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "latency_class": "network",
       "timeout_defaults_ms": 5000,
       "retry_defaults": {"retries": 0},
-      "reconciliation": "on timeout or interrupt the outcome is unknown; run widgetctl widget get <id>: WIDGET_NOT_FOUND means the delete committed, and --if-exists makes a retry safe",
+      "reconciliation": "on timeout or interrupt the outcome is unknown; delete is repeat-safe with --if-exists, so the declared recovery is to re-run with --if-exists; widgetctl widget get reads the primary store, and WIDGET_NOT_FOUND from it shows the widget is absent now, not which attempt removed it",
       "async": false,
       "streaming": false,
       "pagination": false,
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "INTERNAL", "exit": 1},
         {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3, "suppressed_by": "--if-exists"},
         {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "FORBIDDEN", "exit": 5},
         {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
         {"code": "TIMEOUT", "exit": 7, "retryable": false, "reconcile_first": true},
+        {"code": "TRANSIENT", "exit": 9, "retryable": false, "reconcile_first": true},
         {"code": "PARTIAL_FAILURE", "exit": 10, "retryable": false, "requires": "--from-file", "suppressed_by": "--allow-partial"}
       ]
     }

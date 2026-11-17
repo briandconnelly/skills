@@ -138,13 +138,17 @@ Codes `6`, `7`, and `9` can all be retryable; the payload's `temporary` field is
 Structured errors:
 
 - Required fields: `code`, `message`, `temporary`.
-- Recommended fields: `hint`, `retry_after_ms`, `details`, `field`, `resource_id`, `conflict_with`, `request_id`, `docs_url`, `path`.
+- Recommended fields: `hint`, `retry_after_ms`, `reconcile_first`, `details`, `field`, `resource_id`, `conflict_with`, `request_id`, `docs_url`, `path`.
+- `reconcile_first: true` mirrors the catalog field in the payload.
 - In JSON mode, `code` is symbolic and stable across platforms.
 - Numeric codes are only the shell-branching fallback.
 - `field` must name a published flag or argument, never an internal identifier.
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
 - Retryability is explicit: `temporary` is present on every structured error, `false` included.
 - Rate-limit errors include `retry_after_ms`.
+- Declare one fallback symbolic code (e.g., `INTERNAL`, exit `1`) that every unanticipated failure the CLI's error boundary catches emits, framed per § Output; termination the process cannot catch is covered by the signal-semantics rule in § Mutations And Long-Running Work.
+- A networked command's catalog includes a code for transport failures other than timeout.
+- Declare how callers treat a code absent from a command's catalog; the default is non-retryable.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
 
@@ -193,7 +197,8 @@ If state cannot be disabled, expose that fact in schema and machine output.
 - Dry-run output includes `dry_run: true` and describes the planned effect; it must never be byte-identical to real mutation output.
 - Internal effects during dry runs, such as cache warming or token refresh, must be documented and suppressible in isolated mode.
 - Replay-sensitive mutations should support `--if-not-exists`, `--if-exists`, or idempotency keys.
-- A mutation that times out or is interrupted has an unknown outcome; declare the reconciliation path — an idempotency key that makes retry safe, or a lookup/status command that confirms whether the mutation committed before retrying.
+- A mutation that times out or is interrupted has an unknown outcome; declare what makes a retry safe — an idempotency key the caller supplied on the original attempt and reuses, a status command that reports that attempt's terminal outcome, or repeat-safe semantics the operation declares (such as `--if-exists`).
+- A lookup that can lag the write (search, list, an eventually consistent read) does not establish that the mutation did not commit, and a key first added on the retry does not deduplicate the original attempt; a mutation with none of the three is declared not safe to retry automatically.
 - Declare which mutations are safe to retry automatically and which require reconciliation first.
 - Declare signal semantics for mutating and long-running commands: what an interrupt (SIGINT/SIGTERM) leaves behind, whether local writes are atomic, and whether remote work continues after the process dies.
 - Local state writes (config, cache, lockfiles) must be safe under concurrent invocations: atomic replacement, locking, or documented last-writer-wins.
