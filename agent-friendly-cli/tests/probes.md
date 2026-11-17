@@ -63,9 +63,37 @@ Rule under test: whether root `--help` leads a caller to the contract (§ Prose 
 > Here is the schema for `widgetctl`.
 > Write the output of `widgetctl --help`.
 >
-> [the schema JSON from `references/examples.md` §1, pasted from the tree under test]
+> ```json
+> {
+>   "schema_version": "1.0",
+>   "canonical_machine_profile": ["--machine"],
+>   "global_flags": [
+>     {"name": "--machine", "type": "boolean", "description": "non-interactive machine mode: structured output only"},
+>     {"name": "--isolated", "type": "boolean", "description": "ignore ambient config, credentials, and caches"}
+>   ],
+>   "command_tree": {
+>     "schema": "widgetctl schema [--fingerprint]",
+>     "widget": {
+>       "list": "widgetctl widget list",
+>       "get": "widgetctl widget get <id>",
+>       "delete": "widgetctl widget delete <id>"
+>     }
+>   },
+>   "commands": [
+>     {"canonical_invocation_path": "widgetctl schema", "summary": "print this contract as JSON; --fingerprint prints only its cache key", "read_only": true},
+>     {"canonical_invocation_path": "widgetctl widget list", "summary": "list widgets, paginated", "read_only": true},
+>     {"canonical_invocation_path": "widgetctl widget get <id>", "summary": "show one widget by id", "read_only": true},
+>     {"canonical_invocation_path": "widgetctl widget delete <id>", "summary": "delete one widget by id", "read_only": false}
+>   ]
+> }
+> ```
 
 **Passes when** the help text names the schema command and the machine flag.
+
+Amended 2026-11-17, after the first old-wording arms and before any candidate wording existed.
+The original prompt pasted the schema from `references/examples.md` §1, which declares no schema command, so the criterion could only be met by inventing one; all three arms declined to, and said so.
+The fixture above declares the command, and the same fixture is used for both wordings.
+The original arms stay in the Results table, marked superseded.
 
 ### P4: A command that reads standard input
 
@@ -116,7 +144,8 @@ Scenario 2b is the control for every edit to § Severity or § Agent-Safe Invoca
 | 2026-11-17 | P1 | old | `b6958e0` | 0/3 | Stage 1: eligible | Fails the criterion as written in all three arms: each treats an empty lookup as establishing that the create did not commit and recommends retrying on it. All three first wait out the stated 30 s index lag, which is safer than the archived instance (retry on an immediate empty lookup) but still rests the retry on a search, not on the original attempt's outcome. Records: `runs/2026-11-17-pre-edit-P1-withskill-{1,2,3}.md`. |
 | 2026-11-17 | P2 | old | `b6958e0` | 3/3 | Stage 1: declined | Current text already induces this: every arm fails closed with a branchable error naming the confirming input. No edit for the unanswerable-prompt rule. Records: `runs/2026-11-17-pre-edit-P2-withskill-{1,2,3}.md`. |
 | 2026-11-17 | P2c | old | `b6958e0` | 3/3 | Stage 1: control baseline | No arm adds a mandatory confirmation step. Records: `runs/2026-11-17-pre-edit-P2c-withskill-{1,2,3}.md`. |
-| 2026-11-17 | P3 | old | `b6958e0` | 0/3 | Stage 1: eligible | Every arm names `--machine` and none names a schema command. Probe limitation: the pasted schema's `command_tree` lists no schema command, and all three arms say they omitted it for that reason, so the failure is partly the fixture's; read the candidate-wording result with that in mind. Records: `runs/2026-11-17-pre-edit-P3-withskill-{1,2,3}.md`. |
+| 2026-11-17 | P3 (superseded fixture) | old | `b6958e0` | 0/3 | not used for Stage 1 | Every arm names `--machine` and none names a schema command. Probe limitation: the pasted schema's `command_tree` lists no schema command, and all three arms say they omitted it for that reason, so the failure is partly the fixture's; read the candidate-wording result with that in mind. Records: `runs/2026-11-17-pre-edit-P3-withskill-{1,2,3}.md`. |
 | 2026-11-17 | P4 | old | `b6958e0` | 3/3 | Stage 1: declined | Current text already induces this: every arm requires an explicit opt-in to read stdin. No edit for the stdin-preference rule. Records: `runs/2026-11-17-pre-edit-P4-withskill-{1,2,3}.md`. |
 | 2026-11-17 | P5 | old | `b6958e0` | 0/3 meet Fit | Stage 1: eligible | With-skill responses run 1,334, 1,827, and 1,916 words against a baseline median of 645 (limit 968), and 2 of 3 contain a checklist coverage table. R1 scored assertions for the same arms: A1 1/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3. Records: `runs/2026-11-17-pre-edit-R1-withskill-{1,2,3}.md`. |
 | 2026-11-17 | Scenario 1 error-fallback assertion | old | `b6958e0` | unanticipated-failure code 0/3; transport failure per networked command 3/3; unlisted-code handling 0/3 | Stage 1: eligible | Records: `runs/2026-11-17-pre-edit-S1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | P3 (amended fixture) | old | `b6958e0` | 3/3 | Stage 1: declined | Current text already induces this: given a schema that declares a schema command, every arm's help names it and `--machine`. No edit for the root-help rule. Records: `runs/2026-11-17-pre-edit-P3r-withskill-{1,2,3}.md`. |
