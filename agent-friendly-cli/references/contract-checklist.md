@@ -78,7 +78,7 @@ Agents typically build shell command lines, so the contract must survive hostile
 ## Agent-Safe Invocation
 
 - Keep isolation controls such as `--isolated` or `--no-config` distinct from the canonical machine profile unless the CLI can still complete normal authenticated reads without ambient state.
-- Machine mode is non-interactive, emits structured output only, and suppresses everything the non-TTY suppression rule in this section lists, on every stream regardless of terminal status.
+- Machine mode is non-interactive, emits structured output only, and suppresses the human rendering the non-TTY suppression rule in this section lists, on every stream regardless of terminal status; progress records the schema declares (§ Output) are not human rendering.
 - Non-TTY mode is evaluated per stream: stdout controls human rendering and pagers, stderr controls diagnostic color and progress, and stdin controls prompts.
 - Non-TTY mode conservatively suppresses color, progress, spinners, pagers, browser launch, and prompts.
 - Machine mode must not hide deprecations, truncation, partial failure, retries exhausted, version mismatch, or unsafe ambient-state warnings unless those facts appear in structured output.
@@ -146,9 +146,9 @@ Structured errors:
 - `hint` names the smallest concrete correction and preserves the caller's valid inputs; machine-usable repair data such as allowed values or expected formats belongs in structured fields like `details`, not only in `hint` prose.
 - Retryability is explicit: `temporary` is present on every structured error, `false` included.
 - Rate-limit errors include `retry_after_ms`.
-- Declare one fallback symbolic code (e.g., `INTERNAL`, exit `1`) that every unanticipated failure the CLI's error boundary catches emits, framed per § Output; termination the process cannot catch is covered by the signal-semantics rule in § Mutations And Long-Running Work.
+- Declare one fallback symbolic code (e.g., `INTERNAL`, exit `1`) that every unanticipated failure the CLI's error boundary catches emits, framed per § Output; a process killed before it can report emits no error object.
 - A networked command's catalog includes a code for transport failures other than timeout.
-- Declare how callers treat a code absent from a command's catalog; the default is non-retryable.
+- Declare how callers treat a code absent from a command's catalog; the default is to act on its payload fields and, on a mutating command, to reconcile first.
 - Debug detail is opt-in and redacted.
 - Secrets must be redacted from stdout, stderr, debug output, schema examples, request/response dumps, and artifact metadata unless the command's explicit purpose is to return a secret.
 
@@ -173,7 +173,7 @@ Document:
 - how to inspect resolved state
 - which resolved values are secret and how they are redacted
 
-Required inspection affordances for tools that read ambient state (config files, env vars, credentials, caches — not the tool's own primary data store):
+Required inspection affordances for tools that read ambient state (as defined in [SKILL.md](../SKILL.md) Vocabulary; not the tool's own primary data store):
 
 - identity inspection such as `whoami`, only when the tool has an identity or account concept
 - resolved configuration such as `config show --resolved`
@@ -199,7 +199,7 @@ If state cannot be disabled, expose that fact in schema and machine output.
 - Dry-run output includes `dry_run: true` and describes the planned effect; it must never be byte-identical to real mutation output.
 - Internal effects during dry runs, such as cache warming or token refresh, must be documented and suppressible in isolated mode.
 - Replay-sensitive mutations should support `--if-not-exists`, `--if-exists`, or idempotency keys.
-- A mutation that times out or is interrupted has an unknown outcome; declare what makes a retry safe — an idempotency key the caller supplied on the original attempt and reuses, a status command that reports that attempt's terminal outcome, or repeat-safe semantics the operation declares (such as `--if-exists`).
+- A mutation that times out or is interrupted has an unknown outcome; declare what makes a retry safe — an idempotency key the caller supplied on the original attempt and reuses within the service's deduplication window, a status command whose terminal outcome for that attempt shows it had no effect, or repeat-safe semantics the operation declares (such as `--if-exists`).
 - An empty lookup (search, list, an eventually consistent read) does not establish that the mutation did not commit — the read can lag the write, and the original request can still commit after the lookup returns — and a key first added on the retry does not deduplicate the original attempt; a mutation with none of the three is declared not safe to retry automatically.
 - Declare which mutations are safe to retry automatically and which require reconciliation first.
 - Declare signal semantics for mutating and long-running commands: what an interrupt (SIGINT/SIGTERM) leaves behind, whether local writes are atomic, and whether remote work continues after the process dies.
@@ -239,6 +239,6 @@ Ship tests for:
 - dry-run behavior for mutations
 - interrupt behavior for mutating commands
 - concurrent invocations against local state
-- cancellation of long-running operations
+- cancellation of asynchronous operations
 
 If behavior matters to an agent, cover it with an automated test.

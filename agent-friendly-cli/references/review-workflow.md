@@ -110,7 +110,7 @@ Use this structure:
 Each finding includes:
 
 - severity: `P0`, `P1`, `P2`, or `P3` (defined below)
-- type: `impl-bug` (behavior contradicts the tool's declared contract), `schema-gap` (the contract does not declare the behavior), or `design-issue` (the declared contract is itself the problem)
+- type: `impl-bug` (behavior contradicts what the tool declares, including what a flag such as `--json` promises), `schema-gap` (the contract does not declare the behavior), or `design-issue` (the declared contract is itself the problem)
 - evidence: `observed`, `inferred`, or `absence-of-evidence` (defined in §1)
 - location: file/line, command output, or doc section
 - impact: how this fails for agents

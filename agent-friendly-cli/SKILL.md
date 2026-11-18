@@ -49,7 +49,7 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
   - `stream`: NDJSON records
   - `bulk-result`: per-item results plus aggregate exit-code semantics
   - `artifact`: large result written to disk with a structured pointer
-- **Ambient state**: config files, environment variables, credentials, and caches the CLI reads implicitly.
+- **Ambient state**: config files, environment variables, credentials, caches, and any context the current working directory selects, which the CLI reads implicitly.
 
 ## Workflow
 

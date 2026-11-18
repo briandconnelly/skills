@@ -6,7 +6,6 @@ Use these as concrete shapes to mimic; cross-reference [contract-checklist.md](c
 ## 1. Schema example
 A minimal schema output for `widgetctl schema` is below, covering the `widget get` and `widget delete` commands.
 Later sections also use `count`, `list`, `watch`, `update`, and `export`; their schema entries are omitted for brevity but follow the same per-command shape.
-The `whoami` and `config show --resolved` inspection commands are omitted the same way.
 The machine profile is a single flag: `--machine` implies `--json` and `--no-progress`, so callers add one flag while the implied flags stay individually declared.
 Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a closed enum, a trailing `?` marks an optional field, fields are required unless so marked or removed by a declared projection, and a string-valued shape describes a record sequence; JSON Schema is the zero-explanation alternative.
 ```json
@@ -29,15 +28,16 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
   "stderr_framing_description": "on failure in machine mode, the structured error object is the only stderr content",
   "end_of_options_supported": true,
   "command_tree": {
+    "schema": "widgetctl schema [<command>] [--fingerprint]",
     "widget": {
       "get": "widgetctl widget get <id>",
       "delete": "widgetctl widget delete <id>"
     }
   },
-  "exit_codes": {"0": "success", "1": "generic (INTERNAL)", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, not otherwise classified", "10": "partial failure (domain-specific)"},
+  "exit_codes": {"0": "success", "1": "generic (INTERNAL)", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, including transport failures other than timeout", "10": "partial failure (domain-specific)"},
   "symbolic_error_codes": ["INTERNAL", "VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
   "fallback_error_code": "INTERNAL",
-  "unknown_code_policy": "non-retryable",
+  "unknown_code_policy": "act on payload fields; reconcile first on mutations",
   "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "reconcile_first?": "boolean", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
   "auth": "required",
   "environment": ["WIDGETCTL_TOKEN"],
@@ -99,16 +99,16 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name?": "string", "status": "deleted|absent"}, "shape_description": "name is omitted and status is absent when --if-exists suppressed WIDGET_NOT_FOUND", "size_mode": "small"},
       "alternate_outputs": {
-        "--from-file": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
+        "--from-file": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {id, name?, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
         "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "streaming": false, "size_mode": "small"},
-        "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {dry_run: true, id, planned_action} or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
+        "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {dry_run: true, id, planned_action} or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
       },
       "side_effects": {"external_mutation": true, "writes": ["remote widget store"], "description": "deletes the widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},
       "latency_class": "network",
       "timeout_defaults_ms": 5000,
       "retry_defaults": {"retries": 0},
-      "reconciliation": "on timeout or interrupt the outcome is unknown; delete is repeat-safe with --if-exists, so the declared recovery is to re-run with --if-exists; widgetctl widget get reads the primary store, and WIDGET_NOT_FOUND from it shows the widget is absent now, not which attempt removed it",
-      "signal_semantics": {"interrupt": "the remote delete may still commit", "local_writes": "none", "remote_continues": true},
+      "reconciliation": "on timeout, interrupt, or transport failure the outcome is unknown; delete is repeat-safe with --if-exists, so the declared recovery is to re-run with --if-exists; widgetctl widget get reads the primary store, and WIDGET_NOT_FOUND from it shows the widget is absent now, not which attempt removed it",
+      "signal_semantics": {"interrupt": "the remote delete may still commit", "closed_stdout": "finishes the in-flight delete and starts no further items", "local_writes": "none", "remote_continues": true},
       "async": false,
       "streaming": false,
       "pagination": false,
@@ -132,7 +132,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
 
 ## 2. Schema fingerprint example
 The stable cache-key payload for `widgetctl schema --fingerprint` is below.
-Adding an optional flag to this tool would move it to `1.1` and to a new fingerprint; the rules for which changes move which value are in [contract-checklist.md](contract-checklist.md) § Machine Schema.
+Under this tool's own versioning policy, adding an optional flag would make it `1.1`; what must change the fingerprint and the major version is in [contract-checklist.md](contract-checklist.md) § Machine Schema.
 ```json
 {
   "schema_version": "1.0",
