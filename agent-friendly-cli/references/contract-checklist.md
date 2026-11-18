@@ -200,7 +200,7 @@ If state cannot be disabled, expose that fact in schema and machine output.
 - Internal effects during dry runs, such as cache warming or token refresh, must be documented and suppressible in isolated mode.
 - Replay-sensitive mutations should support `--if-not-exists`, `--if-exists`, or idempotency keys.
 - A mutation that times out or is interrupted has an unknown outcome; declare what makes a retry safe — an idempotency key the caller supplied on the original attempt and reuses, a status command that reports that attempt's terminal outcome, or repeat-safe semantics the operation declares (such as `--if-exists`).
-- A lookup that can lag the write (search, list, an eventually consistent read) does not establish that the mutation did not commit, and a key first added on the retry does not deduplicate the original attempt; a mutation with none of the three is declared not safe to retry automatically.
+- An empty lookup (search, list, an eventually consistent read) does not establish that the mutation did not commit — the read can lag the write, and the original request can still commit after the lookup returns — and a key first added on the retry does not deduplicate the original attempt; a mutation with none of the three is declared not safe to retry automatically.
 - Declare which mutations are safe to retry automatically and which require reconciliation first.
 - Declare signal semantics for mutating and long-running commands: what an interrupt (SIGINT/SIGTERM) leaves behind, whether local writes are atomic, and whether remote work continues after the process dies.
 - Local state writes (config, cache, lockfiles) must be safe under concurrent invocations: atomic replacement, locking, or documented last-writer-wins.
