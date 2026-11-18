@@ -73,6 +73,6 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
-- **Hardening tasks**: the response is the prioritized change list the user asked for, with each output or error change naming its fields; add a severity scale, the § Report Format report, a coverage table, or a full schema only when the user asked for an audit or a contract.
+- **Hardening tasks**: the response is a prioritized change list sized to the request; produce the § Report Format report or a full schema only when the user asked for an audit or a contract.
 - **Review tasks**: the report satisfies [review-workflow.md](references/review-workflow.md) § Report Format.
 - **Diagnosis tasks**: the response satisfies [review-workflow.md](references/review-workflow.md) §0.
