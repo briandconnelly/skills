@@ -118,6 +118,20 @@ Rule under test: Done Criteria for hardening tasks in `SKILL.md`.
 R1's scored assertions are scored as usual.
 The word count and the limit are computed by script from the archived outputs; the scorer judges only whether a coverage table is present.
 
+#### P5 revision (2026-11-18, issue #264)
+
+Preregistered on 2026-11-18, before the reference answer was drafted and before any arm ran; the 2026-11-17 rows keep their verdicts under the definition above.
+The R1 baseline fails A1 0/3 and A5 1/3, so its median does not measure how long a complete answer needs to be.
+
+- **Reference answer.** A fresh subagent that has not seen any arm output or any recorded word count writes one R1 answer from the R1 prompt and its five scored assertions, told to pass all five, to include no checklist coverage section, and to be no longer than a complete answer needs.
+  The host confirms the reference passes A1–A5 and has no coverage section, then archives it at `runs/2026-11-18-P5-reference.md` and records its word count before any arm runs.
+  It is not redrafted after that.
+- **Fit** is met when the response has no checklist coverage section, as a table or as a list, and its word count (`wc -w` on the verbatim output) is at most 1.5 times the reference's word count, rounded down.
+- **Acceptance** of a candidate requires all three arms to meet Fit and to pass every R1 scored assertion (3/3 on A1–A5), replacing the non-regression condition in the Verdict procedure's P5 rows for this revision.
+  Failing that, the candidate is revised once and rerun; failing again, it is reverted and the result recorded on #264.
+- **Controls.** Scenarios 1, 2, 2b, and 3 run three with-skill arms each on the candidate wording.
+  A control fails when any scored assertion falls below its 2026-11-17 with-skill result on the final tree (`3cccc7a`), except scenario 3's A4 and A5, which that wave showed cannot be read at n=3 and are reported without a verdict.
+
 ## Verdict procedure
 
 Preregistered on 2026-11-17, before any arm ran.
