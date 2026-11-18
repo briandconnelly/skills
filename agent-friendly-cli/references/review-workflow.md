@@ -48,7 +48,7 @@ If the CLI is runnable, collect:
 - invalid input
 - not-found input
 - auth failure when safe to simulate
-- a mutating command in `--dry-run` mode if available
+- a mutating command in `--dry-run` mode, only after help or source shows the command accepts the flag and against a disposable resource; an unverified dry run is a mutation under the approval rule below
 - a large-output command if available
 
 Capture stdout and stderr separately when you run commands, so stream attribution is observed rather than inferred.
@@ -110,7 +110,7 @@ Use this structure:
 Each finding includes:
 
 - severity: `P0`, `P1`, `P2`, or `P3` (defined below)
-- type: `impl-bug`, `schema-gap`, or `design-issue`
+- type: `impl-bug` (behavior contradicts what the tool declares, including what a flag such as `--json` promises), `schema-gap` (the contract does not declare the behavior), or `design-issue` (the declared contract is itself the problem)
 - evidence: `observed`, `inferred`, or `absence-of-evidence` (defined in §1)
 - location: file/line, command output, or doc section
 - impact: how this fails for agents

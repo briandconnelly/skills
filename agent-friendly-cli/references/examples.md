@@ -28,18 +28,22 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
   "stderr_framing_description": "on failure in machine mode, the structured error object is the only stderr content",
   "end_of_options_supported": true,
   "command_tree": {
+    "schema": "widgetctl schema [<command>] [--fingerprint]",
     "widget": {
       "get": "widgetctl widget get <id>",
       "delete": "widgetctl widget delete <id>"
     }
   },
-  "exit_codes": {"0": "success", "1": "generic", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, not otherwise classified", "10": "partial failure (domain-specific)"},
-  "symbolic_error_codes": ["VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
-  "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
+  "exit_codes": {"0": "success", "1": "generic (INTERNAL)", "2": "usage or validation", "3": "not found", "4": "unauthenticated", "5": "forbidden", "6": "rate limited", "7": "timeout", "8": "conflict", "9": "transient, including transport failures other than timeout", "10": "partial failure (domain-specific)"},
+  "symbolic_error_codes": ["INTERNAL", "VALIDATION_ERROR", "CURSOR_EXPIRED", "WIDGET_NOT_FOUND", "UNAUTHENTICATED", "FORBIDDEN", "RATE_LIMITED", "TIMEOUT", "CONFLICT", "TRANSIENT", "PARTIAL_FAILURE"],
+  "fallback_error_code": "INTERNAL",
+  "unknown_code_policy": "act on payload fields; reconcile first on mutations",
+  "error_shape": {"code": "string", "message": "string", "temporary": "boolean", "hint?": "string", "retry_after_ms?": "integer", "reconcile_first?": "boolean", "details?": "object", "field?": "string", "resource_id?": "string", "conflict_with?": "string", "request_id?": "string", "docs_url?": "string", "path?": "string"},
   "auth": "required",
   "environment": ["WIDGETCTL_TOKEN"],
   "config": {"reads": true, "disable_with": "--no-config"},
   "cache": {"reads": true, "writes": false},
+  "cwd_selects_context": false,
   "credential_requirements": ["token"],
   "commands": [
     {
@@ -52,8 +56,8 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
         {"name": "id", "type": "string", "cardinality": "one", "examples": ["wgt_123"]}
       ],
       "flags": [
-        {"name": "--select", "type": "enum", "enum": ["id", "name", "status"], "cardinality": "many", "default": ["id", "name", "status"]},
-        {"name": "--timeout", "type": "integer", "unit": "ms", "default": 3000}
+        {"name": "--select", "type": "enum", "enum": ["id", "name", "status"], "cardinality": "many", "multi_value_syntax": "repeat", "default": ["id", "name", "status"]},
+        {"name": "--timeout-ms", "type": "integer", "unit": "ms", "default": 3000}
       ],
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "active|inactive|deleted"}, "projection": {"flag": "--select", "rule": "only selected fields are present; unselected fields are absent, not null"}, "size_mode": "small"},
@@ -67,11 +71,13 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "INTERNAL", "exit": 1},
         {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3},
         {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
-        {"code": "TIMEOUT", "exit": 7, "retryable": true}
+        {"code": "TIMEOUT", "exit": 7, "retryable": true},
+        {"code": "TRANSIENT", "exit": 9, "retryable": true}
       ]
     },
     {
@@ -88,32 +94,35 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
         {"name": "--if-exists", "type": "boolean", "default": false},
         {"name": "--from-file", "type": "path", "default": null, "switches_output_class": "bulk-result"},
         {"name": "--allow-partial", "type": "boolean", "default": false, "requires": "--from-file"},
-        {"name": "--timeout", "type": "integer", "unit": "ms", "default": 5000}
+        {"name": "--timeout-ms", "type": "integer", "unit": "ms", "default": 5000}
       ],
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
-      "output": {"class": "record", "format": "json", "shape": {"id": "string", "name": "string", "status": "deleted"}, "size_mode": "small"},
+      "output": {"class": "record", "format": "json", "shape": {"id": "string", "name?": "string", "status": "deleted|absent"}, "shape_description": "name is omitted and status is absent when --if-exists suppressed WIDGET_NOT_FOUND", "size_mode": "small"},
       "alternate_outputs": {
-        "--from-file": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
-        "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "streaming": false, "size_mode": "small"},
-        "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {dry_run: true, id, planned_action} or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
+        "--from-file": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {id, name?, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
+        "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete|none", "id": "string"}, "shape_description": "planned_action is none when --if-exists would suppress WIDGET_NOT_FOUND", "streaming": false, "size_mode": "small"},
+        "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {dry_run: true, id, planned_action: delete|none} (none when --if-exists would suppress WIDGET_NOT_FOUND; counted in succeeded) or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
       },
       "side_effects": {"external_mutation": true, "writes": ["remote widget store"], "description": "deletes the widget unless --dry-run is true", "dry_run": "no externally visible mutations; output includes \"dry_run\": true and the planned effect"},
       "latency_class": "network",
       "timeout_defaults_ms": 5000,
       "retry_defaults": {"retries": 0},
-      "reconciliation": "on timeout or interrupt the outcome is unknown; run widgetctl widget get <id>: WIDGET_NOT_FOUND means the delete committed, and --if-exists makes a retry safe",
+      "reconciliation": "on timeout, interrupt, or transport failure the outcome is unknown; delete is repeat-safe with --if-exists, so the declared recovery is to re-run with --if-exists; widgetctl widget get reads the primary store, and WIDGET_NOT_FOUND from it shows the widget is absent now, not which attempt removed it",
+      "signal_semantics": {"interrupt": "the remote delete may still commit", "closed_stdout": "finishes the in-flight delete and starts no further items", "local_writes": "none", "remote_continues": true},
       "async": false,
       "streaming": false,
       "pagination": false,
       "truncation": false,
       "artifact": false,
       "errors_possible": [
+        {"code": "INTERNAL", "exit": 1},
         {"code": "VALIDATION_ERROR", "exit": 2},
         {"code": "WIDGET_NOT_FOUND", "exit": 3, "suppressed_by": "--if-exists"},
         {"code": "UNAUTHENTICATED", "exit": 4},
         {"code": "FORBIDDEN", "exit": 5},
         {"code": "RATE_LIMITED", "exit": 6, "retryable": true},
         {"code": "TIMEOUT", "exit": 7, "retryable": false, "reconcile_first": true},
+        {"code": "TRANSIENT", "exit": 9, "retryable": false, "reconcile_first": true},
         {"code": "PARTIAL_FAILURE", "exit": 10, "retryable": false, "requires": "--from-file", "suppressed_by": "--allow-partial"}
       ]
     }
@@ -123,8 +132,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
 
 ## 2. Schema fingerprint example
 The stable cache-key payload for `widgetctl schema --fingerprint` is below.
-An additive change (a new optional flag or output field) bumps the minor version and changes the fingerprint; a breaking change (removal, rename, type or exit-code change) bumps the major version and changes the fingerprint.
-A fingerprint change means re-fetch the schema; a major bump means existing call sites may break.
+Under this tool's own versioning policy, adding an optional flag would make it `1.1`; what must change the fingerprint and the major version is in [contract-checklist.md](contract-checklist.md) § Machine Schema.
 ```json
 {
   "schema_version": "1.0",
@@ -188,6 +196,14 @@ Dry-run success payload for `widgetctl widget delete wgt_123 --dry-run --machine
 }
 ```
 
+Already-absent success payload for `widgetctl widget delete wgt_999 --if-exists --machine`, exit `0`.
+```json
+{
+  "id": "wgt_999",
+  "status": "absent"
+}
+```
+
 Artifact success payload for `widgetctl widget export --output out.json --machine`.
 ```json
 {
@@ -199,8 +215,8 @@ Artifact success payload for `widgetctl widget export --output out.json --machin
 
 ## 4. Structured error payloads
 Per the declared `stderr_framing` of `single-error-object`, in machine mode each error object below is the only stderr content for its failure; human mode may surround it with additional diagnostics.
-Validation error for exit `2` from `widgetctl widget update wgt_123 --status bogus`, with JSON on stderr and empty stdout in machine mode.
-`field` names the published `--status` flag, never an internal identifier, and the allowed values are machine-usable in `details` rather than only in `hint` prose.
+Validation error for exit `2` from `widgetctl widget update wgt_123 --status bogus --machine`, with JSON on stderr and empty stdout in machine mode.
+`field` is the published `--status` flag, and `details.allowed_values` carries the repair data.
 ```json
 {
   "code": "VALIDATION_ERROR",
