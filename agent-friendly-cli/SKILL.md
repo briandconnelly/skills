@@ -61,8 +61,11 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 2. Classify the task: new CLI or redesign vs contract hardening vs review of an existing CLI vs diagnosis of a concrete failure.
    Audience and task are orthogonal: audience decides output shape (what to lead with); task decides workflow path (which file to follow).
 3. For new design or redesign, follow [design-workflow.md](references/design-workflow.md).
-4. For contract hardening when the user owns the CLI, follow [design-workflow.md](references/design-workflow.md); if a contract already exists, first walk [review-workflow.md](references/review-workflow.md) to find the gaps, then design the fixes.
-   For a contract the user does not own, follow [review-workflow.md](references/review-workflow.md) only.
+4. For contract hardening, walk [review-workflow.md](references/review-workflow.md) §1–§5 over the surfaces the request touches to find the gaps, then route by what was asked:
+   - The owner asks what to change: design the fixes with [design-workflow.md](references/design-workflow.md) and deliver them as a hardening recommendation (Done Criteria).
+   - The owner asks for the change itself: make it, update the contract declarations it affects, and apply [contract-checklist.md](references/contract-checklist.md) § Tests to the changed behavior.
+   - The user does not own the CLI: deliver a hardening recommendation shaped by the audience guidance in step 1.
+   - The user asks for a full contract: follow step 3.
 5. For an audit or diagnosis, follow [review-workflow.md](references/review-workflow.md); audit-vs-diagnosis routing, evidence labels, severity scale, and report format live there.
 6. Use [contract-checklist.md](references/contract-checklist.md) as the detailed standard for both workflows.
 7. When writing or auditing prose surfaces — `--help` text, command summaries, schema `description` fields — apply [contract-checklist.md](references/contract-checklist.md) § Prose Surfaces.
@@ -73,5 +76,8 @@ Definitions only; the rules that govern each term live in [contract-checklist.md
 Before declaring done, read the relevant workflow and walk [contract-checklist.md](references/contract-checklist.md) against your output.
 
 - **Design tasks**: every checklist section must have an answer in the schema or be explicitly marked not-applicable with a one-line justification.
+- **Hardening recommendations**: the changes in priority order, with the evidence and assumptions needed to act on them; each output or error change names its fields per affected command.
+  Add a severity scale, the [review-workflow.md](references/review-workflow.md) § Report Format report, a coverage table, or a full schema only when the user asked for an audit or a contract.
+- **Hardening implementation**: summarize the changes and report the verification results.
 - **Review tasks**: the report satisfies [review-workflow.md](references/review-workflow.md) § Report Format.
 - **Diagnosis tasks**: the response satisfies [review-workflow.md](references/review-workflow.md) §0.
