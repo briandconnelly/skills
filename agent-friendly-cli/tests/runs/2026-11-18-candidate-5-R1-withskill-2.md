@@ -44,7 +44,13 @@
 ## Scorer's verdicts for this output
 
 ## Output q49
-## Output q49
+
+- A1 Output: PASS. "Add `--format json` (implied by `--machine`)" (pass). list `{"profiles": [{"name", "updated_at", "variable_count"}]...}`, show `{"name", "variables": [{"key", "value", "secret"}], ...}`, create `{"name", "created": true, "version", "variable_count"}`, delete `{"name", "deleted": true}` (pass).
+- A2 Errors: PASS. Exit-code table "| 3 | `PROFILE_NOT_FOUND` | `show`, `delete` |" and "Agents branch on `code`".
+- A3 Agent-safe invocation: PASS. create: "`--from-file <path>` ... or `--from-file -` for stdin" (pass); delete: "require `--yes` in machine mode" + "`--dry-run` on both" (pass); login: "read a token from `ENVCTL_TOKEN` or a credential file" (pass).
+- A4 Ambient state: PASS. "`--profile-dir` (default `~/.envctl`) is a cache, and login state lives somewhere implicit" (pass); "Add `envctl whoami`" and "`--isolated` / `--no-config`: ignore `~/.envctl`" (pass).
+- A5 Machine schema: PASS. "Add `envctl schema` (full contract as JSON), `envctl schema <command>`".
+- Checklist coverage section: no. The only table is the exit-code map ("| Exit | Codes | Commands |"), not a mapping to a standard's sections.
 
 ## Verbatim final output
 

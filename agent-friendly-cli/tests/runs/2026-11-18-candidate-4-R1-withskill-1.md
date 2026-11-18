@@ -44,7 +44,12 @@
 ## Scorer's verdicts for this output
 
 ## o21
-## o21
+- A1 Output: PASS. Machine mode: "Add `--machine` ... implies `--format json`". list: "`{\"profiles\":[{\"name\",\"updated_at\",\"key_count\"}],...}`"; show: "`{\"name\",\"updated_at\",\"variables\":{KEY: VALUE}}`"; create: "`{\"name\",\"created\":true,\"key_count\",\"updated_at\"}`"; delete: "`{\"name\",\"deleted\":true}`". All parts pass.
+- A2 Errors: PASS. Code/exit table ("`PROFILE_NOT_FOUND` | 3"); "Agents branch on `code`".
+- A3 Prompts: PASS. create: "`--set KEY=VALUE` ... `--from-file`" (pass); delete: "`delete <name> --yes`" + "Add `--dry-run` to `create` and `delete`" (pass); login: "Read a service token from the `ENVCTL_TOKEN` environment variable" (pass).
+- A4 Ambient: PASS. "`--profile-dir` defaults to `~/.envctl` ... Where credentials live ... not stated"; "Add `envctl whoami`", "Add `--isolated`".
+- A5 Schema: PASS. "Add `envctl schema`, `envctl schema <command>`".
+- Checklist coverage section: no. Sections are numbered priority changes, tests, open questions; no table/list mapping to a standard's sections.
 
 ## Verbatim final output
 

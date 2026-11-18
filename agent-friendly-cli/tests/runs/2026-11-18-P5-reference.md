@@ -5,6 +5,7 @@
 - **Instruction:** satisfy all five assertions, include no checklist or coverage section, be no longer than a complete, correct answer needs
 - **Host check:** A1 pass (fields named for `list`, `show`, `create`, `delete`), A2 pass (symbolic codes and exit map), A3 pass (`create` flags, `delete --yes` plus `--dry-run`, `login --token-stdin`/`ENVCTL_TOKEN`), A4 pass (`~/.envctl` cache and credentials, `status`, `--no-cache`), A5 pass (`envctl schema --json`); no coverage section (its one table is the exit-code map)
 - **Output words (`wc -w`):** 746
+- **Known gap (Codex review, 2026-11-18):** `--set KEY=VALUE` is not restricted to non-secret values although the answer recognizes profiles hold secrets, against `references/contract-checklist.md` § Ambient State's secret-intake rule; the reference passes A1–A5 but is not a complete safe answer. Kept frozen for this wave.
 - **Fit limit:** floor(1.5 × 746) = 1,119 words
 
 ## Verbatim output

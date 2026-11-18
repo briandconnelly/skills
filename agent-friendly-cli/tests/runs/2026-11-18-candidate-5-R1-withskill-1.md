@@ -44,7 +44,13 @@
 ## Scorer's verdicts for this output
 
 ## Output q52
-## Output q52
+
+- A1 Output: PASS. Machine mode: "Add one global `--machine` flag ... implies JSON output" (pass). Shapes for all four: list `{"profiles":[{"name","updated_at","key_count"}]...}`, show `{"name","updated_at","variables":{KEY:VALUE}}`, create `{"name","created": true,"keys":[...]}`, delete `{"name","deleted": true}` (pass).
+- A2 Errors: PASS. "Exit codes: `0` ok, `1` `INTERNAL` ... `3` `PROFILE_NOT_FOUND`".
+- A3 Agent-safe invocation: PASS. create: "repeated `--set KEY=VALUE` flag or with `--from-file`" (pass); delete: "explicit `--yes`" + "Add `--dry-run` to `create` and `delete`" (pass); login: "Read a service/CI token from `ENVCTL_TOKEN` or `--token-file`" (pass).
+- A4 Ambient state: PASS. Names: "`--no-cache` / `--isolated` so CI can bypass `~/.envctl`" and "`envctl whoami` (identity, token source, expiry...)" (pass); inspect/disable: `config show --resolved`, `--no-cache` (pass).
+- A5 Machine schema: PASS. "`envctl schema` returns, as JSON, the command tree, flags...".
+- Checklist coverage section: no. Sections are numbered priority changes ("## 1. Remove every interactive block ..."); no table/list mapping to a standard's sections.
 
 ## Verbatim final output
 

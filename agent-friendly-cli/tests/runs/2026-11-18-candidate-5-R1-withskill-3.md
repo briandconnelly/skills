@@ -44,7 +44,13 @@
 ## Scorer's verdicts for this output
 
 ## Output q26
-## Output q26
+
+- A1 Output: PASS. "`--format json` (implied by `--machine`)" (pass). list `{"profiles":[{"name","updated_at","key_count"}]...}`, show `{"name","updated_at","variables":{KEY: VALUE}}`, create `{"name","created":true,"key_count","updated_at"}`, delete `{"name","deleted":true}` (pass).
+- A2 Errors: PASS. "`3` `PROFILE_NOT_FOUND` (`show`, `delete`); `4` `UNAUTHENTICATED`".
+- A3 Agent-safe invocation: PASS. create: "`--set KEY=VALUE` (repeatable) and `--from-file <path>`" (pass); delete: "require `--yes`" + "`--dry-run` on `create` and `delete`" (pass); login: "read a token from `ENVCTL_TOKEN` or a credential file" (pass).
+- A4 Ambient state: PASS. "Document credential source (token env var, credential file, browser-login cache)" and "Concurrent CI jobs sharing `~/.envctl`" (pass); "Add `envctl whoami`", "`--isolated` to ignore `~/.envctl`" (pass).
+- A5 Machine schema: PASS. "`envctl schema` (JSON): commands, args/flags with types and defaults".
+- Checklist coverage section: no. Sections are priority-ordered changes; no section-mapping table or list.
 
 ## Verbatim final output
 

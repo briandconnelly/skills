@@ -44,7 +44,12 @@
 ## Scorer's verdicts for this output
 
 ## o28
-## o28
+- A1 Output: PASS. "Add `--machine`, which turns on `--json`"; list "`{\"profiles\":[{\"name\",\"updated_at\",\"owner\"}], ...}`"; show "`{\"name\",\"variables\":{KEY: value},\"updated_at\",\"secret_keys\":[...]}`"; create "`{\"name\",\"created\":true,\"keys\":[...]}`"; delete "`{\"name\",\"status\":\"deleted|absent\"}`".
+- A2 Errors: PASS. Exit table "| 3 | not found | `PROFILE_NOT_FOUND` |".
+- A3 Prompts: PASS. create "repeated `--set KEY=VALUE` ... `--from-file <path>` or `--stdin`" (pass); delete "require `--yes`" + "`delete`: Add `--dry-run`" (pass); login "Read a token from `ENVCTL_TOKEN` or from a credential file" (pass).
+- A4 Ambient: PASS. "`--profile-dir` (default `~/.envctl`) is a cache, and login stores credentials somewhere"; "Add a `--isolated` flag", "`envctl whoami`".
+- A5 Schema: PASS. "Add `envctl schema` and `envctl schema <command>`".
+- Checklist coverage section: no. Numbered changes, tests, assumptions only.
 
 ## Verbatim final output
 
