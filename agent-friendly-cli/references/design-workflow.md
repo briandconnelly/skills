@@ -28,7 +28,7 @@ Write the schema before the implementation.
 It declares every item in [contract-checklist.md](contract-checklist.md) § Machine Schema, plus the per-command declarations that § Stdin Contract, § Output, § Errors And Exit Codes, § Ambient State, and § Mutations And Long-Running Work require.
 
 The schema and fingerprint endpoints to expose are defined in § Machine Schema.
-Design-only addition: consider `tool schema --summary` or `tool schema <command>` so agents can load one command's contract without the whole document.
+Design-only addition: consider `tool schema --summary` for a one-screen index of commands.
 
 ## 4. Choose Agent-Safe Defaults
 

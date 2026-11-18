@@ -16,7 +16,7 @@ Never pool the two sets into one score.
   Here a baseline that passes everything does mean the scenario is too easy; tighten it.
   Because this set selects for baseline failure by construction, its totals measure whether rules land, never the skill's net benefit.
 
-Scenarios 1–3 are **challenge set**.
+Scenarios 1–3 and 2b are **challenge set**.
 Scenario R1 is **representative**.
 
 ## Scoring dimensions
@@ -47,18 +47,30 @@ Every run records its set, any **regression** (an assertion the baseline satisfi
 > It must support: list notes, get a note, search notes, create a note, delete a note, and export all notes to a file.
 > Produce: the command surface, the machine-readable schema, example success payloads, and example error payloads for at least two failure modes.
 
-**Assertions (with-skill run must satisfy; all scored):**
+**Assertions (with-skill run must satisfy):**
+
+Scored.
+Equivalent names and field spellings pass every scored assertion below.
 
 - [ ] A canonical machine profile is declared in the schema, and every flag it names is declared as a flag (Machine Schema).
 - [ ] The schema declares numeric exit codes plus symbolic error codes, with a per-command error catalog for at least the mutating command (Errors And Exit Codes).
 - [ ] stdout is success payload only; structured failures go to stderr with declared framing (Output).
 - [ ] `delete` requires an explicit trigger and supports `--dry-run` whose output includes `dry_run: true` (Mutations And Long-Running Work).
 - [ ] List/search output declares pagination with `has_more` and a navigation token (Output).
-- [ ] Export is the only `--output <file>` command and returns path, byte size, and content hash (Output).
+- [ ] Export returns a structured pointer to the written file with its size and an integrity hash (Output).
 - [ ] Duration flags declare units in the name or a `unit` field (Machine Schema).
-- [ ] Each command declares one output class; any flag that switches the class declares the switch (Output).
 - [ ] Ambient state (config, credentials, cache) is declared with inspection and isolation affordances (Ambient State).
-- [ ] Every canonical example that uses `--` places all options before it and only operands after it (Shell Safety). Added 2026-10-11 after a with-skill run shipped `-- "query" --machine`; every scenario 1 row except `runs/2026-10-11-scenario1-with-skill-final.md` (10/10) was scored on the nine assertions above.
+- [ ] Every canonical example that uses `--` places all options before it and only operands after it (Shell Safety).
+  Added 2026-10-11 after a with-skill run shipped `-- "query" --machine`; every scenario 1 row dated before 2026-11-17 except `runs/2026-10-11-scenario1-with-skill-final.md` (10/10) was scored without it.
+- [ ] The contract says what an unanticipated failure emits (a declared symbolic code), each networked command's error list includes a non-timeout transport failure, and the contract says how a caller treats an error code it does not list (Errors And Exit Codes).
+  Added 2026-11-17; scored per component, and it passes only if all three do.
+- [ ] Any flag that takes several values declares how they are passed (repeated flag or delimiter) (Machine Schema).
+  Added 2026-11-17.
+
+Non-scored conformance:
+
+- [ ] Export is the only `--output <file>` command.
+- [ ] Each command declares one output class from the skill's set; any flag that switches the class declares the switch.
 
 **Expected baseline failures:** no machine profile or schema fingerprint, prose-only errors, no exit-code map, no stdin/ambient-state declarations, dry-run absent or unmarked, pagination undeclared.
 
@@ -100,7 +112,8 @@ Every run records its set, any **regression** (an assertion the baseline satisfi
 
 Scored:
 
-- [ ] `sync` prompting for confirmation is flagged as a hang risk in automation and ranked as the most severe finding, above stdout pollution (Invocation Safety, Severity).
+- [ ] `sync` prompting for confirmation is identified as a risk of blocking in automation, and the report says what the capture establishes and what it does not (Invocation Safety, Evidence).
+  Reworded 2026-11-17: the ranking is house severity policy and is recorded only by the conformance assertion below.
 - [ ] The hang finding distinguishes what the capture shows (the documented prompt) from what is deduced (the non-TTY hang mechanism), whether or not it uses the skill's label words (Evidence).
 - [ ] Banner, update-check line, and `Done in...` mixed with JSON on stdout is flagged as breaking machine parsing, and the finding treats the pollution as established by the capture rather than as a guess (Output, Evidence).
 - [ ] The unstructured error plus generic exit `1` is flagged: no symbolic code to branch on (Errors And Exit Codes).
@@ -117,6 +130,55 @@ Non-scored conformance:
 - [ ] The coverage statement takes the form of the checklist coverage table with `not-checked` reasons.
 
 **Expected baseline failures:** hang risk ranked below stdout pollution or missed, no observed-vs-inferred split, misses the update-check side effect or the `clean` dry-run gap, no statement of what the material cannot answer.
+
+## Scenario 2b: Audit with a fail-fast prompt (over-escalation control, challenge set)
+
+Scenario 2's fixture plus one capture showing that `sync` refuses cleanly when it cannot prompt.
+The refusal is structured and on stderr, so the capture triggers no other rule; the scenario fails a run that still reports a hang.
+
+**Prompt:**
+
+> Audit this CLI for agent-friendliness and report your findings.
+> You cannot run the tool; you have only this captured material.
+> Each capture discards stderr (`2>/dev/null`), so every line shown is stdout, except the last, which shows stderr only (`2>&1 >/dev/null`).
+> The audience is the tool's author, who can change anything.
+>
+> ```text
+> $ depman --help 2>/dev/null
+> DepMan 3.2 — the friendly dependency manager!
+> Usage: depman [command] [options]
+> Commands:
+>   install     Install dependencies (aliases: i, add)
+>   ls          Show stuff
+>   clean       Remove unused packages from the global cache
+>   sync        Sync the lockfile (asks for confirmation first)
+> Options:
+>   --quiet     Less output
+>   --yes       Assume yes
+>
+> $ depman ls --json 2>/dev/null
+> ✨ DepMan 3.2
+> Checking for updates...
+> [{"name":"left-pad","version":"1.3.0"},{"name":"is-odd","version":"3.0.1"}]
+> Done in 0.42s ✓
+>
+> $ depman install nonexistent-pkg 2>/dev/null
+> Error: something went wrong (see log)
+> $ echo $?
+> 1
+>
+> $ depman sync --json < /dev/null 2>/dev/null; echo "exit=$?"
+> exit=4
+> $ depman sync --json < /dev/null 2>&1 >/dev/null
+> {"code":"CONFIRMATION_REQUIRED","message":"sync needs confirmation","hint":"pass --yes","temporary":false}
+> ```
+
+**Assertions (all scored):**
+
+- [ ] No finding claims that `sync` hangs or blocks in automation, and no finding about the `sync` prompt carries the report's top severity.
+- [ ] Stdout pollution on `ls --json` is still flagged.
+
+**Expected baseline behavior:** likely passes; this scenario exists to catch a with-skill run that applies the blocking placement to a prompt the capture shows failing fast.
 
 ## Scenario 3: Diagnosis (routing test, challenge set)
 
@@ -176,7 +238,8 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 
 **Assertions (all scored):**
 
-- [ ] Proposes a non-interactive, machine-readable output mode and says what each command's output looks like in it (Output).
+- [ ] Proposes a non-interactive, machine-readable output mode and, for each of `list`, `show`, `create`, and `delete`, names the fields or shape of its output, not only an output class (Output).
+  Reworded 2026-11-17 to state the threshold the 2026-10-11 scoring correction applied; this resets R1's history, so rows dated before 2026-11-17 are not comparable on this assertion.
 - [ ] Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes).
 - [ ] Removes every interactive prompt from the agent path: `create` takes values non-interactively, `delete` has an explicit non-prompting trigger plus a preview or dry-run, and `login` has a non-browser bootstrap (Agent-Safe Invocation, Mutations).
 - [ ] Names the ambient state (`~/.envctl` cache, login credentials) and proposes how an agent inspects or disables it (Ambient State).
@@ -187,6 +250,7 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 ## Results
 
 Rows dated before 2026-10-11 were scored against the earlier scenario 2 fixture (no stream attribution) and the earlier assertion lists; rows from 2026-10-11 on use the sets and scored/conformance split above.
+Rows from 2026-11-17 on use the 2026-11-17 assertion lists: scenario 1 is split into eleven scored and two conformance assertions, scenario 2's first scored assertion no longer includes the ranking, R1's first assertion states its threshold, and every cell is three arms reported as x/3 per assertion.
 
 | Date | Scenario | Run | Assertions passed | Notes |
 | --- | --- | --- | --- | --- |
@@ -205,3 +269,26 @@ Rows dated before 2026-10-11 were scored against the earlier scenario 2 fixture 
 | 2026-10-11 | 3 (diagnosis, challenge) | with-skill | 6/6 scored; 1/1 conformance | Pre-commit-4 wording (review-workflow §0/§1 unchanged by commit 4). Baseline not re-run (prompt unchanged since 2026-07-05). New `observed` definition applied to the user-supplied help text; mitigations first; owner fixes as escalation; probes gated on permission; no coverage table. Record: `runs/2026-10-11-scenario3-with-skill.md`. |
 | 2026-10-11 | R1 (hardening, representative) | baseline | 4/5 | First run of the representative scenario. Strong baseline: non-interactive paths for `create`/`delete`/`login`, exit-code map with structured errors, cache and credential inspection, optional `schema`/`--help-json`. Missed only per-command output shapes (A1). Record: `runs/2026-10-11-scenarioR1-baseline.md`. |
 | 2026-10-11 | R1 (hardening, representative) | with-skill | 4/5 | No regression and no scored gain: both arms miss A1 at the per-command-fields threshold (treatment names a class per command but fields for only two). Initially recorded 5/5; corrected after a Codex scoring review. Cost: 1.85x tokens and a full audit-shaped report (15 findings, coverage table, three-release plan) for a "propose changes in priority order" prompt. Record: `runs/2026-10-11-scenarioR1-with-skill.md`. |
+| 2026-11-17 | 1 (design, challenge) | baseline ×3 | A1 0/3 A2 0/3 A3 0/3 A4 3/3 A5 3/3 A6 2/3 A7 0/3 A8 0/3 A9 3/3 A10 0/3 A11 3/3; conformance C1 2/3 C2 0/3 | Errors ride a stdout envelope in all three arms, with no machine profile, per-command error catalog, unit-bearing timeout flag, or inspection and isolation affordances; pagination (A5) passes on equivalent fields. A first scoring pass omitted the equivalence rule from the scorer's packet and scored A5 0/3; that pass was discarded and the cell re-scored with the rule included. Median output 904 words. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S1-baseline-{1,2,3}.md`. |
+| 2026-11-17 | 1 (design, challenge) | with-skill ×3 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3 A9 3/3 A10 0/3 A11 3/3; conformance C1 3/3 C2 3/3 | Passes every assertion that predates this wave. A10 fails 0/3 on two of its three parts: no arm says what an unanticipated failure emits or how a caller treats an unlisted code, although all three list a transport-failure code per networked command. Median output 3,667 words (4.06x baseline); median tokens 1.54x baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2 (audit, challenge) | baseline ×3 | A1 2/3 A2 2/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 0/3 A8 0/3; conformance C1 0/3 C2 0/3 C3 0/3 C4 0/3 | Misses alias duplication (A7) and the statement of what the material cannot answer (A8) in all three arms; one arm states the hang as fact with no shown-versus-deduced split. Median output 680 words. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S2-baseline-{1,2,3}.md`. |
+| 2026-11-17 | 2 (audit, challenge) | with-skill ×3 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3; conformance C1 3/3 C2 3/3 C3 3/3 C4 2/3 | All scored assertions 3/3; one arm gives checklist coverage as a list, not a table. Median output 1,377 words (2.02x baseline); median tokens 1.28x baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S2-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2b (audit control, challenge) | baseline ×3 | A1 3/3 A2 3/3 | Control holds. Median output 670 words. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S2b-baseline-{1,2,3}.md`. |
+| 2026-11-17 | 2b (audit control, challenge) | with-skill ×3 | A1 3/3 A2 3/3 | Control holds: no arm applies the blocking placement to the fail-fast prompt. Median output 1,433 words (2.14x baseline); median tokens 1.27x baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 3 (diagnosis, challenge) | baseline ×3 | A1 1/3 A2 3/3 A3 3/3 A4 1/3 A5 0/3 A6 3/3; conformance C1 0/3 | Mitigation-first and diagnosis-sized in all arms; weak on the shown-versus-deduced split (A1 1/3), the `--yes` bypass caveat (A4 1/3), and permission-gated probes (A5 0/3). Median output 345 words. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S3-baseline-{1,2,3}.md`. |
+| 2026-11-17 | 3 (diagnosis, challenge) | with-skill ×3 | A1 3/3 A2 3/3 A3 3/3 A4 2/3 A5 2/3 A6 3/3; conformance C1 0/3 | A4 and A5 each miss in one arm; no arm labels the documented prompt `observed`, so the conformance assertion is 0/3. Median output 488 words (1.41x baseline); median tokens 1.14x baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-S3-withskill-{1,2,3}.md`. |
+| 2026-11-17 | R1 (hardening, representative) | baseline ×3 | A1 0/3 A2 3/3 A3 3/3 A4 3/3 A5 1/3 | History reset by the A1 rewording. No arm names per-command fields (A1 0/3); two arms offer only prose help for discovery (A5 1/3). Median output 645 words. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-R1-baseline-{1,2,3}.md`. |
+| 2026-11-17 | R1 (hardening, representative) | with-skill ×3 | A1 1/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 | Gain on contract discovery (A5 3/3 against 1/3); A1 1/3 against 0/3. Two of three arms emit a checklist coverage table for a prioritized-list request. Median output 1,827 words (2.83x baseline); median tokens 1.29x baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Model `claude-opus-5-5`. Records: `runs/2026-11-17-pre-edit-R1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 1 (design, challenge) | with-skill ×3, candidate 1 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3 A9 3/3 A10 3/3 A11 3/3; conformance C1 3/3 C2 1/3 | Scored as shown by the blind scorer. Correction after review: A10 is 1/3, not 3/3, because arms 1 and 2 mark `whoami` as networked and give it no error list, so the transport part fails for them; all three arms do declare a fallback code and an unknown-code policy. Every other scored assertion 3/3. Two arms leave the inspection commands without a declared output class (conformance). Median output 3,604 words (pre-edit with-skill 3,667, baseline 904). Baseline not re-run: prompt and model unchanged since the pre-edit wave. Median tokens 1.56x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-1-S1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2 (audit, challenge) | with-skill ×3, candidate 1 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3; conformance C1 3/3 C2 3/3 C3 2/3 C4 2/3 | Every scored assertion 3/3. One arm rates the hang `P1 (provisional P0)` and one gives coverage as a list (conformance). Median output 1,266 words (pre-edit with-skill 1,377, baseline 680). Baseline not re-run: prompt and model unchanged since the pre-edit wave. Median tokens 1.30x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-1-S2-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2b (audit control, challenge) | with-skill ×3, candidate 1 | A1 2/3 A2 3/3 | Control 2/3 on the first assertion; a second blind scoring of the same packet (`runs/2026-11-17-candidate-1-S2b-second-scoring.md`) gives the same 2/3 and calls the miss a judgment call. The failing arm says `sync` did not block; its top severity is `P1`, shared by five findings, and one of those (the missing exit-code map) mentions the refusal's exit `4`. The pre-edit arms raised the same exit-code point as a separate `P2` finding. Median output 1,460 words (pre-edit with-skill 1,433, baseline 670). Baseline not re-run: prompt and model unchanged since the pre-edit wave. Median tokens 1.29x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-1-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 3 (diagnosis, challenge) | with-skill ×3, candidate 1 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 1/3 A6 3/3; conformance C1 0/3 | A4 3/3 (2/3 before); A5 1/3 (2/3 before): two arms offer probes without asking first. These runs cannot determine the cause: the permission sentence itself is unchanged, but the arms read other changed text, including the new treatment of unverified dry-run probes in the same section. Median output 548 words (pre-edit with-skill 488, baseline 345). Baseline not re-run: prompt and model unchanged since the pre-edit wave. Median tokens 1.16x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-1-S3-withskill-{1,2,3}.md`. |
+| 2026-11-17 | R1 (hardening, representative) | with-skill ×3, candidate 1 | A1 0/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 | First hardening wording. No coverage tables (2/3 before), but A1 falls to 0/3 (1/3 before) and two of three responses exceed the 968-word limit. Median output 1,094 words (pre-edit with-skill 1,827, baseline 645). Baseline not re-run: prompt and model unchanged since the pre-edit wave. Median tokens 1.28x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-1-R1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2b (audit control, challenge) | with-skill ×3, candidate 2 | A1 3/3 A2 3/3 | Control re-run on the revised tree: 3/3 on both assertions. Median output 1,169 words. Median tokens 1.28x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-2-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-17 | R1 (hardening, representative) | with-skill ×3, candidate 2 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 | Revised hardening wording. Every scored assertion 3/3 (pre-edit with-skill A1 1/3; baseline A1 0/3 and A5 1/3). No coverage tables. Responses are 976, 1,033, and 1,055 words, all over the 968-word Fit limit. Median output 1,033 words. Median tokens 1.26x the pre-edit baseline, a ratio compressed by roughly 48k of fixed harness context per arm. Records: `runs/2026-11-17-candidate-2-R1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 1 (design, challenge) | with-skill ×3, candidate 3 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3 A9 3/3 A10 3/3 A11 3/3; conformance C1 3/3 C2 3/3 | Final wording. Every scored assertion 3/3, including all three parts of the error-fallback assertion (pre-edit 0/3, 3/3, 0/3; candidate 1 corrected to 3/3, 1/3, 3/3). Scorer's disclosed judgment call: no arm gives `auth login` an error list, and none marks it as networked, so it was not counted as a networked command; under a reading that assumes login contacts the service the transport part would fail in all three. Median output 4,203 words; median tokens 1.60x the pre-edit baseline. Records: `runs/2026-11-17-candidate-3-S1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2 (audit, challenge) | with-skill ×3, candidate 3 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 A6 3/3 A7 3/3 A8 3/3; conformance C1 2/3 C2 3/3 C3 3/3 C4 2/3 | Final wording. Every scored assertion 3/3. Median output 1,389 words; median tokens 1.29x the pre-edit baseline. Records: `runs/2026-11-17-candidate-3-S2-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 2b (audit control, challenge) | with-skill ×3, candidate 3 | A1 3/3 A2 3/3 | Final wording. Control holds 3/3 on both assertions. Median output 1,201 words; median tokens 1.29x the pre-edit baseline. Records: `runs/2026-11-17-candidate-3-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 3 (diagnosis, challenge) | with-skill ×3, candidate 3 | A1 3/3 A2 3/3 A3 3/3 A4 0/3 A5 3/3 A6 3/3; conformance C1 0/3 | Final wording. A4 (the `--yes` caveat) 0/3 and A5 (permission before probes) 3/3; see the next row, a second batch on the same tree, before reading either. Median output 441 words; median tokens 1.12x the pre-edit baseline. Records: `runs/2026-11-17-candidate-3-S3-withskill-{1,2,3}.md`. |
+| 2026-11-17 | R1 (hardening, representative) | with-skill ×3, candidate 3 | A1 2/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 | Final wording, with the hardening edits reverted. A1 2/3 (pre-edit 1/3); every other scored assertion 3/3; 1 of 3 responses contain a checklist coverage table and all three exceed the 968-word limit, as before the edits. Median output 1,330 words; median tokens 1.26x the pre-edit baseline. Records: `runs/2026-11-17-candidate-3-R1-withskill-{1,2,3}.md`. |
+| 2026-11-17 | 3 (diagnosis, challenge) | with-skill ×3, candidate 3, second batch | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 1/3 A6 3/3; conformance C1 0/3 | Same skill files as the row above. A4 3/3 and A5 1/3, the reverse of the first batch, so on the final wording A4 is 3/6 and A5 4/6 (pre-edit 2/3 and 2/3). These two assertions swing between batches on unchanged text; this suite cannot show a change in either direction for them at three arms per cell. Median output 635 words. Records: `runs/2026-11-17-candidate-3b-S3-withskill-{1,2,3}.md`. |
