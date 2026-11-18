@@ -43,6 +43,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
   "environment": ["WIDGETCTL_TOKEN"],
   "config": {"reads": true, "disable_with": "--no-config"},
   "cache": {"reads": true, "writes": false},
+  "cwd_selects_context": false,
   "credential_requirements": ["token"],
   "commands": [
     {
@@ -98,7 +99,7 @@ Shapes use a named compact notation, `widgetctl-compact-v1`, where `a|b` is a cl
       "stdin_contract": {"reads": false, "auto_detected_when_piped": false, "accepted_formats": [], "maximum_input_size": 0, "can_block": false, "mutually_exclusive_with": [], "empty_stdin": "ignored"},
       "output": {"class": "record", "format": "json", "shape": {"id": "string", "name?": "string", "status": "deleted|absent"}, "shape_description": "name is omitted and status is absent when --if-exists suppressed WIDGET_NOT_FOUND", "size_mode": "small"},
       "alternate_outputs": {
-        "--from-file": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
+        "--from-file": {"class": "bulk-result", "format": "ndjson", "on_item_failure": "continue", "shape": "one record per item: {id, name, status} or {id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"},
         "--dry-run": {"class": "record", "format": "json", "shape": {"dry_run": true, "planned_action": "delete", "id": "string"}, "streaming": false, "size_mode": "small"},
         "--from-file --dry-run": {"class": "bulk-result", "format": "ndjson", "shape": "one record per item: {dry_run: true, id, planned_action} or {dry_run: true, id, error: {code, message, temporary}}; then one trailer record {type: \"summary\", dry_run: true, partial: boolean, succeeded: integer, failed: integer}", "streaming": true, "completion_record": "summary", "size_mode": "grows with input"}
       },
