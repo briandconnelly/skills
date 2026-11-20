@@ -132,6 +132,20 @@ The R1 baseline fails A1 0/3 and A5 1/3, so its median does not measure how long
 - **Controls.** Scenarios 1, 2, 2b, and 3 run three with-skill arms each on the candidate wording.
   A control fails when any scored assertion falls below its 2026-11-17 with-skill result on the final tree (`3cccc7a`), except scenario 3's A4 and A5, which that wave showed cannot be read at n=3 and are reported without a verdict.
 
+#### P5 revision 2 (2026-11-19, issue #264)
+
+Preregistered on 2026-11-19, before the R2 reference answer was drafted and before any arm ran.
+The 2026-11-18 rule required all three arms under the limit; within-wave spread of 277 to 456 words made that pass or fail mostly on chance.
+
+- **Wording under test.** Candidate 5 (`845ca99`), unchanged. It is not revised in this round; failing, it is reverted.
+- **Prompt.** Scenario R2 in [scenarios.md](scenarios.md), held out from the wording's tuning. R1 is not rerun.
+  Candidate 5's 2026-11-18 R1 arms would meet the median rule below, but they were seen before it was written, so they are not evidence for it.
+- **Reference answer.** As in the 2026-11-18 revision, for R2: a fresh subagent that has seen no arm output and no word count writes one R2 answer from the prompt and its five assertions; the host confirms it passes A1–A5 with no coverage section and archives it at `runs/2026-11-19-P5-R2-reference.md` with its word count before any arm runs.
+- **Fit** is met when no arm has a checklist coverage section, the median arm word count (`wc -w`) is at most 1.5 times the reference's, rounded down, and no arm exceeds 2 times the reference's.
+- **Acceptance** requires Fit and R2 A1–A5 3/3.
+- **Controls.** Scenarios 1, 2, 2b, and 3 run three with-skill arms each, compared as in the 2026-11-18 revision.
+  A control below its baseline is rerun once with three fresh arms; it blocks acceptance only if the rerun also falls below.
+
 ## Verdict procedure
 
 Preregistered on 2026-11-17, before any arm ran.
@@ -182,3 +196,5 @@ Scenario 2b is the control for every edit to § Severity or § Agent-Safe Invoca
 | 2026-11-18 | P5 (revised gate, #264) | candidate 4 | `4401ca2` (wording `80b72b2`) | 1/3 meet Fit | Stage 2: revise once | Limit 1,119 words (1.5x the frozen 746-word reference, `runs/2026-11-18-P5-reference.md`). Words 1,375, 919, and 1,156; no coverage sections; R1 A1–A5 all 3/3. The long arms add test, assumption, and open-question sections. Records: `runs/2026-11-18-candidate-4-R1-withskill-{1,2,3}.md`. |
 | 2026-11-18 | P5 (revised gate, #264) | candidate 5 | `845ca99` | 2/3 meet Fit | Stage 2: **fails; reverted** | Revision drops "with the evidence and assumptions needed to act on them", restoring candidate 2's deliverable sentence. Words 1,058, 1,140, and 863; arm 2 is 21 words over. No coverage sections; R1 A1–A5 all 3/3. Both wording commits are reverted (`8530d8a`, `2349b23`) and the result goes to #264. Controls were not rerun on candidate 5: its Fit failure decided the revert, and the revision preregistration did not say whether a control failure alone blocks acceptance. On candidate 4, S1 (A10 2/3 after correction) and S2b (A1 2/3) did not hold. Records: `runs/2026-11-18-candidate-5-R1-withskill-{1,2,3}.md`. |
 | 2026-11-18 | Scenario 2b control | candidate 4 | `4401ca2` | 2/3 | did not hold | One arm reports a hedged `inferred` P2 finding that `sync` "may prompt and hang" under a pty-based harness; the scorer counts that as a hang claim. The severity part passes; the 2026-11-17 candidate-1 miss failed the severity part instead, so the two 2/3 results are different failure modes. Moot after the revert. Records: `runs/2026-11-18-candidate-4-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-19 | P5 (revision 2, held-out R2, #264) | candidate 5 | `1a30fc1` (wording from `845ca99`) | Fit fails: median 1,368 words against 973; arms 1,368, 982, 1,436, two over the 1,298 ceiling | Stage 2: **fails; reverted** | Reference 649 words (`runs/2026-11-19-P5-R2-reference.md`). No coverage sections; R2 A1–A5 all 3/3. The long arms add retry and reconciliation, test, and rollout or assumption sections that the reference omits. Reverted in `33a6e1a`. Control arms were scored after the owner accepted the R2 length on 2026-11-19 (see the next row). Records: `runs/2026-11-19-candidate-5-R2-withskill-{1,2,3}.md`. |
+| 2026-11-19 | P5 controls (revision 2, #264) | candidate 5 | `1a30fc1` | S1 A10 1/3, rerun 2/3; S2, S2b, S3 hold | Stage 2: **fails on control; stays reverted** | The owner accepted the R2 length, so the controls decide. S2 A1–A8 3/3; S2b A1–A2 3/3; S3 A1–A3 and A6 3/3 (A4 1/3 and A5 2/3 reported without a verdict). S1 A10's transport part, an error list for every networked command, is 1/3 and on the preregistered rerun 2/3, against 3/3 on `3cccc7a`. The failing arms leave `auth whoami` without an error list, one saying it was "omitted here for length" and one "elided here for length". Every other S1 assertion is 3/3 in both batches. Records: `runs/2026-11-19-candidate-5-{S1,S1-rerun,S2,S2b,S3}-withskill-{1,2,3}.md`. |

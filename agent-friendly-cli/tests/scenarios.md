@@ -247,6 +247,44 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 
 **Expected baseline behavior:** likely passes several of these; record the result either way.
 
+## Scenario R2: Hardening a deploy CLI (held-out, representative set)
+
+Added 2026-11-19 for issue #264 as a held-out prompt: R1 was used to tune the hardening wording, so R2 measures it on a CLI no wording was tuned against.
+It asks the same kind of question as R1 about a different CLI.
+Assertions are skill-neutral outcomes; this scenario is never tightened in response to its own results.
+
+**Prompt:**
+
+> My team maintains `shipctl`, a Python CLI our engineers use to deploy services to our Kubernetes clusters.
+> We want our coding agents to run deploys and rollbacks with it on their own.
+> What should we change so agents can drive it reliably? Give us a prioritized list.
+> Current help:
+>
+> ```text
+> $ shipctl --help
+> shipctl — deploy and manage services
+>
+> Usage: shipctl <command> [options]
+>
+> Commands:
+>   status <service>      Show what is running (pretty table)
+>   deploy <service>      Deploy the current build (shows a diff, then asks to confirm)
+>   rollback <service>    Roll back (choose a version from a menu)
+>   logs <service>        Tail logs (Ctrl-C to stop)
+>
+> Options:
+>   --env ENV             Target environment (default: from ~/.shipctl/config or $SHIPCTL_ENV)
+>   -q, --quiet           Less output
+> ```
+
+**Assertions (all scored):**
+
+- [ ] Proposes a non-interactive, machine-readable output mode and, for each of `status`, `deploy`, `rollback`, and `logs`, names the fields or shape of its output, not only an output class (Output).
+- [ ] Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes).
+- [ ] Removes every interactive prompt from the agent path: `deploy` has an explicit non-prompting trigger plus a preview or dry-run, `rollback` takes the target version as an argument, and `logs` can end without Ctrl-C (Agent-Safe Invocation, Mutations).
+- [ ] Names the ambient state (`~/.shipctl/config`, `$SHIPCTL_ENV`) and proposes how an agent inspects or overrides it (Ambient State).
+- [ ] Proposes how an agent discovers the contract (a schema command, `--help --json`, or equivalent) rather than learning flags from examples (Machine Schema).
+
 ## Results
 
 Rows dated before 2026-10-11 were scored against the earlier scenario 2 fixture (no stream attribution) and the earlier assertion lists; rows from 2026-10-11 on use the sets and scored/conformance split above.
@@ -298,3 +336,8 @@ Rows from 2026-11-17 on use the 2026-11-17 assertion lists: scenario 1 is split 
 | 2026-11-18 | 2 (audit, challenge) | with-skill ×3, candidate 4 (#264) | A1–A8 3/3 each; conformance C1 1/3 C2 3/3 C3 3/3 C4 3/3 | Control holds on every scored assertion. Median output 1,258 words. Records: `runs/2026-11-18-candidate-4-S2-withskill-{1,2,3}.md`. |
 | 2026-11-18 | 2b (audit control, challenge) | with-skill ×3, candidate 4 (#264) | A1 2/3 A2 3/3 | Control misses on A1 in one arm: an `inferred` P2 finding that `sync` "may prompt and hang" under a pty-based harness, which the scorer counted as a hang claim; the severity part passes. A different failure mode from the 2026-11-17 candidate-1 miss, which failed the severity part. The fixture tests closed stdin, not a pty. Median output 1,308 words. Records: `runs/2026-11-18-candidate-4-S2b-withskill-{1,2,3}.md`. |
 | 2026-11-18 | 3 (diagnosis, challenge) | with-skill ×3, candidate 4 (#264) | A1 3/3 A2 3/3 A3 3/3 A4 2/3 A5 1/3 A6 3/3; conformance C1 0/3 | A4 and A5 reported without a verdict, as preregistered. Median output 474 words. Records: `runs/2026-11-18-candidate-4-S3-withskill-{1,2,3}.md`. |
+| 2026-11-19 | R2 (hardening, held-out) | with-skill ×3, candidate 5 | A1 3/3 A2 3/3 A3 3/3 A4 3/3 A5 3/3 | First run of the held-out scenario. No coverage sections. Responses are 1,368, 982, and 1,436 words against a 649-word reference; P5 Fit fails (see `probes.md`). Baseline not run. Model `claude-opus-5-5`. Records: `runs/2026-11-19-candidate-5-R2-withskill-{1,2,3}.md`. |
+| 2026-11-19 | 1 (design, challenge) | with-skill ×3 + rerun ×3, candidate 5 (#264) | A1–A9 6/6 A10 3/6 (transport part 3/6; fallback and unknown-code parts 6/6) A11 6/6; conformance C1 6/6 C2 3/6 | Control did not hold on the rerun. Arms that fail omit the networked `auth whoami` error list, two of them citing length. Records: `runs/2026-11-19-candidate-5-S1{,-rerun}-withskill-{1,2,3}.md`. |
+| 2026-11-19 | 2 (audit, challenge) | with-skill ×3, candidate 5 (#264) | A1–A8 3/3; conformance C1 2/3 C2 3/3 C3 3/3 C4 3/3 | Control holds. Records: `runs/2026-11-19-candidate-5-S2-withskill-{1,2,3}.md`. |
+| 2026-11-19 | 2b (audit control, challenge) | with-skill ×3, candidate 5 (#264) | A1 3/3 A2 3/3 | Control holds. Records: `runs/2026-11-19-candidate-5-S2b-withskill-{1,2,3}.md`. |
+| 2026-11-19 | 3 (diagnosis, challenge) | with-skill ×3, candidate 5 (#264) | A1 3/3 A2 3/3 A3 3/3 A4 1/3 A5 2/3 A6 3/3; conformance C1 0/3 | Holds on A1–A3 and A6; A4 and A5 are reported without a verdict. Records: `runs/2026-11-19-candidate-5-S3-withskill-{1,2,3}.md`. |
