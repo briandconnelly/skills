@@ -132,6 +132,20 @@ The R1 baseline fails A1 0/3 and A5 1/3, so its median does not measure how long
 - **Controls.** Scenarios 1, 2, 2b, and 3 run three with-skill arms each on the candidate wording.
   A control fails when any scored assertion falls below its 2026-11-17 with-skill result on the final tree (`3cccc7a`), except scenario 3's A4 and A5, which that wave showed cannot be read at n=3 and are reported without a verdict.
 
+#### P5 revision 2 (2026-11-19, issue #264)
+
+Preregistered on 2026-11-19, before the R2 reference answer was drafted and before any arm ran.
+The 2026-11-18 rule required all three arms under the limit; within-wave spread of 277 to 456 words made that pass or fail mostly on chance.
+
+- **Wording under test.** Candidate 5 (`845ca99`), unchanged. It is not revised in this round; failing, it is reverted.
+- **Prompt.** Scenario R2 in [scenarios.md](scenarios.md), held out from the wording's tuning. R1 is not rerun.
+  Candidate 5's 2026-11-18 R1 arms would meet the median rule below, but they were seen before it was written, so they are not evidence for it.
+- **Reference answer.** As in the 2026-11-18 revision, for R2: a fresh subagent that has seen no arm output and no word count writes one R2 answer from the prompt and its five assertions; the host confirms it passes A1–A5 with no coverage section and archives it at `runs/2026-11-19-P5-R2-reference.md` with its word count before any arm runs.
+- **Fit** is met when no arm has a checklist coverage section, the median arm word count (`wc -w`) is at most 1.5 times the reference's, rounded down, and no arm exceeds 2 times the reference's.
+- **Acceptance** requires Fit and R2 A1–A5 3/3.
+- **Controls.** Scenarios 1, 2, 2b, and 3 run three with-skill arms each, compared as in the 2026-11-18 revision.
+  A control below its baseline is rerun once with three fresh arms; it blocks acceptance only if the rerun also falls below.
+
 ## Verdict procedure
 
 Preregistered on 2026-11-17, before any arm ran.

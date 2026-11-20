@@ -247,6 +247,44 @@ Assertions are skill-neutral outcomes; this scenario is never tightened in respo
 
 **Expected baseline behavior:** likely passes several of these; record the result either way.
 
+## Scenario R2: Hardening a deploy CLI (held-out, representative set)
+
+Added 2026-11-19 for issue #264 as a held-out prompt: R1 was used to tune the hardening wording, so R2 measures it on a CLI no wording was tuned against.
+It asks the same kind of question as R1 about a different CLI.
+Assertions are skill-neutral outcomes; this scenario is never tightened in response to its own results.
+
+**Prompt:**
+
+> My team maintains `shipctl`, a Python CLI our engineers use to deploy services to our Kubernetes clusters.
+> We want our coding agents to run deploys and rollbacks with it on their own.
+> What should we change so agents can drive it reliably? Give us a prioritized list.
+> Current help:
+>
+> ```text
+> $ shipctl --help
+> shipctl — deploy and manage services
+>
+> Usage: shipctl <command> [options]
+>
+> Commands:
+>   status <service>      Show what is running (pretty table)
+>   deploy <service>      Deploy the current build (shows a diff, then asks to confirm)
+>   rollback <service>    Roll back (choose a version from a menu)
+>   logs <service>        Tail logs (Ctrl-C to stop)
+>
+> Options:
+>   --env ENV             Target environment (default: from ~/.shipctl/config or $SHIPCTL_ENV)
+>   -q, --quiet           Less output
+> ```
+
+**Assertions (all scored):**
+
+- [ ] Proposes a non-interactive, machine-readable output mode and, for each of `status`, `deploy`, `rollback`, and `logs`, names the fields or shape of its output, not only an output class (Output).
+- [ ] Proposes errors an agent can branch on without parsing prose: symbolic codes, an exit-code map, or both (Errors And Exit Codes).
+- [ ] Removes every interactive prompt from the agent path: `deploy` has an explicit non-prompting trigger plus a preview or dry-run, `rollback` takes the target version as an argument, and `logs` can end without Ctrl-C (Agent-Safe Invocation, Mutations).
+- [ ] Names the ambient state (`~/.shipctl/config`, `$SHIPCTL_ENV`) and proposes how an agent inspects or overrides it (Ambient State).
+- [ ] Proposes how an agent discovers the contract (a schema command, `--help --json`, or equivalent) rather than learning flags from examples (Machine Schema).
+
 ## Results
 
 Rows dated before 2026-10-11 were scored against the earlier scenario 2 fixture (no stream attribution) and the earlier assertion lists; rows from 2026-10-11 on use the sets and scored/conformance split above.
